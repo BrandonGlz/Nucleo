@@ -240,12 +240,22 @@ evidencias que se agreguen.
 
 **Ramas**
 
-- `main`: versión estable; solo recibe cambios desde `dev` cuando todo funciona.
-- `dev`: integración de todas las áreas.
-- `backend`, `frontend`, `mobile`, `mosquitto` e `iot`: una rama por área de trabajo. Cada
-  quien trabaja en la de su área y la integra a `dev` con un pull request.
-- La documentación (`Context/`, `Docs/`, READMEs) y `Database/` no tienen rama propia:
-  viajan con la rama del área que las modifica. Un cambio que toca varias áreas va en `dev`.
+```text
+main          Solo entregas estables, con un tag por etapa
+dev           Integración; siempre debe funcionar
+feature/...   Ramas cortas, una por tarjeta de Trello
+fix/...       Corrección de un error, una por tarjeta
+docs/...      Cambios de documentación
+```
+
+- Las ramas `feature/`, `fix/` y `docs/` se crean desde `dev`, viven pocos días y se borran al
+  integrarse. El nombre lleva el área y la tarea en minúsculas y con guiones:
+  `feature/backend-serie-por-hora`, `feature/mobile-login`, `fix/iot-cola-de-reenvio`,
+  `docs/guia-de-instalacion`.
+- Se integran a `dev` con un pull request; antes de unirlo deben pasar las pruebas del área.
+- `dev` pasa a `main` solo al cerrar una etapa; esa versión lleva un tag con el nombre de la
+  etapa (por ejemplo `etapa-1` o `v0.1.0`).
+- Nadie trabaja directo sobre `main` ni sobre `dev`.
 
 **Commits**
 
