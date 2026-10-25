@@ -263,11 +263,8 @@ iot        Trabajo del firmware y del broker (IoT/ y Mosquitto/)
 
 **Commits**
 
-Un commit es un solo cambio lógico, con un mensaje de **una línea**:
-
-```text
-tipo(alcance): resumen
-```
+Un commit es un solo cambio lógico, con un mensaje de **una línea** con la forma
+`tipo(alcance): resumen`:
 
 - **Tipo:** `feat` (funcionalidad nueva), `fix` (corrección), `docs` (solo documentación),
   `test` (pruebas), `refactor` (reorganiza sin cambiar el comportamiento), `perf` (rendimiento),
@@ -286,16 +283,14 @@ tipo(alcance): resumen
 
 Cuál usar según la situación:
 
-```text
-Agregué una función           feat(backend): agrega serie de lecturas por hora
-Arreglé un error              fix(iot): reenvía las lecturas encoladas al reconectar
-Cambié solo documentación     docs: actualiza la guía de instalación
-Agregué o ajusté pruebas      test(backend): cubre la caducidad del token
-Reorganicé código             refactor(web): mueve el cliente HTTP a services/api
-Actualicé dependencias        chore(mobile): actualiza expo a 58.0.19
-Cambié configuración          chore(mosquitto): limita cada usuario a su tópico
-Deshice un commit             revert: deshace "feat(backend): agrega serie por hora"
-```
+- `feat(backend): agrega serie de lecturas por hora` — "agregaste una función."
+- `fix(iot): reenvía las lecturas encoladas al reconectar` — "arreglaste un error."
+- `docs: actualiza la guía de instalación` — "cambiaste solo documentación."
+- `test(backend): cubre la caducidad del token` — "agregaste o ajustaste pruebas."
+- `refactor(web): mueve el cliente HTTP a services/api` — "reorganizaste código sin cambiar su comportamiento."
+- `chore(mobile): actualiza expo a 58.0.19` — "actualizaste dependencias."
+- `chore(mosquitto): limita cada usuario a su tópico` — "cambiaste configuración."
+- `revert: deshace "feat(backend): agrega serie por hora"` — "deshiciste un commit."
 
 Se evita: `cambios`, `varios arreglos`, listas de archivos o párrafos que repiten el cambio.
 Si un commit necesita muchas líneas para explicarse, probablemente son varios commits.
