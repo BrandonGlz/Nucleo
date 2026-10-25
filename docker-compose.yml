@@ -1,0 +1,81 @@
+name: nucleo
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: nucleo_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nucleo_db}
+      POSTGRES_USER: ${POSTGRES_USER:-nucleo_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD es obligatorio}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    stop_grace_period: 30s
+
+  timescaledb:
+    image: timescale/timescaledb:2.31.0-pg17
+    container_name: nucleo_timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${IOT_DB:-nucleo_iot}
+      POSTGRES_USER: ${IOT_USER:-nucleo_iot}
+      POSTGRES_PASSWORD: ${IOT_PASSWORD:?IOT_PASSWORD es obligatorio}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${IOT_PORT:-55433}:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    stop_grace_period: 30s
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: nucleo_mosquitto
+    restart: unless-stopped
+    ports:
+      - "${MQTT_BIND:-127.0.0.1}:${MQTT_PORT:-8883}:8883"
+    volumes:
+      - ./Mosquitto/config:/mosquitto/config:ro
+      - ./Mosquitto/certs:/mosquitto/certs:ro
+      - mosquitto_data:/mosquitto/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: nucleo_redis
+    restart: unless-stopped
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --save '' --appendonly no"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD es obligatorio}
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-56379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    name: nucleo_postgres_data
+  timescale_data:
+    name: nucleo_timescale_data
+  mosquitto_data:
+    name: nucleo_mosquitto_data

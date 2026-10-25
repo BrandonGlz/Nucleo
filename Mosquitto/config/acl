@@ -1,0 +1,10 @@
+# El backend recibe las lecturas de todos los dispositivos y les envía su configuración.
+user nucleo_backend
+topic read nucleo/devices/+/measurements
+topic write nucleo/devices/+/config
+
+# Cada dispositivo tiene su propio usuario, igual a su codigo_mqtt (que también es su
+# client ID). Se liga al usuario autenticado (%u) y no al client ID, que cada cliente elige:
+# así un dispositivo no puede publicar ni leer en el tópico de otro.
+pattern write nucleo/devices/%u/measurements
+pattern read nucleo/devices/%u/config

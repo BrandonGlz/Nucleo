@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Núcleo",
+    "slug": "nucleo-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "nucleo",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nucleo.mobile"
+    },
+    "android": {
+      "package": "com.nucleo.mobile"
+    }
+  }
+}
