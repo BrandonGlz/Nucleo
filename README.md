@@ -241,18 +241,22 @@ evidencias que se agreguen.
 **Ramas**
 
 ```text
-main          Solo entregas estables, con un tag por etapa
-dev           Integración; siempre debe funcionar
-feature/...   Ramas cortas, una por tarjeta de Trello
-fix/...       Corrección de un error, una por tarjeta
-docs/...      Cambios de documentación
+main       Solo entregas estables, con un tag por etapa
+dev        Integración; siempre debe funcionar
+backend    Trabajo del backend (BackEnd/)
+frontend   Trabajo de la web (FrontEnd/)
+mobile     Trabajo de la app móvil (Mobile/)
+iot        Trabajo del firmware y del broker (IoT/ y Mosquitto/)
 ```
 
-- Las ramas `feature/`, `fix/` y `docs/` se crean desde `dev`, viven pocos días y se borran al
-  integrarse. El nombre lleva el área y la tarea en minúsculas y con guiones:
-  `feature/backend-serie-por-hora`, `feature/mobile-login`, `fix/iot-cola-de-reenvio`,
-  `docs/guia-de-instalacion`.
-- Se integran a `dev` con un pull request; antes de unirlo deben pasar las pruebas del área.
+- Cada área trabaja solo en su rama: así dos áreas no editan los mismos archivos a la vez.
+- La documentación (`Context/`, `Docs/`, READMEs) y `Database/` no tienen rama propia: viajan
+  con la rama del área que las modifica. Un cambio que toca varias áreas se coordina en `dev`.
+- Para evitar conflictos al integrar, se trae `dev` a la rama del área con frecuencia
+  (`git merge dev`) y se suben cambios pequeños.
+- Si dos personas trabajan a la vez dentro de una misma área, cada una usa una rama corta
+  (`feature/<tarea>` o `fix/<tarea>`) que sale de la rama del área y vuelve a ella.
+- Cada área se integra a `dev` con un pull request y las pruebas pasando.
 - `dev` pasa a `main` solo al cerrar una etapa; esa versión lleva un tag con el nombre de la
   etapa (por ejemplo `etapa-1` o `v0.1.0`).
 - Nadie trabaja directo sobre `main` ni sobre `dev`.
