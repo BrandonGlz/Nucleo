@@ -10,7 +10,7 @@
 - **VS Code + Pymakr:** Pymakr 2.22.5.
 - **PostgreSQL:** 17.11 (imagen `postgres:17-alpine`).
 - **TimescaleDB:** 2.31.0 (imagen `timescale/timescaledb:2.31.0-pg17`).
-- **Expo / React Native:** 58.0.19 / 0.88.0, en `Mobile/`.
+- **Expo / React Native:** 58.0.23 / 0.88.1, en `Mobile/`.
 
 No se requiere PostgreSQL nativo. El usuario del sistema debe pertenecer al
 grupo `docker` o tener acceso equivalente al daemon.
