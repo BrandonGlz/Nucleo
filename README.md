@@ -73,7 +73,7 @@ Stack
 ├── Base de datos    PostgreSQL 17.11 · TimescaleDB 2.31.0 · Redis 7
 ├── Broker MQTT      Eclipse Mosquitto 2 con TLS
 ├── Web              React 19.3.1 · Vite 8.3.5 · React Router 7 · npm 11.16.0
-├── App móvil        Expo 58.0.19 · React Native 0.88.0 · React Navigation 7 · npm 11.16.0
+├── App móvil        Expo 58.0.23 · React Native 0.88.1 · React Navigation 7 · npm 11.16.0
 ├── IoT              Python 3.12 · MicroPython 1.29.0 para ESP32 · Pymakr 2.22.5
 └── Contenedores     Docker Engine 29.9.2 · Compose 5.6.1
 ```
