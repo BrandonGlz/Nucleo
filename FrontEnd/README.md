@@ -3,34 +3,57 @@
 > **En simple:** es la parte que se ve en el navegador. Muestra la pantalla, los
 > botones y los mensajes. No guarda datos: se los pide al backend.
 
-Está hecho con React y Vite. Es un esqueleto: cada módulo ya tiene su carpeta, su
-ruta y su entrada en el menú, y muestra «Hola mundo, este es el módulo de…» hasta
-que se implemente. La app móvil es otro cliente y usa el mismo backend. Ambos hablan
-solo con la API REST; el navegador no se conecta al broker MQTT.
+Está hecho con React y Vite, con el sistema de diseño de Núcleo (`src/design-system/`).
+Tiene todas las pantallas del diseño (`Docs/Mockups/nucleo-web.html`) y funciona sin
+backend con datos simulados. La app móvil es otro cliente y usa el mismo backend.
+Ambos hablan solo con la API REST; el navegador no se conecta al broker MQTT.
 
 ## Qué hace
 
-- **Hoy:** menú de módulos con navegación (React Router), pantalla de inicio que
-  comprueba si la API responde y una pantalla provisional por módulo: acceso,
-  panel, dispositivos, mediciones, alertas, reportes, usuarios y organizaciones.
-- **Después:** cada equipo reemplaza la pantalla provisional de su módulo con la
-  funcionalidad real (inicio de sesión con el token de la API, panel, gráficas,
-  alertas, umbrales, reportes y gestión, según el rol).
-- **Todavía no:** no tiene sesión, datos de negocio ni conexión en vivo.
+- **Acceso:** inicio de sesión a pantalla completa. Sin sesión, cualquier ruta lleva
+  a `/acceso`.
+- **Monitoreo:** Panel con lecturas en vivo, Dispositivos, Detalle de dispositivo,
+  Histórico y Alertas (atender o descartar con nota).
+- **Análisis:** Reportes (vista previa y generación) y Agente IA.
+- **Configuración:** Umbrales, Usuarios (ADMIN y SUPER) y Organización (ADMIN).
+- **Cuenta:** Mi perfil y Notificaciones, a las que se llega desde el avatar y la
+  campana del encabezado.
+- **Diagnóstico:** `/estado` comprueba si la API responde.
+- **Tema:** claro, oscuro o el del sistema, desde el menú del avatar o Mi perfil.
 
 ## Cómo funciona
 
-1. El navegador carga la aplicación y `App.jsx` crea una ruta por cada módulo de
-   `src/features/index.js`.
-2. `MainLayout` dibuja el encabezado, el menú (también generado desde esa lista) y
-   la zona donde aparece cada pantalla.
-3. En el inicio, una función pregunta al backend si está funcionando y muestra el
-   resultado en una tarjeta; si la API falla, la página sigue visible y permite
-   reintentar.
-4. Cada módulo muestra su pantalla provisional (`ModuloBase`).
+1. `App.jsx` crea una ruta por cada módulo de `src/features/index.js` dentro de
+   `MainLayout`, que dibuja el menú lateral agrupado por secciones y filtrado por rol.
+2. Cada pantalla se arma con `Pantalla`: el encabezado (con los menús de la campana y
+   del avatar), la tarjeta oscura de cifras clave y su contenido, que llena la altura
+   de la ventana. Solo las listas y tablas largas hacen scroll.
+3. Las pantallas piden los datos a los servicios de `src/services/` (`dispositivos.js`,
+   `alertas.js`…) con el hook `useDatos`, que expone el estado `cargando`, `listo`,
+   `vacio` o `error`.
+4. Cada servicio decide: con `VITE_USE_MOCKS=true` responde `src/services/mock/`, que
+   imita cada endpoint con la forma exacta del contrato; si no, llama a la API con el
+   token de la sesión. Las rutas salen siempre de `src/api/`.
+5. `src/utils/convertir.js` traduce la forma del contrato a las props de los
+   componentes (por ejemplo `SINCONEX` → `status="offline"`).
+
+Datos simulados:
+
+- Cualquier correo y contraseña inician sesión; `error@nucleo.mx` muestra el error de
+  credenciales.
+- El rol sale de `VITE_MOCK_ROL`: `SUPER` (por defecto), `ADMIN` o `ANALISTA`.
+- Las lecturas varían ±0.1 cada 30 s para simular el «en vivo».
+- `?estado=cargando`, `?estado=vacio`, `?estado=error` o `?estado=sinConexion` en la
+  URL fuerzan ese estado para revisar el diseño; `?agente=caido` en `/agente` simula
+  el servicio de IA caído.
+
+Los íconos salen únicamente de [Lucide](https://lucide.dev/icons/), a través de
+`<Icon name="bell" />` del sistema de diseño o con `import { Bell } from 'lucide-react'`.
+El lint marca como error cualquier otra librería de íconos.
 
 Para agregar un módulo: crear `src/features/<modulo>/<Modulo>Page.jsx` y una
-línea en `src/features/index.js`; la ruta y el menú aparecen solos.
+línea en `src/features/index.js` con su `seccion`, `icono` y `roles`; la ruta y el
+menú aparecen solos.
 
 ## Carpetas
 
@@ -38,18 +61,24 @@ línea en `src/features/index.js`; la ruta y el menú aparecen solos.
 FrontEnd/
 ├── public/                     Archivos que se sirven tal cual
 ├── src/
-│   ├── assets/                 Imágenes y recursos
-│   ├── components/             Piezas reutilizables (ModuloBase, tarjeta de salud)
-│   ├── features/               Un módulo por carpeta: acceso, panel, dispositivos,
-│   │                           mediciones, alertas, reportes, usuarios y
-│   │                           organizaciones; index.js es el registro
-│   ├── hooks/                  Lógica de React con estado
-│   ├── layouts/                Marco visual y menú (MainLayout)
-│   ├── pages/                  Pantallas completas
-│   ├── services/               Comunicación con la API
-│   ├── styles/                 Colores, tipografía y estilos
-│   ├── utils/                  Funciones pequeñas sin React
-│   ├── App.jsx                 Une las piezas principales
+│   ├── api/                    Rutas del backend como constantes, un archivo por módulo
+│   ├── assets/logos/           Logos oficiales (logo e ícono, en verde y lima)
+│   ├── components/             Pantalla, CifrasClave (tarjeta oscura), EstadoError y
+│   │                           la tarjeta de salud de /estado
+│   ├── context/                SesionContext (sesión y tema) y AvisosContext
+│   │                           (alertas pendientes y notificaciones)
+│   ├── design-system/          Componentes, estilos y fuentes de Núcleo
+│   ├── features/               Un módulo por carpeta; index.js es el registro
+│   ├── hooks/                  useDatos, useMonitoreo y useHealthCheck
+│   ├── layouts/                MainLayout (menú lateral) y Encabezado (campana y avatar)
+│   ├── pages/                  HomePage, el diagnóstico de /estado
+│   ├── services/               Un servicio por dominio, config.js con la bandera de
+│   │   │                       mocks y el token
+│   │   ├── api/                Cliente HTTP (client.js) y salud
+│   │   └── mock/               datos.js (datos de ejemplo) y handlers.js (endpoints simulados)
+│   ├── styles/global.css       Marco de la app y piezas propias de las pantallas
+│   ├── utils/                  convertir.js (contrato → componentes) y formato.js (fechas)
+│   ├── App.jsx                 Rutas y protección por sesión y rol
 │   └── main.jsx                Enciende la aplicación
 ├── index.html                  Página que abre el navegador
 ├── vite.config.js              Configuración de Vite
@@ -66,17 +95,16 @@ FrontEnd/
 
 Todos se ejecutan desde la carpeta principal del proyecto:
 
-- `cp FrontEnd/.env.example FrontEnd/.env` — "crea la configuración local; apunta a `http://localhost:8000/api/v1`."
+- `cp FrontEnd/.env.example FrontEnd/.env` — "crea la configuración local: API en `http://localhost:8000/api/v1` y datos simulados activos."
 - `cd FrontEnd && npm ci` — "instala React, Vite y las herramientas; crea `node_modules/`."
 - `cd FrontEnd && npm run dev` — "abre la web en `http://localhost:5173`; se detiene con `Ctrl+C`."
 - `cd FrontEnd && npm run build` — "genera el paquete final en `dist/`; muestra `built in ...`."
-- `cd FrontEnd && npm run lint` — "revisa errores; no muestra avisos si todo está bien."
+- `cd FrontEnd && npm run lint` — "revisa errores; solo muestra el aviso esperado de `useWidth` en `nc-lib.js`."
 - `cd FrontEnd && npm run preview` — "muestra el paquete final en `http://localhost:4173` después del build."
 
-Abre `http://localhost:5173`. Debes ver la pantalla inicial con una tarjeta de
-**API disponible** o **API no disponible** y un menú con los módulos; cada uno
-muestra «Hola mundo, este es el módulo de…». Si el backend está apagado, la página
-igual abre y ofrece reintentar.
+Abre `http://localhost:5173` y entra con cualquier correo y contraseña, por ejemplo
+`yadira.salazar@grupoaltamira.mx` y `nucleo2026`. Si cambias el `.env`, reinicia
+`npm run dev` para que Vite lo lea.
 
 ## Para profundizar
 

@@ -3,6 +3,33 @@
   "plugins": ["react", "oxc"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "react-icons",
+              "react-icons/*",
+              "@heroicons/*",
+              "@fortawesome/*",
+              "@mui/icons-material",
+              "@mui/icons-material/*",
+              "@tabler/icons*",
+              "@phosphor-icons/*",
+              "phosphor-react",
+              "react-feather",
+              "feather-icons",
+              "@radix-ui/react-icons",
+              "@iconify/*",
+              "ionicons",
+              "@ant-design/icons"
+            ],
+            "message": "Los íconos del front salen solo de lucide-react (https://lucide.dev/icons/), con import { NombreIcono } from 'lucide-react'."
+          }
+        ]
+      }
+    ]
   }
 }
