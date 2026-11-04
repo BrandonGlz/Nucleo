@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>body{margin:0}a{color:var(--text-primary)}a:hover{color:var(--text-secondary)}.nc-ink.nc-ink{position:relative;overflow:hidden;background:#121413;color:var(--text-primary)}[data-theme="dark"] .nc-ink{background:#1E2120;box-shadow:inset 0 0 0 1px rgba(243,245,242,0.06)}.nc-ink>*{position:relative}.nc-ink>.nc-ink__deco{position:absolute;pointer-events:none}.nc-grow.nc-grow{flex:1;min-height:0;display:flex;flex-direction:column}.nc-scroll{flex:1;min-height:0;overflow:auto}.nc-scroll thead th{position:sticky;top:0;z-index:1;background:var(--surface)}</style>
+</helmet>
+<div class="nc-theme" data-theme="{{ theme }}" style="width:1440px;height:1024px;overflow:hidden;position:relative;background:var(--background);color:var(--text-primary);font-family:var(--font-sans)">
+
+<sc-if value="{{ s.loginAny }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;height:100%;display:flex;background:#121413;color:#F3F5F2;overflow:hidden">
+  <div style="position:absolute;left:250px;top:10px;width:720px;height:720px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+  <div style="position:absolute;left:330px;top:150px">
+    <x-import component-from-global-scope="NCleoDesignSystem_ca495a.LogoMark" tone="lima" size="{{ 560 }}" hint-size="560px,460px"></x-import>
+  </div>
+  <div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:56px 64px">
+    <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Logo" size="{{ 48 }}" inverse="{{ true }}" hint-size="155px,67px"></x-import>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#9DA39E">Plataforma IoT</span>
+      <h2 style="margin:0;font-size:44px;line-height:52px;font-weight:700;letter-spacing:-0.03em;max-width:480px;text-wrap:pretty;color:#F3F5F2">Temperatura, humedad y calidad del aire, claras y bajo control.</h2>
+    </div>
+  </div>
+  <div style="position:relative;z-index:1;flex:none;width:600px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:48px 80px;box-sizing:border-box;background:var(--surface);color:var(--text-primary);border-radius:40px 0 0 40px;box-shadow:-16px 0 48px rgba(0,0,0,0.3)">
+    <div style="display:flex;flex-direction:column;max-width:420px;width:100%;gap:32px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h1 style="margin:0;font-size:40px;line-height:48px;font-weight:700;letter-spacing:-0.025em">Inicia sesión</h1>
+        <p style="margin:0;font-size:16px;line-height:26px;color:var(--text-secondary)">Entra con la cuenta que te dio el administrador de tu organización.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Correo" type="email" icon="mail" default-value="yadira.salazar@grupoaltamira.mx" hint-size="100%,72px"></x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Contraseña" type="password" default-value="nucleo2026" error="{{ loginError }}" hint-size="100%,72px"></x-import>
+        <div style="display:flex;align-items:center;justify-content:flex-end">
+          <a href="#" style="font-size:14px;font-weight:600">¿Olvidaste tu contraseña?</a>
+        </div>
+      </div>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" size="lg" icon="log-in" block="{{ true }}" hint-size="100%,52px">Iniciar sesión</x-import>
+      <p style="margin:0;font-size:14px;line-height:22px;color:var(--text-muted)">¿Necesitas acceso? Pídelo al administrador de tu organización.</p>
+    </div>
+    <span style="position:absolute;left:90px;bottom:48px;font-size:12px;color:var(--text-muted)">Núcleo · Monitoreo ambiental</span>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ s.shell }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;gap:24px;padding:16px;height:100%;box-sizing:border-box">
+  <nav class="nc-sidebar" aria-label="Navegación principal" style="flex:none;height:992px;box-sizing:border-box">
+    <div class="nc-sidebar__brand"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Logo" size="{{ 32 }}" inverse="{{ true }}" hint-size="130px,32px"></x-import></div>
+    <sc-for list="{{ navSections }}" as="sec" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px">
+        <span class="nc-sidebar__section">{{ sec.label }}</span>
+        <ul>
+          <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="3">
+            <li><button type="button" class="{{ it.cls }}"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="{{ it.icon }}" size="{{ 20 }}" hint-size="20px,20px"></x-import><span>{{ it.label }}</span><sc-if value="{{ it.count }}" hint-placeholder-val="{{ false }}"><span class="nc-navitem__count">{{ it.count }}</span></sc-if></button></li>
+          </sc-for>
+        </ul>
+      </div>
+    </sc-for>
+    <div class="nc-sidebar__foot">
+      <div class="nc-sidebar__user"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Avatar" name="{{ user.name }}" size="{{ 36 }}" hint-size="36px,36px"></x-import><div><strong>{{ user.name }}</strong><span>{{ user.role }}</span></div></div>
+    </div>
+  </nav>
+  <main style="flex:1;min-width:0;display:flex;flex-direction:column;gap:24px;padding:16px 16px 16px 8px;overflow:hidden">
+    <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Header" eyebrow="{{ hdr.eyebrow }}" title="{{ hdr.title }}" notifications="{{ 3 }}" user="{{ user }}" search-placeholder="Buscar dispositivo, área…" actions="{{ hdrActions }}" hint-size="100%,58px"></x-import>
+    <!-- CIFRAS CLAVE: tarjeta oscura de marca -->
+    <div class="nc-ink" data-theme="dark" style="flex:none;display:flex;align-items:flex-end;gap:32px;padding:26px 32px 28px;border-radius:32px">
+      <div class="nc-ink__deco" style="right:-180px;top:-250px;width:480px;height:480px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div class="nc-ink__deco" style="right:-100px;top:-170px;width:320px;height:320px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div class="nc-ink__deco" style="right:-50px;bottom:-70px;opacity:0.16"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.LogoMark" tone="lima" size="{{ 180 }}" hint-size="180px,148px"></x-import></div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+        <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">{{ hero.lead.label }}</span>
+        <sc-if value="{{ hero.lead.value }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ hero.lead.style }}">{{ hero.lead.value }}<span style="{{ hero.lead.unitStyle }}"> {{ hero.lead.unit }}</span></div>
+        </sc-if>
+        <sc-if value="{{ hero.lead.title }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:40px;line-height:48px;font-weight:700;letter-spacing:-0.03em;max-width:720px;text-wrap:pretty">{{ hero.lead.title }}</div>
+        </sc-if>
+        <sc-if value="{{ hero.bar }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative;width:320px;height:10px;margin:6px 0 2px;border-radius:99px;background:rgba(243,245,242,0.1)"><div style="{{ hero.bar.band }}"></div><div style="{{ hero.bar.mark }}"></div></div>
+        </sc-if>
+        <span style="{{ hero.lead.subStyle }}">{{ hero.lead.sub }}</span>
+      </div>
+      <div style="flex:1"></div>
+      <sc-for list="{{ hero.figs }}" as="fg" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:120px;padding:0 0 4px 24px;border-left:1px solid rgba(243,245,242,0.1)">
+          <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">{{ fg.label }}</span>
+          <div style="{{ fg.style }}">{{ fg.value }}<span style="font-size:18px;font-weight:600;letter-spacing:-0.01em;opacity:0.7"> {{ fg.unit }}</span></div>
+          <span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ fg.sub }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- PANEL -->
+    <sc-if value="{{ s.dashboard }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.CriticalBanner" title="Humedad crítica en Sala limpia" message="Núcleo L-07 · Laboratorio · 71.0 % (máx 60 %) · desde hace 8 min" time="14:30" action-label="Ver alerta" hint-size="100%,64px"></x-import>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;min-height:0;flex:1;grid-template-rows:minmax(0,1fr)">
+        <div style="display:flex;flex-direction:column;gap:24px;min-width:0;min-height:0">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="100%,200px">
+            <div class="nc-card__head" style="margin-bottom:12px">
+              <div style="flex:1;min-width:0"><h3 class="nc-card__title">Tendencia de temperatura</h3><p class="nc-card__sub">Núcleo T-02 · Moldeo · Línea 2 · máx 28 °C</p></div>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.PeriodFilter" options="{{ periods }}" default-value="Hoy" hint-size="240px,40px"></x-import>
+            </div>
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.TrendChart" data="{{ trend }}" unit="°C" threshold="{{ thrTemp }}" height="{{ 96 }}" active-index="{{ 8 }}" hint-size="100%,96px"></x-import>
+          </x-import>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,220px">
+            <div class="nc-card__head" style="margin-bottom:8px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Dispositivos que requieren atención</h3><p class="nc-card__sub">Fuera de rango o sin conexión</p></div></div>
+            <div class="nc-table-wrap nc-scroll"><table class="nc-table">
+              <thead><tr><th>Dispositivo</th><th>Área</th><th>Lectura</th><th>Última lectura</th><th>Batería</th><th>Estado</th></tr></thead>
+              <tbody>
+                <sc-for list="{{ dashDevices }}" as="d" hint-placeholder-count="2">
+                  <tr>
+                    <td><div class="nc-table__device"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="cpu" size="sm" hint-size="32px,32px"></x-import><div><strong>{{ d.name }}</strong><span>{{ d.id }}</span></div></div></td>
+                    <td>{{ d.location }}</td>
+                    <td style="font-variant-numeric:tabular-nums">{{ d.reading }}</td>
+                    <td>{{ d.last }}</td>
+                    <td><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Battery" level="{{ d.battery }}" hint-size="60px,20px"></x-import></td>
+                    <td><x-import component-from-global-scope="NCleoDesignSystem_ca495a.StatusBadge" status="{{ d.status }}" label="{{ d.statusLabel }}" hint-size="100px,26px"></x-import></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table></div>
+          </x-import>
+        </div>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,100%">
+          <div class="nc-card__head"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Alertas recientes</h3><p class="nc-card__sub">3 pendientes de atender</p></div></div>
+          <div class="nc-scroll">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.ActivityFeed" items="{{ feed5 }}" hint-size="100%,400px"></x-import>
+          </div>
+        </x-import>
+      </div>
+    </sc-if>
+
+    <!-- PANEL · CARGANDO -->
+    <sc-if value="{{ s.dashboardLoading }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;flex:1;min-height:0;grid-template-rows:minmax(0,1fr)">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,420px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Skeleton" width="30%" height="{{ 20 }}" hint-size="30%,20px"></x-import>
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Skeleton" width="100%" height="{{ 220 }}" hint-size="100%,220px"></x-import>
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.DeviceTable" loading="{{ true }}" hint-size="100%,200px"></x-import>
+          </div>
+        </x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Skeleton" variant="card" hint-size="100%,420px"></x-import>
+      </div>
+    </sc-if>
+
+    <!-- DISPOSITIVOS -->
+    <sc-if value="{{ s.devices }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;gap:16px">
+        <div style="width:280px"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Área" icon="map-pin" options="{{ optAreasAll }}" default-value="Todas las áreas" hint-size="100%,72px"></x-import></div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding-bottom:2px">
+          <sc-for list="{{ devChips }}" as="c" hint-placeholder-count="5">
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Chip" selected="{{ c.on }}" count="{{ c.count }}" icon="{{ c.icon }}" on-click="{{ c.set }}" hint-size="110px,40px">{{ c.label }}</x-import>
+          </sc-for>
+        </div>
+      </div>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,760px">
+        <div class="nc-card__head" style="margin-bottom:8px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Dispositivos</h3><p class="nc-card__sub">{{ devSub }}</p></div></div>
+        <div class="nc-table-wrap nc-scroll"><table class="nc-table">
+          <thead><tr><th>Dispositivo</th><th>Área</th><th>Estado</th><th>Batería</th><th>Señal</th><th>Última lectura</th><th>Muestreo</th><th></th></tr></thead>
+          <tbody>
+            <sc-for list="{{ devList }}" as="d" hint-placeholder-count="10">
+              <tr>
+                <td><div class="nc-table__device"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="cpu" size="sm" hint-size="32px,32px"></x-import><div><strong>{{ d.name }}</strong><span>{{ d.id }}</span></div></div></td>
+                <td>{{ d.location }}</td>
+                <td><x-import component-from-global-scope="NCleoDesignSystem_ca495a.StatusBadge" status="{{ d.status }}" label="{{ d.statusLabel }}" hint-size="100px,26px"></x-import></td>
+                <td><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Battery" level="{{ d.battery }}" hint-size="60px,20px"></x-import></td>
+                <td><x-import component-from-global-scope="NCleoDesignSystem_ca495a.SignalBars" level="{{ d.signal }}" hint-size="40px,20px"></x-import></td>
+                <td>{{ d.last }}</td>
+                <td style="font-variant-numeric:tabular-nums">{{ d.interval }}</td>
+                <td style="text-align:right"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconButton" icon="chevron-right" label="Ver detalle" variant="ghost" size="sm" hint-size="36px,36px"></x-import></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table></div>
+      </x-import>
+    </sc-if>
+
+    <!-- DISPOSITIVOS · VACÍO -->
+    <sc-if value="{{ s.devicesEmpty }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,560px">
+        <div style="flex:1;display:flex;align-items:center;justify-content:center">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.DeviceTable" devices="{{ emptyList }}" hint-size="100%,260px"></x-import>
+        </div>
+      </x-import>
+    </sc-if>
+
+    <!-- DETALLE DE DISPOSITIVO -->
+    <sc-if value="{{ s.detailAny }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="100%,96px">
+        <div style="display:flex;align-items:center;gap:20px">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="cpu" size="lg" tone="ink" hint-size="56px,56px"></x-import>
+          <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+            <div style="display:flex;align-items:center;gap:12px">
+              <strong style="font-size:20px;line-height:28px;font-weight:700;letter-spacing:-0.01em">{{ dv.name }}</strong>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.StatusBadge" status="{{ dv.status }}" label="{{ dv.statusLabel }}" hint-size="90px,26px"></x-import>
+            </div>
+            <span style="font-size:14px;color:var(--text-muted)">{{ dv.sub }}</span>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:32px">
+            <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">BATERÍA</span><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Battery" level="{{ dv.battery }}" hint-size="70px,20px"></x-import></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">SEÑAL</span><x-import component-from-global-scope="NCleoDesignSystem_ca495a.SignalBars" level="{{ dv.signal }}" show-label="{{ true }}" hint-size="70px,20px"></x-import></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">ÚLTIMA LECTURA</span><span style="font-size:14px;font-weight:600">{{ dv.last }}</span></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">ASIGNADO A</span><div style="display:flex;align-items:center;gap:8px"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Avatar" name="{{ dv.assigned }}" size="{{ 24 }}" hint-size="24px,24px"></x-import><span style="font-size:14px;font-weight:600">{{ dv.assigned }}</span><span style="font-size:13px;color:var(--text-muted)">· Operador</span></div></div>
+          </div>
+        </div>
+      </x-import>
+      <sc-if value="{{ s.detailOffline }}" hint-placeholder-val="{{ false }}">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Alert" level="offline" title="Sin conexión · última lectura hace 6 min (14:32)" hint-size="100%,72px">El dispositivo sigue alertando con LED y buzzer aunque no llegue a la plataforma. Los valores que ves son la última lectura conocida.</x-import>
+      </sc-if>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:24px;flex:1;min-height:0;grid-template-rows:minmax(0,1fr)">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,340px">
+          <div class="nc-card__head" style="margin-bottom:12px">
+            <div style="flex:1;min-width:0"><h3 class="nc-card__title">{{ dv.chartTitle }}</h3><p class="nc-card__sub">{{ dv.chartSub }}</p></div>
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.PeriodFilter" options="{{ periods }}" default-value="Hoy" hint-size="240px,40px"></x-import>
+          </div>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.TrendChart" data="{{ dv.chart }}" unit="%" threshold="{{ thrHum }}" min="{{ 30 }}" max="{{ 80 }}" height="{{ 240 }}" active-index="{{ dv.chartIdx }}" hint-size="100%,240px"></x-import>
+        </x-import>
+        <div style="display:flex;flex-direction:column;gap:24px;min-width:0;min-height:0">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,300px">
+            <div class="nc-card__head" style="margin-bottom:4px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Sensores</h3><p class="nc-card__sub">Estado y calibración</p></div></div>
+            <div class="nc-scroll">
+            <sc-for list="{{ dv.parts }}" as="p" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+                <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="{{ p.icon }}" size="sm" hint-size="32px,32px"></x-import>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column"><strong style="font-size:14px;line-height:20px">{{ p.model }}</strong><span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ p.measures }}</span></div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                  <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="{{ p.tone }}" icon="{{ p.sIcon }}" hint-size="100px,24px">{{ p.state }}</x-import>
+                  <span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ p.cal }}</span>
+                </div>
+              </div>
+            </sc-for>
+            </div>
+          </x-import>
+          <sc-if value="{{ s.detail }}" hint-placeholder-val="{{ false }}">
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="100%,190px">
+              <div class="nc-card__head" style="margin-bottom:12px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Intervalo de muestreo</h3><p class="nc-card__sub">Cada 30 s · valor por defecto</p></div></div>
+              <div style="display:flex;align-items:flex-start;gap:12px">
+                <div style="flex:1;min-width:0"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Enviar lecturas cada" type="number" default-value="30" suffix="s" hint="Usa un valor entre 5 y 120 s." hint-size="100%,92px"></x-import></div>
+                <div style="padding-top:24px"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" hint-size="150px,44px">Guardar intervalo</x-import></div>
+              </div>
+            </x-import>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- HISTÓRICO -->
+    <sc-if value="{{ s.history }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="100%,110px">
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Área" icon="map-pin" options="{{ optAreas }}" default-value="Laboratorio · Sala limpia" hint-size="100%,72px"></x-import>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Dispositivo" icon="cpu" options="{{ optDevices }}" default-value="Núcleo L-07 · NC-0417" hint-size="100%,72px"></x-import>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Variable" icon="droplets" options="{{ optVars }}" default-value="Humedad" hint-size="100%,72px"></x-import>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Periodo" icon="calendar" options="{{ optDates }}" default-value="Hoy · 23 oct 2026" hint-size="100%,72px"></x-import>
+        </div>
+      </x-import>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="100%,300px">
+        <div class="nc-card__head" style="margin-bottom:12px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Humedad · hoy</h3><p class="nc-card__sub">Núcleo L-07 · Sala limpia · umbral 35–60 %</p></div></div>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.TrendChart" data="{{ humL }}" unit="%" threshold="{{ thrHum }}" min="{{ 30 }}" max="{{ 80 }}" height="{{ 200 }}" active-index="{{ 11 }}" hint-size="100%,200px"></x-import>
+      </x-import>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,400px">
+        <div class="nc-card__head" style="margin-bottom:12px">
+          <div style="flex:1;min-width:0"><h3 class="nc-card__title">Lecturas</h3><p class="nc-card__sub">Cada 30 s · hora de medición y de recepción en la plataforma</p></div>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" icon="download" size="sm" hint-size="120px,36px">Exportar</x-import>
+        </div>
+        <div class="nc-table-wrap nc-scroll"><table class="nc-table">
+          <thead><tr><th>Medición</th><th>Recepción</th><th>Dispositivo</th><th>Temperatura</th><th>Humedad</th><th>Aire</th><th>Estado</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ readings }}" as="r" hint-placeholder-count="5">
+              <tr>
+                <td style="font-variant-numeric:tabular-nums"><strong style="color:var(--text-primary);font-weight:600">{{ r.m }}</strong><span style="color:var(--text-muted)"> · 23 oct</span></td>
+                <td style="font-variant-numeric:tabular-nums">{{ r.r }}</td>
+                <td>Núcleo L-07 · Sala limpia</td>
+                <td style="font-variant-numeric:tabular-nums">{{ r.t }} °C</td>
+                <td style="font-variant-numeric:tabular-nums;color:var(--text-primary);font-weight:600">{{ r.h }} %</td>
+                <td style="font-variant-numeric:tabular-nums">{{ r.a }} AQI</td>
+                <td><x-import component-from-global-scope="NCleoDesignSystem_ca495a.StatusBadge" status="{{ r.status }}" hint-size="100px,26px"></x-import></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table></div>
+      </x-import>
+    </sc-if>
+
+    <!-- UMBRALES -->
+    <sc-if value="{{ s.thrAny }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="100%,112px">
+        <div style="display:flex;gap:24px;align-items:flex-end">
+          <div style="width:360px"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Dispositivo" icon="cpu" options="{{ optDevices }}" default-value="Núcleo L-07 · NC-0417" hint-size="100%,72px"></x-import></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-bottom:2px">
+            <span style="font-size:14px;font-weight:600">Aplica a Núcleo L-07 · Laboratorio</span>
+            <span style="font-size:13px;color:var(--text-muted)">El umbral es por dispositivo · último cambio por Yadira S. · 09:30</span>
+          </div>
+          <sc-if value="{{ s.thresholds }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:8px">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="ghost" hint-size="100px,44px">Cancelar</x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" disabled="{{ true }}" hint-size="150px,44px">Guardar umbral</x-import>
+            </div>
+          </sc-if>
+        </div>
+      </x-import>
+      <sc-if value="{{ s.thresholdsReadonly }}" hint-placeholder-val="{{ false }}">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Alert" level="info" title="Solo administradores y supervisores pueden editar" hint-size="100%,72px">Puedes consultar los umbrales de cada dispositivo. Si necesitas un cambio, pídeselo a Yadira Salazar, supervisora de Laboratorio.</x-import>
+      </sc-if>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.ThresholdSlider" label="Temperatura" icon="thermometer" unit="°C" min="{{ 10 }}" max="{{ 40 }}" default-value="{{ rT }}" current="{{ 19.9 }}" disabled="{{ s.thresholdsReadonly }}" hint-size="100%,260px"></x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.ThresholdSlider" label="Humedad" icon="droplets" unit="%" min="{{ 0 }}" max="{{ 100 }}" step="{{ 1 }}" default-value="{{ rH }}" current="{{ 71 }}" disabled="{{ s.thresholdsReadonly }}" hint-size="100%,260px"></x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.ThresholdSlider" label="Calidad del aire" icon="wind" unit="AQI" min="{{ 0 }}" max="{{ 300 }}" step="{{ 5 }}" default-value="{{ rA }}" current="{{ 36 }}" disabled="{{ s.thresholdsReadonly }}" hint-size="100%,260px"></x-import>
+      </div>
+      <sc-if value="{{ s.thresholds }}" hint-placeholder-val="{{ true }}">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="100%,180px">
+          <div class="nc-card__head" style="margin-bottom:12px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Valores exactos</h3><p class="nc-card__sub">Mín y máx por variable</p></div></div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Temperatura mín" default-value="18.0" suffix="°C" hint-size="100%,72px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Temperatura máx" default-value="24.0" suffix="°C" hint-size="100%,72px"></x-import>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Humedad mín" default-value="62" suffix="%" error="El mínimo debe ser menor que el máximo." hint-size="100%,92px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Humedad máx" default-value="60" suffix="%" hint-size="100%,72px"></x-import>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Aire mín" default-value="0" suffix="AQI" hint-size="100%,72px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Aire máx" default-value="100" suffix="AQI" hint-size="100%,72px"></x-import>
+            </div>
+          </div>
+        </x-import>
+      </sc-if>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,250px">
+        <div class="nc-card__head" style="margin-bottom:8px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Vista previa contra las últimas lecturas</h3><p class="nc-card__sub">Humedad · hoy · Mín 35 % · Máx 60 %</p></div></div>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.TrendChart" data="{{ humL }}" unit="%" threshold="{{ thrHum }}" min="{{ 30 }}" max="{{ 80 }}" height="{{ previewH }}" tooltip="{{ false }}" hint-size="100%,140px"></x-import>
+      </x-import>
+    </sc-if>
+
+    <!-- ALERTAS -->
+    <sc-if value="{{ s.alerts }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px;flex:1;min-height:0;grid-template-rows:minmax(0,1fr)">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,780px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Tabs" items="{{ alertTabs }}" value="{{ aTab }}" on-change="{{ setATab }}" hint-size="480px,40px"></x-import>
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" size="sm" icon="download" hint-size="120px,36px">Exportar</x-import>
+          </div>
+          <div style="display:grid;grid-template-columns:44px minmax(0,1fr) 120px 140px;gap:16px;padding:12px;border-bottom:1px solid var(--border);font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">
+            <span></span><span>ALERTA</span><span>VALOR</span><span>DETECCIÓN</span>
+          </div>
+          <div class="nc-scroll">
+          <sc-for list="{{ alertRows }}" as="a" hint-placeholder-count="5">
+            <div style="{{ a.rowStyle }}">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="{{ a.icon }}" tone="{{ a.tone }}" size="md" hint-size="44px,44px"></x-import>
+              <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                <div style="display:flex;flex-direction:column"><strong style="font-size:15px;line-height:22px;font-weight:600">{{ a.title }}</strong><span style="font-size:13px;color:var(--text-muted)">{{ a.where }}</span></div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <x-import component-from-global-scope="NCleoDesignSystem_ca495a.StatusBadge" status="{{ a.level }}" label="{{ a.levelLabel }}" hint-size="90px,24px"></x-import>
+                  <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="{{ a.attTone }}" icon="{{ a.attIcon }}" hint-size="90px,24px">{{ a.attLabel }}</x-import>
+                  <span style="font-size:12px;color:var(--text-muted)">{{ a.by }}</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column">
+                <span style="font-size:20px;line-height:26px;font-weight:700;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ a.value }}</span>
+                <span style="font-size:12px;color:var(--text-muted)">{{ a.limit }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;font-variant-numeric:tabular-nums">
+                <span style="font-size:13px;font-weight:600">Lectura {{ a.read }}</span>
+                <span style="font-size:12px;color:var(--text-muted)">Notificada {{ a.notif }}</span>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ noAlerts }}" hint-placeholder-val="{{ false }}">
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.ActivityFeed" items="{{ emptyList }}" hint-size="100%,200px"></x-import>
+          </sc-if>
+          </div>
+        </x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,780px">
+          <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="octagon-alert" tone="danger" size="md" hint-size="44px,44px"></x-import>
+              <div style="display:flex;flex-direction:column;min-width:0"><strong style="font-size:17px;line-height:24px">Humedad fuera de rango</strong><span style="font-size:13px;color:var(--text-muted)">Núcleo L-07 · Laboratorio · Sala limpia</span></div>
+            </div>
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+              <div style="font-size:48px;line-height:52px;font-weight:700;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">71.0<span style="font-size:20px;font-weight:600;color:var(--text-muted)"> %</span></div>
+              <span style="font-size:13px;font-weight:600;color:var(--text-secondary);padding-bottom:6px">Máx 60 %</span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.StatusBadge" status="critical" hint-size="90px,26px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="ink" icon="clock" hint-size="100px,26px">Pendiente</x-import>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;padding-top:16px;border-top:1px solid var(--border)">
+              <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">LÍNEA DE TIEMPO</span>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.ActivityFeed" items="{{ timeline }}" hint-size="100%,220px"></x-import>
+            </div>
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Nota" placeholder="Qué hiciste o por qué la descartas" hint-size="100%,72px"></x-import>
+            <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" icon="circle-x" block="{{ true }}" hint-size="100%,44px">Descartar</x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" icon="circle-check" block="{{ true }}" hint-size="100%,44px">Marcar como atendida</x-import>
+            </div>
+          </div>
+        </x-import>
+      </div>
+    </sc-if>
+
+    <!-- REPORTES -->
+    <sc-if value="{{ s.reports }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:400px minmax(0,1fr);gap:24px;flex:1;min-height:0;grid-template-rows:minmax(0,1fr)">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,860px">
+          <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:4px">
+            <sc-for list="{{ reportGroups }}" as="g" hint-placeholder-count="2">
+              <span style="padding:12px 12px 6px;font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">{{ g.label }}</span>
+              <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="3">
+                <div style="{{ r.rowStyle }}">
+                  <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="{{ r.icon }}" size="sm" hint-size="32px,32px"></x-import>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                    <div style="display:flex;flex-direction:column"><strong style="font-size:14px;line-height:20px">{{ r.title }}</strong><span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ r.sub }}</span></div>
+                    <div><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="{{ r.tone }}" icon="{{ r.sIcon }}" hint-size="80px,24px">{{ r.state }}</x-import></div>
+                  </div>
+                </div>
+              </sc-for>
+            </sc-for>
+          </div>
+        </x-import>
+        <div style="display:flex;justify-content:center;align-items:flex-start;min-width:0;min-height:0;overflow:auto">
+          <article style="flex:none;width:640px;height:828px;box-sizing:border-box;padding:48px 52px;background:var(--surface);border-radius:24px;box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:24px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Logo" size="{{ 24 }}" hint-size="100px,24px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" size="sm" icon="download" hint-size="140px,36px">Descargar PDF</x-import>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">REPORTE · GENERADO 23 OCT 2026, 08:00</span>
+              <h2 style="margin:0;font-size:26px;line-height:32px;font-weight:700;letter-spacing:-0.02em;text-wrap:pretty">Calidad del aire en Moldeo · octubre 2026</h2>
+              <span style="font-size:13px;color:var(--text-muted)">1–22 oct 2026 · Núcleo T-01, T-02, T-03 y T-04</span>
+            </div>
+            <table class="nc-table" style="width:100%">
+              <thead><tr><th>Variable</th><th>Mín</th><th>Prom</th><th>Máx</th><th>Alertas</th></tr></thead>
+              <tbody>
+                <sc-for list="{{ reportStats }}" as="v" hint-placeholder-count="3">
+                  <tr><td><strong style="color:var(--text-primary);font-weight:600">{{ v.name }}</strong></td><td style="font-variant-numeric:tabular-nums">{{ v.min }}</td><td style="font-variant-numeric:tabular-nums">{{ v.avg }}</td><td style="font-variant-numeric:tabular-nums">{{ v.max }}</td><td style="font-variant-numeric:tabular-nums;font-weight:600;color:var(--text-primary)">{{ v.alerts }}</td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:13px;font-weight:600">Calidad del aire promedio por semana · máx 100 AQI</span>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.BarChart" data="{{ reportBars }}" unit="AQI" threshold="{{ 100 }}" active-index="{{ 2 }}" height="{{ 150 }}" decimals="{{ 0 }}" max="{{ 140 }}" hint-size="100%,150px"></x-import>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;font-size:14px;line-height:22px;color:var(--text-secondary)">
+              <p style="margin:0;text-wrap:pretty">La calidad del aire se mantuvo en rango la mayor parte del periodo. Los dos eventos fuera de rango ocurrieron en Línea 1, durante el arranque de la inyectora del turno matutino.</p>
+              <p style="margin:0;text-wrap:pretty">La tercera semana concentró los valores más altos. Conviene revisar la extracción de Línea 1 antes del siguiente cambio de molde.</p>
+            </div>
+            <div style="margin-top:auto;display:flex;align-items:center;gap:8px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;line-height:18px;color:var(--text-muted)">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="sparkles" size="{{ 16 }}" hint-size="16px,16px"></x-import>
+              <span>Cifras calculadas a partir de 8 640 lecturas registradas. El texto fue redactado con IA.</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- AGENTE IA -->
+    <sc-if value="{{ s.agentAny }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;gap:20px">
+        <div style="width:100%;max-width:820px;flex:1;min-height:0;display:flex;flex-direction:column;gap:16px;overflow:auto">
+          <sc-if value="{{ s.agent }}" hint-placeholder-val="{{ true }}">
+            <div style="align-self:flex-end;max-width:520px;padding:14px 18px;border-radius:20px 20px 6px 20px;background:var(--text-primary);color:var(--background);font-size:15px;line-height:24px">¿A qué hora hubo picos de humedad esta semana en Sala limpia?</div>
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="100%,420px">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="sparkles" tone="ink" size="sm" hint-size="32px,32px"></x-import>
+                  <strong style="font-size:14px">Agente Núcleo</strong>
+                  <span style="font-size:12px;color:var(--text-muted)">14:36</span>
+                </div>
+                <p style="margin:0;font-size:15px;line-height:24px;color:var(--text-secondary);text-wrap:pretty">Hubo tres lecturas sobre el máximo de humedad esta semana en Núcleo L-07. Todas fueron por la tarde, cerca del cambio de turno.</p>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+                  <sc-for list="{{ peaks }}" as="pk" hint-placeholder-count="3">
+                    <div style="display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:16px;background:var(--surface-muted)">
+                      <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted)">{{ pk.when }}</span>
+                      <span style="font-size:24px;line-height:28px;font-weight:700;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ pk.value }}<span style="font-size:13px;font-weight:600;color:var(--text-muted)"> %</span></span>
+                      <span style="font-size:12px;color:var(--text-muted)">Máx 60 %</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <x-import component-from-global-scope="NCleoDesignSystem_ca495a.TrendChart" data="{{ weekHum }}" unit="%" threshold="{{ thrHumMax }}" min="{{ 40 }}" max="{{ 80 }}" height="{{ 110 }}" tooltip="{{ false }}" hint-size="100%,110px"></x-import>
+                <div style="display:flex;gap:8px">
+                  <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" size="sm" icon="history" hint-size="150px,36px">Ver en histórico</x-import>
+                  <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="ghost" size="sm" icon="file-text" hint-size="150px,36px">Generar reporte</x-import>
+                </div>
+              </div>
+            </x-import>
+            <div style="align-self:flex-end;max-width:520px;padding:14px 18px;border-radius:20px 20px 6px 20px;background:var(--text-primary);color:var(--background);font-size:15px;line-height:24px">¿Va a llover mañana en Tijuana?</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-radius:24px;background:var(--surface);align-self:flex-start">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="sparkles" tone="ink" size="sm" hint-size="32px,32px"></x-import>
+              <span style="font-size:15px;line-height:24px;color:var(--text-secondary)">Solo puedo responder sobre los sensores de tu organización.</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ s.agentDown }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1;display:flex;align-items:center;justify-content:center">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" hint-size="560px,320px">
+                <div style="width:520px;padding:32px 0">
+                  <x-import component-from-global-scope="NCleoDesignSystem_ca495a.EmptyState" icon="sparkles" title="El agente no está disponible por ahora" message="El monitoreo y las alertas siguen funcionando. Intenta de nuevo en unos minutos." action="{{ retryBtn }}" hint-size="100%,240px"></x-import>
+                </div>
+              </x-import>
+            </div>
+          </sc-if>
+        </div>
+        <div style="width:100%;max-width:820px;display:flex;flex-direction:column;gap:12px">
+          <sc-if value="{{ s.agent }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Chip" icon="sparkles" hint-size="320px,40px">Reporte de calidad del aire de octubre en Moldeo</x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Chip" icon="sparkles" hint-size="300px,40px">¿Qué dispositivo tuvo más alertas este mes?</x-import>
+            </div>
+          </sc-if>
+          <div style="display:flex;align-items:center;gap:12px;padding:8px 8px 8px 20px;border-radius:999px;background:var(--surface);box-shadow:var(--shadow-sm)">
+            <span style="flex:1;font-size:15px;color:var(--text-muted)">Pregunta sobre tus sensores…</span>
+            <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" icon="send" disabled="{{ s.agentDown }}" hint-size="110px,44px">Enviar</x-import>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- USUARIOS -->
+    <sc-if value="{{ s.usersAny }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:8px">
+        <sc-for list="{{ userChips }}" as="c" hint-placeholder-count="5">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Chip" selected="{{ c.on }}" count="{{ c.count }}" on-click="{{ c.set }}" hint-size="120px,40px">{{ c.label }}</x-import>
+        </sc-for>
+      </div>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,700px">
+        <div class="nc-table-wrap nc-scroll"><table class="nc-table">
+          <thead><tr><th>Nombre</th><th>Rol</th><th>Área</th><th>Dispositivo asignado</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead>
+          <tbody>
+            <sc-for list="{{ users }}" as="u" hint-placeholder-count="9">
+              <tr>
+                <td style="padding-top:12px;padding-bottom:12px"><div class="nc-table__device"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Avatar" name="{{ u.name }}" size="{{ 36 }}" hint-size="36px,36px"></x-import><div><strong>{{ u.name }}</strong><span>{{ u.email }}</span></div></div></td>
+                <td><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="{{ u.roleTone }}" hint-size="100px,24px">{{ u.role }}</x-import></td>
+                <td>{{ u.area }}</td>
+                <td>{{ u.device }}</td>
+                <td><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="{{ u.stTone }}" dot="{{ true }}" hint-size="80px,24px">{{ u.status }}</x-import></td>
+                <td>{{ u.last }}</td>
+                <td style="text-align:right"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconButton" icon="ellipsis" label="Más opciones" variant="ghost" size="sm" hint-size="36px,36px"></x-import></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table></div>
+      </x-import>
+    </sc-if>
+
+    <!-- ORGANIZACIÓN Y ÁREAS -->
+    <sc-if value="{{ s.org }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px;flex:1;min-height:0;grid-template-rows:minmax(0,1fr)">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,500px">
+          <div class="nc-card__head" style="margin-bottom:8px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Organizaciones</h3><p class="nc-card__sub">3 registradas</p></div></div>
+          <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:4px">
+            <sc-for list="{{ orgs }}" as="o" hint-placeholder-count="3">
+              <div style="{{ o.rowStyle }}">
+                <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="building-2" tone="{{ o.tone }}" size="md" hint-size="44px,44px"></x-import>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column"><strong style="font-size:15px;line-height:22px">{{ o.name }}</strong><span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ o.sub }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding-top:16px"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" icon="plus" block="{{ true }}" hint-size="100%,44px">Agregar organización</x-import></div>
+        </x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,500px">
+          <div class="nc-card__head" style="margin-bottom:8px"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Áreas de Grupo Altamira</h3><p class="nc-card__sub">Planta Tijuana · los responsables reciben las alertas por correo</p></div></div>
+          <div class="nc-table-wrap nc-scroll"><table class="nc-table">
+            <thead><tr><th>Área</th><th>Disp.</th><th>Supervisor</th><th>Alertas por correo</th><th></th></tr></thead>
+            <tbody>
+              <sc-for list="{{ areas }}" as="ar" hint-placeholder-count="3">
+                <tr>
+                  <td style="padding-top:14px;padding-bottom:14px"><div style="display:flex;flex-direction:column;gap:2px"><strong style="color:var(--text-primary);font-weight:600">{{ ar.name }}</strong><span style="font-size:12px;color:var(--text-muted)">{{ ar.subs }}</span></div></td>
+                  <td style="font-variant-numeric:tabular-nums">{{ ar.devices }}</td>
+                  <td><div class="nc-table__device"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Avatar" name="{{ ar.sup }}" size="{{ 28 }}" hint-size="28px,28px"></x-import><span>{{ ar.sup }}</span></div></td>
+                  <td><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ ar.resp }}" as="rp" hint-placeholder-count="2"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="neutral" icon="mail" hint-size="100px,24px">{{ rp }}</x-import></sc-for></div></td>
+                  <td style="text-align:right"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconButton" icon="ellipsis" label="Más opciones" variant="ghost" size="sm" hint-size="36px,36px"></x-import></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table></div>
+        </x-import>
+      </div>
+    </sc-if>
+
+    <!-- MI PERFIL -->
+    <sc-if value="{{ s.profile }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:24px;flex:1;min-height:0">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,100%">
+          <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:20px">
+            <div class="nc-card__head" style="margin:0"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Datos de la cuenta</h3><p class="nc-card__sub">El administrador asigna tu rol y tu área</p></div></div>
+            <div style="display:flex;align-items:center;gap:16px">
+              <div style="padding:4px;border-radius:999px;box-shadow:0 0 0 3px var(--accent)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Avatar" name="Yadira Salazar" size="{{ 64 }}" hint-size="64px,64px"></x-import></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><strong style="font-size:18px;line-height:24px">Yadira Salazar</strong><div style="display:flex;gap:6px"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="accent" hint-size="90px,24px">Supervisor</x-import><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="neutral" icon="map-pin" hint-size="110px,24px">Laboratorio</x-import></div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Nombre" default-value="Yadira Salazar" hint-size="100%,72px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Correo" type="email" icon="mail" default-value="yadira.salazar@grupoaltamira.mx" hint="Lo cambia el administrador." hint-size="100%,92px"></x-import>
+            </div>
+            <div style="display:flex;justify-content:flex-end"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" hint-size="160px,44px">Guardar cambios</x-import></div>
+            <div style="display:flex;flex-direction:column;gap:16px;padding-top:20px;border-top:1px solid var(--border)">
+              <div style="display:flex;flex-direction:column;gap:2px"><strong style="font-size:15px">Contraseña</strong><span style="font-size:13px;color:var(--text-muted)">Al cambiarla se cierra la sesión en tus otros dispositivos.</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Contraseña actual" type="password" default-value="nucleo2026" hint-size="100%,72px"></x-import>
+                <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Contraseña nueva" type="password" placeholder="Mínimo 8 caracteres" hint-size="100%,72px"></x-import>
+              </div>
+              <div style="display:flex;justify-content:flex-end"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" icon="settings" hint-size="190px,44px">Cambiar contraseña</x-import></div>
+            </div>
+          </div>
+        </x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,100%">
+          <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:20px">
+            <div class="nc-card__head" style="margin:0"><div style="flex:1;min-width:0"><h3 class="nc-card__title">Preferencias</h3><p class="nc-card__sub">Solo aplican a tu cuenta</p></div></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div style="display:flex;flex-direction:column;gap:2px"><strong style="font-size:14px">Tema</strong><span style="font-size:13px;color:var(--text-muted)">Por defecto sigue al sistema</span></div>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Tabs" items="{{ themeTabs }}" default-value="{{ theme }}" hint-size="260px,40px"></x-import>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:16px;padding-top:20px;border-top:1px solid var(--border)">
+              <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">Notificaciones</span>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Toggle" label="Correo cuando haya una alerta crítica" default-checked="{{ true }}" hint-size="100%,28px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Toggle" label="Correo con las advertencias" default-checked="{{ false }}" hint-size="100%,28px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Toggle" label="Resumen diario de mi área" default-checked="{{ true }}" hint-size="100%,28px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Toggle" label="Sonido en el navegador para alertas críticas" default-checked="{{ true }}" hint-size="100%,28px"></x-import>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid var(--border)">
+              <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">Sesión</span>
+              <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;background:var(--surface-muted)">
+                <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="smartphone" size="sm" hint-size="32px,32px"></x-import>
+                <div style="flex:1;display:flex;flex-direction:column"><strong style="font-size:14px">Este navegador</strong><span style="font-size:12px;color:var(--text-muted)">La sesión caduca tras 7 días sin uso</span></div>
+              </div>
+              <div><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" icon="log-out" hint-size="160px,44px">Cerrar sesión</x-import></div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+    </sc-if>
+
+    <!-- NOTIFICACIONES -->
+    <sc-if value="{{ s.notifications }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" class-name="nc-grow" hint-size="100%,100%">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Tabs" items="{{ notifTabs }}" default-value="all" hint-size="460px,40px"></x-import>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="ghost" size="sm" icon="circle-check" hint-size="200px,36px">Marcar todo como leído</x-import>
+        </div>
+        <div class="nc-scroll">
+          <sc-for list="{{ notifGroups }}" as="g" hint-placeholder-count="2">
+            <span style="display:block;padding:16px 12px 6px;font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">{{ g.label }}</span>
+            <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+              <div style="{{ n.rowStyle }}">
+                <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="{{ n.icon }}" tone="{{ n.tone }}" size="md" hint-size="44px,44px"></x-import>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><strong style="font-size:15px;line-height:22px;font-weight:600">{{ n.title }}</strong><span style="font-size:13px;line-height:20px;color:var(--text-muted)">{{ n.meta }}</span></div>
+                <span style="font-size:13px;color:var(--text-muted);font-variant-numeric:tabular-nums;white-space:nowrap">{{ n.time }}</span>
+                <span style="{{ n.dot }}"></span>
+              </div>
+            </sc-for>
+          </sc-for>
+        </div>
+      </x-import>
+    </sc-if>
+  </main>
+</div>
+</sc-if>
+
+<!-- MENÚ DE NOTIFICACIONES (campana) -->
+<sc-if value="{{ s.notifMenu }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;z-index:6;top:84px;background:var(--surface-elevated);border-radius:24px;box-shadow:var(--shadow-lg),0 0 0 1px var(--border);box-sizing:border-box;right:72px;width:420px;padding:8px;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 12px 8px">
+      <strong style="font-size:17px;line-height:24px">Notificaciones</strong>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="danger" hint-size="70px,24px">3 sin leer</x-import>
+      <div style="flex:1"></div>
+      <a href="#" style="font-size:13px;font-weight:600">Marcar como leídas</a>
+    </div>
+    <span style="display:block;padding:8px 12px 4px;font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">Hoy</span>
+    <sc-for list="{{ notifToday }}" as="n" hint-placeholder-count="4">
+      <div style="{{ n.rowStyle }}">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="{{ n.icon }}" tone="{{ n.tone }}" size="sm" hint-size="32px,32px"></x-import>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column"><strong style="font-size:14px;line-height:20px;font-weight:600">{{ n.title }}</strong><span style="font-size:12px;line-height:18px;color:var(--text-muted)">{{ n.meta }}</span></div>
+        <span style="font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums">{{ n.time }}</span>
+        <span style="{{ n.dot }}"></span>
+      </div>
+    </sc-for>
+    <div style="padding:8px 4px 4px;margin-top:4px;border-top:1px solid var(--border)">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" icon="bell" block="{{ true }}" hint-size="100%,44px">Ver todas las notificaciones</x-import>
+    </div>
+  </div>
+</sc-if>
+
+<!-- MENÚ DE PERFIL (avatar) -->
+<sc-if value="{{ s.userMenu }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;z-index:6;top:84px;background:var(--surface-elevated);border-radius:24px;box-shadow:var(--shadow-lg),0 0 0 1px var(--border);box-sizing:border-box;right:24px;width:300px;padding:8px;display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 12px 14px">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Avatar" name="{{ user.name }}" size="{{ 44 }}" hint-size="44px,44px"></x-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column"><strong style="font-size:15px;line-height:20px">{{ user.name }}</strong><span style="font-size:12px;line-height:16px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis">yadira.salazar@grupoaltamira.mx</span></div>
+    </div>
+    <div style="height:1px;margin:0 8px 6px;background:var(--border)"></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;background:var(--surface-muted)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="user" size="{{ 18 }}" hint-size="18px,18px"></x-import>Ver perfil</div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="bell" size="{{ 18 }}" hint-size="18px,18px"></x-import>Notificaciones<span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--danger)">3</span></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;justify-content:space-between;font-weight:600">
+      <span style="display:flex;align-items:center;gap:12px"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="settings" size="{{ 18 }}" hint-size="18px,18px"></x-import>Tema</span>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Tabs" items="{{ themeTabsShort }}" default-value="{{ theme }}" hint-size="130px,36px"></x-import>
+    </div>
+    <div style="height:1px;margin:6px 8px;background:var(--border)"></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;color:var(--danger)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="log-out" size="{{ 18 }}" hint-size="18px,18px"></x-import>Cerrar sesión</div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ showModal }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center">
+    <div style="width:540px;background:var(--surface-elevated);border-radius:24px;box-shadow:var(--shadow-lg);padding:32px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <h2 style="margin:0;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.015em">Agregar usuario</h2>
+          <p style="margin:0;font-size:14px;line-height:22px;color:var(--text-muted)">Le enviaremos un correo para que cree su contraseña.</p>
+        </div>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconButton" icon="x" label="Cerrar" variant="ghost" on-click="{{ closeModal }}" hint-size="44px,44px"></x-import>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Nombre" default-value="Tomás Aguilar" hint-size="100%,72px"></x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Rol" options="{{ optRoles }}" default-value="Operador" hint-size="100%,72px"></x-import>
+      </div>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Correo" type="email" icon="mail" default-value="tomas.aguilar@grupoaltamira.mx" hint-size="100%,72px"></x-import>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Área" icon="map-pin" options="{{ optAreas }}" default-value="Laboratorio · Esclusa" hint-size="100%,72px"></x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Select" label="Dispositivo asignado" icon="cpu" options="{{ optDevices }}" default-value="Núcleo L-08 · NC-0418" hint-size="100%,72px"></x-import>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:20px;color:var(--text-muted)">Un operador solo ve el dispositivo que tiene asignado, desde la app móvil.</p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:16px;border-top:1px solid var(--border)">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="ghost" on-click="{{ closeModal }}" hint-size="100px,44px">Cancelar</x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" icon="plus" hint-size="170px,44px">Agregar usuario</x-import>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1024},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;loginError&quot;,&quot;dashboard&quot;,&quot;dashboardLoading&quot;,&quot;devices&quot;,&quot;devicesEmpty&quot;,&quot;detail&quot;,&quot;detailOffline&quot;,&quot;history&quot;,&quot;thresholds&quot;,&quot;thresholdsReadonly&quot;,&quot;alerts&quot;,&quot;reports&quot;,&quot;agent&quot;,&quot;agentDown&quot;,&quot;users&quot;,&quot;usersAdd&quot;,&quot;org&quot;,&quot;profile&quot;,&quot;notifications&quot;,&quot;notifMenu&quot;,&quot;userMenu&quot;],&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { filter: 'all', aTab: 'pending', uf: 'all', modal: true };
+  componentDidMount() { setTimeout(() => this.forceUpdate(), 300); }
+  renderVals() {
+    const screen = this.state.ovScreen ?? this.props.screen ?? 'dashboard';
+    const theme = this.state.ovTheme ?? this.props.theme ?? 'light';
+    window.__ncSet = (a, b) => this.setState({ ovScreen: a, ovTheme: b });
+    const N = window.NCleoDesignSystem_ca495a;
+    const K = ['login','loginError','dashboard','dashboardLoading','devices','devicesEmpty','detail','detailOffline','history','thresholds','thresholdsReadonly','alerts','reports','agent','agentDown','users','usersAdd','org','profile','notifications','notifMenu','userMenu'];
+    const s = {}; K.forEach(k => s[k] = screen === k);
+    s.loginAny = s.login || s.loginError; s.shell = !s.loginAny;
+    s.dashboard = s.dashboard || s.notifMenu || s.userMenu;
+    s.detailAny = s.detail || s.detailOffline; s.thrAny = s.thresholds || s.thresholdsReadonly;
+    s.agentAny = s.agent || s.agentDown; s.usersAny = s.users || s.usersAdd;
+
+    const ROLE = {
+      sup: { name: 'Yadira Salazar', role: 'Supervisora · Laboratorio', key: 'sup' },
+      adm: { name: 'Andrés Villalobos', role: 'Administrador', key: 'adm' },
+      ana: { name: 'Karla Méndez', role: 'Analista', key: 'ana' }
+    };
+    const roleOf = { users: 'adm', usersAdd: 'adm', org: 'adm', devicesEmpty: 'adm', thresholdsReadonly: 'ana' };
+    const user = ROLE[roleOf[screen] || 'sup'];
+    const navMap = { dashboardLoading: 'dashboard', notifMenu: 'dashboard', userMenu: 'dashboard', devicesEmpty: 'devices', detail: 'devices', detailOffline: 'devices', thresholdsReadonly: 'thresholds', agentDown: 'agent', usersAdd: 'users' };
+    const active = navMap[screen] || screen;
+    const NAV = [
+      { label: 'Monitoreo', items: [['dashboard','Panel','layout-dashboard'],['devices','Dispositivos','cpu'],['history','Histórico','history'],['alerts','Alertas','bell',3]] },
+      { label: 'Análisis', items: [['reports','Reportes','file-text'],['agent','Agente IA','sparkles']] },
+      { label: 'Configuración', items: [['thresholds','Umbrales','sliders-horizontal'],['users','Usuarios','users',0,['adm','sup']],['org','Organización','building-2',0,['adm']]] }
+    ];
+    const navSections = NAV.map(sec => ({ label: sec.label, items: sec.items.filter(i => !i[4] || i[4].includes(user.key)).map(([id, label, icon, count]) => ({ id, label, icon, count: count || null, cls: 'nc-navitem' + (id === active ? ' is-active' : '') })) })).filter(sec => sec.items.length);
+
+    const today = 'Viernes 23 de octubre';
+    const hdrs = {
+      dashboard: ['Grupo Altamira · ' + today, 'Hola, Yadira'],
+      dashboardLoading: ['Grupo Altamira · ' + today, 'Hola, Yadira'],
+      notifMenu: ['Grupo Altamira · ' + today, 'Hola, Yadira'],
+      userMenu: ['Grupo Altamira · ' + today, 'Hola, Yadira'],
+      devices: ['Grupo Altamira · 12 dispositivos · 10 en línea', 'Dispositivos'],
+      devicesEmpty: ['Colegio Arboleda · sin dispositivos', 'Dispositivos'],
+      detail: ['Dispositivos / NC-0417', 'Detalle de dispositivo'],
+      detailOffline: ['Dispositivos / NC-0290', 'Detalle de dispositivo'],
+      history: ['Grupo Altamira · lecturas cada 30 s', 'Histórico'],
+      thresholds: ['Grupo Altamira · rango permitido por dispositivo', 'Umbrales'],
+      thresholdsReadonly: ['Grupo Altamira · rango permitido por dispositivo', 'Umbrales'],
+      alerts: ['Grupo Altamira · 3 pendientes · 1 crítica', 'Alertas'],
+      reports: ['Grupo Altamira · cifras del sistema, texto redactado con IA', 'Reportes'],
+      agent: ['Pregunta sobre los sensores de tu organización', 'Agente IA'],
+      agentDown: ['Pregunta sobre los sensores de tu organización', 'Agente IA'],
+      users: ['Grupo Altamira · 9 personas', 'Usuarios'],
+      usersAdd: ['Grupo Altamira · 9 personas', 'Usuarios'],
+      org: ['Administración', 'Organización y áreas'],
+      profile: ['Tu cuenta en Grupo Altamira', 'Mi perfil'],
+      notifications: ['Alertas, reportes y avisos de tu cuenta', 'Notificaciones']
+    };
+    const hd = hdrs[screen] || ['', ''];
+    let hdrActions = null;
+    if (N) {
+      const h = React.createElement;
+      const orgBtn = name => h(N.Button, { key: 'org', variant: 'secondary', icon: 'building-2', iconRight: 'chevron-down' }, name);
+      const acts = [];
+      if (user.key === 'adm' && screen !== 'org') acts.push(orgBtn(screen === 'devicesEmpty' ? 'Colegio Arboleda' : 'Grupo Altamira'));
+      if (s.usersAny) acts.push(h(N.Button, { key: 'add', icon: 'plus', onClick: () => this.setState({ modal: true }) }, 'Agregar usuario'));
+      if (s.org) acts.push(h(N.Button, { key: 'area', icon: 'plus' }, 'Agregar área'));
+      if (s.detail) acts.push(h(N.Button, { key: 'thr', variant: 'secondary', icon: 'sliders-horizontal' }, 'Editar umbrales'));
+      if (s.reports) acts.push(h(N.Button, { key: 'gen', icon: 'sparkles' }, 'Generar reporte'));
+      if (acts.length) hdrActions = h('div', { style: { display: 'flex', gap: 8 } }, acts);
+    }
+
+    const H = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30'];
+    const ser = v => v.map((x, i) => ({ label: H[i], time: 'Hoy · ' + H[i], value: x }));
+    const trend = ser([22.1,22.6,23.4,24.1,24.8,25.6,26.2,26.9,27.4,27.6,27.2,27.5,27.8,27.8]);
+    const humL = ser([52.1,53.4,55.0,57.2,58.4,59.6,59.1,59.8,60.9,64.8,68.9,70.4,71.0,71.0]);
+    const humOff = ser([44.2,44.8,45.1,45.6,46.0,45.8,46.3,46.1,46.0,46.2,45.9,46.1,null,null].filter(v => v != null));
+
+    const OFF = 'Sin conexión';
+    const DEV = [
+      ['Núcleo T-01','NC-0341','Moldeo · Línea 1',86,4,'hace 12 s','Cada 30 s','normal'],
+      ['Núcleo T-02','NC-0342','Moldeo · Línea 2',64,3,'hace 9 s','Cada 30 s','warning'],
+      ['Núcleo T-03','NC-0343','Moldeo · Línea 3',78,4,'hace 6 s','Cada 30 s','normal'],
+      ['Núcleo T-04','NC-0344','Moldeo · Almacén',52,2,'hace 15 s','Cada 60 s','normal'],
+      ['Núcleo L-07','NC-0417','Laboratorio · Sala limpia',22,3,'hace 4 s','Cada 15 s','critical'],
+      ['Núcleo L-08','NC-0418','Laboratorio · Esclusa',70,4,'hace 3 s','Cada 15 s','normal'],
+      ['Núcleo L-09','NC-0419','Laboratorio · Bodega fría',88,3,'hace 5 s','Cada 30 s','normal'],
+      ['Núcleo L-10','NC-0420','Laboratorio · Control de calidad',45,3,'hace 8 s','Cada 30 s','normal'],
+      ['Núcleo E-03','NC-0288','Guardería · Aula 3',91,4,'hace 20 s','Cada 60 s','normal'],
+      ['Núcleo E-04','NC-0289','Guardería · Aula 1',67,3,'hace 11 s','Cada 60 s','normal'],
+      ['Núcleo E-05','NC-0290','Guardería · Comedor',8,0,'hace 6 min','Cada 60 s','offline'],
+      ['Núcleo E-06','NC-0291','Guardería · Patio techado',31,0,'hace 2 h','Cada 60 s','offline']
+    ].map(([name,id,location,battery,signal,last,interval,status]) => ({ name, id, location, battery, signal, last, interval, status, statusLabel: status === 'offline' ? OFF : undefined }));
+    const f = this.state.filter;
+    const devList = DEV.filter(d => f === 'all' || d.status === f);
+    const chipDef = [['all','Todos',null],['normal','Normal','circle-check'],['warning','Advertencia','triangle-alert'],['critical','Crítico','octagon-alert'],['offline',OFF,'wifi-off']];
+    const devChips = chipDef.map(([id, label, icon]) => ({ label, icon, count: id === 'all' ? DEV.length : DEV.filter(d => d.status === id).length, on: f === id, set: () => this.setState({ filter: id }) }));
+    const dashDevices = [DEV[4], { ...DEV[10], reading: '—' }];
+    DEV[4].reading = '19.9 °C · 71.0 %';
+
+    const tones = { op: ['success','circle-check','Operando'], cal: ['warning','wrench','Requiere calibración'], fail: ['danger','octagon-alert','Falla'] };
+    const part = (model, measures, icon, st, cal) => ({ model, measures, icon, tone: tones[st][0], sIcon: tones[st][1], state: tones[st][2], cal });
+    const sp = { tL: [20.4,20.3,20.1,20.2,20.0,19.9,19.9], hL: [55,58,61,65,68,70,71], aL: [40,38,39,37,38,36,36], tO: [22.4,22.6,22.7,22.9,22.8], hO: [45.2,45.6,46.0,46.3,46.1], aO: [38,40,41,42,41] };
+    const online = {
+      name: 'Núcleo L-07', status: 'critical', sub: 'NC-0417 · Laboratorio · Sala limpia · cada 15 s', battery: 22, signal: 3, last: 'hace 4 s', assigned: 'Diana Ríos', mutedStyle: {},
+      sensors: [
+        { variable: 'temperature', value: 19.9, decimals: 1, status: 'normal', trend: sp.tL, range: '18–24 °C', updated: 'hace 4 s' },
+        { variable: 'humidity', value: 71.0, decimals: 1, status: 'critical', trend: sp.hL, range: '35–60 %', updated: 'hace 4 s' },
+        { variable: 'air', value: 36, decimals: 0, status: 'normal', trend: sp.aL, range: '0–100 AQI', updated: 'hace 4 s' }
+      ],
+      chartTitle: 'Humedad · hoy', chartSub: 'Umbral 35–60 %', chart: humL, chartIdx: 12,
+      parts: [part('DHT22','Temperatura y humedad','thermometer','op','Última calibración 12 ago 2026'), part('MQ-135','Calidad del aire','wind','cal','Última calibración 3 mar 2026'), part('CCS811','eCO₂ y compuestos orgánicos','wind','op','Última calibración 12 ago 2026')]
+    };
+    const offline = {
+      name: 'Núcleo E-05', status: 'offline', statusLabel: OFF, sub: 'NC-0290 · Guardería · Comedor · cada 60 s', battery: 8, signal: 0, last: 'hace 6 min', assigned: 'Paola Herrera',
+      mutedStyle: { opacity: 0.62 },
+      sensors: [
+        { variable: 'temperature', value: 22.8, decimals: 1, status: 'offline', statusLabel: OFF, trend: sp.tO, range: '20–26 °C', updated: 'Última lectura hace 6 min' },
+        { variable: 'humidity', value: 46.1, decimals: 1, status: 'offline', statusLabel: OFF, trend: sp.hO, range: '35–60 %', updated: 'Última lectura hace 6 min' },
+        { variable: 'air', value: 41, decimals: 0, status: 'offline', statusLabel: OFF, trend: sp.aO, range: '0–100 AQI', updated: 'Última lectura hace 6 min' }
+      ],
+      chartTitle: 'Humedad · hoy', chartSub: 'Sin lecturas desde las 14:32', chart: humOff, chartIdx: humOff.length - 1,
+      parts: [part('DHT22','Temperatura y humedad','thermometer','op','Última calibración 2 sep 2026'), part('MQ-135','Calidad del aire','wind','op','Última calibración 2 sep 2026'), part('CCS811','eCO₂ y compuestos orgánicos','wind','fail','Sin respuesta desde 13:58')]
+    };
+
+    const lv = { critical: ['danger','octagon-alert'], warning: ['warning','triangle-alert'], offline: ['offline','wifi-off'], normal: ['success','circle-check'] };
+    const att = { pending: ['ink','clock','Pendiente'], done: ['neutral','circle-check','Atendida'], dismissed: ['offline','circle-x','Descartada'] };
+    const ALERTS = [
+      ['critical','Humedad fuera de rango','Núcleo L-07 · Laboratorio · Sala limpia','71.0 %','máx 60 %','14:30','14:31','pending','',true],
+      ['warning','Temperatura cerca del umbral','Núcleo T-02 · Moldeo · Línea 2','27.8 °C','máx 28 °C','14:16','14:17','pending',''],
+      ['offline','Dispositivo sin conexión','Núcleo E-05 · Guardería · Comedor','—','última lectura 14:32','14:34','14:35','pending',''],
+      ['critical','Calidad del aire fuera de rango','Núcleo T-01 · Moldeo · Línea 1','128 AQI','máx 100 AQI','10:22','10:23','done','por Mariana C. · 10:40'],
+      ['warning','Humedad cerca del umbral','Núcleo E-03 · Guardería · Aula 3','58.9 %','máx 60 %','09:05','09:06','done','por Rubén C. · 09:20'],
+      ['offline','Dispositivo sin conexión','Núcleo T-04 · Moldeo · Almacén','—','reconectado 08:12','07:48','07:49','done','por Mariana C. · 08:12'],
+      ['warning','Temperatura cerca del umbral','Núcleo L-09 · Laboratorio · Bodega fría','7.8 °C','máx 8 °C','08:40','08:41','dismissed','por Yadira S. · 08:52']
+    ].map(([level,title,where,value,limit,read,notif,a,by,sel]) => ({ level, levelLabel: level === 'offline' ? OFF : undefined, title, where, value, limit, read, notif, by, tone: lv[level][0], icon: lv[level][1], attTone: att[a][0], attIcon: att[a][1], attLabel: att[a][2], a,
+      rowStyle: 'display:grid;grid-template-columns:44px minmax(0,1fr) 120px 140px;gap:16px;align-items:center;padding:14px 12px;border-bottom:1px solid var(--border);' + (sel ? 'background:var(--surface-muted);border-radius:12px;border-bottom-color:transparent' : '') }));
+    const t = this.state.aTab;
+    const alertRows = ALERTS.filter(a => t === 'all' || a.a === t);
+    const cnt = k => ALERTS.filter(a => a.a === k).length;
+
+    const RS = (sel) => 'display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:12px;' + (sel ? 'background:var(--surface-muted)' : '');
+    const rst = { ready: ['success','circle-check','Listo'], gen: ['neutral','clock','Generando'], sched: ['neutral','calendar-clock','Programado'], err: ['warning','triangle-alert','Error del servicio de IA'] };
+    const rep = (title, sub, st, sel, icon) => ({ title, sub, icon: icon || 'file-text', tone: rst[st][0], sIcon: rst[st][1], state: rst[st][2], rowStyle: RS(sel) });
+    const reportGroups = [
+      { label: 'RECIENTES', items: [
+        rep('Calidad del aire · Moldeo', 'Octubre 2026 · 1–22 oct', 'ready', true),
+        rep('Temperatura · Guardería', 'Semana 43 · 19–23 oct', 'gen'),
+        rep('Humedad · Laboratorio', 'Semana 42 · 12–18 oct', 'ready'),
+        rep('Calidad del aire · Guardería', 'Septiembre 2026', 'err')
+      ] },
+      { label: 'PROGRAMADOS POR CORREO', items: [
+        rep('Resumen semanal · Laboratorio', 'Cada lunes 08:00 · a 3 responsables', 'sched', false, 'calendar-clock'),
+        rep('Resumen mensual · Todas las áreas', 'Día 1 de cada mes · a 5 responsables', 'sched', false, 'calendar-clock')
+      ] }
+    ];
+
+    const roleTone = { Administrador: 'ink', Supervisor: 'accent', Analista: 'neutral', Operador: 'neutral' };
+    const USERS = [
+      ['Andrés Villalobos','Administrador','Todas las áreas','—','Activo','Ahora'],
+      ['Yadira Salazar','Supervisor','Laboratorio','—','Activo','hace 5 min'],
+      ['Mariana Cruz','Supervisor','Moldeo','—','Activo','hace 1 h'],
+      ['Rubén Castillo','Supervisor','Guardería','—','Activo','Ayer, 17:42'],
+      ['Karla Méndez','Analista','Todas las áreas','—','Activo','hace 25 min'],
+      ['Luis Ortega','Operador','Moldeo · Línea 1','Núcleo T-01','Activo','hace 2 min'],
+      ['Diana Ríos','Operador','Laboratorio · Sala limpia','Núcleo L-07','Activo','hace 12 min'],
+      ['Paola Herrera','Operador','Guardería · Comedor','Núcleo E-05','Activo','hace 3 h'],
+      ['Jorge Ramírez','Operador','Moldeo · Línea 3','—','Inactivo','12 ago, 08:10']
+    ].map(([name,role,area,device,status,last]) => ({ name, role, area, device, status, last, email: name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(' ', '.') + '@grupoaltamira.mx', roleTone: roleTone[role], stTone: status === 'Activo' ? 'success' : 'offline' }));
+    const uf = this.state.uf;
+    const ufDef = [['all','Todos'],['Administrador','Administradores'],['Supervisor','Supervisores'],['Analista','Analistas'],['Operador','Operadores']];
+    const userChips = ufDef.map(([id, label]) => ({ label, count: id === 'all' ? USERS.length : USERS.filter(u => u.role === id).length, on: uf === id, set: () => this.setState({ uf: id }) }));
+
+    const OS = sel => 'display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;' + (sel ? 'background:var(--surface-muted)' : '');
+    const FEED = [
+      { level: 'critical', title: 'Humedad fuera de rango', meta: 'Núcleo L-07 · Sala limpia · 71.0 % (máx 60 %)', time: '14:30', unread: true },
+      { level: 'offline', title: 'Dispositivo sin conexión', meta: 'Núcleo E-05 · Comedor · última lectura 14:32', time: '14:34', unread: true },
+      { level: 'warning', title: 'Temperatura cerca del umbral', meta: 'Núcleo T-02 · Línea 2 · 27.8 °C (máx 28 °C)', time: '14:16', unread: true },
+      { level: 'normal', title: 'Calidad del aire normalizada', meta: 'Núcleo T-01 · Línea 1 · 82 AQI · atendida por Mariana C.', time: '10:40' },
+      { level: 'normal', title: 'Humedad de vuelta en rango', meta: 'Núcleo E-03 · Aula 3 · 44.0 %', time: '09:20' }
+    ];
+    const retryBtn = N ? React.createElement(N.Button, { variant: 'secondary', icon: 'history' }, 'Reintentar') : null;
+    const PD = ['Lun','Mar','Mié','Jue','Vie'];
+
+    const NOTIF_GROUPS = (() => {
+        const tone = { critical: ['danger','octagon-alert'], warning: ['warning','triangle-alert'], offline: ['offline','wifi-off'], normal: ['success','circle-check'], report: ['neutral','file-text'], user: ['neutral','user'] };
+        const n = (k, title, meta, time, unread) => ({ title, meta, time, tone: tone[k][0], icon: tone[k][1],
+          rowStyle: 'display:flex;align-items:center;gap:16px;padding:14px 12px;border-radius:16px;' + (unread ? 'background:var(--surface-muted)' : ''),
+          dot: 'flex:none;width:8px;height:8px;border-radius:99px;background:' + (unread ? 'var(--danger)' : 'transparent') });
+        return [
+          { label: 'Hoy', items: [
+            n('critical', 'Humedad fuera de rango', 'Núcleo L-07 · Sala limpia · 71.0 % (máx 60 %)', '14:30', true),
+            n('offline', 'Dispositivo sin conexión', 'Núcleo E-05 · Comedor · última lectura 14:32', '14:34', true),
+            n('warning', 'Temperatura cerca del umbral', 'Núcleo T-02 · Línea 2 · 27.8 °C (máx 28 °C)', '14:16', true),
+            n('normal', 'Calidad del aire normalizada', 'Núcleo T-01 · Línea 1 · atendida por Mariana C.', '10:40'),
+            n('report', 'Reporte listo · Calidad del aire · Moldeo', 'Octubre 2026 · 1–22 oct', '08:00')
+          ] },
+          { label: 'Ayer', items: [
+            n('normal', 'Humedad de vuelta en rango', 'Núcleo E-03 · Aula 3 · 44.0 %', '17:20'),
+            n('warning', 'Humedad cerca del umbral', 'Núcleo L-07 · Sala limpia · 58.6 % (máx 60 %)', '15:05'),
+            n('user', 'Tu umbral de Núcleo L-07 se actualizó', 'Humedad · 35 – 60 % · por Andrés V.', '09:30'),
+            n('report', 'Resumen semanal · Laboratorio enviado', 'A 3 responsables por correo', '08:00')
+          ] }
+        ];
+      })();
+    return {
+      theme, s, user, navSections, hdr: { eyebrow: hd[0], title: hd[1] }, hdrActions,
+      loginError: s.loginError ? 'Correo o contraseña incorrectos. Revisa e intenta de nuevo.' : undefined,
+      periods: ['Hoy','7 días','30 días'],
+      spark: { h: [44,46,47,49,48,48.5,48.2] },
+      heroMetrics: [{ icon: 'droplets', label: 'Humedad', value: 48.2, unit: '%', decimals: 1 }, { icon: 'wind', label: 'Aire', value: 82, unit: 'AQI' }],
+      trend, humL, thrTemp: { max: 28 }, thrHum: { min: 35, max: 60 }, thrHumMax: { max: 60 },
+      feed5: FEED, dashDevices, emptyList: [],
+      devChips, devList, devSub: devList.length + ' de ' + DEV.length + ' · Todas las áreas',
+      optAreasAll: ['Todas las áreas','Moldeo','Laboratorio','Guardería'],
+      dv: s.detailOffline ? offline : online,
+      optAreas: ['Moldeo · Línea 1','Moldeo · Línea 2','Laboratorio · Sala limpia','Laboratorio · Esclusa','Guardería · Aula 3'],
+      optDevices: ['Núcleo L-07 · NC-0417','Núcleo L-08 · NC-0418','Núcleo L-10 · NC-0420'],
+      optVars: ['Temperatura','Humedad','Calidad del aire'],
+      optDates: ['Hoy · 23 oct 2026','Últimos 7 días','Octubre 2026'],
+      optRoles: ['Administrador','Supervisor','Analista','Operador'],
+      histStats: [{ label: 'MÍN', value: '51.8' }, { label: 'PROM', value: '60.2' }, { label: 'MÁX', value: '71.2' }],
+      readings: [
+        { m: '14:38:00', r: '14:38:01', t: '19.9', h: '71.0', a: 36, status: 'critical' },
+        { m: '14:37:45', r: '14:37:46', t: '19.9', h: '70.9', a: 36, status: 'critical' },
+        { m: '14:37:30', r: '14:37:32', t: '19.9', h: '70.8', a: 35, status: 'critical' },
+        { m: '14:37:15', r: '14:37:16', t: '20.0', h: '70.6', a: 36, status: 'critical' },
+        { m: '14:37:00', r: '14:37:01', t: '20.0', h: '70.4', a: 36, status: 'critical' }
+      ],
+      rT: [18, 24], rH: [35, 60], rA: [0, 100], previewH: s.thresholdsReadonly ? 260 : 130,
+      alertTabs: [{ id: 'pending', label: 'Pendientes', count: cnt('pending') }, { id: 'done', label: 'Atendidas', count: cnt('done') }, { id: 'dismissed', label: 'Descartadas', count: cnt('dismissed') }, { id: 'all', label: 'Todas', count: ALERTS.length }],
+      aTab: t, setATab: v => this.setState({ aTab: v }), alertRows, noAlerts: alertRows.length === 0,
+      timeline: [
+        { level: 'critical', title: 'Creada', meta: 'Lectura de 71.0 % a las 14:30:04', time: '14:30' },
+        { level: 'info', icon: 'bell', title: 'Notificada', meta: 'Push a Diana Ríos · correo a responsables de Laboratorio', time: '14:31' },
+        { level: 'info', icon: 'clock', title: 'Pendiente de atención', meta: 'Atiende o descarta con una nota', time: '—', unread: true }
+      ],
+      reportGroups,
+      reportStats: [
+        { name: 'Temperatura', min: '20.8 °C', avg: '24.6 °C', max: '28.4 °C', alerts: 6 },
+        { name: 'Humedad', min: '38.2 %', avg: '47.9 %', max: '58.1 %', alerts: 1 },
+        { name: 'Calidad del aire', min: '34 AQI', avg: '71 AQI', max: '128 AQI', alerts: 2 }
+      ],
+      reportBars: [['Sem 40',64],['Sem 41',72],['Sem 42',88],['Sem 43',68]].map(([label, value]) => ({ label, value })),
+      peaks: [{ when: 'JUE 22 · 15:10', value: '72.4' }, { when: 'MIÉ 21 · 14:55', value: '66.1' }, { when: 'LUN 19 · 15:20', value: '63.8' }],
+      weekHum: [52,63.8,51,54,66.1,52,55,72.4,58,53].map((v, i) => ({ label: i % 2 ? '' : PD[i / 2], value: v })),
+      retryBtn,
+      userChips, users: USERS.filter(u => uf === 'all' || u.role === uf),
+      orgs: [
+        { name: 'Grupo Altamira', sub: 'Planta Tijuana · 3 áreas · 12 dispositivos', tone: 'ink', rowStyle: OS(true) },
+        { name: 'Laboratorios Vidal', sub: 'Guadalajara · 2 áreas · 6 dispositivos', tone: 'neutral', rowStyle: OS(false) },
+        { name: 'Colegio Arboleda', sub: 'Monterrey · 2 áreas · sin dispositivos', tone: 'neutral', rowStyle: OS(false) }
+      ],
+      areas: [
+        { name: 'Moldeo', subs: 'Línea 1 · Línea 2 · Línea 3 · Almacén', devices: 4, sup: 'Mariana Cruz', resp: ['Mariana C.', 'Andrés V.'] },
+        { name: 'Laboratorio', subs: 'Sala limpia · Esclusa · Bodega fría · Control de calidad', devices: 4, sup: 'Yadira Salazar', resp: ['Yadira S.', 'Karla M.'] },
+        { name: 'Guardería', subs: 'Aula 1 · Aula 3 · Comedor · Patio techado', devices: 4, sup: 'Rubén Castillo', resp: ['Rubén C.', 'Andrés V.'] }
+      ],
+      themeTabs: [{ id: 'light', label: 'Claro' }, { id: 'dark', label: 'Oscuro' }, { id: 'system', label: 'Sistema' }],
+      notifTabs: [{ id: 'all', label: 'Todas', count: 9 }, { id: 'unread', label: 'Sin leer', count: 3 }, { id: 'alerts', label: 'Alertas' }, { id: 'reports', label: 'Reportes' }],
+      notifGroups: NOTIF_GROUPS, notifToday: NOTIF_GROUPS[0].items.slice(0, 4),
+      themeTabsShort: [{ id: 'light', label: 'Claro' }, { id: 'dark', label: 'Oscuro' }],
+      hero: (() => {
+        const LIME = '#C6EF4E', DANGER = 'var(--danger)', MUTED = 'rgba(243,245,242,0.42)';
+        const big = c => 'font-size:80px;line-height:80px;font-weight:800;letter-spacing:-0.055em;font-variant-numeric:tabular-nums;white-space:nowrap' + (c ? ';color:' + c : '');
+        const unitS = c => 'font-size:30px;font-weight:700;letter-spacing:-0.02em;color:' + (c || LIME);
+        const sub = c => 'font-size:13px;line-height:20px;color:' + (c || 'var(--text-secondary)');
+        const fig = (label, value, unit, sub, c) => ({ label, value: String(value), unit: unit || '', sub: sub || '', style: 'font-size:44px;line-height:48px;font-weight:800;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;white-space:nowrap' + (c ? ';color:' + c : '') });
+        const lead = (label, value, unit, subT, o) => Object.assign({ label, value: value == null ? '' : String(value), unit: unit || '', sub: subT || '', style: big(), unitStyle: unitS(), subStyle: sub() }, o || {});
+        const on = DEV.filter(d => d.status !== 'offline').length, by = k => DEV.filter(d => d.status === k).length;
+        const items = reportGroups.reduce((n, g) => n + g.items.length, 0);
+        const role = r => USERS.filter(u => u.role === r).length;
+        if (s.dashboard) return { lead: lead('Temperatura · Moldeo', '24.3', '°C', 'En rango · 20 – 26 °C', { subStyle: sub(LIME) }),
+          bar: { band: 'position:absolute;top:0;bottom:0;left:33.3%;width:40%;border-radius:99px;background:' + LIME, mark: 'position:absolute;top:-6px;left:57.7%;width:22px;height:22px;margin-left:-11px;border-radius:99px;background:#F3F5F2;box-shadow:0 0 0 4px #121413' },
+          figs: [fig('Humedad', '48.2', '%', 'Moldeo · hace 12 s', LIME), fig('En línea', on, '/ ' + DEV.length, by('offline') + ' sin conexión'), fig('Aire', '82', 'AQI', 'Promedio · bueno'), fig('Pendientes', cnt('pending'), '', '1 crítica', DANGER)] };
+        if (s.dashboardLoading) return { lead: lead('Temperatura · Moldeo', '--.-', '', 'Cargando lecturas de 12 dispositivos…', { style: big('rgba(243,245,242,0.16)') }),
+          figs: [fig('Humedad', '—', '', '', MUTED), fig('En línea', '—', '', '', MUTED), fig('Aire', '—', '', '', MUTED)] };
+        if (s.devices) return { lead: lead('Dispositivos', DEV.length, 'en 3 áreas', 'Grupo Altamira · Planta Tijuana'),
+          figs: [fig('En línea', on, '', 'Enviando lecturas', LIME), fig('Advertencia', by('warning'), '', 'Cerca del umbral'), fig('Crítico', by('critical'), '', 'Fuera de rango', DANGER), fig('Sin conexión', by('offline'), '', 'Revisar energía o red', MUTED)] };
+        if (s.devicesEmpty) return { lead: lead('Dispositivos', '0', '', 'Da de alta el primero con «Agregar dispositivo».'), figs: [] };
+        if (s.detail) return { lead: lead('Humedad · Núcleo L-07', '71.0', '%', 'Fuera de rango · máx 60 % · Laboratorio · Sala limpia', { unitStyle: unitS(DANGER), subStyle: sub(DANGER) }),
+          figs: [fig('Temperatura', '19.9', '°C', '18 – 24 °C'), fig('Aire', '36', 'AQI', '0 – 100 AQI', LIME), fig('Batería', '22', '%', 'Cambiar pronto'), fig('Muestreo', '15', 's', 'Última lectura hace 4 s')] };
+        if (s.detailOffline) return { lead: lead('Temperatura · Núcleo E-05', '22.8', '°C', 'Sin conexión · última lectura hace 6 min', { style: big(MUTED), unitStyle: unitS(MUTED) }),
+          figs: [fig('Humedad', '46.1', '%', 'Última conocida', MUTED), fig('Aire', '41', 'AQI', 'Última conocida', MUTED), fig('Batería', '8', '%', 'Batería baja', DANGER)] };
+        if (s.history) return { lead: lead('Humedad · hoy · Núcleo L-07', '71.2', '%', '1 h 52 min sobre el máximo · desde las 12:46', { unitStyle: unitS(DANGER), subStyle: sub(DANGER) }),
+          figs: [fig('Mínimo', '51.8', '%'), fig('Promedio', '60.2', '%', '', LIME), fig('Lecturas', '1 732', '', 'Cada 30 s')] };
+        if (s.thrAny) return { lead: lead('Humedad actual · Núcleo L-07', '71', '%', 'Supera el máximo de 60 % · umbral por dispositivo', { unitStyle: unitS(DANGER), subStyle: sub(DANGER) }),
+          figs: [fig('Temperatura', '19.9', '°C', 'Umbral 18 – 24 °C', LIME), fig('Aire', '36', 'AQI', 'Umbral 0 – 100 AQI', LIME), fig('Último cambio', '09:30', '', 'Por Yadira S.')] };
+        if (s.alerts) return { lead: lead('Alertas pendientes', cnt('pending'), 'por atender', '1 crítica · la más reciente a las 14:30', { style: big(LIME), unitStyle: unitS('#F3F5F2') }),
+          figs: [fig('Atendidas', cnt('done'), ''), fig('Descartadas', cnt('dismissed'), ''), fig('Total', ALERTS.length, '', 'Hoy y ayer')] };
+        if (s.reports) return { lead: lead('Reportes', items, 'en total', 'Cifras de las lecturas · texto redactado con IA'),
+          figs: reportGroups.map((g, i) => fig(g.label.charAt(0) + g.label.slice(1).toLowerCase(), g.items.length, '', '', i ? null : LIME)) };
+        if (s.agentAny) return { lead: lead('Agente Núcleo', null, '', s.agentDown ? 'No disponible por ahora · el monitoreo sigue funcionando' : 'Responde solo sobre los sensores de tu organización', { title: 'Pregunta lo que quieras sobre tus sensores.', subStyle: sub(s.agentDown ? DANGER : LIME) }), figs: [] };
+        if (s.usersAny) return { lead: lead('Usuarios', USERS.length, 'cuentas', USERS.filter(u => u.status === 'Activo').length + ' activas · Grupo Altamira'),
+          figs: [fig('Administradores', role('Administrador'), ''), fig('Supervisores', role('Supervisor'), '', '', LIME), fig('Analistas', role('Analista'), ''), fig('Operadores', role('Operador'), '')] };
+        if (s.org) return { lead: lead('Organizaciones', '3', 'registradas', 'Grupo Altamira seleccionada'),
+          figs: [fig('Áreas', '3', '', 'Grupo Altamira', LIME), fig('Dispositivos', DEV.length, ''), fig('Usuarios', USERS.length, '')] };
+        if (s.profile) return { lead: lead('Mi perfil', null, '', 'Supervisora · Laboratorio · yadira.salazar@grupoaltamira.mx', { title: 'Yadira Salazar' }),
+          figs: [fig('Dispositivos', '4', '', 'En tu área', LIME), fig('Atendidas', '12', '', 'Alertas en octubre'), fig('Reportes', '1', '', 'Programado por correo'), fig('Último acceso', 'Ahora', '', 'Este navegador')] };
+        if (s.notifications) return { lead: lead('Notificaciones', '3', 'sin leer', '1 crítica · la más reciente a las 14:30', { style: big(LIME), unitStyle: unitS('#F3F5F2') }),
+          figs: [fig('Hoy', '5', ''), fig('Ayer', '4', ''), fig('Alertas', '6', '', 'Críticas y advertencias'), fig('Reportes', '2', '', '', LIME)] };
+        return { lead: lead('', '', ''), figs: [] };
+      })(),
+      showModal: s.usersAdd && this.state.modal,
+      closeModal: () => this.setState({ modal: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

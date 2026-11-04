@@ -1,0 +1,20 @@
+/* Núcleo — type tokens. One family, Plus Jakarta Sans 400–800. Use tabular-nums on every reading. */
+:root{
+--font-sans:"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+--font-display:var(--font-sans);--font-body:var(--font-sans);
+/* Lecturas */
+--display-xl-size:72px;--display-xl-line:72px;--display-xl-weight:800;--display-xl-tracking:-0.04em;
+--display-lg-size:48px;--display-lg-line:52px;--display-lg-weight:700;--display-lg-tracking:-0.03em;
+--display-md-size:32px;--display-md-line:36px;--display-md-weight:700;--display-md-tracking:-0.02em;
+--display-sm-size:20px;--display-sm-line:24px;--display-sm-weight:700;--display-sm-tracking:-0.01em;
+/* Títulos */
+--h1-size:32px;--h1-line:40px;--h1-weight:700;--h1-tracking:-0.02em;
+--h2-size:24px;--h2-line:32px;--h2-weight:700;--h2-tracking:-0.015em;
+--h3-size:18px;--h3-line:26px;--h3-weight:600;--h3-tracking:-0.01em;
+--h4-size:15px;--h4-line:22px;--h4-weight:600;
+/* Texto */
+--body-lg-size:16px;--body-lg-line:26px;
+--body-size:14px;--body-line:22px;--body-weight:400;--body-strong-weight:600;
+--caption-size:12px;--caption-line:16px;--caption-weight:500;
+--label-size:11px;--label-line:16px;--label-weight:600;--label-tracking:0.08em;
+}

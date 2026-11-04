@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/n-cleo-design-system-ca495ad9-1c8d-4c03-8032-980ebda606d9/styles.css">
+<script src="_ds/n-cleo-design-system-ca495ad9-1c8d-4c03-8032-980ebda606d9/_ds_bundle.js"></script>
+<script src="./nc-icons-extra.js"></script>
+<style>body{margin:0}a{color:var(--text-primary)}a:hover{color:var(--text-secondary)}.nc-ink.nc-ink{position:relative;overflow:hidden;background:#121413;color:var(--text-primary)}[data-theme="dark"] .nc-ink{background:#1E2120;box-shadow:inset 0 0 0 1px rgba(243,245,242,0.06)}.nc-ink>*{position:relative}.nc-ink>.nc-ink__deco{position:absolute;pointer-events:none}.nc-lime.nc-lime{position:relative;overflow:hidden;background:#C6EF4E;color:#121413}.nc-lime>*{position:relative}.nc-lime>.nc-ink__deco{position:absolute;pointer-events:none}</style>
+</helmet>
+<div class="nc-theme" data-theme="{{ theme }}" style="width:390px;height:844px;overflow:hidden;position:relative;border-radius:48px;background:var(--background);color:var(--text-primary);font-family:var(--font-sans)">
+  <sc-if value="{{ statusBar }}" hint-placeholder-val="{{ true }}">
+    <div data-theme="dark" style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;justify-content:space-between;align-items:center;padding:8px 32px 0;box-sizing:border-box;font-size:15px;font-weight:700;z-index:3;color:#F3F5F2;background:#121413">
+      <span>14:38</span>
+      <span style="display:flex;gap:6px;align-items:center">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.SignalBars" level="{{ 4 }}" hint-size="20px,14px"></x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Battery" level="{{ 78 }}" hide-label="{{ true }}" hint-size="26px,14px"></x-import>
+      </span>
+    </div>
+  </sc-if>
+
+  <!-- INICIAR SESIÓN -->
+  <sc-if value="{{ s.login }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;background:#121413;overflow:hidden">
+      <div data-theme="dark" style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;justify-content:space-between;align-items:center;padding:8px 32px 0;box-sizing:border-box;font-size:15px;font-weight:700;color:#F3F5F2;z-index:2">
+        <span>14:38</span>
+        <span style="display:flex;gap:6px;align-items:center">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.SignalBars" level="{{ 4 }}" hint-size="20px,14px"></x-import>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Battery" level="{{ 78 }}" hide-label="{{ true }}" hint-size="26px,14px"></x-import>
+        </span>
+      </div>
+      <div style="position:absolute;right:-150px;top:40px;width:420px;height:420px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div style="position:absolute;right:-70px;top:120px">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.LogoMark" tone="lima" size="{{ 260 }}" hint-size="260px,214px"></x-import>
+      </div>
+      <div style="position:relative;flex:1;padding:84px 28px 0">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Logo" size="{{ 40 }}" inverse="{{ true }}" hint-size="129px,56px"></x-import>
+      </div>
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;gap:24px;padding:32px 24px 44px;background:var(--surface);border-radius:32px 32px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,0.25)">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h1 style="margin:0;font-size:30px;line-height:36px;font-weight:700;letter-spacing:-0.025em">Inicia sesión</h1>
+          <p style="margin:0;font-size:15px;line-height:24px;color:var(--text-secondary)">Entra con la cuenta que te dio el administrador de tu organización.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Correo" type="email" icon="mail" default-value="luis.ortega@grupoaltamira.mx" hint-size="100%,72px"></x-import>
+          <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Input" label="Contraseña" type="password" default-value="nucleo2026" hint-size="100%,72px"></x-import>
+          <div style="display:flex;justify-content:flex-end">
+            <a href="#" style="font-size:14px;font-weight:600">¿Olvidaste tu contraseña?</a>
+          </div>
+        </div>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" size="lg" icon="log-in" block="{{ true }}" hint-size="100%,52px">Iniciar sesión</x-import>
+        <p style="margin:0;font-size:14px;line-height:22px;color:var(--text-muted)">¿Necesitas acceso? Pídelo al administrador de tu organización.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="height:100%;display:flex;flex-direction:column;background:#121413;overflow:hidden">
+  <!-- ZONA OSCURA: dato principal de cada pantalla -->
+  <div data-theme="dark" style="position:relative;flex:none;padding:56px 20px 30px;color:var(--text-primary)">
+    <sc-if value="{{ s.homeAny }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+      <div class="nc-ink__deco" style="right:-150px;bottom:-170px;width:300px;height:300px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div class="nc-ink__deco" style="right:-100px;bottom:-120px;width:200px;height:200px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div class="nc-ink__deco" style="right:-50px;bottom:-60px;opacity:0.2"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.LogoMark" tone="lima" size="{{ 150 }}" hint-size="150px,123px"></x-import></div>
+    </div>
+    <div style="position:relative;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Avatar" name="Luis Ortega" size="{{ 40 }}" hint-size="40px,40px"></x-import>
+        <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:12px;color:var(--text-muted);font-weight:500">Viernes 23 de octubre</span><strong style="font-size:20px;line-height:26px;letter-spacing:-0.02em">Hola, Luis</strong></div>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconButton" icon="bell" label="Alertas" badge="{{ 1 }}" size="lg" hint-size="48px,48px"></x-import>
+      </div>
+      <sc-if value="{{ s.home }}" hint-placeholder-val="{{ true }}">
+      <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 10px;border-radius:999px;background:rgba(243,245,242,0.08);font-size:12px;font-weight:600"><i style="width:8px;height:8px;border-radius:99px;background:#C6EF4E;box-shadow:0 0 0 4px rgba(198,239,78,0.2)"></i>Núcleo T-01 · en línea</span>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">Temperatura · en vivo</span>
+        <div style="font-size:104px;line-height:100px;font-weight:800;letter-spacing:-0.055em;font-variant-numeric:tabular-nums">24.3<span style="font-size:32px;letter-spacing:-0.02em;color:#C6EF4E"> °C</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="position:relative;height:10px;border-radius:99px;background:rgba(243,245,242,0.1)"><div style="{{ tempBand }}"></div><div style="{{ tempMark }}"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums"><span>16 °C</span><span style="color:#C6EF4E;font-weight:600">En rango · 20 – 26 °C</span><span>30 °C</span></div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ s.homeLoading }}" hint-placeholder-val="{{ false }}">
+      <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 10px;border-radius:999px;background:rgba(243,245,242,0.08);font-size:12px;font-weight:600"><i style="width:8px;height:8px;border-radius:99px;background:#8C928E;box-shadow:0 0 0 4px rgba(140,146,142,0.2)"></i>Conectando…</span>
+      <div style="display:flex;flex-direction:column">
+        <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">Temperatura</span>
+        <div style="font-size:104px;line-height:100px;font-weight:800;letter-spacing:-0.055em;color:rgba(243,245,242,0.16)">--.-</div>
+      </div>
+      <div style="height:10px;border-radius:99px;background:rgba(243,245,242,0.1)"></div>
+      </sc-if>
+      <sc-if value="{{ s.homeOffline }}" hint-placeholder-val="{{ false }}">
+      <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 10px;border-radius:999px;background:rgba(243,245,242,0.08);font-size:12px;font-weight:600"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="wifi-off" size="{{ 14 }}" hint-size="14px,14px"></x-import>Sin conexión</span>
+      <div style="display:flex;flex-direction:column">
+        <span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">Última lectura · hace 6 min</span>
+        <div style="font-size:104px;line-height:100px;font-weight:800;letter-spacing:-0.055em;color:rgba(243,245,242,0.42);font-variant-numeric:tabular-nums">24.1<span style="font-size:32px;letter-spacing:-0.02em"> °C</span></div>
+      </div>
+      <span style="font-size:13px;line-height:20px;color:var(--text-secondary);max-width:300px">Tu dispositivo sigue alertando con LED y buzzer aunque no llegue a la plataforma.</span>
+      </sc-if>
+    </div>
+    </sc-if>
+    <sc-if value="{{ s.variable }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+      <div class="nc-ink__deco" style="left:50%;top:60px;margin-left:-165px;width:330px;height:330px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+    </div>
+    <div style="position:relative;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconButton" icon="chevron-left" label="Volver" size="lg" hint-size="48px,48px"></x-import>
+        <strong style="font-size:17px;white-space:nowrap">Temperatura</strong>
+        <div style="width:48px"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding-bottom:4px">
+        <div style="position:relative;width:236px;height:236px">
+          <div style="{{ gaugeStyle }}"></div>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+            <span class="nc-live" style="font-size:12px;font-weight:600;color:var(--text-secondary)">En vivo</span>
+            <div style="font-size:72px;line-height:72px;font-weight:800;letter-spacing:-0.05em;font-variant-numeric:tabular-nums">24.3</div>
+            <span style="font-size:15px;font-weight:600;color:#C6EF4E">°C · en rango</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;width:200px;margin-top:-28px;font-size:12px;color:var(--text-muted)"><span>16°</span><span>28°</span></div>
+        <span style="margin-top:8px;font-size:13px;color:var(--text-secondary)">Núcleo T-01 · Línea 1 · umbral 20 – 26 °C</span>
+      </div>
+    </div>
+    </sc-if>
+    <sc-if value="{{ s.alertsAny }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+      <div class="nc-ink__deco" style="right:-150px;bottom:-170px;width:300px;height:300px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div class="nc-ink__deco" style="right:-100px;bottom:-120px;width:200px;height:200px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div class="nc-ink__deco" style="right:-50px;bottom:-60px;opacity:0.2"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.LogoMark" tone="lima" size="{{ 150 }}" hint-size="150px,123px"></x-import></div>
+    </div>
+    <div style="position:relative;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+        <strong style="font-size:34px;line-height:40px;letter-spacing:-0.035em">Alertas</strong>
+        <span style="font-size:12px;color:var(--text-muted);padding-bottom:8px">Núcleo T-01 · Línea 1</span>
+      </div>
+      <sc-if value="{{ s.alerts }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-end;gap:14px">
+        <div style="font-size:112px;line-height:96px;font-weight:800;letter-spacing:-0.06em;color:#C6EF4E">1</div>
+        <div style="display:flex;flex-direction:column;gap:2px;padding-bottom:8px"><strong style="font-size:20px;line-height:24px">pendiente</strong><span style="font-size:13px;color:var(--text-secondary)">2 atendidas · 1 descartada</span></div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ s.alertsEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:14px;padding:8px 0 4px">
+        <div style="flex:none;width:64px;height:64px;border-radius:999px;background:#C6EF4E;color:#121413;display:flex;align-items:center;justify-content:center"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="circle-check" size="{{ 30 }}" hint-size="30px,30px"></x-import></div>
+        <div style="display:flex;flex-direction:column;gap:2px"><strong style="font-size:24px;line-height:30px;letter-spacing:-0.02em">Todo en rango</strong><span style="font-size:13px;color:var(--text-secondary)">Sin alertas. Te avisaremos si algo cambia.</span></div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+    <sc-if value="{{ s.alertDetail }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+      <div class="nc-ink__deco" style="right:-150px;bottom:-170px;width:300px;height:300px;border-radius:999px;border:2px solid rgba(255,107,94,0.22)"></div>
+      <div class="nc-ink__deco" style="right:-100px;bottom:-120px;width:200px;height:200px;border-radius:999px;border:2px solid rgba(255,107,94,0.14)"></div>
+    </div>
+    <div style="position:relative;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconButton" icon="chevron-left" label="Volver" size="lg" hint-size="48px,48px"></x-import>
+        <strong style="font-size:17px;white-space:nowrap">Alerta</strong>
+        <div style="width:48px"></div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.StatusBadge" status="critical" hint-size="90px,26px"></x-import>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="neutral" icon="circle-check" hint-size="100px,26px">Atendida</x-import>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <strong style="font-size:20px;line-height:26px;letter-spacing:-0.02em">Calidad del aire fuera de rango</strong>
+        <span style="font-size:13px;color:var(--text-secondary)">Núcleo T-01 · Moldeo · Línea 1 · 10:22</span>
+      </div>
+      <div style="font-size:104px;line-height:96px;font-weight:800;letter-spacing:-0.055em;font-variant-numeric:tabular-nums">128<span style="font-size:30px;letter-spacing:-0.02em;color:var(--danger)"> AQI</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="position:relative;height:10px;border-radius:99px;background:rgba(243,245,242,0.1)">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:91.4%;border-radius:99px;background:linear-gradient(90deg,#C6EF4E 0 78%,var(--danger) 78% 100%)"></div>
+          <div style="position:absolute;left:71.4%;top:-6px;width:2px;height:22px;border-radius:2px;background:#F3F5F2"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)"><span>Máx 100 AQI</span><span style="color:var(--danger);font-weight:600">+28 sobre el máximo</span></div>
+      </div>
+    </div>
+    </sc-if>
+    <sc-if value="{{ s.profile }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+      <div class="nc-ink__deco" style="left:50%;top:-40px;margin-left:-180px;width:360px;height:360px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div class="nc-ink__deco" style="left:50%;top:15px;margin-left:-125px;width:250px;height:250px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+      <div class="nc-ink__deco" style="right:-36px;bottom:-40px"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.LogoMark" tone="lima" size="{{ 120 }}" hint-size="120px,99px"></x-import></div>
+    </div>
+    <div style="position:relative;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:8px 0 6px">
+        <div style="padding:5px;border-radius:999px;box-shadow:0 0 0 3px #C6EF4E"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Avatar" name="Luis Ortega" size="{{ 84 }}" hint-size="84px,84px"></x-import></div>
+        <strong style="margin-top:8px;font-size:28px;line-height:34px;letter-spacing:-0.03em">Luis Ortega</strong>
+        <span style="font-size:13px;color:var(--text-secondary)">Operador · Grupo Altamira</span>
+        <span style="margin-top:4px;padding:6px 12px;border-radius:999px;background:#C6EF4E;color:#121413;font-size:12px;font-weight:700">Moldeo · Línea 1</span>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+  <!-- HOJA: contenido de la pantalla -->
+  <div style="position:relative;z-index:1;flex:1;min-height:0;overflow:hidden;margin-top:-4px;padding:20px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;align-content:start;gap:14px;box-sizing:border-box;background:var(--background);border-radius:32px 32px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,0.25),inset 0 1px 0 rgba(243,245,242,0.06)">
+    <sc-if value="{{ s.home }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="nc-lime" data-theme="light" style="display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:28px;box-sizing:border-box;min-height:168px">
+        <div class="nc-ink__deco" style="right:-70px;top:-70px;width:160px;height:160px;border-radius:999px;border:2px solid rgba(18,20,19,0.12)"></div>
+        <span style="display:flex;align-items:center;gap:6px;font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="droplets" size="{{ 14 }}" hint-size="14px,14px"></x-import>Humedad</span>
+        <div style="font-size:42px;line-height:46px;font-weight:800;letter-spacing:-0.045em">48.2<span style="font-size:18px">%</span></div>
+        <div style="margin-top:auto"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Sparkline" data="{{ spH }}" tone="text-primary" width="{{ 128 }}" height="{{ 36 }}" hint-size="128px,36px"></x-import></div>
+      </div>
+      <div class="nc-ink" data-theme="dark" style="display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:28px;box-sizing:border-box;min-height:168px">
+        <div class="nc-ink__deco" style="right:-70px;top:-70px;width:160px;height:160px;border-radius:999px;border:2px solid rgba(243,245,242,0.08)"></div>
+        <span style="display:flex;align-items:center;gap:6px;font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="wind" size="{{ 14 }}" hint-size="14px,14px"></x-import>Aire</span>
+        <div style="font-size:42px;line-height:46px;font-weight:800;letter-spacing:-0.045em">82<span style="font-size:16px;color:var(--text-muted)"> AQI</span></div>
+        <div style="margin-top:auto"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Sparkline" data="{{ spA }}" tone="accent" width="{{ 128 }}" height="{{ 36 }}" hint-size="128px,36px"></x-import></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;padding:18px;border-radius:28px;background:var(--surface)">
+      <div style="display:flex;justify-content:space-between;align-items:center"><strong style="font-size:15px">Temperatura · últimas 24 h</strong><span style="display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--text-secondary)">Ver<x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="chevron-right" size="{{ 16 }}" hint-size="16px,16px"></x-import></span></div>
+      <div style="display:flex;align-items:flex-end;gap:5px;height:64px">
+        <sc-for list="{{ bars24 }}" as="b" hint-placeholder-count="13"><i style="{{ b.style }}"></i></sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted)"><span>Ayer 14:00</span><span>Mín 20.1 · Máx 25.3 °C</span><span>Ahora</span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:22px;background:var(--surface)">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="cpu" size="sm" hint-size="32px,32px"></x-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column"><strong style="font-size:15px;line-height:20px">Núcleo T-01 · Línea 1</strong><span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ conn.sub }}</span></div>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Battery" level="{{ conn.battery }}" hint-size="56px,20px"></x-import>
+    </div>
+    </sc-if>
+    <sc-if value="{{ s.homeLoading }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Skeleton" variant="card" hint-size="100%,168px"></x-import>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Skeleton" variant="card" hint-size="100%,168px"></x-import>
+    </div>
+    <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Skeleton" variant="card" hint-size="100%,140px"></x-import>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:22px;background:var(--surface)">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="cpu" size="sm" hint-size="32px,32px"></x-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column"><strong style="font-size:15px;line-height:20px">Núcleo T-01 · Línea 1</strong><span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ conn.sub }}</span></div>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Battery" level="{{ conn.battery }}" hint-size="56px,20px"></x-import>
+    </div>
+    </sc-if>
+    <sc-if value="{{ s.homeOffline }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:28px;box-sizing:border-box;min-height:150px;background:var(--surface)">
+        <span style="display:flex;align-items:center;gap:6px;font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="droplets" size="{{ 14 }}" hint-size="14px,14px"></x-import>Humedad</span>
+        <div style="font-size:42px;line-height:46px;font-weight:800;letter-spacing:-0.045em;color:var(--text-muted)">48.0<span style="font-size:16px"> %</span></div>
+        <span style="margin-top:auto;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--offline)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="wifi-off" size="{{ 14 }}" hint-size="14px,14px"></x-import>Hace 6 min</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:28px;box-sizing:border-box;min-height:150px;background:var(--surface)">
+        <span style="display:flex;align-items:center;gap:6px;font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="wind" size="{{ 14 }}" hint-size="14px,14px"></x-import>Aire</span>
+        <div style="font-size:42px;line-height:46px;font-weight:800;letter-spacing:-0.045em;color:var(--text-muted)">80<span style="font-size:16px"> AQI</span></div>
+        <span style="margin-top:auto;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--offline)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="wifi-off" size="{{ 14 }}" hint-size="14px,14px"></x-import>Hace 6 min</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:22px;background:var(--surface)">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="cpu" size="sm" hint-size="32px,32px"></x-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column"><strong style="font-size:15px;line-height:20px">Núcleo T-01 · Línea 1</strong><span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ conn.sub }}</span></div>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Battery" level="{{ conn.battery }}" hint-size="56px,20px"></x-import>
+    </div>
+    </sc-if>
+    <sc-if value="{{ s.variable }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div style="display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:22px;background:var(--surface)"><span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">Mín</span><strong style="font-size:24px;line-height:28px;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">20.1<span style="font-size:12px;font-weight:600;opacity:0.6"> °C</span></strong></div>
+      <div style="display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:22px;background:#C6EF4E;color:#121413"><span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(18,20,19,0.6)">Prom</span><strong style="font-size:24px;line-height:28px;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">22.7<span style="font-size:12px;font-weight:600;opacity:0.6"> °C</span></strong></div>
+      <div style="display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:22px;background:#121413;color:#F3F5F2"><span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#9DA39E">Máx</span><strong style="font-size:24px;line-height:28px;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">25.3<span style="font-size:12px;font-weight:600;opacity:0.6"> °C</span></strong></div>
+    </div>
+    <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" padding="sm" hint-size="100%,230px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 8px"><strong style="font-size:15px">Últimas 24 h</strong><span style="font-size:12px;color:var(--text-muted)">Ayer 14:00 – hoy 14:38</span></div>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.TrendChart" data="{{ trend24 }}" unit="°C" threshold="{{ thrT }}" min="{{ 16 }}" max="{{ 28 }}" height="{{ 170 }}" active-index="{{ 12 }}" hint-size="100%,170px"></x-import>
+    </x-import>
+    <span style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text-muted)"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.Icon" name="sliders-horizontal" size="{{ 14 }}" hint-size="14px,14px"></x-import>Umbral del dispositivo · solo lectura</span>
+    </sc-if>
+    <sc-if value="{{ s.alertsAny }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;gap:8px">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Chip" selected="{{ true }}" count="{{ aCount }}" hint-size="90px,40px">Todas</x-import>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Chip" hint-size="110px,40px">Pendientes</x-import>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Chip" hint-size="110px,40px">Atendidas</x-import>
+    </div>
+    <sc-if value="{{ s.alerts }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <sc-for list="{{ alertCards }}" as="a" hint-placeholder-count="4">
+        <div style="display:flex;gap:14px;padding:16px 16px 16px 14px;border-radius:22px;background:var(--surface)">
+          <div style="{{ a.stripe }}"></div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:15px;line-height:20px">{{ a.title }}</strong><span style="font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;white-space:nowrap">{{ a.time }}</span></div>
+            <span style="font-size:13px;line-height:18px;color:var(--text-secondary)">{{ a.meta }}</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.StatusBadge" status="{{ a.level }}" label="{{ a.levelLabel }}" hint-size="90px,24px"></x-import>
+              <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Badge" tone="{{ a.attTone }}" icon="{{ a.attIcon }}" hint-size="90px,24px">{{ a.attLabel }}</x-import>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <p style="margin:0;font-size:13px;line-height:20px;color:var(--text-muted);text-align:center;padding:0 16px">Tu supervisor atiende las alertas. Aquí puedes consultarlas.</p>
+    </sc-if>
+    <sc-if value="{{ s.alertsEmpty }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:12px;padding:16px;border-radius:22px;background:var(--surface)">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.IconCircle" name="bell" size="sm" hint-size="32px,32px"></x-import>
+      <span style="flex:1;font-size:14px;line-height:20px;color:var(--text-secondary)">Recibirás una notificación en cuanto una lectura salga de rango.</span>
+    </div>
+    </sc-if>
+    </sc-if>
+    <sc-if value="{{ s.alertDetail }}" hint-placeholder-val="{{ false }}">
+    <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Card" padding="sm" hint-size="100%,170px">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.TrendChart" data="{{ eventSeries }}" unit="AQI" threshold="{{ thrA }}" min="{{ 60 }}" max="{{ 140 }}" height="{{ 130 }}" active-index="{{ 4 }}" hint-size="100%,130px"></x-import>
+    </x-import>
+    <div style="display:flex;flex-direction:column;gap:4px;padding:8px 16px;border-radius:24px;background:var(--surface)">
+      <span style="padding-top:8px;font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">Línea de tiempo</span>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.ActivityFeed" items="{{ timeline }}" hint-size="100%,200px"></x-import>
+    </div>
+    </sc-if>
+    <sc-if value="{{ s.profile }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <sc-for list="{{ profileRows }}" as="r" hint-placeholder-count="4">
+        <div style="{{ r.style }}"><span style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">{{ r.k }}</span><strong style="font-size:14px;line-height:20px;overflow-wrap:anywhere">{{ r.v }}</strong></div>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;padding:18px;border-radius:24px;background:var(--surface)">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Toggle" label="Modo de bajo consumo" default-checked="{{ false }}" hint-size="100%,28px"></x-import>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Toggle" label="Notificaciones push" default-checked="{{ true }}" hint-size="100%,28px"></x-import>
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Toggle" label="Sonido en alertas críticas" default-checked="{{ true }}" hint-size="100%,28px"></x-import>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="font-size:14px;font-weight:600">Tema</span>
+        <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Tabs" items="{{ themeTabs }}" default-value="{{ theme }}" hint-size="190px,40px"></x-import>
+      </div>
+    </div>
+    <x-import component-from-global-scope="NCleoDesignSystem_ca495a.Button" variant="secondary" size="lg" icon="log-out" block="{{ true }}" hint-size="100%,52px">Cerrar sesión</x-import>
+    </sc-if>
+  </div>
+  </div>
+
+  <!-- NOTIFICACIÓN PUSH -->
+  <sc-if value="{{ s.push }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:5;background:#121413;color:#F3F5F2;display:flex;flex-direction:column;align-items:center;padding:24px 12px 0;box-sizing:border-box">
+      <div style="width:100%;display:flex;justify-content:space-between;padding:0 20px;box-sizing:border-box;font-size:15px;font-weight:700"><span>Telcel</span><span>78 %</span></div>
+      <span style="margin-top:40px;font-size:17px;font-weight:600;color:#C9CEC8">Viernes 23 de octubre</span>
+      <span style="font-size:88px;line-height:96px;font-weight:700;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">14:38</span>
+      <div style="margin-top:auto;margin-bottom:120px;width:100%;display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ pushes }}" as="p" hint-placeholder-count="2">
+          <div style="display:flex;gap:12px;padding:14px;border-radius:24px;background:#232626">
+            <div style="flex:none;width:40px;height:40px;border-radius:10px;background:#121413;box-shadow:inset 0 0 0 1px rgba(243,245,242,0.08);display:flex;align-items:center;justify-content:center"><x-import component-from-global-scope="NCleoDesignSystem_ca495a.LogoMark" tone="lima" size="{{ 28 }}" hint-size="28px,23px"></x-import></div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:15px;line-height:20px">{{ p.title }}</strong><span style="font-size:13px;color:#9DA39E">{{ p.time }}</span></div>
+              <span style="font-size:14px;line-height:20px;color:#C9CEC8">{{ p.body }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasTabs }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;left:16px;right:16px;bottom:24px;z-index:3">
+      <x-import component-from-global-scope="NCleoDesignSystem_ca495a.TabBar" items="{{ tabItems }}" active="{{ tab }}" hint-size="100%,70px"></x-import>
+    </div>
+  </sc-if>
+  <div style="position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:999px;background:var(--text-primary);opacity:0.9;z-index:4"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;home&quot;,&quot;homeLoading&quot;,&quot;homeOffline&quot;,&quot;variable&quot;,&quot;alerts&quot;,&quot;alertsEmpty&quot;,&quot;alertDetail&quot;,&quot;profile&quot;,&quot;push&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = {};
+  componentDidMount() { window.__ncM = (a, b) => this.setState({ ov: a, ovT: b }); setTimeout(() => this.forceUpdate(), 300); }
+  renderVals() {
+    const screen = this.state.ov ?? this.props.screen ?? 'home';
+    const theme = this.state.ovT ?? this.props.theme ?? 'light';
+    const s = {};
+    ['login','home','homeLoading','homeOffline','variable','alerts','alertsEmpty','alertDetail','profile','push'].forEach(k => s[k] = screen === k);
+    s.homeAny = s.home || s.homeLoading || s.homeOffline;
+    s.alertsAny = s.alerts || s.alertsEmpty;
+    const tabs = { home: 'home', homeLoading: 'home', homeOffline: 'home', variable: 'home', alerts: 'alerts', alertsEmpty: 'alerts', alertDetail: 'alerts', profile: 'profile' };
+    const H24 = ['14:00','16:00','18:00','20:00','22:00','00:00','02:00','04:00','06:00','08:00','10:00','12:00','14:30'];
+    const trend24 = [24.8,24.2,23.1,22.0,21.2,20.6,20.3,20.1,20.9,22.4,24.1,25.3,24.3].map((v, i) => ({ label: i % 3 === 0 ? H24[i] : '', time: (i < 5 ? 'Ayer · ' : 'Hoy · ') + H24[i], value: v }));
+    const EH = ['10:10','10:14','10:18','10:20','10:22','10:30','10:40','10:50'];
+    const eventSeries = [84,92,101,114,128,121,98,82].map((v, i) => ({ label: i % 2 ? '' : EH[i], time: 'Hoy · ' + EH[i], value: v }));
+    const lv = { critical: ['danger','octagon-alert'], warning: ['warning','triangle-alert'], offline: ['offline','wifi-off'] };
+    const att = { pending: ['ink','clock','Pendiente'], done: ['neutral','circle-check','Atendida'], dismissed: ['offline','circle-x','Descartada'] };
+    const alerts = [
+      ['warning','Temperatura cerca del umbral','Línea 1 · 25.8 °C (máx 26 °C)','14:18','pending'],
+      ['critical','Calidad del aire fuera de rango','Línea 1 · 128 AQI (máx 100 AQI)','10:22','done'],
+      ['offline','Dispositivo sin conexión','Línea 1 · última lectura 07:46','07:48','done'],
+      ['warning','Humedad cerca del umbral','Línea 1 · 58.6 % (máx 60 %)','Ayer','dismissed']
+    ].map(([level,title,meta,time,a]) => ({ level, levelLabel: level === 'offline' ? 'Sin conexión' : undefined, title, meta, time, tone: lv[level][0], icon: lv[level][1], attTone: att[a][0], attIcon: att[a][1], attLabel: att[a][2] }));
+    const spT = [22, 22.8, 23.4, 24, 24.6, 24.3], spH = [46.1, 46.9, 47.5, 48.4, 48.0, 48.2], spA = [70, 74, 80, 86, 84, 82];
+    return {
+      theme: s.push ? 'dark' : theme, s, tab: tabs[screen] || 'home', hasTabs: !!tabs[screen], statusBar: !s.push && !s.login,
+      homeBar: s.push ? '#F3F5F2' : 'var(--text-primary)',
+      tabItems: [{ id: 'home', label: 'Inicio', icon: 'house' }, { id: 'alerts', label: 'Alertas', icon: 'bell', count: 1 }, { id: 'profile', label: 'Perfil', icon: 'user' }],
+      conn: s.homeOffline ? { sub: 'Sin conexión · última lectura hace 6 min', battery: 34 } : s.homeLoading ? { sub: 'Conectando…', battery: 86 } : { sub: 'En línea · cada 30 s', battery: 86 },
+      heroMetrics: [{ icon: 'droplets', label: 'Humedad', value: 48.2, unit: '%', decimals: 1 }, { icon: 'wind', label: 'Aire', value: 82, unit: 'AQI' }],
+      sensors: [{ variable: 'temperature', value: 24.3, decimals: 1, trend: spT }, { variable: 'humidity', value: 48.2, decimals: 1, trend: spH }, { variable: 'air', value: 82, decimals: 0, trend: spA }],
+      sensorsOff: [{ variable: 'temperature', value: 24.1, decimals: 1, trend: spT }, { variable: 'humidity', value: 48.0, decimals: 1, trend: spH }, { variable: 'air', value: 80, decimals: 0, trend: spA }],
+      trend24, thrT: { min: 20, max: 26 }, thrA: { max: 100 }, eventSeries,
+      statsT: [{ label: 'MÍN', value: '20.1' }, { label: 'PROM', value: '22.7' }, { label: 'MÁX', value: '25.3' }],
+      aCount: s.alerts ? 4 : undefined, alerts,
+      timeline: [
+        { level: 'critical', title: 'Creada', meta: 'Lectura de 128 AQI a las 10:22:15', time: '10:22' },
+        { level: 'info', icon: 'bell', title: 'Notificada', meta: 'Push a ti y a Mariana Cruz', time: '10:23' },
+        { level: 'normal', title: 'Atendida por Mariana C.', meta: 'Se ajustó la extracción de Línea 1', time: '10:40' }
+      ],
+      spH, spA,
+      tempBand: 'position:absolute;top:0;bottom:0;left:28.6%;width:42.9%;border-radius:99px;background:#C6EF4E',
+      tempMark: 'position:absolute;top:-6px;left:59.3%;width:22px;height:22px;margin-left:-11px;border-radius:99px;background:#F3F5F2;box-shadow:0 0 0 4px #121413',
+      gaugeStyle: 'position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 225deg,#C6EF4E 0deg 187deg,rgba(243,245,242,0.1) 187deg 270deg,transparent 270deg 360deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 18px),#000 calc(100% - 17px));mask:radial-gradient(farthest-side,transparent calc(100% - 18px),#000 calc(100% - 17px))',
+      bars24: trend24.map((d, i, arr) => ({ style: 'flex:1;border-radius:6px;height:' + Math.round(10 + (d.value - 19) / 7 * 54) + 'px;background:var(--text-primary);opacity:' + (i === arr.length - 1 ? 1 : (0.12 + i * 0.03).toFixed(2)) })),
+      alertCards: alerts.map(a => Object.assign({}, a, { stripe: 'flex:none;width:4px;border-radius:4px;background:var(--' + (a.level === 'critical' ? 'danger' : a.level) + ')' })),
+      profileRows: [{ k: 'Correo', v: 'luis.ortega@grupoaltamira.mx' }, { k: 'Área', v: 'Moldeo · Línea 1' }, { k: 'Dispositivo asignado', v: 'Núcleo T-01 · NC-0341' }, { k: 'Supervisora', v: 'Mariana Cruz' }].map((r, i) => Object.assign(r, { style: 'display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:20px;' + (i === 0 || i === 3 ? 'grid-column:1 / -1;' : '') + (i === 3 ? 'background:#C6EF4E;color:#121413' : 'background:var(--surface)') })),
+      themeTabs: [{ id: 'light', label: 'Claro' }, { id: 'dark', label: 'Oscuro' }],
+      pushes: [
+        { title: 'Crítico · Temperatura', body: 'Núcleo T-01 · Moldeo · 28.6 °C (máx 26 °C)', time: 'ahora' },
+        { title: 'Advertencia · Temperatura', body: 'Núcleo T-01 · Moldeo · 25.8 °C (máx 26 °C)', time: '14:18' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
