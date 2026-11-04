@@ -168,7 +168,9 @@ La web y la app móvil usan este endpoint en su pantalla inicial.
 4. Devolver fechas en ISO 8601 con zona horaria.
 5. No exponer credenciales, rutas internas ni detalles de la base.
 6. Filtrar siempre con `common/scoping.py` y declarar roles con `PermisoPorRol`.
-7. Actualizar este documento y los clientes en el mismo cambio.
+7. Actualizar este documento y los clientes en el mismo cambio, incluidas las
+   constantes del módulo en `FrontEnd/src/api/` y `Mobile/src/api/` (las dos
+   carpetas son iguales).
 
 ## Datos de IoT
 
