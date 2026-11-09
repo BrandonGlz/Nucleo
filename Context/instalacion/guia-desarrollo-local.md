@@ -69,9 +69,21 @@ para que el canal funcione entre el consumidor MQTT y el servidor web.
 
 `migrate` crea las 16 tablas del modelo relacional en `nucleo_db` y carga los
 catálogos; `migrate --database=iot` crea la hypertable `lectura` en `nucleo_iot` (requiere
-`IOT_DATABASE_URL` en `BackEnd/.env`). `sembrar_demo` crea una organización, un usuario por
-rol (incluido el administrador de plataforma) y el dispositivo `NUC-001`, e imprime una
-sola vez la contraseña de cada usuario.
+`IOT_DATABASE_URL` en `BackEnd/.env`). `sembrar_demo` crea Grupo Altamira (4 áreas, 14
+usuarios de todos los roles, 15 dispositivos, entre ellos `NUC-001`) y Clínica San Rafael,
+14 días de lecturas, alertas, notificaciones, reportes y programaciones. Todas las cuentas
+usan la contraseña `Nucleo2026`; `--reiniciar` borra los datos y siembra de nuevo.
+
+Para ver lecturas nuevas sin el ESP32, deja en otra terminal:
+
+```bash
+(cd BackEnd && .venv/bin/python manage.py simular_dispositivos)
+```
+
+Cada dispositivo en servicio (menos `NUC-001`, que es el real) manda un mensaje a su
+intervalo con el mismo formato que el firmware; las lecturas, alertas y eventos en vivo
+siguen el mismo camino que las de MQTT. Con `--mqtt` el mensaje se publica en el broker
+y lo recibe `escuchar_mqtt`.
 
 Para recibir lecturas del dispositivo hace falta el broker. Define
 `MQTT_BACKEND_PASSWORD` y `MQTT_DEVICE_PASSWORD` en el `.env` raíz (la segunda es la

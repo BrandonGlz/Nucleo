@@ -31,9 +31,13 @@ TimescaleDB y Redis.
     los cambios de estado de los dispositivos, filtrados por rol, usando Redis.
   - Incluye una curva por variable (promedio, mínimo y máximo) en los reportes y su PDF.
   - Envía notificaciones push con Expo cuando se activa `NUCLEO_PUSH_HABILITADO`.
-- **Después:** redacción de reportes con el servicio de IA y agente en lenguaje natural.
-- **Todavía no:** el proveedor de IA está por definir, así que los reportes responden
-  503; el push está apagado por defecto y sin probar con un teléfono real.
+  - Redacta el texto de los reportes a partir de las cifras con `IA_PROVEEDOR=local`.
+  - Responde preguntas en `POST /api/v1/agente/`: hay un agente por dispositivo y arma
+    la respuesta con sus lecturas, umbrales y alertas. Un operador lo usa solo si tiene
+    `acceso_agente`.
+  - Simula los ESP32 con `simular_dispositivos`, con el mismo mensaje que el firmware.
+- **Después:** conectar un servicio de IA externo para la redacción y el agente.
+- **Todavía no:** el push está apagado por defecto y sin probar con un teléfono real.
 
 ## Cómo funciona
 
@@ -89,7 +93,9 @@ Todos se ejecutan desde la carpeta principal del proyecto:
 - `docker compose up -d --wait postgres timescaledb redis` — "enciende PostgreSQL, TimescaleDB y Redis y espera; terminan saludables."
 - `cd BackEnd && .venv/bin/python manage.py migrate` — "crea las 16 tablas en `nucleo_db` y carga los catálogos; muestra `Applying ... OK`."
 - `cd BackEnd && .venv/bin/python manage.py migrate --database=iot` — "crea la hypertable `lectura` en `nucleo_iot`; solo corre la app `mediciones`."
-- `cd BackEnd && .venv/bin/python manage.py sembrar_demo` — "crea la organización de ejemplo, el administrador de plataforma, un usuario por rol y el dispositivo `NUC-001`; imprime las contraseñas una sola vez."
+- `cd BackEnd && .venv/bin/python manage.py sembrar_demo` — "crea Grupo Altamira (4 áreas, 14 usuarios, 15 dispositivos) y Clínica San Rafael, 14 días de lecturas cada 10 minutos (unas 100 mil), las alertas que provocan, notificaciones, 6 reportes y 3 programaciones; imprime las cuentas, todas con la contraseña `Nucleo2026`."
+- `cd BackEnd && .venv/bin/python manage.py sembrar_demo --reiniciar --dias 7 --password OtraClave1` — "borra los datos (menos los catálogos) y siembra de nuevo con otro historial y otra contraseña."
+- `cd BackEnd && .venv/bin/python manage.py simular_dispositivos` — "simula los ESP32 en servicio (menos `NUC-001`, el real): cada uno manda lecturas a su intervalo y entran por la misma ingesta que MQTT; `--mqtt` las publica en el broker y `--velocidad 10` las acelera."
 - `cd BackEnd && .venv/bin/python manage.py createsuperuser` — "crea un administrador de plataforma, sin organización, para entrar a `/admin/`."
 - `cd BackEnd && .venv/bin/python manage.py runserver 0.0.0.0:8000` — "abre la API y el canal en vivo (Daphne atiende HTTP y WebSocket); se detiene con `Ctrl+C`."
 - `cd BackEnd && .venv/bin/python manage.py escuchar_mqtt` — "recibe las lecturas del broker; requiere Mosquitto encendido y se detiene con `Ctrl+C`."
