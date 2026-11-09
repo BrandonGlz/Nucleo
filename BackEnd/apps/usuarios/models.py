@@ -73,6 +73,9 @@ class Usuario(AbstractBaseUser):
     segundo_apellido = models.CharField(max_length=60, null=True, blank=True)
     correo = models.EmailField(max_length=150, unique=True)
     telefono = models.CharField(max_length=15, null=True, blank=True)
+    # Un operador usa el agente IA en la app solo si un administrador o supervisor se lo
+    # permite; los demás roles siempre lo tienen.
+    acceso_agente = models.BooleanField(db_default=False, default=False)
     last_login = models.DateTimeField(db_column="ultimo_acceso", null=True, blank=True)
     fecha_registro = models.DateTimeField(db_default=Now(), editable=False)
 
@@ -156,6 +159,10 @@ class Usuario(AbstractBaseUser):
 
     def tiene_rol(self, *codigos):
         return self.rol_id in codigos
+
+    @property
+    def puede_usar_agente(self):
+        return self.rol_id != roles.OPERADOR or self.acceso_agente
 
 
 class TelefonoPush(models.Model):
