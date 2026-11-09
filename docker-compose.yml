@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: nucleo_postgres
+    mem_limit: ${POSTGRES_MEM_LIMIT:-384m}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-nucleo_db}
@@ -26,12 +27,15 @@ services:
   timescaledb:
     image: timescale/timescaledb:2.31.0-pg17
     container_name: nucleo_timescaledb
+    mem_limit: ${IOT_MEM_LIMIT:-512m}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${IOT_DB:-nucleo_iot}
       POSTGRES_USER: ${IOT_USER:-nucleo_iot}
       POSTGRES_PASSWORD: ${IOT_PASSWORD:?IOT_PASSWORD es obligatorio}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      # timescaledb-tune ajusta shared_buffers a esta memoria (solo al crear el volumen).
+      TS_TUNE_MEMORY: ${IOT_TUNE_MEMORY:-512MB}
       TZ: UTC
     ports:
       - "127.0.0.1:${IOT_PORT:-55433}:5432"
@@ -48,6 +52,7 @@ services:
   mosquitto:
     image: eclipse-mosquitto:2
     container_name: nucleo_mosquitto
+    mem_limit: ${MQTT_MEM_LIMIT:-64m}
     restart: unless-stopped
     ports:
       - "${MQTT_BIND:-127.0.0.1}:${MQTT_PORT:-8883}:8883"
@@ -59,6 +64,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: nucleo_redis
+    mem_limit: ${REDIS_MEM_LIMIT:-96m}
     restart: unless-stopped
     command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --save '' --appendonly no"]
     environment:
@@ -72,6 +78,28 @@ services:
       retries: 12
       start_period: 5s
 
+  # Solo en el servidor (docker compose --profile servidor up -d tailscale): una máquina de
+  # Tailscale llamada «nucleo» que publica la web y la API (Caddy en 127.0.0.1:8081) con Funnel
+  # en https://nucleo.<tailnet>.ts.net. Usa red del anfitrión en modo userspace, así que convive
+  # con el Tailscale de la laptop (otro puerto UDP y sin interfaz tun).
+  tailscale:
+    image: tailscale/tailscale:v1.104.2
+    container_name: nucleo_tailscale
+    profiles: ["servidor"]
+    network_mode: host
+    mem_limit: ${TS_MEM_LIMIT:-96m}
+    restart: unless-stopped
+    environment:
+      TS_HOSTNAME: nucleo
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+      TS_TAILSCALED_EXTRA_ARGS: --port=41642
+      TS_SERVE_CONFIG: /config/serve.json
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - ./deploy/tailscale-serve.json:/config/serve.json:ro
+
 volumes:
   postgres_data:
     name: nucleo_postgres_data
@@ -79,3 +107,5 @@ volumes:
     name: nucleo_timescale_data
   mosquitto_data:
     name: nucleo_mosquitto_data
+  tailscale_state:
+    name: nucleo_tailscale_state
