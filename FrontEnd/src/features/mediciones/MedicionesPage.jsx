@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Select, Skeleton, StatusBadge } from '../../design-system/componentes/index.js'
+import { Button, Card, Skeleton, StatusBadge } from '../../design-system/componentes/index.js'
+import { Select } from '../../components/Desplegable'
 import { GraficaAjustable } from '../../components/GraficaAjustable'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
@@ -10,6 +11,7 @@ import * as organizacionesApi from '../../services/organizaciones'
 import * as umbralesApi from '../../services/umbrales'
 import { nivelLectura, pagina, rangoUmbral, UNIDAD, VARIABLE } from '../../utils/convertir'
 import { fechaCorta, hora, horaSeg, miles, num } from '../../utils/formato'
+import { useSesion } from '../../context/SesionContext'
 
 const PERIODOS = [
   { value: 'hoy', label: 'Hoy' },
@@ -42,14 +44,20 @@ function filasPorMomento(lecturas) {
 }
 
 export function MedicionesPage() {
+  const { organizacion } = useSesion()
   const cat = useDatos(cargarCatalogo, [])
   const [area, setArea] = useState('')
-  const [disp, setDisp] = useState('5')
+  const [elegido, setDisp] = useState('')
   const [variable, setVariable] = useState('HUM')
   const [periodo, setPeriodo] = useState('hoy')
-  const lect = useDatos(() => cargarLecturas(disp, variable), [disp, variable, periodo])
-
   const dispositivos = cat.datos?.dispositivos ?? []
+  // Mientras no se elige uno, se muestra el primer dispositivo del alcance del usuario.
+  const disp = elegido || String(dispositivos[0]?.num ?? '')
+  const lect = useDatos(
+    () => (disp ? cargarLecturas(disp, variable) : new Promise(() => {})),
+    [disp, variable, periodo],
+  )
+
   const areas = cat.datos?.areas ?? []
   const visibles = dispositivos.filter((d) => !area || d.area === Number(area))
   const actual = dispositivos.find((d) => d.num === Number(disp))
@@ -89,14 +97,18 @@ export function MedicionesPage() {
     : { principal: { etiqueta: info.etiqueta, valor: '--.-', tonoValor: 'apagado', sub: 'Cargando lecturas…' } }
 
   return (
-    <Pantalla eyebrow={`Grupo Altamira · lecturas cada ${actual?.intervalo_muestreo_seg ?? 30} s`} titulo="Histórico" cifras={cifras}>
+    <Pantalla eyebrow={`${organizacion} · lecturas cada ${actual?.intervalo_muestreo_seg ?? 30} s`} titulo="Histórico" cifras={cifras}>
       <Card>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 16 }}>
           <Select
             label="Área"
             icon="map-pin"
             value={area}
-            onChange={(e) => setArea(e.target.value)}
+            onChange={(e) => {
+              setArea(e.target.value)
+              const primero = dispositivos.find((d) => !e.target.value || d.area === Number(e.target.value))
+              setDisp(primero ? String(primero.num) : '')
+            }}
             options={[{ value: '', label: 'Todas las áreas' }, ...areas.map((a) => ({ value: String(a.num), label: a.nombre }))]}
           />
           <Select
@@ -119,8 +131,8 @@ export function MedicionesPage() {
       {lect.estado === 'error' ? (
         <EstadoError reintentar={lect.reintentar} />
       ) : (
-        <>
-          <Card className="ui-cede">
+        <div className="ui-fila" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.25fr)' }}>
+          <Card className="nc-grow">
             <div className="nc-card__head" style={{ marginBottom: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 className="nc-card__title">{info.etiqueta} · hoy</h3>
@@ -134,17 +146,17 @@ export function MedicionesPage() {
                 data={vista.serie}
                 unit={unidad}
                 threshold={u ? { min: Number(u.peligro_min), max: Number(u.peligro_max) } : undefined}
-                minimo={100}
+                minimo={160}
               />
             ) : (
-              <Skeleton height={100} />
+              <Skeleton height={160} />
             )}
           </Card>
           <Card className="nc-grow">
             <div className="nc-card__head" style={{ marginBottom: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 className="nc-card__title">Lecturas</h3>
-                <p className="nc-card__sub">Hora de medición y de recepción en la plataforma</p>
+                <p className="nc-card__sub">{actual?.nombre} · hora de medición y de recepción en la plataforma</p>
               </div>
               <Button variant="secondary" icon="download" size="sm">
                 Exportar
@@ -155,8 +167,6 @@ export function MedicionesPage() {
                 <thead>
                   <tr>
                     <th>Medición</th>
-                    <th>Recepción</th>
-                    <th>Dispositivo</th>
                     <th>Temperatura</th>
                     <th>Humedad</th>
                     <th>Aire</th>
@@ -174,9 +184,10 @@ export function MedicionesPage() {
                         <td className="ui-num">
                           <strong className="ui-strong">{horaSeg(f.fecha_hora)}</strong>
                           <span className="ui-muted"> · {fechaCorta(f.fecha_hora)}</span>
+                          <div className="ui-muted" style={{ fontSize: 12 }}>
+                            Recibida {horaSeg(f.recibida_en)}
+                          </div>
                         </td>
-                        <td className="ui-num">{horaSeg(f.recibida_en)}</td>
-                        <td>{actual?.nombre}</td>
                         <td className={resalta('TEMP')}>{num(f.TEMP)} °C</td>
                         <td className={resalta('HUM')}>{num(f.HUM)} %HR</td>
                         <td className={resalta('AIRE')}>{num(f.AIRE, 0)} ppm</td>
@@ -190,7 +201,7 @@ export function MedicionesPage() {
               </table>
             </div>
           </Card>
-        </>
+        </div>
       )}
     </Pantalla>
   )

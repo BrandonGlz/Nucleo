@@ -70,3 +70,6 @@ export function escala(u, variable) {
   const min = Math.max(0, Number(u.peligro_min) - margen)
   return [min, Number(u.peligro_max) + margen]
 }
+
+// El agente IA lo usan administradores, supervisores y analistas; un operador, solo si se lo permitieron.
+export const puedeUsarAgente = (u) => !!u && (u.rol !== 'OPER' || !!u.acceso_agente)

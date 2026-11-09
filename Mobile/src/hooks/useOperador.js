@@ -7,9 +7,14 @@ import { pagina } from '../utils/convertir'
 import { useDatos } from './useDatos'
 
 // Datos del operador: su dispositivo asignado con área, últimas lecturas y umbrales, y sus alertas.
+// Las demás cuentas ven el primer dispositivo de su área (o el primero, si ven todas las áreas).
 export async function cargarOperador(usuario) {
   const dispositivos = pagina(await dispositivosApi.lista())
-  const dispositivo = dispositivos.find((d) => d.operador === usuario?.num) ?? dispositivos[0] ?? null
+  const dispositivo =
+    dispositivos.find((d) => d.operador === usuario?.num) ??
+    dispositivos.find((d) => usuario?.rol !== 'OPER' && d.area === usuario?.area) ??
+    dispositivos[0] ??
+    null
   if (!dispositivo) return { dispositivo: null, area: null, lecturas: [], umbrales: [], alertas: [] }
   const [area, lecturas, umbrales, alertas] = await Promise.all([
     organizacionesApi.area(dispositivo.area).catch(() => null),

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError } from '../../components/EstadoError'
 import { BarraRango } from '../../components/BarraRango'
 import { Pantalla } from '../../components/Pantalla'
-import { Avatar, Battery, Icon, IconButton, IconCircle, Skeleton, Sparkline, T } from '../../components/ui'
+import { Avatar, Battery, Icon, IconButton, Skeleton, Sparkline, T } from '../../components/ui'
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
@@ -21,9 +21,27 @@ function Pastilla({ punto, icono, children }) {
   return (
     <View style={s.pastilla}>
       {icono ? <Icon name={icono} size={14} color={marca.claro} /> : <View style={[s.punto, { backgroundColor: punto, shadowColor: punto }]} />}
-      <T peso={600} size={12}>
+      <T peso={600} size={12} numberOfLines={1} style={{ flexShrink: 1 }}>
         {children}
       </T>
+    </View>
+  )
+}
+
+// Pastilla del dispositivo con su batería a la derecha: todo el estado del equipo en una línea.
+function FilaEquipo({ punto, icono, children, bateria }) {
+  return (
+    <View style={s.entre}>
+      <View style={{ flexShrink: 1 }}>
+        <Pastilla punto={punto} icono={icono}>
+          {children}
+        </Pastilla>
+      </View>
+      {bateria != null && (
+        <View style={[s.pastilla, { paddingLeft: 12 }]} accessibilityLabel={`Batería al ${bateria} %`}>
+          <Battery level={bateria} />
+        </View>
+      )}
     </View>
   )
 }
@@ -57,7 +75,7 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
           <T mayus color={c.textMuted}>
             Temperatura
           </T>
-          <T peso={800} size={104} lh={104} style={[s.gigante, { color: 'rgba(243,245,242,0.16)' }]}>
+          <T peso={800} size={88} lh={90} style={[s.gigante, { color: 'rgba(243,245,242,0.16)' }]}>
             --.-
           </T>
         </View>
@@ -69,12 +87,14 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
     return (
       <>
         {cabeza}
-        <Pastilla icono="wifi-off">Sin conexión</Pastilla>
+        <FilaEquipo icono="wifi-off" bateria={d.nivel_bateria}>
+          {`${d.nombre} · sin conexión`}
+        </FilaEquipo>
         <View>
           <T mayus color={c.textMuted}>
             Última lectura · {haceCuanto(d.ultima_conexion)}
           </T>
-          <T peso={800} size={104} lh={104} num style={[s.gigante, { color: 'rgba(243,245,242,0.42)' }]}>
+          <T peso={800} size={88} lh={90} num style={[s.gigante, { color: 'rgba(243,245,242,0.42)' }]}>
             {num(l?.valor)}
             <T peso={800} size={32} color="rgba(243,245,242,0.42)">{` ${UNIDAD.TEMP}`}</T>
           </T>
@@ -91,12 +111,14 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
   return (
     <>
       {cabeza}
-      <Pastilla punto={marca.lima}>{d.nombre} · en línea</Pastilla>
+      <FilaEquipo punto={marca.lima} bateria={d.nivel_bateria}>
+        {`${d.nombre} · ${op.area?.nombre ?? 'en línea'} · cada ${d.intervalo_muestreo_seg} s`}
+      </FilaEquipo>
       <View>
         <T mayus color={c.textMuted}>
           Temperatura · en vivo
         </T>
-        <T peso={800} size={104} lh={104} num style={s.gigante}>
+        <T peso={800} size={88} lh={90} num style={s.gigante}>
           {num(l?.valor)}
           <T peso={800} size={32} color={color} style={{ letterSpacing: -0.6 }}>{` ${UNIDAD.TEMP}`}</T>
         </T>
@@ -133,7 +155,7 @@ function Mosaico({ variable, lectura, serie, tipo, sinConexion, desde, onPress }
       accessibilityLabel={`${info.etiqueta}: ver detalle`}
       style={({ pressed }) => [
         s.mosaico,
-        { backgroundColor: lima ? marca.lima : tinta ? (oscuro ? '#1E2120' : marca.tinta) : c.surface, minHeight: sinConexion ? 150 : 168 },
+        { backgroundColor: lima ? marca.lima : tinta ? (oscuro ? '#1E2120' : marca.tinta) : c.surface, minHeight: sinConexion ? 132 : 140 },
         tinta && oscuro && { borderWidth: 1, borderColor: 'rgba(243,245,242,0.06)' },
         pressed && { opacity: 0.9 },
       ]}
@@ -176,7 +198,7 @@ function Barras24({ serie, onPress }) {
   const mn = Math.min(...valores)
   const mx = Math.max(...valores)
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={[s.tarjeta, { backgroundColor: c.surface, gap: 14 }]}>
+    <Pressable onPress={onPress} accessibilityRole="button" style={[s.tarjeta, { backgroundColor: c.surface, gap: 10 }]}>
       <View style={s.entre}>
         <T peso={700} size={15}>
           Temperatura · últimas 24 h
@@ -188,13 +210,13 @@ function Barras24({ serie, onPress }) {
           <Icon name="chevron-right" size={16} color={c.textSecondary} />
         </View>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 64 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 48 }}>
         {valores.map((v, i) => (
           <View
             key={i}
             style={{
               flex: 1, borderRadius: 4, backgroundColor: c.textPrimary,
-              height: Math.round(10 + ((v - mn) / (mx - mn || 1)) * 54),
+              height: Math.round(8 + ((v - mn) / (mx - mn || 1)) * 40),
               opacity: i === valores.length - 1 ? 1 : 0.12 + i * 0.025,
             }}
           />
@@ -211,31 +233,8 @@ function Barras24({ serie, onPress }) {
   )
 }
 
-function FilaDispositivo({ op, sinConexion, cargando }) {
-  const { c } = useTema()
-  const d = op?.dispositivo
-  const sub = cargando
-    ? 'Conectando…'
-    : sinConexion
-      ? `Sin conexión · última lectura ${haceCuanto(d.ultima_conexion)}`
-      : `En línea · cada ${d.intervalo_muestreo_seg} s`
-  return (
-    <View style={[s.fila12, s.tarjetaFila, { backgroundColor: c.surface }]}>
-      <IconCircle name="cpu" size="sm" />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <T peso={700} size={15} lh={20} numberOfLines={1}>
-          {d ? `${d.nombre} · ${op.area?.nombre ?? ''}` : 'Tu dispositivo'}
-        </T>
-        <T size={12} lh={16} color={c.textMuted}>
-          {sub}
-        </T>
-      </View>
-      {d && <Battery level={d.nivel_bateria} />}
-    </View>
-  )
-}
-
-// Inicio del operador: su dispositivo en vivo, humedad, aire y la temperatura de las últimas 24 h.
+// Inicio del operador: su dispositivo en vivo (con batería arriba), humedad, aire y la temperatura
+// de las últimas 24 h; todo cabe en la pantalla sin hacer scroll.
 export function PanelScreen({ navigation }) {
   const { usuario } = useSesion()
   const { estado, datos: op, reintentar } = useOperador()
@@ -254,17 +253,17 @@ export function PanelScreen({ navigation }) {
       zona={<ZonaPanel usuario={usuario} op={op} estado={estado} sinConexion={sinConexion} onAlertas={() => navigation.navigate('Alertas')} />}
       recargando={false}
       onRecargar={reintentar}
+      compacta
     >
       {estado === 'error' ? (
         <EstadoError onReintentar={reintentar} />
       ) : cargando ? (
         <>
           <View style={s.dos}>
-            <Skeleton height={168} style={{ flex: 1, borderRadius: 28 }} />
-            <Skeleton height={168} style={{ flex: 1, borderRadius: 28 }} />
+            <Skeleton height={140} style={{ flex: 1, borderRadius: 28 }} />
+            <Skeleton height={140} style={{ flex: 1, borderRadius: 28 }} />
           </View>
-          <Skeleton height={140} style={{ borderRadius: 28 }} />
-          <FilaDispositivo op={op} cargando />
+          <Skeleton height={120} style={{ borderRadius: 28 }} />
         </>
       ) : (
         <>
@@ -273,7 +272,6 @@ export function PanelScreen({ navigation }) {
             <Mosaico variable="AIRE" tipo="tinta" lectura={lecturaDe(op, 'AIRE')} serie={(sA ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('AIRE')} />
           </View>
           {!sinConexion && sT && <Barras24 serie={sT} onPress={() => ver('TEMP')} />}
-          <FilaDispositivo op={op} sinConexion={sinConexion} />
         </>
       )}
     </Pantalla>
@@ -284,12 +282,11 @@ const s = StyleSheet.create({
   fila12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   fila6: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   entre: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  pastilla: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingLeft: 10, paddingRight: 12, borderRadius: 999, backgroundColor: 'rgba(243,245,242,0.08)' },
+  pastilla: { alignSelf: 'flex-start', flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingLeft: 10, paddingRight: 12, borderRadius: 999, backgroundColor: 'rgba(243,245,242,0.08)' },
   punto: { width: 8, height: 8, borderRadius: 4, shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } },
-  gigante: { letterSpacing: -5.5, includeFontPadding: false },
+  gigante: { letterSpacing: -4.6, includeFontPadding: false },
   dos: { flexDirection: 'row', gap: 12 },
-  mosaico: { flex: 1, gap: 6, padding: 18, borderRadius: 28, overflow: 'hidden' },
+  mosaico: { flex: 1, gap: 4, padding: 16, borderRadius: 28, overflow: 'hidden' },
   anilloMini: { position: 'absolute', right: -70, top: -70, width: 160, height: 160, borderRadius: 80, borderWidth: 2 },
-  tarjeta: { padding: 18, borderRadius: 28 },
-  tarjetaFila: { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 22 },
+  tarjeta: { paddingVertical: 14, paddingHorizontal: 18, borderRadius: 28 },
 })

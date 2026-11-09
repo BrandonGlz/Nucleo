@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Alert, Button, Card, Input, Select, Skeleton, ThresholdSlider } from '../../design-system/componentes/index.js'
+import { Alert, Button, Card, Input, Skeleton, ThresholdSlider } from '../../design-system/componentes/index.js'
+import { Select } from '../../components/Desplegable'
 import { GraficaAjustable } from '../../components/GraficaAjustable'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
@@ -40,12 +41,16 @@ const ordenValido = (u) => {
 }
 
 export function UmbralesPage() {
-  const { rol } = useSesion()
+  const { rol, organizacion } = useSesion()
   const editable = puedeEditar(rol)
   const [params, setParams] = useSearchParams()
-  const disp = params.get('dispositivo') || '5'
   const lista = useDatos(() => dispositivosApi.lista(), [])
-  const { estado, datos, reintentar, actualizar } = useDatos(() => cargar(disp, rol), [disp, rol])
+  // Sin ?dispositivo= se muestra el primero del alcance del usuario (sigue cargando mientras llega la lista).
+  const disp = params.get('dispositivo') || String(pagina(lista.datos)[0]?.num ?? '')
+  const { estado, datos, reintentar, actualizar } = useDatos(
+    () => (disp ? cargar(disp, rol) : new Promise(() => {})),
+    [disp, rol],
+  )
   const [borrador, setBorrador] = useState({})
   const [aviso, setAviso] = useState(null)
   // Cuando llegan umbrales nuevos (otro dispositivo o después de guardar) el borrador se reinicia.
@@ -106,7 +111,7 @@ export function UmbralesPage() {
     : { principal: { etiqueta: 'Umbrales', valor: '—', tonoValor: 'apagado' } }
 
   return (
-    <Pantalla eyebrow="Grupo Altamira · rango permitido por dispositivo" titulo="Umbrales" cifras={cifras}>
+    <Pantalla eyebrow={`${organizacion} · rango permitido por dispositivo`} titulo="Umbrales" cifras={cifras}>
       <Card>
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end' }}>
           <div style={{ width: 360 }}>
@@ -205,7 +210,7 @@ export function UmbralesPage() {
               unit="%HR"
               threshold={uHum ? { min: Number(uHum.peligro_min), max: Number(uHum.peligro_max) } : undefined}
               tooltip={false}
-              minimo={90}
+              minimo={56}
             />
           </Card>
         </>

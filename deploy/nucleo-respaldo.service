@@ -1,0 +1,8 @@
+[Unit]
+Description=Núcleo - respaldo de las bases y del broker
+After=docker.service
+
+[Service]
+Type=oneshot
+User=__USUARIO__
+ExecStart=__RAIZ__/deploy/respaldar.sh

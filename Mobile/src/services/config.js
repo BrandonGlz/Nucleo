@@ -9,10 +9,14 @@ export const guardarToken = (t) => {
   token = t || null
 }
 
+// Las listas de la API van paginadas; la app pide hasta 1000 registros por consulta.
+const POR_PAGINA = 1000
+
 // apiRequest con el token de la sesión y el cuerpo en JSON.
 export function pedir(ruta, { metodo = 'GET', cuerpo, params } = {}) {
-  const query = params
-    ? '?' + Object.entries(params)
+  const todos = metodo === 'GET' ? { page_size: POR_PAGINA, ...params } : params
+  const query = todos
+    ? '?' + Object.entries(todos)
         .filter(([, v]) => v != null && v !== '')
         .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
         .join('&')

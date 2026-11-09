@@ -52,6 +52,12 @@ import {
   WifiOff,
   Wind,
   Wrench,
+  LayoutGrid,
+  List,
+  Pencil,
+  UserX,
+  UserCheck,
+  KeyRound,
   X,
 } from 'lucide-react'
 
@@ -107,6 +113,12 @@ const ICONS = {
   'wifi-off': WifiOff,
   'wind': Wind,
   'wrench': Wrench,
+  'layout-grid': LayoutGrid,
+  'list': List,
+  'pencil': Pencil,
+  'user-x': UserX,
+  'user-check': UserCheck,
+  'key-round': KeyRound,
   'x': X,
 }
 

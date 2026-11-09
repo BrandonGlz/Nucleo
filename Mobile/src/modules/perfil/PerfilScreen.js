@@ -22,7 +22,11 @@ export function PerfilScreen({ navigation }) {
     () =>
       Promise.all([
         organizacionesApi.propia(usuario.organizacion),
-        usuariosApi.lista({ rol: 'SUPER', area: usuario.area }).then(pagina),
+        // La API solo deja listar usuarios a administradores y supervisores; sin permiso queda «—».
+        usuariosApi
+          .lista({ rol: 'SUPER', area: usuario.area })
+          .then(pagina)
+          .catch(() => []),
       ]),
     [usuario.num],
   )

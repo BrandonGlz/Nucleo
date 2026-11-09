@@ -90,10 +90,10 @@ function Tendencia({ dispositivo, umbral }) {
 }
 
 export function PanelPage() {
-  const { usuario } = useSesion()
+  const { usuario, organizacion } = useSesion()
   const navegar = useNavigate()
   const { estado, datos, reintentar } = useMonitoreo()
-  const encabezado = { eyebrow: `Grupo Altamira · ${hoyTexto()}`, titulo: `Hola, ${usuario?.nombre ?? ''}` }
+  const encabezado = { eyebrow: `${organizacion} · ${hoyTexto()}`, titulo: `Hola, ${usuario?.nombre ?? ''}` }
 
   const vista = useMemo(() => {
     if (!datos) return null

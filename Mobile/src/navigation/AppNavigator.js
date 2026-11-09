@@ -11,12 +11,15 @@ import { acceso, modulos } from '../modules'
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
-const pestanas = modulos.filter((m) => m.pestana)
+const permitido = (usuario) => (m) => !m.permiso || m.permiso(usuario)
+const pestanasDe = (usuario) => modulos.filter((m) => m.pestana && permitido(usuario)(m))
 const apiladas = modulos.filter((m) => !m.pestana)
 
 // Barra flotante a 16 px de los lados y 24 px del borde inferior, con el contador de alertas pendientes.
 function BarraInferior({ state, navigation }) {
   const inset = useSafeAreaInsets()
+  const { usuario } = useSesion()
+  const pestanas = pestanasDe(usuario)
   const { datos } = useOperador()
   const pendientes = pendientesDe(datos).length
   return (
@@ -31,6 +34,8 @@ function BarraInferior({ state, navigation }) {
 }
 
 function Principal() {
+  const { usuario } = useSesion()
+  const pestanas = pestanasDe(usuario)
   return (
     <Tab.Navigator tabBar={(props) => <BarraInferior {...props} />} screenOptions={{ headerShown: false }}>
       {pestanas.map(({ nombre, Pantalla }) => (
