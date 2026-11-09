@@ -27,7 +27,12 @@ if command -v rclone >/dev/null; then
   for r in gdrive-nucleo gdrive; do rclone listremotes | grep -qx "$r:" && { remoto="$r"; break; }; done
 fi
 if [[ -n "$remoto" ]]; then
-  rclone copy "$destino" "$remoto:servidor/nucleo" --max-age 2d
-  rclone delete "$remoto:servidor/nucleo" --min-age 30d
+  # Al arrancar sin red (o con un corte), reintenta durante unos 10 minutos.
+  for intento in $(seq 10); do
+    rclone copy "$destino" "$remoto:servidor/nucleo" --max-age 2d && break
+    (( intento < 10 )) || { echo "No se pudo subir a Google Drive"; exit 1; }
+    echo "Sin acceso a Google Drive; reintento en 60 s ($intento/10)"; sleep 60
+  done
+  rclone delete "$remoto:servidor/nucleo" --min-age 30d || true
   echo "Copiado a Google Drive: $remoto:servidor/nucleo"
 fi

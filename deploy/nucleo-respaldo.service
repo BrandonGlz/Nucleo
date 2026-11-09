@@ -1,6 +1,7 @@
 [Unit]
 Description=Núcleo - respaldo de las bases y del broker
-After=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
 
 [Service]
 Type=oneshot
