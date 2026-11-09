@@ -107,3 +107,21 @@ class SinConexionTests(PruebaBase):
     def test_respeta_mantenimiento(self):
         self.configurar(500, estado=roles.DISPOSITIVO_MANTENIMIENTO)
         self.assertEqual(marcar_sin_conexion(), [])
+
+
+class CambioDeAreaTests(PruebaBase):
+    def test_mover_de_area_quita_al_operador_de_otra_area(self):
+        e = Escenario()
+        r = cliente_de(e.admin).patch(
+            f"/api/v1/dispositivos/{e.dispositivo.pk}/", {"area": e.otra_area.pk}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIsNone(r.json()["operador"])
+
+    def test_page_size_pide_mas_registros(self):
+        e = Escenario()
+        for i in range(3):
+            e.usuario("OPER", f"extra-{i}")
+        r = cliente_de(e.admin).get("/api/v1/usuarios/", {"page_size": 2})
+        self.assertEqual(len(r.json()["results"]), 2)
+        self.assertIsNotNone(r.json()["next"])

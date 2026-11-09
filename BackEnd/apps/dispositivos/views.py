@@ -35,6 +35,10 @@ class DispositivoViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         estado_anterior = serializer.instance.estado_dispositivo_id
         dispositivo = serializer.save()
+        # El operador debe ser del área del dispositivo: al moverlo de área se le quita.
+        if dispositivo.operador_id and dispositivo.operador.area_id != dispositivo.area_id:
+            dispositivo.operador = None
+            dispositivo.save(update_fields=["operador"])
         publicar_configuracion_al_confirmar(dispositivo)
         if dispositivo.estado_dispositivo_id != estado_anterior:
             eventos.estado_dispositivo(dispositivo)
