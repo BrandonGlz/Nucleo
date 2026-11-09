@@ -1,6 +1,6 @@
 # Servidor de Núcleo
 
-Núcleo corre en una laptop con Debian 13 (`homelab`, 4 GB de RAM) junto con TMO. Se publica
+Núcleo corre en una laptop con Debian 13 (`homelab`, 4 GB de RAM). Se publica
 en internet con Tailscale Funnel, sin dominio ni puertos abiertos en el router, así que se
 llega desde cualquier red.
 
@@ -9,54 +9,35 @@ llega desde cualquier red.
 | Web | https://nucleo.tailb3f7d8.ts.net |
 | API (la usa la app) | https://nucleo.tailb3f7d8.ts.net/api/v1 |
 | Admin de Django | https://nucleo.tailb3f7d8.ts.net/admin/ |
-| TMO (misma laptop) | https://tmo.tailb3f7d8.ts.net |
 
 ## Acceso
 
-Las contraseñas (cuentas demo, usuario de la laptop) no van en el repositorio: pídeselas al
-administrador del servidor.
+### Web (cualquier red)
 
-### 1. Usar la web o la app (cualquier persona, cualquier red)
+Abre la URL desde cualquier navegador; no hace falta instalar nada.
 
-No hace falta instalar nada: abre la URL desde el navegador de cualquier equipo o con datos
-móviles. La app (APK del perfil `piloto` de `Mobile/eas.json`) ya apunta a la API del servidor.
+### SSH (cualquier red)
 
-### 2. Administrar el servidor por SSH (desde cualquier red)
-
-El SSH no está expuesto a internet: se entra por la red privada de Tailscale (la *tailnet*),
-que funciona igual en casa, en la escuela o con datos del celular.
-
-1. **Que te den acceso a la tailnet.** El administrador, en
-   https://login.tailscale.com/admin/users → **Invite users**, invita tu correo (o comparte
-   solo la laptop: https://login.tailscale.com/admin/machines → fila `tmo` → **…** → **Share**).
-   Acepta la invitación desde el correo.
-2. **Instala Tailscale e inicia sesión** con la cuenta invitada:
-   - Linux: `curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`
-   - Windows y macOS: https://tailscale.com/download
-   - Android e iOS: app **Tailscale** de la tienda.
-3. **Entra a la laptop:**
+1. Instala Tailscale e inicia sesión en la tailnet del servidor:
 
    ```bash
-   ssh userhomelab@tmo          # por nombre (MagicDNS)
-   ssh userhomelab@100.65.53.53 # por IP de Tailscale, si el nombre no resuelve
+   curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
    ```
 
-   Pide la contraseña del usuario `userhomelab` al administrador. Desde el celular sirve una app
-   SSH (por ejemplo Termius) con el mismo usuario y nombre.
+   En Windows y macOS: https://tailscale.com/download. En Android e iOS: app **Tailscale**.
+2. Entra a la laptop:
 
-Opcional, para entrar con la cuenta de Tailscale en vez de la contraseña de la laptop: el
-administrador corre `sudo tailscale set --ssh` en la laptop.
+   ```bash
+   ssh userhomelab@100.65.53.53
+   ```
 
-### 3. Sin Tailscale (solo en la misma red de la casa)
-
-`ssh userhomelab@<IP>`. La IP la da el router por DHCP y puede cambiar: se ve en la laptop con
-`ip -br a` (línea `enp…` si está por cable, `wlp…` por Wi-Fi). Úsalo solo si Tailscale falla.
+En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en la laptop con
+`ip -br a`).
 
 ## Cómo está armado
 
-- La laptop está en la tailnet como `tmo` (publica TMO). Núcleo usa una segunda máquina de
-  Tailscale, `nucleo`: el contenedor `nucleo_tailscale` (perfil `servidor` de
-  `docker-compose.yml`) que publica Caddy (`127.0.0.1:8081`) con Funnel según
+- Núcleo se publica con su propia máquina de Tailscale, `nucleo`: el contenedor
+  `nucleo_tailscale` (perfil `servidor` de `docker-compose.yml`) que publica Caddy (`127.0.0.1:8081`) con Funnel según
   `tailscale-serve.json`. Se conecta la primera vez con `TS_AUTHKEY` en el `.env` raíz.
 - Caddy sirve la web compilada y pasa `/api`, `/admin` y `/ws` a Daphne (`127.0.0.1:8001`).
 - systemd: `nucleo-daphne` (API y WebSocket), `nucleo-mqtt` (lecturas del broker),
