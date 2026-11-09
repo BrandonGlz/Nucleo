@@ -84,6 +84,7 @@ class ReporteTests(PruebaBase):
         )
         self.assertEqual(de_otra_area["variables"], {})
 
+    @override_settings(IA_PROVEEDOR="")
     def test_sin_servicio_de_ia_responde_503_y_no_guarda_nada(self):
         r = cliente_de(self.e.analista).post("/api/v1/reportes/", self.solicitud, format="json")
         self.assertEqual(r.status_code, 503)
@@ -260,6 +261,7 @@ class ProgramacionTests(PruebaBase):
         self.assertGreater(programacion.proxima_ejecucion, self.ahora)
         self.assertIsNone(futura.ultima_ejecucion)
 
+    @override_settings(IA_PROVEEDOR="")
     def test_sin_ia_la_programacion_sigue_vencida(self):
         programacion = ProgramacionReporte.objects.create(
             organizacion=self.e.organizacion,
@@ -273,3 +275,78 @@ class ProgramacionTests(PruebaBase):
         programacion.refresh_from_db()
         self.assertIsNone(programacion.ultima_ejecucion)
         self.assertFalse(Reporte.objects.exists())
+
+
+class AgenteTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        ahora = timezone.now()
+        for i, valor in enumerate((22, 26.4, 23)):
+            Lectura.objects.create(
+                sensor_num=self.e.dht22.pk,
+                variable_codigo="TEMP",
+                valor=valor,
+                fecha_hora=ahora - timedelta(hours=5 - i),
+            )
+        self.pregunta = {
+            "pregunta": "¿Hubo picos de temperatura?",
+            "dispositivo": self.e.dispositivo.pk,
+        }
+
+    def test_responde_con_las_lecturas_del_dispositivo(self):
+        r = cliente_de(self.e.analista).post("/api/v1/agente/", self.pregunta, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        cuerpo = r.json()
+        self.assertEqual(cuerpo["picos"][0]["valor"], 26.4)
+        self.assertEqual(cuerpo["maximo"], 25.0)
+        self.assertIn("Ahora marca 23.0 °C", cuerpo["texto"])
+
+    def test_pregunta_fuera_de_tema(self):
+        r = cliente_de(self.e.supervisor).post(
+            "/api/v1/agente/",
+            {**self.pregunta, "pregunta": "¿Quién ganó el partido?"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("Solo puedo responder", r.json()["texto"])
+
+    def test_operador_necesita_permiso(self):
+        cliente = cliente_de(self.e.operador)
+        self.assertEqual(
+            cliente.post("/api/v1/agente/", self.pregunta, format="json").status_code, 403
+        )
+        self.e.operador.acceso_agente = True
+        self.e.operador.save(update_fields=["acceso_agente"])
+        self.assertEqual(
+            cliente.post("/api/v1/agente/", self.pregunta, format="json").status_code, 200
+        )
+
+    def test_dispositivo_de_otra_organizacion_no_existe(self):
+        otra = Escenario("b")
+        r = cliente_de(self.e.admin).post(
+            "/api/v1/agente/", {**self.pregunta, "dispositivo": otra.dispositivo.pk}, format="json"
+        )
+        self.assertEqual(r.status_code, 404)
+
+    def test_supervisor_concede_el_agente_a_un_operador(self):
+        r = cliente_de(self.e.supervisor).patch(
+            f"/api/v1/usuarios/{self.e.operador.pk}/", {"acceso_agente": True}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.e.operador.refresh_from_db()
+        self.assertTrue(self.e.operador.acceso_agente)
+
+
+class RedaccionLocalTests(PruebaBase):
+    def test_redacta_con_las_cifras(self):
+        e = Escenario()
+        ahora = timezone.now()
+        Lectura.objects.create(
+            sensor_num=e.dht22.pk, variable_codigo="TEMP", valor=29, fecha_hora=ahora
+        )
+        cifras = servicios.calcular_cifras(
+            e.organizacion, None, ahora - timedelta(hours=1), ahora + timedelta(minutes=1)
+        )
+        with override_settings(IA_PROVEEDOR="local"):
+            texto = ia.redactar(cifras)
+        self.assertIn("29.0 °C", texto)
