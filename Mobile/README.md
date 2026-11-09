@@ -116,7 +116,12 @@ Si cambias el `.env`, reinicia Expo con `npx expo start -c` para que lo vuelva a
 
 Para un teléfono físico, inicia Django con
 `cd BackEnd && .venv/bin/python manage.py runserver 0.0.0.0:8000` y agrega la IP
-local a `DJANGO_ALLOWED_HOSTS` en `BackEnd/.env`.
+local a `DJANGO_ALLOWED_HOSTS` en `BackEnd/.env`. El teléfono y la computadora deben
+estar en la misma red y el firewall debe dejar pasar el puerto 8000.
+
+Con `EXPO_PUBLIC_USE_MOCKS=false` se entra con las cuentas de `manage.py sembrar_demo`;
+con `EXPO_PUBLIC_DEMO_PASSWORD=Nucleo2026` la pantalla de acceso las muestra para entrar
+con un toque.
 
 ## Para profundizar
 

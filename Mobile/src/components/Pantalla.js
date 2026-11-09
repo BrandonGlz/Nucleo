@@ -34,8 +34,9 @@ function Deco({ tipo }) {
 }
 
 // Esquema de las pantallas móviles: zona oscura con el dato principal y hoja clara que
-// sube sobre ella con el resto. Todo hace scroll; `pestanas` deja lugar a la barra flotante.
-export function Pantalla({ zona, deco = 'anillos', pestanas = true, recargando, onRecargar, children }) {
+// sube sobre ella con el resto. Todo hace scroll; `pestanas` deja lugar a la barra flotante y
+// `compacta` reduce los márgenes para que la pantalla quepa sin desplazarse.
+export function Pantalla({ zona, deco = 'anillos', pestanas = true, compacta, recargando, onRecargar, children }) {
   const { c } = useTema()
   const inset = useSafeAreaInsets()
   return (
@@ -50,12 +51,18 @@ export function Pantalla({ zona, deco = 'anillos', pestanas = true, recargando, 
         }
       >
         <TemaFijo tema="dark">
-          <View style={[s.zona, { paddingTop: inset.top + 16 }]}>
+          <View style={[s.zona, { paddingTop: inset.top + (compacta ? 8 : 16) }, compacta && { paddingBottom: 22 }]}>
             <Deco tipo={deco} />
-            <View style={{ gap: 16 }}>{zona}</View>
+            <View style={{ gap: compacta ? 12 : 16 }}>{zona}</View>
           </View>
         </TemaFijo>
-        <View style={[s.hoja, { backgroundColor: c.background, paddingBottom: (pestanas ? 120 : 32) + inset.bottom }]}>
+        <View
+          style={[
+            s.hoja,
+            { backgroundColor: c.background, paddingBottom: (pestanas ? (compacta ? 100 : 120) : 32) + inset.bottom },
+            compacta && { paddingTop: 16, gap: 12 },
+          ]}
+        >
           {children}
         </View>
       </ScrollView>

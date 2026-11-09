@@ -118,7 +118,7 @@ BackEnd/.env
 │   ├── NUCLEO_PUSH_HABILITADO       False; True envía push con Expo
 │   └── NUCLEO_EXPO_PUSH_URL         https://exp.host/--/api/v2/push/send
 └── IA
-    └── IA_PROVEEDOR, IA_API_KEY, IA_MODELO
+    └── IA_PROVEEDOR (local: redacción con plantillas), IA_API_KEY, IA_MODELO
 ```
 
 Las URL de base deben usar el esquema `postgres://`; el arranque falla si se
@@ -232,10 +232,34 @@ temporizador del sistema.
 
 ## Datos de demostración
 
-`manage.py sembrar_demo` (solo con `DJANGO_DEBUG=True`) crea la organización, un
-área, un usuario por rol (incluido el administrador de plataforma) y el dispositivo
-`NUC-001` con sus sensores DHT22 y CCS811 y umbrales de cuatro límites.
-Imprime una vez la contraseña generada de cada usuario.
+`manage.py sembrar_demo` (solo con `DJANGO_DEBUG=True`) crea un volumen mediano de datos:
+
+```text
+sembrar_demo
+├── Plataforma            plataforma@nucleo.local (administrador de plataforma)
+├── Grupo Altamira        Moldeo, Laboratorio, Guardería y Almacén
+│   ├── Usuarios          2 ADMIN, 4 SUPER (uno por área), 2 ANALISTA, 6 OPER (uno inactivo)
+│   └── Dispositivos      15 con DHT22 y CCS811 y umbrales por área; NUC-001 es el ESP32 real
+├── Clínica San Rafael    Urgencias, 1 ADMIN, 1 OPER y 2 dispositivos (prueba el aislamiento)
+├── Lecturas              14 días cada 10 minutos (unas 100 mil) con ciclo diario y picos
+├── Alertas               las que provocan las lecturas, atendidas, descartadas y pendientes,
+│                         con sus notificaciones por correo y push
+└── Reportes              6 reportes con PDF y 3 programaciones
+```
+
+Todas las cuentas usan la contraseña `Nucleo2026` (`--password` la cambia). `--reiniciar`
+borra los datos (menos los catálogos), `--dias` fija el historial y `--semilla` el azar.
+
+`manage.py simular_dispositivos` simula los ESP32 en servicio con los perfiles de
+`apps/mediciones/simulacion.py`: cada uno manda a su intervalo el mismo mensaje que el
+firmware y entra por `procesar_mensaje` (o por el broker con `--mqtt`).
+
+## Agente IA
+
+`POST /api/v1/agente/` responde sobre un dispositivo (`apps/reportes/agente.py`). Reconoce
+el tema de la pregunta (temperatura, humedad, aire, alertas o conexión) y arma el texto con
+las lecturas de los últimos 7 días, el umbral y las alertas; no inventa cifras. Un
+operador lo usa solo si tiene `acceso_agente` y sobre su dispositivo.
 
 ## API
 

@@ -145,7 +145,7 @@ REST_FRAMEWORK = {
         "common.autenticacion.TokenCaducable",
         "rest_framework.authentication.SessionAuthentication",
     ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "common.paginacion.Paginacion",
     "PAGE_SIZE": 50,
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
     "EXCEPTION_HANDLER": "common.exceptions.manejar_excepcion",

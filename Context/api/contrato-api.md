@@ -17,7 +17,8 @@ al broker MQTT.
 - **Móvil:** `EXPO_PUBLIC_API_BASE_URL`, por ejemplo `http://10.0.2.2:8000/api/v1`.
 
 Las listas están paginadas: `{"count", "next", "previous", "results"}` con 50
-elementos por página y el parámetro `?page=`. Los nombres de campo son los del
+elementos por página y el parámetro `?page=`; `?page_size=` pide hasta 1000 por página
+(la web y la app piden 1000 y filtran en el dispositivo). Los nombres de campo son los del
 modelo relacional, en español.
 
 ## Autenticación
@@ -72,10 +73,12 @@ Organizaciones y usuarios
 │                                           Solo ADMINPLAT; crea el primer ADMIN; 409 si ya existe
 ├── /areas/                                 Lectura: todos; escritura: ADMIN
 └── /usuarios/                              ADMIN y SUPER; la baja marca la cuenta Inactiva;
-                                            el rol ADMINPLAT no se asigna desde aquí
+                                            el rol ADMINPLAT no se asigna desde aquí; POST exige
+                                            password; acceso_agente permite el agente a un OPER
 
 Dispositivos
 ├── /dispositivos/                          Alta y baja: ADMIN; PATCH del intervalo: ADMIN y SUPER;
+│                                           PATCH del área: ADMIN (quita al operador de otra área);
 │                                           estados LINEA, CALENT, SINCONEX, BATBAJA, MANT, BAJA
 ├── GET /dispositivos/{num}/ultimas-lecturas/    Última lectura de cada variable
 └── /sensores/                              Escritura: ADMIN y SUPER; filtro ?dispositivo=
@@ -101,12 +104,21 @@ Alertas
 Reportes (ADMIN, SUPER y ANALISTA)
 ├── GET /reportes/                          Lista y detalle
 ├── POST /reportes/                         {"area"?, "periodo_inicio", "periodo_fin"}
-├── GET /reportes/{num}/pdf/                Descarga en PDF
+├── GET /reportes/{num}/pdf/                Descarga en PDF; el texto lo redacta IA_PROVEEDOR
+│                                           (local: plantillas con las cifras); sin proveedor, 503
 └── /programaciones-reporte/                Reportes periódicos: {"frecuencia" DIARIA|SEMANAL|MENSUAL,
                                             "destinatarios" [num de usuario], "area"?,
                                             "activa"?, "proxima_ejecucion"?}; destinatarios de la
                                             misma organización; SUPER y ANALISTA con área
                                             solo programan la suya
+
+Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
+└── POST /agente/                           {"pregunta", "dispositivo"}; un agente por dispositivo;
+                                            responde {"texto"} y, si la pregunta es de una
+                                            variable con lecturas sobre el máximo, "picos"
+                                            [{cuando, valor}], "serie" y "etiquetas" (máximo
+                                            diario de 7 días), "unidad" y "maximo"; 404 si el
+                                            dispositivo no está a su alcance
 ```
 
 Las fechas se envían y se reciben en ISO 8601 con zona horaria, por ejemplo

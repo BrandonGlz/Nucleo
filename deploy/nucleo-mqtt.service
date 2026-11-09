@@ -1,0 +1,17 @@
+[Unit]
+Description=Núcleo - recibe las lecturas del broker MQTT (escuchar_mqtt)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=__USUARIO__
+Group=__USUARIO__
+WorkingDirectory=__RAIZ__/BackEnd
+Environment=DJANGO_SETTINGS_MODULE=config.settings.production
+ExecStart=__RAIZ__/BackEnd/.venv/bin/python manage.py escuchar_mqtt
+Restart=always
+RestartSec=10
+MemoryMax=300M
+
+[Install]
+WantedBy=multi-user.target
