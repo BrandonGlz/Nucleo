@@ -129,7 +129,7 @@ revisarlas al actualizar Expo.
 
 ## Pendientes
 
-- Conectar con la API real (`EXPO_PUBLIC_USE_MOCKS=false`) y probar en teléfonos reales.
+- Probar con la API real en teléfonos físicos.
 - Guardar el token de forma segura para no pedir sesión cada vez.
 - Conexión en vivo (`/ws/panel/`), registro del teléfono (`token_expo`) y
   notificaciones push con `expo-notifications`.

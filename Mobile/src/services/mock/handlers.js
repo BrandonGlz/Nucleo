@@ -38,13 +38,22 @@ function iniciarVivo() {
   }, 30000)
 }
 
-// Acceso: cualquier correo y contraseña; error@nucleo.mx devuelve el error de credenciales.
+// Acceso: se entra con el correo de cualquier cuenta de datos.js (cualquier contraseña); un correo
+// desconocido entra como el operador Luis Ortega. error@nucleo.mx devuelve el error de
+// credenciales y una cuenta inactiva, el 403.
 export async function login({ correo }) {
   await esperar()
-  if (correo?.trim().toLowerCase() === 'error@nucleo.mx') {
+  const buscado = correo?.trim().toLowerCase()
+  if (buscado === 'error@nucleo.mx') {
     throw new ApiError('La API respondió con el estado 400.', 400)
   }
-  return { token: 'mock', usuario: copia(db.usuarios.find((u) => u.num === db.USUARIO_SESION)) }
+  const usuario = db.usuarios.find((u) => u.correo === buscado) ?? db.usuarios.find((u) => u.num === db.USUARIO_SESION)
+  if (usuario.estado_usuario !== 'ACT') throw new ApiError('La API respondió con el estado 403.', 403)
+  return { token: 'mock', usuario: copia(usuario) }
+}
+// Cuentas de prueba que ofrece la pantalla de acceso.
+export function cuentasDemo() {
+  return copia(db.usuarios)
 }
 export async function logout() {
   await esperar()
@@ -98,7 +107,7 @@ export async function serie({ dispositivo, variable, intervalo, desde, hasta }) 
   const actual = Number(db.ultimas[d.num].find((l) => l.variable === variable).valor)
   if (intervalo === 'minuto') {
     // Alrededor de una alerta: sube hasta la lectura que la disparó y vuelve a bajar.
-    const pico = Number(desde && hasta ? db.alertas.find((a) => a.variable === variable && a.fecha_hora <= hasta && a.fecha_hora >= desde)?.lectura_valor : actual) || actual
+    const pico = Number(desde && hasta ? db.alertas.find((a) => a.dispositivo === d.num && a.variable === variable && a.fecha_hora <= hasta && a.fecha_hora >= desde)?.lectura_valor : actual) || actual
     const forma = [0.66, 0.72, 0.79, 0.89, 1, 0.95, 0.77, 0.64]
     const inicio = new Date(desde).getTime()
     return forma.map((f, i) => {
@@ -131,4 +140,26 @@ export async function alerta(num) {
 export async function notificaciones() {
   await esperar()
   return pagina(copia(db.notificaciones))
+}
+
+// Agente IA: uno por dispositivo; responde con los datos del dispositivo elegido.
+export async function preguntarAgente(pregunta, dispositivo) {
+  await esperar()
+  const d = db.dispositivos.find((x) => x.num === Number(dispositivo)) ?? db.dispositivos[0]
+  if (!/humedad|temperatura|aire|sensor|alerta|dispositivo|pico|bater|conex|lectura/i.test(pregunta)) {
+    return { texto: `Solo puedo responder sobre ${d.nombre} y sus sensores.` }
+  }
+  const variable = /temperatura/i.test(pregunta) ? 'TEMP' : /aire/i.test(pregunta) ? 'AIRE' : 'HUM'
+  const l = db.ultimas[d.num].find((x) => x.variable === variable)
+  const u = db.umbrales.find((x) => x.dispositivo === d.num && x.variable === variable)
+  const valor = Number(l.valor)
+  const nombre = { TEMP: 'La temperatura', HUM: 'La humedad', AIRE: 'La calidad del aire' }[variable]
+  const fuera = valor > Number(u.advertencia_max) || valor < Number(u.advertencia_min)
+  return {
+    texto: `${nombre} de ${d.nombre} está en ${valor.toFixed(variable === 'AIRE' ? 0 : 1)} ${l.unidad}. ${
+      fuera
+        ? `Está fuera del rango recomendado (${Number(u.advertencia_min)}–${Number(u.advertencia_max)} ${l.unidad}); avisa a tu supervisor si sigue subiendo.`
+        : `Se mantiene dentro del rango (${Number(u.advertencia_min)}–${Number(u.advertencia_max)} ${l.unidad}) y no hubo picos en la última hora.`
+    } La batería está al ${d.nivel_bateria} %.`,
+  }
 }
