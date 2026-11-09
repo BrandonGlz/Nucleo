@@ -1,7 +1,46 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Button, Input, Logo, LogoMark } from '../../design-system/componentes/index.js'
+import { Avatar, Button, Input, Logo, LogoMark } from '../../design-system/componentes/index.js'
 import { useSesion } from '../../context/SesionContext'
+import { cuentasDemo, PASSWORD_DEMO } from '../../services/auth'
+import { USAR_MOCKS } from '../../services/config'
+import { nombreCompleto, ROL } from '../../utils/convertir'
+
+const ORDEN_ROL = ['ADMIN', 'SUPER', 'ANALISTA', 'OPER']
+
+// En modo simulado: una tarjeta por cuenta para entrar con un clic y revisar cada rol.
+function CuentasDemo({ entrar, enviando }) {
+  const cuentas = cuentasDemo().sort((a, b) => ORDEN_ROL.indexOf(a.rol) - ORDEN_ROL.indexOf(b.rol))
+  if (!cuentas.length) return null
+  return (
+    <div className="acceso__demo">
+      <span className="ui-eyebrow">
+        Cuentas de prueba · {USAR_MOCKS ? 'cualquier contraseña' : `contraseña ${PASSWORD_DEMO}`}
+      </span>
+      <div className="acceso__demo-lista">
+        {cuentas.map((u) => (
+          <button
+            key={u.num}
+            type="button"
+            className="acceso__demo-cuenta"
+            disabled={enviando}
+            title={u.correo}
+            onClick={() => entrar(u.correo)}
+          >
+            <Avatar name={nombreCompleto(u)} size={28} />
+            <span>
+              <strong>{nombreCompleto(u)}</strong>
+              <small>
+                {ROL[u.rol]}
+                {u.estado_usuario !== 'ACT' ? ' · inactiva' : ''}
+              </small>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 // Inicio de sesión a pantalla completa: lema sobre fondo oscuro y formulario en el panel claro.
 export function AccesoPage() {
@@ -13,25 +52,35 @@ export function AccesoPage() {
   const [error, setError] = useState()
   const [enviando, setEnviando] = useState(false)
 
-  const enviar = async (e) => {
-    e.preventDefault()
+  const entrar = async (c, p) => {
     setError(undefined)
-    if (!correo || !password) {
-      setError('Escribe tu correo y tu contraseña.')
-      return
-    }
     setEnviando(true)
     try {
-      await login(correo, password)
+      await login(c, p)
       navegar(location.state?.desde || '/panel', { replace: true })
     } catch (err) {
       setError(
         err.status === 400 || err.status === 401
           ? 'Correo o contraseña incorrectos. Revisa e intenta de nuevo.'
-          : 'No pudimos conectar con Núcleo. Intenta de nuevo en unos minutos.',
+          : err.status === 403
+            ? 'Tu cuenta está inactiva. Pide al administrador que la active.'
+            : 'No pudimos conectar con Núcleo. Intenta de nuevo en unos minutos.',
       )
       setEnviando(false)
     }
+  }
+  const enviar = (e) => {
+    e.preventDefault()
+    if (!correo || !password) {
+      setError('Escribe tu correo y tu contraseña.')
+      return
+    }
+    entrar(correo, password)
+  }
+  const entrarDemo = (c) => {
+    setCorreo(c)
+    setPassword(PASSWORD_DEMO)
+    entrar(c, PASSWORD_DEMO)
   }
 
   return (
@@ -86,6 +135,7 @@ export function AccesoPage() {
           <p style={{ margin: 0, fontSize: 14, lineHeight: '22px', color: 'var(--text-muted)' }}>
             ¿Necesitas acceso? Pídelo al administrador de tu organización.
           </p>
+          <CuentasDemo entrar={entrarDemo} enviando={enviando} />
         </form>
         <span className="acceso__pie">Núcleo · Monitoreo ambiental</span>
       </div>

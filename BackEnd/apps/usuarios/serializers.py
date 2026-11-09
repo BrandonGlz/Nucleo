@@ -25,11 +25,13 @@ class UsuarioSerializer(serializers.ModelSerializer):
             "segundo_apellido",
             "correo",
             "telefono",
+            "acceso_agente",
             "password",
             "ultimo_acceso",
             "fecha_registro",
         ]
         read_only_fields = ["num", "organizacion", "fecha_registro"]
+        extra_kwargs = {"acceso_agente": {"required": False}}
 
     def validate_password(self, valor):
         validate_password(valor)

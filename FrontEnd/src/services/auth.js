@@ -18,3 +18,26 @@ export async function cambiarPassword(password_actual, password_nueva) {
   if (USAR_MOCKS) return mock.cambiarPassword({ password_actual, password_nueva })
   return pedir(AUTH_CAMBIAR_PASSWORD, { metodo: 'POST', cuerpo: { password_actual, password_nueva } })
 }
+// Cuentas de prueba de la pantalla de acceso. En modo simulado entra cualquier contraseña; con la
+// API real son las de `manage.py sembrar_demo` y solo se muestran si VITE_DEMO_PASSWORD tiene la
+// contraseña con la que se sembraron.
+export const PASSWORD_DEMO = USAR_MOCKS ? 'demo' : import.meta.env.VITE_DEMO_PASSWORD?.trim() || ''
+
+const C = (num, rol, nombre, primer_apellido, estado_usuario = 'ACT') => ({
+  num, rol, nombre, primer_apellido, estado_usuario,
+  correo: `${nombre}.${primer_apellido}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') + '@grupoaltamira.mx',
+})
+const SEMILLA = [
+  C(1, 'ADMIN', 'Andrés', 'Villalobos'),
+  C(2, 'SUPER', 'Yadira', 'Salazar'),
+  C(3, 'SUPER', 'Mariana', 'Cruz'),
+  C(4, 'SUPER', 'Rubén', 'Castillo'),
+  C(5, 'ANALISTA', 'Karla', 'Méndez'),
+  C(6, 'OPER', 'Luis', 'Ortega'),
+  C(7, 'OPER', 'Diana', 'Ríos'),
+  C(8, 'OPER', 'Jorge', 'Ramírez', 'INA'),
+]
+export function cuentasDemo() {
+  if (USAR_MOCKS) return mock.cuentasDemo()
+  return PASSWORD_DEMO ? SEMILLA.map((c) => ({ ...c })) : []
+}

@@ -18,3 +18,7 @@ export async function ultimasLecturas(num) {
   if (USAR_MOCKS) return mock.ultimasLecturas(num)
   return pedir(DISPOSITIVO_ULTIMAS_LECTURAS(num))
 }
+export async function cambiarArea(num, area) {
+  if (USAR_MOCKS) return mock.actualizarDispositivo(num, { area })
+  return pedir(DISPOSITIVO(num), { metodo: 'PATCH', cuerpo: { area } })
+}

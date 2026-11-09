@@ -34,10 +34,19 @@ Ambos hablan solo con la API REST; el navegador no se conecta al broker MQTT.
 4. Cada servicio decide: con `VITE_USE_MOCKS=true` responde `src/services/mock/`, que
    imita cada endpoint con la forma exacta del contrato; si no, llama a la API con el
    token de la sesión. Las rutas salen siempre de `src/api/`.
+   Con la API real, la web abre el canal en vivo (`/ws/panel/`) y recarga alertas,
+   panel y dispositivos cuando llega una alerta o un cambio de estado.
 5. `src/utils/convertir.js` traduce la forma del contrato a las props de los
    componentes (por ejemplo `SINCONEX` → `status="offline"`).
 
-Datos simulados:
+Con la API real (`VITE_USE_MOCKS=false`):
+
+- Las cuentas salen de `manage.py sembrar_demo`. Con `VITE_DEMO_PASSWORD=Nucleo2026` la
+  pantalla de acceso las muestra para entrar con un clic.
+- `manage.py simular_dispositivos` en otra terminal manda lecturas nuevas para ver el
+  «en vivo» sin el ESP32.
+
+Datos simulados (`VITE_USE_MOCKS=true`):
 
 - Cualquier correo y contraseña inician sesión; `error@nucleo.mx` muestra el error de
   credenciales.

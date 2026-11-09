@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { EVENTO } from '../services/tiempoReal'
 
 const FORZABLES = ['cargando', 'vacio', 'error', 'sinConexion']
 // ?estado=cargando|vacio|error|sinConexion fuerza un estado para revisar el diseño.
@@ -9,8 +10,9 @@ export const estadoForzado = () => {
 
 // Carga datos con una función async y expone { estado, datos, error, reintentar, recargar }.
 // estado: 'cargando' | 'listo' | 'vacio' | 'error'. `esVacio(datos)` decide cuándo es 'vacio'
-// y `cadaMs` vuelve a pedir los datos en segundo plano (lecturas «en vivo»).
-export function useDatos(cargar, deps = [], { esVacio, cadaMs } = {}) {
+// y `cadaMs` vuelve a pedir los datos en segundo plano (lecturas «en vivo»). Con `enVivo`
+// también se vuelven a pedir cuando llega un evento del canal en vivo.
+export function useDatos(cargar, deps = [], { esVacio, cadaMs, enVivo } = {}) {
   const [res, setRes] = useState({ estado: 'cargando', datos: null, error: null })
   const [vuelta, setVuelta] = useState(0)
 
@@ -19,6 +21,7 @@ export function useDatos(cargar, deps = [], { esVacio, cadaMs } = {}) {
     if (forzado === 'cargando') return undefined
     let vivo = true
     let timer
+    let pausa
     const traer = (silencioso) => {
       if (!silencioso) setRes((r) => ({ ...r, estado: 'cargando', error: null }))
       cargar()
@@ -35,9 +38,17 @@ export function useDatos(cargar, deps = [], { esVacio, cadaMs } = {}) {
       traer(false)
       if (cadaMs) timer = setInterval(() => traer(true), cadaMs)
     }
+    // Varios eventos seguidos se juntan en una sola consulta.
+    const alEvento = () => {
+      clearTimeout(pausa)
+      pausa = setTimeout(() => traer(true), 800)
+    }
+    if (enVivo) window.addEventListener(EVENTO, alEvento)
     return () => {
       vivo = false
       clearInterval(timer)
+      clearTimeout(pausa)
+      window.removeEventListener(EVENTO, alEvento)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, vuelta])

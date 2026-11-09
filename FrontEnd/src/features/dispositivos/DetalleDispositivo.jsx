@@ -120,7 +120,7 @@ export function DetalleDispositivo() {
   const { num: numDisp } = useParams()
   const navegar = useNavigate()
   const { rol } = useSesion()
-  const { estado, datos, reintentar, actualizar } = useDatos(() => cargar(numDisp), [numDisp], { cadaMs: 30000 })
+  const { estado, datos, reintentar, actualizar } = useDatos(() => cargar(numDisp), [numDisp], { cadaMs: 30000, enVivo: true })
   const [intervalo, setIntervalo] = useState(null)
   const [aviso, setAviso] = useState(null)
 

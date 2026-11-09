@@ -16,10 +16,11 @@ provisional enlazada por la navegación; sus pantallas de negocio son lo que sig
     y la API de usuarios, dispositivos, umbrales, lecturas, alertas y reportes.
     Recibe las lecturas por MQTT, crea alertas, envía el correo y transmite en vivo por
     WebSocket las alertas y los cambios de estado. El token caduca a los 7 días sin uso.
-    Los reportes incluyen gráficas de tendencia en el PDF. El push con Expo está
-    implementado y apagado.
-  - Después: probar el push en un teléfono real, texto de los reportes con IA y agente en
-    lenguaje natural.
+    Los reportes incluyen gráficas de tendencia en el PDF y su texto se redacta a partir
+    de las cifras. Un agente por dispositivo responde preguntas con sus lecturas y alertas.
+    El push con Expo está implementado y apagado.
+  - Después: probar el push en un teléfono real y conectar un servicio de IA para la
+    redacción y el agente.
 - **Web**
   - Hoy: pantalla inicial con el estado de la API y un menú con un módulo por ruta
     (`acceso`, `panel`, `dispositivos`, `mediciones`, `alertas`, `reportes`, `usuarios`,
@@ -148,7 +149,9 @@ Todos los comandos se ejecutan desde la carpeta principal del proyecto.
 - `BackEnd/.venv/bin/pip install -r BackEnd/requirements-dev.txt` — "instala Django, DRF, el cliente MQTT, ReportLab y las herramientas."
 - `cd BackEnd && .venv/bin/python manage.py migrate` — "crea las 16 tablas de `nucleo_db` y carga los catálogos."
 - `cd BackEnd && .venv/bin/python manage.py migrate --database=iot` — "crea la hypertable `lectura` en `nucleo_iot`."
-- `cd BackEnd && .venv/bin/python manage.py sembrar_demo` — "crea datos de ejemplo y muestra una sola vez la contraseña de cada usuario."
+- `cd BackEnd && .venv/bin/python manage.py sembrar_demo` — "crea dos organizaciones con áreas, usuarios de cada rol, 17 dispositivos, 14 días de lecturas, alertas y reportes; todas las cuentas usan la contraseña `Nucleo2026`."
+- `cd BackEnd && .venv/bin/python manage.py sembrar_demo --reiniciar` — "borra los datos (menos los catálogos) y siembra de nuevo."
+- `cd BackEnd && .venv/bin/python manage.py simular_dispositivos` — "simula los ESP32 en servicio: manda lecturas a su intervalo y genera alertas y eventos en vivo; se detiene con `Ctrl+C`."
 - `cd BackEnd && .venv/bin/python manage.py escuchar_mqtt` — "recibe las lecturas del broker; se deja en otra terminal y se detiene con `Ctrl+C`."
 - `cd BackEnd && .venv/bin/python manage.py runserver 0.0.0.0:8000` — "abre la API y el canal en vivo en `http://127.0.0.1:8000`; se detiene con `Ctrl+C`."
 

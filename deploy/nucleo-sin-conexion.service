@@ -1,0 +1,17 @@
+[Unit]
+Description=Núcleo - marca los dispositivos sin conexión (cada 60 s)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=__USUARIO__
+Group=__USUARIO__
+WorkingDirectory=__RAIZ__/BackEnd
+Environment=DJANGO_SETTINGS_MODULE=config.settings.production
+ExecStart=__RAIZ__/BackEnd/.venv/bin/python manage.py marcar_sin_conexion --cada 60
+Restart=always
+RestartSec=10
+MemoryMax=200M
+
+[Install]
+WantedBy=multi-user.target

@@ -1,10 +1,12 @@
 from django.http import HttpResponse
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.reportes import ia, pdf, servicios
+from apps.reportes import agente, ia, pdf, servicios
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.reportes.serializers import (
     ProgramacionReporteSerializer,
@@ -13,7 +15,7 @@ from apps.reportes.serializers import (
 )
 from common import roles
 from common.permissions import PermisoPorRol
-from common.scoping import areas_visibles
+from common.scoping import areas_visibles, dispositivos_visibles
 
 
 class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
@@ -88,3 +90,33 @@ class ProgramacionReporteViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         usuario = self.request.user
         serializer.save(organizacion=usuario.organizacion, creada_por=usuario)
+
+
+class PreguntaAgenteSerializer(serializers.Serializer):
+    pregunta = serializers.CharField(max_length=500)
+    dispositivo = serializers.IntegerField()
+
+
+class AgenteView(APIView):
+    """Agente IA: hay uno por dispositivo y responde con los datos de ese dispositivo.
+
+    Lo usan administradores, supervisores y analistas; un operador, solo si tiene
+    ``acceso_agente`` y sobre el dispositivo que tiene asignado.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.rol_id not in roles.TODOS or not request.user.puede_usar_agente:
+            raise PermissionDenied("No tienes acceso al agente IA.")
+        entrada = PreguntaAgenteSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        dispositivo = (
+            dispositivos_visibles(request.user)
+            .select_related("estado_dispositivo")
+            .filter(pk=entrada.validated_data["dispositivo"])
+            .first()
+        )
+        if dispositivo is None:
+            raise NotFound("El dispositivo no existe o no está a su alcance.")
+        return Response(agente.responder(dispositivo, entrada.validated_data["pregunta"]))
