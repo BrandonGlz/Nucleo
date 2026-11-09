@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Respaldo de Núcleo: pg_dump de nucleo_db y nucleo_iot (TimescaleDB) + usuarios y
 # certificados del broker. Guarda 7 días en ~/respaldos/nucleo y, si rclone tiene el
-# remoto "gdrive", sube a Google Drive (gdrive:servidor/nucleo) y borra allá lo de más de 30 días.
+# remoto "gdrive-nucleo" (o "gdrive"), sube a Google Drive (gdrive:servidor/nucleo) y borra allá lo de más de 30 días.
 # Lo ejecuta el timer nucleo-respaldo.timer; a mano:  bash deploy/respaldar.sh
 set -euo pipefail
 
@@ -21,8 +21,13 @@ chmod 600 "$destino"/*"$fecha"*
 find "$destino" -type f -mtime +7 -delete
 echo "Respaldo local: $destino ($fecha)"
 
-if command -v rclone >/dev/null && rclone listremotes | grep -qx 'gdrive:'; then
-  rclone copy "$destino" gdrive:servidor/nucleo --max-age 2d
-  rclone delete gdrive:servidor/nucleo --min-age 30d
-  echo "Copiado a Google Drive: gdrive:servidor/nucleo"
+# Cada proyecto usa su propia cuenta de Drive (remoto gdrive-nucleo); si no existe, el común gdrive.
+remoto=""
+if command -v rclone >/dev/null; then
+  for r in gdrive-nucleo gdrive; do rclone listremotes | grep -qx "$r:" && { remoto="$r"; break; }; done
+fi
+if [[ -n "$remoto" ]]; then
+  rclone copy "$destino" "$remoto:servidor/nucleo" --max-age 2d
+  rclone delete "$remoto:servidor/nucleo" --min-age 30d
+  echo "Copiado a Google Drive: $remoto:servidor/nucleo"
 fi
