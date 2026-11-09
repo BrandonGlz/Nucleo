@@ -20,10 +20,15 @@ export const guardarToken = (token) => {
   }
 }
 
+// Las listas de la API van paginadas; la interfaz pide hasta 1000 registros por consulta y filtra
+// en el navegador.
+const POR_PAGINA = 1000
+
 // apiRequest con el token de la sesión y el cuerpo en JSON.
 export function pedir(ruta, { metodo = 'GET', cuerpo, params } = {}) {
-  const query = params
-    ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== '')).toString()
+  const todos = metodo === 'GET' ? { page_size: POR_PAGINA, ...params } : params
+  const query = todos
+    ? '?' + new URLSearchParams(Object.entries(todos).filter(([, v]) => v != null && v !== '')).toString()
     : ''
   const token = leerToken()
   return apiRequest(ruta + query, {

@@ -10,6 +10,9 @@ const TEMAS = [
   { id: 'light', label: 'Claro' },
   { id: 'dark', label: 'Oscuro' },
 ]
+const NOTIFICACIONES_MENU = 5
+const fechaCorta = (iso) =>
+  esHoy(iso) ? hora(iso) : new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
 
 // Encabezado de cada pantalla (clases nc-header del sistema de diseño) con los menús de la
 // campana y del avatar. Los menús se cierran al hacer clic fuera o con Escape.
@@ -41,7 +44,7 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
     await logout()
     navegar('/acceso', { replace: true })
   }
-  const deHoy = notificaciones.filter((n) => esHoy(n.fecha)).slice(0, 4)
+  const recientes = notificaciones.slice(0, NOTIFICACIONES_MENU)
   const nombre = nombreCompleto(usuario)
 
   return (
@@ -52,10 +55,6 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
           <h1 className="nc-header__title">{titulo}</h1>
         </div>
         <div className="nc-header__actions">
-          <label className="nc-search">
-            <Icon name="search" size={18} />
-            <input type="search" placeholder="Buscar dispositivo, área…" aria-label="Buscar" />
-          </label>
           {acciones}
           <IconButton
             icon="bell"
@@ -89,14 +88,14 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
             )}
           </div>
           <span className="ui-eyebrow" style={{ padding: '8px 12px 4px' }}>
-            Hoy
+            Recientes
           </span>
-          {deHoy.length === 0 && (
+          {recientes.length === 0 && (
             <span className="ui-muted" style={{ padding: '8px 12px 12px', fontSize: 14 }}>
-              Sin notificaciones hoy.
+              Sin notificaciones.
             </span>
           )}
-          {deHoy.map((n) => (
+          {recientes.map((n) => (
             <button
               key={n.num}
               type="button"
@@ -112,7 +111,7 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
                 <span style={{ fontSize: 12, lineHeight: '18px' }}>{n.meta}</span>
               </div>
               <span className="ui-hora" style={{ fontSize: 12 }}>
-                {hora(n.fecha)}
+                {fechaCorta(n.fecha)}
               </span>
               <span className="ui-punto" />
             </button>
@@ -131,7 +130,7 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
             <Avatar name={nombre} size={44} />
             <div className="ui-titulo-fila">
               <strong>{nombre}</strong>
-              <span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis' }}>{usuario?.correo}</span>
+              <span className="ui-popover__correo">{usuario?.correo}</span>
             </div>
           </div>
           <div className="ui-divisor" style={{ marginTop: 0 }} />

@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import * as auth from '../services/auth'
+import * as organizacionesApi from '../services/organizaciones'
+import { pagina } from '../utils/convertir'
 import { guardarToken, leerToken } from '../services/config'
 
 const SesionContext = createContext(null)
@@ -38,6 +40,20 @@ export function SesionProvider({ children }) {
     return () => mq.removeEventListener('change', cambio)
   }, [])
 
+  // Nombre de la organización del usuario, para los encabezados.
+  const [organizacion, setOrganizacion] = useState('')
+  useEffect(() => {
+    if (!usuario?.organizacion) return undefined
+    let vivo = true
+    organizacionesApi
+      .propia()
+      .then((r) => vivo && setOrganizacion(pagina(r).find((o) => o.num === usuario.organizacion)?.nombre ?? ''))
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [usuario?.organizacion])
+
   const temaAplicado = tema === 'system' ? (oscuroSistema ? 'dark' : 'light') : tema
   useEffect(() => {
     document.documentElement.dataset.theme = temaAplicado
@@ -68,8 +84,8 @@ export function SesionProvider({ children }) {
   }, [])
 
   const valor = useMemo(
-    () => ({ usuario, rol: usuario?.rol, login, logout, tema, temaAplicado, setTema }),
-    [usuario, login, logout, tema, temaAplicado, setTema],
+    () => ({ usuario, rol: usuario?.rol, organizacion, login, logout, tema, temaAplicado, setTema }),
+    [usuario, organizacion, login, logout, tema, temaAplicado, setTema],
   )
   return <SesionContext.Provider value={valor}>{children}</SesionContext.Provider>
 }

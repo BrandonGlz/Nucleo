@@ -104,13 +104,18 @@ componentes con `utils/convertir.js`.
 
 - La sesión simulada acepta cualquier correo y contraseña; `error@nucleo.mx` devuelve
   el error de credenciales y el rol sale de `VITE_MOCK_ROL` (por defecto `SUPER`).
-- Panel, Dispositivos y Detalle vuelven a pedir los datos cada 30 s; el mock varía las
-  lecturas ±0.1 en ese intervalo.
+- Con la API real, `pedir()` agrega `page_size=1000` a cada `GET` y las pantallas
+  desempaquetan `results` con `pagina()`.
+- `services/reportes.js` convierte las cifras que guarda la API (variables y series por
+  código, dispositivos por código MQTT) en la forma de la hoja del reporte: título,
+  lecturas, nombres de dispositivos, una fila por variable y la serie principal.
+- `services/tiempoReal.js` abre `/ws/panel/?token=` al entrar y reenvía cada evento como
+  `nucleo:evento` en `window`. Con un evento de alerta se recargan la campana y el
+  contador; Panel, Dispositivos y Detalle (`useDatos` con `enVivo`) vuelven a pedir sus
+  datos. Además se actualizan cada 30 s; el mock varía las lecturas ±0.1.
 - `?estado=cargando|vacio|error|sinConexion` fuerza un estado de pantalla y
   `?agente=caido` simula el 503 del agente.
-- El contrato no tiene ruta para el agente IA: fuera de los mocks se muestra como no
-  disponible. Tampoco guarda si una notificación se leyó; eso se recuerda en
-  `localStorage`.
+- El contrato no guarda si una notificación se leyó; eso se recuerda en `localStorage`.
 
 ## Configuración de la API
 
@@ -118,9 +123,13 @@ componentes con `utils/convertir.js`.
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
-VITE_USE_MOCKS=true
+VITE_USE_MOCKS=false
 VITE_MOCK_ROL=SUPER
+VITE_DEMO_PASSWORD=Nucleo2026
 ```
+
+Con `VITE_DEMO_PASSWORD`, la pantalla de acceso muestra las cuentas de `sembrar_demo`
+para entrar con un clic; vacía, no aparecen.
 
 `src/services/api/client.js` elimina la barra final, centraliza `fetch` y expone
 errores claros. Si la variable no está definida, usa el mismo valor por defecto
@@ -149,9 +158,5 @@ No hay framework de pruebas. La compilación y el lint (con el único aviso espe
 
 ## Pendientes
 
-- Conectar con la API real (`VITE_USE_MOCKS=false`) y revisar cada pantalla contra el
-  backend.
-- Conectar el canal en vivo `ws/panel/?token=` para alertas y cambios de estado.
-- Definir la ruta del agente IA en el contrato.
 - Añadir pruebas.
 - Definir estrategia de despliegue del build estático.

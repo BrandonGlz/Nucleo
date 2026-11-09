@@ -31,14 +31,25 @@ function iniciarVivo() {
 const rolMock = () => import.meta.env.VITE_MOCK_ROL || 'SUPER'
 const USUARIO_POR_ROL = { ADMIN: 1, SUPER: 2, ANALISTA: 5, OPER: 7 }
 
-// Acceso
+// Acceso: se entra con el correo de cualquier cuenta de datos.js (cualquier contraseña).
+// Un correo desconocido entra con la cuenta del rol de VITE_MOCK_ROL; error@nucleo.mx
+// devuelve el error de credenciales y una cuenta inactiva, el 403.
 export async function login({ correo }) {
   await esperar()
-  if (correo === 'error@nucleo.mx') {
+  const buscado = correo?.trim().toLowerCase()
+  if (buscado === 'error@nucleo.mx') {
     throw new ApiError('La API respondió con el estado 400.', 400)
   }
-  const usuario = db.usuarios.find((u) => u.num === (USUARIO_POR_ROL[rolMock()] ?? 2))
+  const usuario =
+    db.usuarios.find((u) => u.correo === buscado) ??
+    db.usuarios.find((u) => u.num === (USUARIO_POR_ROL[rolMock()] ?? 2))
+  if (usuario.estado_usuario !== 'ACT') throw new ApiError('La API respondió con el estado 403.', 403)
+  usuario.ultimo_acceso = new Date().toISOString()
   return { token: 'mock', usuario: copia(usuario) }
+}
+// Cuentas de prueba que ofrece la pantalla de acceso: una por rol y la inactiva.
+export function cuentasDemo() {
+  return copia(db.usuarios)
 }
 export async function logout() {
   await esperar()
@@ -56,9 +67,48 @@ export async function organizaciones() {
   await esperar()
   return pagina(copia(db.organizaciones))
 }
+export async function actualizarOrganizacion(num, cambios) {
+  await esperar()
+  const o = db.organizaciones.find((x) => x.num === Number(num)) ?? noEncontrado()
+  if (cambios.nombre != null && !String(cambios.nombre).trim()) throw new ApiError('La API respondió con el estado 400.', 400)
+  Object.assign(o, cambios)
+  return copia(o)
+}
 export async function areas() {
   await esperar()
   return pagina(copia(db.areas))
+}
+export async function crearArea(datos) {
+  await esperar()
+  const nombre = datos.nombre?.trim()
+  if (!nombre || db.areas.some((a) => a.nombre.toLowerCase() === nombre.toLowerCase())) {
+    throw new ApiError('La API respondió con el estado 400.', 400)
+  }
+  const nueva = { num: Math.max(0, ...db.areas.map((a) => a.num)) + 1, organizacion: 1, nombre, descripcion: datos.descripcion ?? '' }
+  db.areas.push(nueva)
+  return copia(nueva)
+}
+export async function actualizarArea(num, cambios) {
+  await esperar()
+  const a = db.areas.find((x) => x.num === Number(num)) ?? noEncontrado()
+  const nombre = cambios.nombre?.trim()
+  if (cambios.nombre != null && (!nombre || db.areas.some((x) => x.num !== a.num && x.nombre.toLowerCase() === nombre.toLowerCase()))) {
+    throw new ApiError('La API respondió con el estado 400.', 400)
+  }
+  Object.assign(a, cambios, nombre ? { nombre } : {})
+  return copia(a)
+}
+// Un área con dispositivos o usuarios no se puede borrar (409), como en la API.
+export async function eliminarArea(num) {
+  await esperar()
+  const i = db.areas.findIndex((x) => x.num === Number(num))
+  if (i < 0) noEncontrado()
+  const n = Number(num)
+  if (db.dispositivos.some((d) => d.area === n) || db.usuarios.some((u) => u.area === n)) {
+    throw new ApiError('La API respondió con el estado 409.', 409)
+  }
+  db.areas.splice(i, 1)
+  return null
 }
 export async function usuarios() {
   await esperar()
@@ -96,11 +146,20 @@ export async function dispositivo(num) {
 export async function actualizarDispositivo(num, cambios) {
   await esperar()
   const d = db.dispositivos.find((x) => x.num === Number(num)) ?? noEncontrado()
-  const s = Number(cambios.intervalo_muestreo_seg)
-  if (!(s >= 5 && s <= 120)) {
-    throw new ApiError('La API respondió con el estado 400.', 400)
+  if (cambios.area != null) {
+    if (!db.areas.some((a) => a.num === Number(cambios.area))) throw new ApiError('La API respondió con el estado 400.', 400)
+    d.area = Number(cambios.area)
+    // El operador asignado debe ser del área: al mover el dispositivo se le quita.
+    const op = db.usuarios.find((u) => u.num === d.operador)
+    if (op && op.area !== d.area) d.operador = null
   }
-  d.intervalo_muestreo_seg = s
+  if (cambios.intervalo_muestreo_seg != null) {
+    const s = Number(cambios.intervalo_muestreo_seg)
+    if (!(s >= 5 && s <= 120)) {
+      throw new ApiError('La API respondió con el estado 400.', 400)
+    }
+    d.intervalo_muestreo_seg = s
+  }
   return copia(d)
 }
 export async function ultimasLecturas(num) {
@@ -210,23 +269,34 @@ export async function crearReporte({ area, periodo_inicio, periodo_fin }) {
   return copia(nuevo)
 }
 
-// Agente IA: respuesta fija. Con ?agente=caido en la URL responde 503.
-export async function preguntarAgente(pregunta) {
+// Agente IA: hay un agente por dispositivo (cada ESP32). La respuesta se arma con los datos del
+// dispositivo elegido. Con ?agente=caido en la URL responde 503.
+export async function preguntarAgente(pregunta, dispositivo) {
   await esperar()
   if (new URLSearchParams(window.location.search).get('agente') === 'caido') {
     throw new ApiError('La API respondió con el estado 503.', 503)
   }
-  const fuera = !/humedad|temperatura|aire|sensor|alerta|dispositivo|reporte|pico|área|area/i.test(pregunta)
-  if (fuera) return { texto: 'Solo puedo responder sobre los sensores de tu organización.' }
+  const d = db.dispositivos.find((x) => x.num === Number(dispositivo)) ?? db.dispositivos[4]
+  const fuera = !/humedad|temperatura|aire|sensor|alerta|dispositivo|reporte|pico|área|area|bater|conex/i.test(pregunta)
+  if (fuera) return { texto: `Solo puedo responder sobre ${d.nombre} y sus sensores.` }
+  const variable = /temperatura/i.test(pregunta) ? 'TEMP' : /aire/i.test(pregunta) ? 'AIRE' : 'HUM'
+  const umbral = db.umbrales.find((u) => u.dispositivo === d.num && u.variable === variable)
+  const maximo = Number(umbral.advertencia_max)
+  const actual = Number(db.ultimas[d.num].find((l) => l.variable === variable).valor)
+  const paso = variable === 'AIRE' ? 60 : 1.6
+  const picos = [
+    { cuando: 'Jue 22 · 15:10', valor: Math.max(actual, maximo) + paso * 3 },
+    { cuando: 'Mié 21 · 14:55', valor: maximo + paso * 1.5 },
+    { cuando: 'Lun 19 · 15:20', valor: maximo + paso * 0.6 },
+  ]
+  const base = maximo - paso * 4
+  const etiqueta = { TEMP: 'temperatura', HUM: 'humedad', AIRE: 'calidad del aire' }[variable]
   return {
-    texto: 'Hubo tres lecturas sobre el máximo de humedad esta semana en Núcleo L-07. Todas fueron por la tarde, cerca del cambio de turno.',
-    picos: [
-      { cuando: 'Jue 22 · 15:10', valor: 72.4 },
-      { cuando: 'Mié 21 · 14:55', valor: 66.1 },
-      { cuando: 'Lun 19 · 15:20', valor: 63.8 },
-    ],
-    serie: [52, 63.8, 51, 54, 66.1, 52, 55, 72.4, 58, 53],
-    unidad: '%HR',
-    maximo: 60,
+    texto: `Hubo tres lecturas sobre el máximo de ${etiqueta} esta semana en ${d.nombre}. Todas fueron por la tarde, cerca del cambio de turno.`,
+    picos,
+    serie: [base, picos[2].valor, base - paso, base + paso, picos[1].valor, base, base + paso * 2, picos[0].valor, base + paso * 3, base + paso],
+    unidad: UNIDAD_VAR[variable],
+    maximo,
   }
 }
+const UNIDAD_VAR = { TEMP: '°C', HUM: '%HR', AIRE: 'ppm' }

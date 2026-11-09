@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import * as alertasApi from '../services/alertas'
+import { EVENTO, escucharPanel } from '../services/tiempoReal'
 import { limiteAlerta, NIVEL_ALERTA, pagina, tituloAlerta, valorAlerta } from '../utils/convertir'
 
 const AvisosContext = createContext(null)
@@ -36,6 +37,17 @@ export function AvisosProvider({ children }) {
   }, [vuelta])
 
   const recargar = useCallback(() => setVuelta((v) => v + 1), [])
+
+  // Canal en vivo: una alerta nueva o resuelta vuelve a pedir alertas y notificaciones.
+  useEffect(() => {
+    const cerrar = escucharPanel()
+    const alEvento = (e) => e.detail?.tipo?.startsWith('alerta.') && recargar()
+    window.addEventListener(EVENTO, alEvento)
+    return () => {
+      window.removeEventListener(EVENTO, alEvento)
+      cerrar()
+    }
+  }, [recargar])
 
   const notificaciones = useMemo(() => {
     const porNum = new Map(alertas.map((a) => [a.num, a]))

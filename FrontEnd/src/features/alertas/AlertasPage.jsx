@@ -124,7 +124,7 @@ function Detalle({ a, usuarios, editable, alResolver }) {
 }
 
 export function AlertasPage() {
-  const { rol } = useSesion()
+  const { rol, organizacion } = useSesion()
   const avisos = useAvisos()
   const { estado, datos, reintentar, actualizar } = useDatos(() => cargar(rol), [rol])
   const [pestana, setPestana] = useState('PENDIENTE')
@@ -164,7 +164,7 @@ export function AlertasPage() {
 
   return (
     <Pantalla
-      eyebrow={datos ? `Grupo Altamira · ${pendientes.length} pendientes · ${pendientes.filter((a) => a.nivel === 'PELIGRO').length} crítica` : 'Grupo Altamira'}
+      eyebrow={datos ? `${organizacion} · ${pendientes.length} pendientes · ${pendientes.filter((a) => a.nivel === 'PELIGRO').length} crítica` : organizacion}
       titulo="Alertas"
       cifras={cifras}
     >

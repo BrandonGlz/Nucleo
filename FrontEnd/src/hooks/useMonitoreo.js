@@ -6,7 +6,8 @@ import { pagina } from '../utils/convertir'
 import { useDatos } from './useDatos'
 
 // Todo lo que necesitan Panel y Dispositivos: dispositivos con sus últimas lecturas, umbrales,
-// áreas y alertas. Se vuelve a pedir cada 30 s para mostrar las lecturas «en vivo».
+// áreas y alertas. Se vuelve a pedir cada 30 s para mostrar las lecturas «en vivo» y al
+// llegar una alerta o un cambio de estado por el canal en vivo.
 export async function cargarMonitoreo() {
   const [disp, umb, areas, alertas] = await Promise.all([
     dispositivosApi.lista(),
@@ -25,4 +26,4 @@ export async function cargarMonitoreo() {
 }
 
 export const useMonitoreo = (opciones = {}) =>
-  useDatos(cargarMonitoreo, [], { cadaMs: 30000, ...opciones })
+  useDatos(cargarMonitoreo, [], { cadaMs: 30000, enVivo: true, ...opciones })
