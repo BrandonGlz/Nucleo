@@ -306,3 +306,42 @@ Si un commit necesita muchas líneas para explicarse, probablemente son varios c
 - La API exige token (caduca a los 7 días sin uso) y limita cada respuesta a la organización y al rol del usuario.
 - Las contraseñas de los usuarios se guardan cifradas.
 - No se deben guardar contraseñas ni claves en el código.
+
+## Servidor
+
+Núcleo está publicado en **https://nucleo.tailb3f7d8.ts.net** (web) y
+**https://nucleo.tailb3f7d8.ts.net/api/v1** (API de la app). Corre en un servidor propio: una
+laptop con Debian 13 sin escritorio (4 GB de RAM, disco de 698 GB) que funciona como VPS casero.
+
+**Cómo llega una visita**
+
+```text
+Navegador o app ──HTTPS──▶ Tailscale Funnel ──▶ Caddy :8081 ──┬─▶ web compilada (FrontEnd/dist)
+ (cualquier red)          (máquina "nucleo")   (127.0.0.1)    ├─▶ /static
+                                                               └─▶ /api, /ws, /admin ──▶ Daphne :8001
+                                                                     │
+                       PostgreSQL · TimescaleDB · Redis · Mosquitto ◀┘  (Docker, solo 127.0.0.1)
+```
+
+- **Publicación:** el contenedor `nucleo_tailscale` es una máquina de Tailscale propia
+  (`nucleo`) que, con Funnel, da la URL `https`, el certificado y el puerto 443 sin dominio ni
+  puertos abiertos en el router; se entra desde cualquier red.
+- **Web:** Vite la compila contra la API real y Caddy la sirve como archivos estáticos.
+- **API y tiempo real:** Daphne atiende HTTP y WebSocket (`/ws/panel/`) como servicio
+  `nucleo-daphne`; Redis reparte los eventos en vivo.
+- **Lecturas:** `nucleo-mqtt` recibe las lecturas del broker Mosquitto (TLS) y las guarda en
+  TimescaleDB; `nucleo-sin-conexion` marca los dispositivos que dejan de reportar.
+- **Reportes:** `nucleo-reportes.timer` genera cada 15 minutos los reportes programados, con el
+  texto redactado por `IA_PROVEEDOR=local`.
+- **Correo:** Gmail por SMTP con una contraseña de aplicación de la cuenta del proyecto.
+- **Respaldos:** `nucleo-respaldo.timer` respalda a diario las dos bases y la configuración del
+  broker: 7 días en el servidor y 30 en Google Drive.
+- **Disponibilidad:** todos los servicios arrancan con el equipo y se reinician solos; los
+  contenedores tienen límite de memoria para caber en 4 GB. El equipo no se suspende con la tapa
+  cerrada ni por inactividad, usa el cable si está conectado y el Wi-Fi como respaldo.
+
+**Actualizar el servidor** después de subir cambios a `dev`: desde el servidor,
+`bash deploy/desplegar.sh` (trae `dev`, migra, recompila y reinicia).
+
+El acceso por SSH desde cualquier red, los comandos de operación y la instalación desde cero
+están en [`deploy/README.md`](deploy/README.md).

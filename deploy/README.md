@@ -42,8 +42,6 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
 - Caddy sirve la web compilada y pasa `/api`, `/admin` y `/ws` a Daphne (`127.0.0.1:8001`).
 - systemd: `nucleo-daphne` (API y WebSocket), `nucleo-mqtt` (lecturas del broker),
   `nucleo-sin-conexion`, `nucleo-reportes.timer` (cada 15 min) y `nucleo-respaldo.timer` (diario).
-- El puerto 10000 de Funnel queda reservado para que los ESP32 lleguen al broker MQTT desde
-  cualquier red.
 - La laptop no se suspende con la tapa cerrada ni por inactividad, y NetworkManager usa el cable
   si está conectado y el Wi-Fi como respaldo.
 
@@ -51,20 +49,20 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
 
 Todos desde la laptop, en `/var/www/html/Nucleo`:
 
-- `bash deploy/desplegar.sh` — "trae los cambios de `dev` y reinstala; se puede repetir."
-- `systemctl status nucleo-daphne nucleo-mqtt caddy --no-pager` — "estado de los servicios."
-- `journalctl -u nucleo-daphne -n 50 --no-pager` — "últimos mensajes de la API."
-- `docker ps` — "contenedores: postgres, timescaledb, redis, mosquitto y tailscale."
-- `docker exec nucleo_tailscale tailscale --socket=/tmp/tailscaled.sock funnel status` — "qué publica la máquina `nucleo`."
-- `bash deploy/respaldar.sh` — "respaldo inmediato en `~/respaldos/nucleo` y en Drive (`gdrive-nucleo:servidor/nucleo`)."
+- `bash deploy/desplegar.sh` — trae los cambios de `dev` y reinstala; se puede repetir.
+- `systemctl status nucleo-daphne nucleo-mqtt caddy --no-pager` — estado de los servicios.
+- `journalctl -u nucleo-daphne -n 50 --no-pager` — últimos mensajes de la API.
+- `docker ps` — contenedores: postgres, timescaledb, redis, mosquitto y tailscale.
+- `docker exec nucleo_tailscale tailscale --socket=/tmp/tailscaled.sock funnel status` — qué publica la máquina `nucleo`.
+- `bash deploy/respaldar.sh` — respaldo inmediato en `~/respaldos/nucleo` y en Drive (`gdrive-nucleo:servidor/nucleo`).
 
 ## Instalación desde cero
 
 1. Copia los respaldos a `~/traspaso` y corre `bash deploy/restaurar.sh ~/traspaso`.
-2. `bash deploy/configurar_env.sh` — "crea `BackEnd/.env`; pide la contraseña de aplicación de Gmail."
+2. `bash deploy/configurar_env.sh` — crea `BackEnd/.env`; pide la contraseña de aplicación de Gmail.
 3. Agrega `TS_AUTHKEY=tskey-auth-…` al `.env` raíz (clave *Reusable* de
    https://login.tailscale.com/admin/settings/keys).
-4. `bash deploy/instalar.sh` — "dependencias, migraciones, build de la web, Caddy, servicios y Funnel."
+4. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios y Funnel.
 5. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file`.
 
 | Archivo | Para qué |
