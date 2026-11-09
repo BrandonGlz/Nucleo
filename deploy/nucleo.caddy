@@ -1,0 +1,27 @@
+# Núcleo: Funnel del contenedor nucleo_tailscale (https://nucleo.<tailnet>.ts.net) -> Caddy 127.0.0.1:8081
+# __RAIZ__ lo reemplaza deploy/instalar.sh por la carpeta del proyecto.
+# /media no se publica: los PDF de reportes se descargan por la API con token.
+http://:8081 {
+	bind 127.0.0.1
+	encode zstd gzip
+
+	# API, canal en vivo (WebSocket) y admin de Django (daphne)
+	@django path /api/* /ws/* /admin/*
+	handle @django {
+		reverse_proxy 127.0.0.1:8001 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	handle_path /static/* {
+		root * __RAIZ__/BackEnd/staticfiles
+		file_server
+	}
+
+	# Web de React (vite build)
+	handle {
+		root * __RAIZ__/FrontEnd/dist
+		try_files {path} /index.html
+		file_server
+	}
+}
