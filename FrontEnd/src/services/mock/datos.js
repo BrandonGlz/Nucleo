@@ -43,7 +43,10 @@ const U = (num, area, rol, nombre, primer, segundo, estado, accesoSeg) => ({
   segundo_apellido: segundo,
   correo: `${nombre}.${primer}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') + '@grupoaltamira.mx',
   telefono: '', ultimo_acceso: accesoSeg == null ? null : hace(accesoSeg), fecha_registro: '2026-08-02T16:00:00Z',
+  // Los operadores usan el agente IA en la app solo si un administrador o supervisor se lo permite.
+  acceso_agente: rol !== 'OPER' || num === 6,
 })
+// En modo simulado se entra con el correo de cualquiera de estas cuentas y cualquier contraseña.
 export const usuarios = [
   U(1, null, 'ADMIN', 'Andrés', 'Villalobos', 'Ruiz', 'ACT', 10),
   U(2, 2, 'SUPER', 'Yadira', 'Salazar', 'Uribe', 'ACT', 5 * MIN),

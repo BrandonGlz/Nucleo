@@ -1,9 +1,9 @@
-import { ApiError } from './api/client'
-import { USAR_MOCKS } from './config'
+import { AGENTE } from '../api'
+import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
 
-// El contrato todavía no tiene una ruta para el agente: fuera de los mocks se muestra como no disponible.
-export async function preguntar(pregunta) {
-  if (USAR_MOCKS) return mock.preguntarAgente(pregunta)
-  throw new ApiError('El agente todavía no está disponible en la API.', 503)
+// Hay un agente por dispositivo: la pregunta va al del dispositivo elegido.
+export async function preguntar(pregunta, dispositivo) {
+  if (USAR_MOCKS) return mock.preguntarAgente(pregunta, dispositivo)
+  return pedir(AGENTE, { metodo: 'POST', cuerpo: { pregunta, dispositivo } })
 }

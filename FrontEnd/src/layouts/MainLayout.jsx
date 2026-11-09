@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Avatar, Icon, Logo } from '../design-system/componentes/index.js'
+import { AgenteProvider } from '../context/AgenteContext'
 import { AvisosProvider, useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
 import { modulos } from '../features'
 import { limiteAlerta, nombreCompleto, ROL, tituloAlerta, valorAlerta } from '../utils/convertir'
 import { haceCuanto, hora } from '../utils/formato'
 
-const SECCIONES = ['Monitoreo', 'Análisis', 'Configuración']
+const SECCIONES = ['Monitoreo', 'Análisis', 'Áreas', 'Configuración']
 
 // Alerta crítica pendiente más reciente: se ve en todas las pantallas, sobre la tarjeta del usuario.
 function AlertaCritica() {
@@ -87,12 +88,14 @@ function MenuLateral() {
 export function MainLayout() {
   return (
     <AvisosProvider>
-      <div className="app">
-        <MenuLateral />
-        <main className="app__main">
-          <Outlet />
-        </main>
-      </div>
+      <AgenteProvider>
+        <div className="app">
+          <MenuLateral />
+          <main className="app__main">
+            <Outlet />
+          </main>
+        </div>
+      </AgenteProvider>
     </AvisosProvider>
   )
 }

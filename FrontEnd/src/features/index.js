@@ -1,11 +1,11 @@
 import { AccesoPage } from './acceso/AccesoPage'
 import { AgentePage } from './agente/AgentePage'
 import { AlertasPage } from './alertas/AlertasPage'
+import { AreasPage } from './areas/AreasPage'
 import { DetalleDispositivo } from './dispositivos/DetalleDispositivo'
 import { DispositivosPage } from './dispositivos/DispositivosPage'
 import { MedicionesPage } from './mediciones/MedicionesPage'
 import { NotificacionesPage } from './notificaciones/NotificacionesPage'
-import { OrganizacionesPage } from './organizaciones/OrganizacionesPage'
 import { PanelPage } from './panel/PanelPage'
 import { PerfilPage } from './perfil/PerfilPage'
 import { ReportesPage } from './reportes/ReportesPage'
@@ -25,7 +25,7 @@ export const modulos = [
   { ruta: '/agente', titulo: 'Agente IA', Pagina: AgentePage, seccion: 'Análisis', icono: 'sparkles' },
   { ruta: '/umbrales', titulo: 'Umbrales', Pagina: UmbralesPage, seccion: 'Configuración', icono: 'sliders-horizontal' },
   { ruta: '/usuarios', titulo: 'Usuarios', Pagina: UsuariosPage, seccion: 'Configuración', icono: 'users', roles: ['ADMIN', 'SUPER'] },
-  { ruta: '/organizaciones', titulo: 'Organización', Pagina: OrganizacionesPage, seccion: 'Configuración', icono: 'building-2', roles: ['ADMIN'] },
+  { ruta: '/areas', titulo: 'Empresa y áreas', Pagina: AreasPage, seccion: 'Áreas', icono: 'map-pin', roles: ['ADMIN', 'SUPER'] },
   { ruta: '/perfil', titulo: 'Mi perfil', Pagina: PerfilPage },
   { ruta: '/notificaciones', titulo: 'Notificaciones', Pagina: NotificacionesPage },
 ]

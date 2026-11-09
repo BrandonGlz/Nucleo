@@ -1,14 +1,20 @@
+import { useSesion } from '../../context/SesionContext'
 import { useState } from 'react'
+import { RotateCcw, Trash2 } from 'lucide-react'
 import {
-  BarChart, Badge, Button, Card, Icon, IconCircle, IconButton, Logo, Select, Skeleton,
+  Badge, Button, Card, IconCircle, IconButton, Skeleton,
 } from '../../design-system/componentes/index.js'
+import { Desplegable } from '../../components/Desplegable'
 import { EstadoError } from '../../components/EstadoError'
+import { DashboardReporte, ListaTarjetas } from './DashboardReporte'
+import { ESTANDAR, useEdicion } from './personalizacion'
+import { descargarPdf } from './pdf'
 import { Pantalla } from '../../components/Pantalla'
 import { useDatos } from '../../hooks/useDatos'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as reportesApi from '../../services/reportes'
-import { pagina, UNIDAD, VARIABLE } from '../../utils/convertir'
-import { fechaLarga, hora, mesAnio, miles, periodo } from '../../utils/formato'
+import { pagina } from '../../utils/convertir'
+import { fechaLarga, periodo } from '../../utils/formato'
 
 const FRECUENCIA = { DIARIA: 'Cada día 08:00', SEMANAL: 'Cada lunes 08:00', MENSUAL: 'Día 1 de cada mes' }
 
@@ -17,88 +23,20 @@ async function cargar() {
   return { reportes: pagina(r), programaciones: pagina(p), areas: pagina(a) }
 }
 
-function Vista({ r, areas }) {
-  const c = r.cifras
-  const serieVar = c.serie?.variable
-  return (
-    <article className="nc-card" style={{ flex: 'none', width: 640, boxSizing: 'border-box', padding: '48px 52px', boxShadow: 'var(--shadow-md)', display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Logo size={24} />
-        <Button variant="secondary" size="sm" icon="download" onClick={() => window.open(r.archivo_pdf, '_blank')}>
-          Descargar PDF
-        </Button>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span className="ui-eyebrow">
-          Reporte · generado {fechaLarga(r.fecha_generacion)}, {hora(r.fecha_generacion)}
-        </span>
-        <h2 style={{ margin: 0, fontSize: 26, lineHeight: '32px', fontWeight: 700, letterSpacing: '-0.02em', textWrap: 'pretty' }}>
-          {c.titulo} · {mesAnio(r.periodo_inicio)}
-        </h2>
-        <span className="ui-muted" style={{ fontSize: 13 }}>
-          {periodo(r.periodo_inicio, r.periodo_fin)} · {areas.find((a) => a.num === r.area)?.nombre ?? 'Todas las áreas'} · {c.dispositivos.join(', ')}
-        </span>
-      </div>
-      <table className="nc-table" style={{ width: '100%' }}>
-        <thead>
-          <tr>
-            <th>Variable</th>
-            <th>Mín</th>
-            <th>Prom</th>
-            <th>Máx</th>
-            <th>Alertas</th>
-          </tr>
-        </thead>
-        <tbody>
-          {c.variables.map((v) => {
-            const d = VARIABLE[v.variable].decimales
-            const f = (x) => `${Number(x).toFixed(d)} ${UNIDAD[v.variable]}`
-            return (
-              <tr key={v.variable}>
-                <td>
-                  <strong className="ui-strong">{VARIABLE[v.variable].etiqueta}</strong>
-                </td>
-                <td className="ui-num">{f(v.minimo)}</td>
-                <td className="ui-num">{f(v.promedio)}</td>
-                <td className="ui-num">{f(v.maximo)}</td>
-                <td className="ui-num ui-strong">{v.alertas}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      {c.serie && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>
-            {c.serie.etiqueta} · {UNIDAD[serieVar]}
-          </span>
-          <BarChart
-            data={c.serie.puntos.map(([label, value]) => ({ label, value }))}
-            unit={UNIDAD[serieVar]}
-            height={150}
-            decimals={VARIABLE[serieVar].decimales}
-          />
-        </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, lineHeight: '22px', color: 'var(--text-secondary)' }}>
-        {r.contenido.split('\n\n').map((p) => (
-          <p key={p.slice(0, 24)} style={{ margin: 0, textWrap: 'pretty' }}>
-            {p}
-          </p>
-        ))}
-      </div>
-      <div className="ui-muted" style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 12, lineHeight: '18px' }}>
-        <Icon name="sparkles" size={16} />
-        <span>Cifras calculadas a partir de {miles(c.lecturas)} lecturas registradas. El texto fue redactado con IA.</span>
-      </div>
-    </article>
-  )
-}
+// Generar un reporte eligiendo formato, área y periodo. «Nuevo formato» convierte el modal en
+// el editor de formatos (tarjetas a la izquierda y hoja A4 de muestra a la derecha, con los
+// datos del reporte seleccionado); al guardarlo queda elegido para este reporte.
+const TODAS = 'todas'
 
-function NuevoReporte({ areas, cerrar, creado }) {
-  const [area, setArea] = useState('')
+function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado }) {
+  const [area, setArea] = useState(null)
   const [rango, setRango] = useState('mes')
+  const [formato, setFormato] = useState(ed.formato.id)
+  const [nombre, setNombre] = useState('')
   const [estado, setEstado] = useState(null)
+  const creando = ed.modo === 'nuevo' && ed.editando
+  // La hoja de muestra del editor usa un reporte del área elegida, si ya hay uno.
+  const muestra = reportes.find((r) => area && area !== TODAS && r.area === Number(area)) ?? elegido
   const crear = async () => {
     setEstado('enviando')
     const fin = new Date()
@@ -106,12 +44,67 @@ function NuevoReporte({ areas, cerrar, creado }) {
     if (rango === 'mes') inicio.setDate(1)
     else inicio.setDate(fin.getDate() - 7)
     try {
-      const r = await reportesApi.crear({ area: area || null, periodo_inicio: inicio.toISOString(), periodo_fin: fin.toISOString() })
-      creado(r)
+      // «Todas las áreas» genera un reporte por cada área, todos con el mismo formato.
+      const destino = area === TODAS ? areas.map((a) => String(a.num)) : [area]
+      const nuevos = []
+      for (const a of destino)
+        nuevos.push(await reportesApi.crear({ area: a, periodo_inicio: inicio.toISOString(), periodo_fin: fin.toISOString() }))
+      creado(nuevos, formato)
     } catch (e) {
       setEstado(e.status === 503 ? 'El servicio de IA no está disponible. Intenta más tarde.' : 'No se pudo generar el reporte.')
     }
   }
+
+  if (creando)
+    return (
+      <div className="ui-modal" role="dialog" aria-modal="true" aria-label="Nuevo formato">
+        <div className="ui-modal__caja ui-modal__caja--editor">
+          <div className="ui-modal__cabeza-editor">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2>Nuevo formato</h2>
+              <p className="ui-muted" style={{ margin: '4px 0 0', fontSize: 14 }}>
+                Elige las tarjetas, sus gráficas y sus datos. La hoja de la derecha usa los datos de «{muestra?.cifras.titulo}» como
+                muestra.
+              </p>
+            </div>
+            <label className="nc-field ui-formato-nombre">
+              <span className="nc-field__label">Nombre del formato</span>
+              <span className="nc-input">
+                <input
+                  autoFocus
+                  value={nombre}
+                  placeholder="p. ej. Resumen para dirección"
+                  onChange={(e) => setNombre(e.target.value)}
+                />
+              </span>
+            </label>
+            <Button variant="ghost" onClick={ed.restablecer}>
+              <RotateCcw size={16} /> Restablecer
+            </Button>
+            <Button variant="secondary" onClick={ed.cancelar}>
+              Volver
+            </Button>
+            <Button
+              icon="circle-check"
+              disabled={!nombre.trim()}
+              onClick={() => {
+                setFormato(ed.crearFormato(nombre.trim()))
+                setNombre('')
+              }}
+            >
+              Guardar formato
+            </Button>
+          </div>
+          <div className="ui-modal__editor">
+            <div className="ui-modal__tarjetas">
+              <ListaTarjetas ed={ed} />
+            </div>
+            <div className="ui-visor nc-scroll">{muestra && <DashboardReporte r={muestra} areas={areas} ed={ed} />}</div>
+          </div>
+        </div>
+      </div>
+    )
+
   return (
     <div className="ui-modal" role="dialog" aria-modal="true" aria-label="Generar reporte">
       <div className="ui-modal__caja">
@@ -125,33 +118,45 @@ function NuevoReporte({ areas, cerrar, creado }) {
           <IconButton icon="x" label="Cerrar" variant="ghost" onClick={cerrar} />
         </div>
         <div className="ui-grid-2">
-          <Select
+          <Desplegable
             label="Área"
             icon="map-pin"
             value={area}
-            onChange={(e) => setArea(e.target.value)}
-            options={[{ value: '', label: 'Todas las áreas' }, ...areas.map((a) => ({ value: String(a.num), label: a.nombre }))]}
+            onChange={setArea}
+            placeholder="Elige un área"
+            options={[
+              ...areas.map((a) => ({ value: String(a.num), label: a.nombre })),
+              { value: TODAS, label: `Todas · ${areas.length} reportes` },
+            ]}
           />
-          <Select
+          <Desplegable
             label="Periodo"
             icon="calendar"
             value={rango}
-            onChange={(e) => setRango(e.target.value)}
+            onChange={setRango}
+            disabled={!area}
             options={[
               { value: 'mes', label: 'Este mes' },
               { value: 'semana', label: 'Últimos 7 días' },
             ]}
           />
         </div>
-        {estado && estado !== 'enviando' && (
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--danger)' }}>{estado}</p>
-        )}
+        <Desplegable
+          label="Formato"
+          icon="file-text"
+          value={formato}
+          onChange={setFormato}
+          disabled={!area}
+          options={ed.formatos.map((f) => ({ value: f.id, label: f.nombre }))}
+          accion={{ label: 'Nuevo formato', icon: 'plus', onClick: ed.nuevo }}
+        />
+        {estado && estado !== 'enviando' && <p style={{ margin: 0, fontSize: 13, color: 'var(--danger)' }}>{estado}</p>}
         <div className="ui-acciones ui-separado" style={{ paddingTop: 16 }}>
           <Button variant="ghost" onClick={cerrar}>
             Cancelar
           </Button>
-          <Button icon="sparkles" disabled={estado === 'enviando'} onClick={crear}>
-            {estado === 'enviando' ? 'Generando…' : 'Generar reporte'}
+          <Button icon="sparkles" disabled={!area || estado === 'enviando'} onClick={crear}>
+            {estado === 'enviando' ? 'Generando…' : area === TODAS ? `Generar ${areas.length} reportes` : 'Generar reporte'}
           </Button>
         </div>
       </div>
@@ -160,104 +165,162 @@ function NuevoReporte({ areas, cerrar, creado }) {
 }
 
 export function ReportesPage() {
+  const { organizacion } = useSesion()
   const { estado, datos, reintentar, actualizar } = useDatos(cargar, [])
   const [elegido, setElegido] = useState(null)
   const [modal, setModal] = useState(false)
   const reportes = datos?.reportes ?? []
   const actual = reportes.find((r) => r.num === elegido) ?? reportes[0]
+  const ed = useEdicion(actual?.num)
+  // Mientras se crea un formato en el modal, la página de fondo sigue en vista normal.
+  const edPagina = ed.modo === 'nuevo' ? { ...ed, editando: false } : ed
   const nombreArea = (n) => datos?.areas.find((a) => a.num === n)?.nombre ?? 'Todas las áreas'
-
-  const cifras = datos
-    ? {
-        principal: { etiqueta: 'Reportes', valor: reportes.length + datos.programaciones.length, unidad: 'en total', sub: 'Cifras de las lecturas · texto redactado con IA' },
-        cifras: [
-          { etiqueta: 'Recientes', valor: reportes.length, tono: 'lima' },
-          { etiqueta: 'Programados por correo', valor: datos.programaciones.filter((p) => p.activa).length },
-        ],
-      }
-    : { principal: { etiqueta: 'Reportes', valor: '—', tonoValor: 'apagado' } }
 
   return (
     <Pantalla
-      eyebrow="Grupo Altamira · cifras del sistema, texto redactado con IA"
+      eyebrow={`${organizacion} · cifras del sistema, texto redactado con IA`}
       titulo="Reportes"
       acciones={
         <Button icon="sparkles" onClick={() => setModal(true)}>
           Generar reporte
         </Button>
       }
-      cifras={cifras}
     >
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
         <div className="ui-fila" style={{ gridTemplateColumns: '400px minmax(0,1fr)' }}>
-          <Card className="nc-grow">
-            <div className="nc-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span className="ui-eyebrow" style={{ padding: '12px 12px 6px' }}>
-                Recientes
-              </span>
-              {reportes.map((r) => (
-                <button
-                  key={r.num}
-                  type="button"
-                  className={`ui-item ui-item--boton${actual?.num === r.num ? ' is-selected' : ''}`}
-                  style={{ alignItems: 'flex-start', gap: 12, padding: 12 }}
-                  onClick={() => setElegido(r.num)}
-                >
-                  <IconCircle name="file-text" size="sm" />
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div className="ui-titulo-fila">
-                      <strong style={{ fontSize: 14, lineHeight: '20px' }}>
-                        {r.cifras.titulo.replace(/ en /, ' · ')}
-                      </strong>
-                      <span style={{ fontSize: 12, lineHeight: '16px' }}>{periodo(r.periodo_inicio, r.periodo_fin)}</span>
+          <div className="ui-col">
+            {actual && (
+              <Card>
+                {edPagina.editando ? (
+                  <>
+                    <span className="ui-eyebrow">Personalizando el formato</span>
+                    <strong className="ui-acciones-reporte__titulo">{ed.formato.nombre}</strong>
+                    <div className="ui-acciones-reporte ui-acciones-reporte--tres">
+                      <Button variant="ghost" size="sm" onClick={ed.restablecer}>
+                        <RotateCcw size={16} /> Restablecer
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={ed.cancelar}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button size="sm" icon="circle-check" onClick={ed.guardar}>
+                        Guardar
+                      </Button>
                     </div>
-                    <div>
-                      <Badge tone="success" icon="circle-check">
-                        {r.origen === 'PROGRAMADO' ? 'Enviado por correo' : 'Listo'}
-                      </Badge>
+                    {ed.formato.id !== ESTANDAR && (
+                      <div className="ui-formato-extra">
+                        <button type="button" className="is-peligro" onClick={() => ed.eliminar(ed.formato.id)}>
+                          <Trash2 size={14} /> Eliminar formato
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="ui-eyebrow">Reporte seleccionado</span>
+                    <strong className="ui-acciones-reporte__titulo">{actual.cifras.titulo}</strong>
+                    <Desplegable
+                      label="Formato"
+                      icon="file-text"
+                      value={ed.formato.id}
+                      onChange={(v) => ed.asignar(actual.num, v)}
+                      options={ed.formatos.map((f) => ({ value: f.id, label: f.nombre }))}
+                    />
+                    <div className="ui-acciones-reporte" style={{ marginTop: 12 }}>
+                      <Button variant="secondary" size="sm" icon="sliders-horizontal" onClick={ed.abrir}>
+                        Personalizar
+                      </Button>
+                      <Button size="sm" icon="download" onClick={() => descargarPdf(`${actual.cifras.titulo} · ${ed.formato.nombre}`)}>
+                        Descargar PDF
+                      </Button>
                     </div>
-                  </div>
-                </button>
-              ))}
-              <span className="ui-eyebrow" style={{ padding: '12px 12px 6px' }}>
-                Programados por correo
-              </span>
-              {datos.programaciones.map((p) => (
-                <div key={p.num} className="ui-item" style={{ alignItems: 'flex-start', gap: 12, padding: 12 }}>
-                  <IconCircle name="calendar-clock" size="sm" />
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div className="ui-titulo-fila">
-                      <strong style={{ fontSize: 14, lineHeight: '20px' }}>
-                        Resumen {p.frecuencia.toLowerCase()} · {nombreArea(p.area)}
-                      </strong>
-                      <span style={{ fontSize: 12, lineHeight: '16px' }}>
-                        {FRECUENCIA[p.frecuencia]} · a {p.destinatarios.length} responsables
-                      </span>
+                  </>
+                )}
+              </Card>
+            )}
+            {edPagina.editando ? (
+              <Card className="nc-grow">
+                <ListaTarjetas ed={edPagina} />
+              </Card>
+            ) : (
+              <Card className="nc-grow">
+                <div className="nc-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span className="ui-eyebrow" style={{ padding: '12px 12px 6px' }}>
+                    Recientes
+                  </span>
+                  {reportes.map((r) => (
+                    <button
+                      key={r.num}
+                      type="button"
+                      className={`ui-item ui-item--boton${actual?.num === r.num ? ' is-selected' : ''}`}
+                      style={{ alignItems: 'flex-start', gap: 12, padding: 12 }}
+                      onClick={() => setElegido(r.num)}
+                    >
+                      <IconCircle name="file-text" size="sm" />
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div className="ui-titulo-fila">
+                          <strong style={{ fontSize: 14, lineHeight: '20px' }}>
+                            {r.cifras.titulo.replace(/ en /, ' · ')}
+                          </strong>
+                          <span style={{ fontSize: 12, lineHeight: '16px' }}>{periodo(r.periodo_inicio, r.periodo_fin)}</span>
+                        </div>
+                        <div>
+                          <Badge tone="success" icon="circle-check">
+                            {r.origen === 'PROGRAMADO' ? 'Enviado por correo' : 'Listo'}
+                          </Badge>
+                          <span className="ui-muted ui-formato-etiqueta">Formato: {ed.formatoDe(r.num).nombre}</span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <span className="ui-eyebrow" style={{ padding: '12px 12px 6px' }}>
+                    Programados por correo
+                  </span>
+                  {datos.programaciones.map((p) => (
+                    <div key={p.num} className="ui-item" style={{ alignItems: 'flex-start', gap: 12, padding: 12 }}>
+                      <IconCircle name="calendar-clock" size="sm" />
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div className="ui-titulo-fila">
+                          <strong style={{ fontSize: 14, lineHeight: '20px' }}>
+                            Resumen {p.frecuencia.toLowerCase()} · {nombreArea(p.area)}
+                          </strong>
+                          <span style={{ fontSize: 12, lineHeight: '16px' }}>
+                            {FRECUENCIA[p.frecuencia]} · a {p.destinatarios.length} responsables
+                          </span>
+                        </div>
+                        <div>
+                          <Badge tone="neutral" icon="calendar-clock">
+                            Próximo {fechaLarga(p.proxima_ejecucion)}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <Badge tone="neutral" icon="calendar-clock">
-                        Próximo {fechaLarga(p.proxima_ejecucion)}
-                      </Badge>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </Card>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minWidth: 0, minHeight: 0, overflow: 'auto' }}>
-            {actual && <Vista r={actual} areas={datos.areas} />}
+              </Card>
+            )}
           </div>
+          <div className="ui-visor nc-scroll">{actual && (
+              <DashboardReporte r={actual} areas={datos.areas} ed={edPagina} />
+            )}</div>
         </div>
       )}
       {modal && datos && (
         <NuevoReporte
           areas={datos.areas}
+          reportes={reportes}
+          ed={ed}
+          muestra={actual}
           cerrar={() => setModal(false)}
-          creado={(r) => {
-            actualizar((d) => ({ ...d, reportes: [r, ...d.reportes] }))
-            setElegido(r.num)
+          creado={(nuevos, formato) => {
+            ed.asignar(nuevos.map((r) => r.num), formato)
+            actualizar((d) => ({ ...d, reportes: [...nuevos.reverse(), ...d.reportes] }))
+            setElegido(nuevos[0].num)
             setModal(false)
           }}
         />
