@@ -24,10 +24,22 @@ if [[ -n "$archivos" ]]; then
 fi
 [[ -f "$raiz/.env" ]] || { echo "Falta .env en la raíz del proyecto"; exit 1; }
 
+# Una base recién creada arranca un servidor temporal para inicializarse, lo apaga y arranca el
+# definitivo; el healthcheck ya pasa con el temporal. Se espera al mensaje del arranque definitivo.
+listo() {
+  local i
+  for i in $(seq 60); do
+    docker logs "$1" 2>&1 | grep -qE 'init process complete; ready for start up|Skipping initialization' \
+      && docker exec "$1" pg_isready -q && return 0
+    sleep 2
+  done
+  echo "$1 no terminó de arrancar"; exit 1
+}
 sql() { docker exec "$1" sh -c 'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "$1"' _ "$2"; }
 tablas() { sql "$1" "select count(*) from information_schema.tables where table_schema = 'public'"; }
 
 [[ -n "${NUCLEO_SIN_COMPOSE:-}" ]] || (cd "$raiz" && docker compose up -d --wait postgres timescaledb redis)
+listo "$pg"; listo "$ts"
 for c in "$pg" "$ts"; do
   n="$(tablas "$c")"
   if [[ "$n" != 0 ]]; then
