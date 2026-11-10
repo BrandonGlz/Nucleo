@@ -14,6 +14,14 @@ function TrendChart(p) {
     W = wr[1];
   var id = useId().replace(/:/g, '');
   var hover = useState(p.activeIndex != null ? p.activeIndex : data.length - 1);
+  // Sin puntos no hay línea que dibujar: se muestra un aviso en lugar de la gráfica
+  if (!data.length) {
+    return h('div', {
+      ref: ref,
+      className: cx('nc-trend', 'nc-trend--vacia', p.className),
+      style: { height: H }
+    }, p.vacio || 'Sin lecturas en este periodo');
+  }
   var padL = 44,
     padR = 16,
     padT = 16,

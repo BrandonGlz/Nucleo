@@ -64,3 +64,10 @@ export const periodo = (inicio, fin) => {
 // Número con decimales fijos; el contrato manda los decimales como texto ("71.00").
 export const num = (v, decimales = 1) => (v == null || v === '' ? '—' : Number(v).toFixed(decimales))
 export const miles = (n) => Number(n).toLocaleString('es-MX').replace(/,/g, ' ')
+
+// Punto de una serie de lecturas para las gráficas: en «hoy» el eje muestra la hora; en 7 y 30 días, la fecha.
+export const puntoSerie = (p, periodo = 'hoy') => ({
+  label: periodo === 'hoy' ? hora(p.periodo) : fechaCorta(p.periodo),
+  time: periodo === '30' ? fechaCorta(p.periodo) : `${fechaCorta(p.periodo)} · ${hora(p.periodo)}`,
+  value: Number(p.promedio),
+})

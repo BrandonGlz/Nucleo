@@ -179,7 +179,7 @@ input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
 .nc-hero__status { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px 0 10px; border-radius: var(--radius-full); background: var(--accent-contrast); color: var(--accent); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .nc-hero__reading { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
 .nc-hero__value { font-size: 72px; line-height: 72px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
-.nc-hero__unit { font-size: 28px; font-weight: 700; }
+.nc-hero__unit { margin-left: 0.25em; font-size: 28px; font-weight: 700; }
 .nc-hero__vlabel { flex-basis: 100%; font-size: 13px; font-weight: 500; color: var(--accent-contrast-soft); }
 .nc-hero__metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--space-3); }
 .nc-hero__metric { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.14); }
@@ -195,6 +195,7 @@ input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
 /* Charts */
 .nc-trend, .nc-bars { position: relative; width: 100%; }
 .nc-trend svg, .nc-bars svg { display: block; overflow: visible; }
+.nc-trend--vacia { display: flex; align-items: center; justify-content: center; min-height: 120px; box-sizing: border-box; border: 1px dashed var(--border); border-radius: 16px; color: var(--text-muted); font-size: 14px; text-align: center; }
 .nc-trend__grid { stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 4; }
 .nc-trend__axis { fill: var(--text-muted); font-size: 11px; font-weight: 500; font-family: var(--font-sans); }
 .nc-trend__axis.is-active { fill: var(--text-primary); font-weight: 700; }
@@ -301,7 +302,7 @@ input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
 .nc-table tbody tr:last-child td { border-bottom: 0; }
 .nc-table__device { display: flex; align-items: center; gap: var(--space-3); }
 .nc-table__device strong, .nc-table__last strong { display: block; color: var(--text-primary); font-weight: 600; line-height: 20px; }
-.nc-table__device span, .nc-table__last span { display: block; font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.nc-table__device span:not(.nc-avatar):not(.nc-iconcircle), .nc-table__last span:not(.nc-avatar):not(.nc-iconcircle) { display: block; font-size: 12px; line-height: 16px; color: var(--text-muted); }
 .nc-table__loc { display: inline-flex; align-items: center; gap: 4px; }
 .nc-table-skel { display: flex; align-items: center; gap: var(--space-6); padding: var(--space-3); border-bottom: 1px solid var(--border); }
 

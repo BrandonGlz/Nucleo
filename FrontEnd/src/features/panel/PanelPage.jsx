@@ -14,7 +14,7 @@ import * as lecturasApi from '../../services/lecturas'
 import {
   enLinea, limiteAlerta, NIVEL_ALERTA, nivelLectura, statusDispositivo, tituloAlerta, valorAlerta, VARIABLE,
 } from '../../utils/convertir'
-import { haceCuanto, hora, hoyTexto, num } from '../../utils/formato'
+import { haceCuanto, hora, hoyTexto, num, puntoSerie } from '../../utils/formato'
 
 const lectura = (d, v) => d.lecturas.find((l) => l.variable === v)
 // La lectura que saca al dispositivo de rango (o la temperatura si todo está bien).
@@ -67,8 +67,9 @@ const CIFRAS_CARGANDO = {
 
 function Tendencia({ dispositivo, umbral }) {
   const [periodo, setPeriodo] = useState('Hoy')
-  const { datos } = useDatos(() => lecturasApi.serie(dispositivo.num, 'TEMP'), [dispositivo.num, periodo])
-  const data = (datos ?? []).map((p) => ({ label: hora(p.periodo), time: `Hoy · ${hora(p.periodo)}`, value: Number(p.promedio) }))
+  const clave = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }[periodo]
+  const { datos } = useDatos(() => lecturasApi.serie(dispositivo.num, 'TEMP', clave), [dispositivo.num, clave])
+  const data = (datos ?? []).map((p) => puntoSerie(p, clave))
   return (
     <Card className="nc-grow ui-tendencia">
       <div className="nc-card__head" style={{ marginBottom: 12 }}>
@@ -80,8 +81,9 @@ function Tendencia({ dispositivo, umbral }) {
         </div>
         <PeriodFilter value={periodo} onChange={setPeriodo} />
       </div>
-      {data.length ? (
-        <GraficaAjustable data={data} unit="°C" threshold={{ max: Number(umbral?.peligro_max) }} minimo={60} />
+      {datos ? (
+        <GraficaAjustable data={data} unit="°C" threshold={{ max: Number(umbral?.peligro_max) }} minimo={60}
+          vacio={`Sin lecturas de ${dispositivo.nombre} en este periodo`} />
       ) : (
         <Skeleton height={120} />
       )}

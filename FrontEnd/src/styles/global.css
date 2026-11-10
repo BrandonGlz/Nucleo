@@ -201,6 +201,7 @@ button.ui-link {
   white-space: nowrap;
 }
 .nc-ink__unidad {
+  margin-left: 0.3em;
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -1016,7 +1017,7 @@ button.ui-menuitem:hover {
 }
 @media (max-height: 820px) {
   .ui-col > .ui-tendencia {
-    min-height: 150px;
+    min-height: 240px;
   }
 }
 

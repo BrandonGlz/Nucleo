@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
     DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
-    DB_CONN_MAX_AGE=(int, 60),
+    DB_CONN_MAX_AGE=(int, 0),
     DJANGO_LOG_LEVEL=(str, "INFO"),
 )
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False, encoding="utf-8")

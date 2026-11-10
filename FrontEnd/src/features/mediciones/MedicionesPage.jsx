@@ -10,7 +10,7 @@ import * as lecturasApi from '../../services/lecturas'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as umbralesApi from '../../services/umbrales'
 import { nivelLectura, pagina, rangoUmbral, UNIDAD, VARIABLE } from '../../utils/convertir'
-import { fechaCorta, hora, horaSeg, miles, num } from '../../utils/formato'
+import { fechaCorta, horaSeg, miles, num, puntoSerie } from '../../utils/formato'
 import { useSesion } from '../../context/SesionContext'
 
 const PERIODOS = [
@@ -23,10 +23,10 @@ async function cargarCatalogo() {
   const [d, a] = await Promise.all([dispositivosApi.lista(), organizacionesApi.areas()])
   return { dispositivos: pagina(d), areas: pagina(a) }
 }
-async function cargarLecturas(disp, variable) {
+async function cargarLecturas(disp, variable, periodo) {
   const [serie, lect, umb] = await Promise.all([
-    lecturasApi.serie(disp, variable),
-    lecturasApi.lista({ dispositivo: disp }),
+    lecturasApi.serie(disp, variable, periodo),
+    lecturasApi.lista({ dispositivo: disp, desde: lecturasApi.rangoPeriodo(periodo).desde }),
     umbralesApi.lista(disp),
   ])
   return { serie, lecturas: pagina(lect), umbrales: pagina(umb) }
@@ -54,7 +54,7 @@ export function MedicionesPage() {
   // Mientras no se elige uno, se muestra el primer dispositivo del alcance del usuario.
   const disp = elegido || String(dispositivos[0]?.num ?? '')
   const lect = useDatos(
-    () => (disp ? cargarLecturas(disp, variable) : new Promise(() => {})),
+    () => (disp ? cargarLecturas(disp, variable, periodo) : new Promise(() => {})),
     [disp, variable, periodo],
   )
 
@@ -65,28 +65,29 @@ export function MedicionesPage() {
   const unidad = UNIDAD[variable]
   const u = lect.datos?.umbrales.find((x) => x.variable === variable)
 
+  const nombrePeriodo = PERIODOS.find((p) => p.value === periodo).label.toLowerCase()
   const vista = useMemo(() => {
     if (!lect.datos) return null
-    const serie = lect.datos.serie.map((p) => ({ label: hora(p.periodo), time: hora(p.periodo), value: Number(p.promedio) }))
+    const serie = lect.datos.serie.map((p) => puntoSerie(p, periodo))
     const valores = lect.datos.serie.map((p) => Number(p.promedio))
     const max = Math.max(...valores)
     const min = Math.min(...valores)
     const prom = valores.reduce((a, b) => a + b, 0) / (valores.length || 1)
     const sobre = u ? lect.datos.serie.filter((p) => Number(p.promedio) > Number(u.peligro_max)) : []
     return { serie, max, min, prom, sobre, filas: filasPorMomento(lect.datos.lecturas) }
-  }, [lect.datos, u])
+  }, [lect.datos, u, periodo])
 
-  const cifras = vista
+  const cifras = vista?.serie.length
     ? {
         principal: {
-          etiqueta: `${info.etiqueta} · hoy · ${actual?.nombre ?? ''}`,
+          etiqueta: `${info.etiqueta} · ${nombrePeriodo} · ${actual?.nombre ?? ''}`,
           valor: num(vista.max, info.decimales),
           unidad,
           tonoUnidad: vista.sobre.length ? 'peligro' : undefined,
           tonoSub: vista.sobre.length ? 'peligro' : 'verde',
           sub: vista.sobre.length
-            ? `Máximo del día · ${vista.sobre.length * 30} min sobre el máximo · desde las ${hora(vista.sobre[0].periodo)}`
-            : `Máximo del día · en rango ${rangoUmbral(u, unidad)}`,
+            ? `Máximo · ${vista.sobre.length} ${periodo === '30' ? 'días' : 'horas'} sobre el máximo · desde ${vista.serie[lect.datos.serie.indexOf(vista.sobre[0])].time}`
+            : `Máximo · en rango ${rangoUmbral(u, unidad)}`,
         },
         cifras: [
           { etiqueta: 'Mínimo', valor: num(vista.min, info.decimales), unidad },
@@ -94,7 +95,14 @@ export function MedicionesPage() {
           { etiqueta: 'Lecturas', valor: miles(lect.datos.lecturas.length / 3), sub: `Cada ${actual?.intervalo_muestreo_seg ?? 30} s` },
         ],
       }
-    : { principal: { etiqueta: info.etiqueta, valor: '--.-', tonoValor: 'apagado', sub: 'Cargando lecturas…' } }
+    : {
+        principal: {
+          etiqueta: info.etiqueta,
+          valor: '--.-',
+          tonoValor: 'apagado',
+          sub: vista ? `Sin lecturas de ${actual?.nombre ?? 'este dispositivo'} en este periodo` : 'Cargando lecturas…',
+        },
+      }
 
   return (
     <Pantalla eyebrow={`${organizacion} · lecturas cada ${actual?.intervalo_muestreo_seg ?? 30} s`} titulo="Histórico" cifras={cifras}>
@@ -135,7 +143,7 @@ export function MedicionesPage() {
           <Card className="nc-grow">
             <div className="nc-card__head" style={{ marginBottom: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 className="nc-card__title">{info.etiqueta} · hoy</h3>
+                <h3 className="nc-card__title">{info.etiqueta} · {nombrePeriodo}</h3>
                 <p className="nc-card__sub">
                   {actual?.nombre} · umbral {rangoUmbral(u, unidad)}
                 </p>
@@ -147,6 +155,7 @@ export function MedicionesPage() {
                 unit={unidad}
                 threshold={u ? { min: Number(u.peligro_min), max: Number(u.peligro_max) } : undefined}
                 minimo={160}
+                vacio={`Sin lecturas de ${actual?.nombre ?? 'este dispositivo'} en este periodo`}
               />
             ) : (
               <Skeleton height={160} />
@@ -174,6 +183,13 @@ export function MedicionesPage() {
                   </tr>
                 </thead>
                 <tbody>
+                  {vista && !vista.filas.length && (
+                    <tr>
+                      <td colSpan={5} className="ui-muted" style={{ textAlign: 'center', padding: '32px 0' }}>
+                        Sin lecturas en este periodo
+                      </td>
+                    </tr>
+                  )}
                   {(vista?.filas ?? []).map((f) => {
                     const peor = ['TEMP', 'HUM', 'AIRE']
                       .map((v) => nivelLectura(f[v], lect.datos.umbrales.find((x) => x.variable === v)))

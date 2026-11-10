@@ -17,7 +17,7 @@ import * as usuariosApi from '../../services/usuarios'
 import {
   enLinea, nivelLectura, nombreCompleto, pagina, puedeEditar, rangoUmbral, UNIDAD, VARIABLE,
 } from '../../utils/convertir'
-import { fechaLarga, haceCuanto, hora, num } from '../../utils/formato'
+import { fechaLarga, haceCuanto, hora, num, puntoSerie } from '../../utils/formato'
 
 const SENSOR = {
   OPERA: ['success', 'circle-check', 'Operando'],
@@ -87,27 +87,29 @@ function cifrasDetalle({ d, lecturas, umbrales }, sinConexion) {
 
 function Grafica({ d, umbrales, variable }) {
   const [periodo, setPeriodo] = useState('Hoy')
-  const { datos } = useDatos(() => lecturasApi.serie(d.num, variable), [d.num, variable, periodo])
+  const clave = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }[periodo]
+  const { datos } = useDatos(() => lecturasApi.serie(d.num, variable, clave), [d.num, variable, clave])
   const u = umbrales.find((x) => x.variable === variable)
   const info = VARIABLE[variable]
-  const data = (datos ?? []).map((p) => ({ label: hora(p.periodo), time: `Hoy · ${hora(p.periodo)}`, value: Number(p.promedio) }))
+  const data = (datos ?? []).map((p) => puntoSerie(p, clave))
   return (
     <Card className="nc-grow">
       <div className="nc-card__head" style={{ marginBottom: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 className="nc-card__title">{info.etiqueta} · hoy</h3>
+          <h3 className="nc-card__title">{info.etiqueta} · {periodo.toLowerCase()}</h3>
           <p className="nc-card__sub">
             {enLinea(d) ? `Umbral ${rangoUmbral(u, UNIDAD[variable])}` : `Sin lecturas desde las ${hora(d.ultima_conexion)}`}
           </p>
         </div>
         <PeriodFilter value={periodo} onChange={setPeriodo} />
       </div>
-      {data.length ? (
+      {datos ? (
         <GraficaAjustable
           data={data}
           unit={UNIDAD[variable]}
           threshold={u ? { min: Number(u.peligro_min), max: Number(u.peligro_max) } : undefined}
           minimo={140}
+          vacio={`Sin lecturas de ${d.nombre} en este periodo`}
         />
       ) : (
         <Skeleton height={140} />

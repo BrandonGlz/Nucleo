@@ -33,7 +33,13 @@ const leerPrefs = () => {
 }
 
 async function cargar(usuario) {
-  const [d, a, p] = await Promise.all([dispositivosApi.lista(), organizacionesApi.areas(), reportesApi.programaciones().catch(() => [])])
+  // El operador no tiene acceso a reportes: no se piden sus programaciones
+  const verReportes = usuario.rol !== 'OPER'
+  const [d, a, p] = await Promise.all([
+    dispositivosApi.lista(),
+    organizacionesApi.areas(),
+    verReportes ? reportesApi.programaciones().catch(() => []) : [],
+  ])
   const dispositivos = pagina(d).filter((x) => !usuario.area || x.area === usuario.area)
   return {
     dispositivos,
