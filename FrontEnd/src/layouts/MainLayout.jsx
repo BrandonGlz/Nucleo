@@ -3,11 +3,11 @@ import { Avatar, Icon, Logo } from '../design-system/componentes/index.js'
 import { AgenteProvider } from '../context/AgenteContext'
 import { AvisosProvider, useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
-import { modulos } from '../features'
+import { modulos, puedeVer } from '../features'
 import { limiteAlerta, nombreCompleto, ROL, tituloAlerta, valorAlerta } from '../utils/convertir'
 import { haceCuanto, hora } from '../utils/formato'
 
-const SECCIONES = ['Monitoreo', 'Análisis', 'Áreas', 'Configuración']
+const SECCIONES = ['Plataforma', 'Monitoreo', 'Análisis', 'Áreas', 'Configuración']
 
 // Alerta crítica pendiente más reciente: se ve en todas las pantallas, sobre la tarjeta del usuario.
 function AlertaCritica() {
@@ -42,7 +42,7 @@ function AlertaCritica() {
 function MenuLateral() {
   const { usuario, rol } = useSesion()
   const { pendientes } = useAvisos()
-  const visibles = modulos.filter((m) => m.seccion && (!m.roles || m.roles.includes(rol)))
+  const visibles = modulos.filter((m) => m.seccion && puedeVer(m, rol))
   return (
     <nav className="nc-sidebar" aria-label="Navegación principal">
       <div className="nc-sidebar__brand">

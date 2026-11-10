@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useSesion } from './SesionContext'
 import * as agenteApi from '../services/agente'
 import * as dispositivosApi from '../services/dispositivos'
 import { pagina } from '../utils/convertir'
@@ -37,8 +38,11 @@ export function AgenteProvider({ children }) {
   const [dispositivos, setDispositivos] = useState([])
   const [agente, setAgenteEstado] = useState(() => leer(CLAVE_AGENTE, null))
   const turno = useRef(0)
+  const { usuario } = useSesion()
+  const conOrganizacion = Boolean(usuario?.organizacion)
 
   useEffect(() => {
+    if (!conOrganizacion) return undefined
     let vivo = true
     dispositivosApi
       .lista()
@@ -47,7 +51,7 @@ export function AgenteProvider({ children }) {
     return () => {
       vivo = false
     }
-  }, [])
+  },[conOrganizacion])
 
   // Si no hay agente elegido (o ya no existe), se usa el del primer dispositivo.
   const agenteValido = dispositivos.some((d) => d.num === agente) ? agente : (dispositivos[0]?.num ?? null)

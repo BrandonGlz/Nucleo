@@ -74,6 +74,19 @@ export async function actualizarOrganizacion(num, cambios) {
   Object.assign(o, cambios)
   return copia(o)
 }
+export async function crearOrganizacion(datos) {
+  await esperar()
+  if (!String(datos.nombre ?? '').trim()) throw new ApiError('La API respondió con el estado 400.', 400)
+  const o = { num: Math.max(0, ...db.organizaciones.map((x) => x.num)) + 1, estado: 'ACTIVA', fecha_registro: new Date().toISOString(), ...datos }
+  db.organizaciones.push(o)
+  return copia(o)
+}
+export async function primerAdministrador(num, datos) {
+  await esperar()
+  if (!db.organizaciones.some((x) => x.num === Number(num))) noEncontrado()
+  const { password: _p, ...resto } = datos
+  return { num: 1000 + Number(num), rol: 'ADMIN', organizacion: Number(num), ...resto }
+}
 export async function areas() {
   await esperar()
   return pagina(copia(db.areas))

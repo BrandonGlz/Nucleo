@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import {
-  Avatar, Badge, Button, Card, IconButton, IconCircle, Input, Skeleton, StatusBadge, Tabs,
+  Avatar, Badge, Button, Card, IconCircle, Input, Skeleton, StatusBadge, Tabs,
 } from '../../design-system/componentes/index.js'
 import { Desplegable } from '../../components/Desplegable'
 import { EstadoError } from '../../components/EstadoError'
 import { MenuAcciones } from '../../components/MenuAcciones'
+import { Modal } from '../../components/Modal'
 import { Pantalla } from '../../components/Pantalla'
 import { useSesion } from '../../context/SesionContext'
 import { useDatos } from '../../hooks/useDatos'
@@ -35,33 +36,6 @@ const CAMPOS_EMPRESA = [
   ['ciudad', 'Ciudad'],
   ['telefono', 'Teléfono'],
 ]
-
-function Modal({ titulo, sub, cerrar, children, acciones }) {
-  return (
-    <div className="ui-modal" role="dialog" aria-modal="true" aria-label={titulo} onMouseDown={(e) => e.target === e.currentTarget && cerrar()}>
-      <div className="ui-modal__caja">
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <h2>{titulo}</h2>
-            {sub && (
-              <p className="ui-muted" style={{ margin: '4px 0 0', fontSize: 14, lineHeight: '22px' }}>
-                {sub}
-              </p>
-            )}
-          </div>
-          <IconButton icon="x" label="Cerrar" variant="ghost" onClick={cerrar} />
-        </div>
-        {children}
-        <div className="ui-acciones ui-separado" style={{ paddingTop: 16 }}>
-          <Button variant="ghost" onClick={cerrar}>
-            Cancelar
-          </Button>
-          {acciones}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function EditarEmpresa({ org, cerrar, guardado }) {
   const [f, setF] = useState(() => Object.fromEntries(CAMPOS_EMPRESA.map(([k]) => [k, org[k] ?? ''])))

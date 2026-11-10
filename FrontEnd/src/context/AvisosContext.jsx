@@ -22,12 +22,14 @@ const leerLeidas = () => {
 export function AvisosProvider({ children }) {
   const { usuario } = useSesion()
   const todas = usuario?.rol === 'ADMIN'
+  const conOrganizacion = Boolean(usuario?.organizacion)
   const [alertas, setAlertas] = useState([])
   const [notifs, setNotifs] = useState([])
   const [leidas, setLeidas] = useState(leerLeidas)
   const [vuelta, setVuelta] = useState(0)
 
   useEffect(() => {
+    if (!conOrganizacion) return undefined
     let vivo = true
     Promise.all([alertasApi.lista(), alertasApi.notificaciones()])
       .then(([a, n]) => {
@@ -39,12 +41,13 @@ export function AvisosProvider({ children }) {
     return () => {
       vivo = false
     }
-  }, [vuelta])
+  }, [vuelta, conOrganizacion])
 
   const recargar = useCallback(() => setVuelta((v) => v + 1), [])
 
   // Canal en vivo: una alerta nueva o resuelta vuelve a pedir alertas y notificaciones.
   useEffect(() => {
+    if (!conOrganizacion) return undefined
     const cerrar = escucharPanel()
     const alEvento = (e) => e.detail?.tipo?.startsWith('alerta.') && recargar()
     window.addEventListener(EVENTO, alEvento)
@@ -52,7 +55,7 @@ export function AvisosProvider({ children }) {
       window.removeEventListener(EVENTO, alEvento)
       cerrar()
     }
-  }, [recargar])
+  }, [recargar, conOrganizacion])
 
   const notificaciones = useMemo(() => {
     const porNum = new Map(alertas.map((a) => [a.num, a]))

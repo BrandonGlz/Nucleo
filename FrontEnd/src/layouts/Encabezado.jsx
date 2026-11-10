@@ -20,7 +20,9 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
   const [menu, setMenu] = useState(null)
   const ref = useRef(null)
   const navegar = useNavigate()
-  const { usuario, logout, temaAplicado, setTema } = useSesion()
+  const { usuario, rol, logout, temaAplicado, setTema } = useSesion()
+  // El administrador de plataforma no tiene alertas, notificaciones ni perfil de organización.
+  const plataforma = rol === 'ADMINPLAT'
   const { notificaciones, noLeidas, marcarLeidas } = useAvisos()
 
   useEffect(() => {
@@ -56,13 +58,15 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
         </div>
         <div className="nc-header__actions">
           {acciones}
-          <IconButton
-            icon="bell"
-            label="Notificaciones"
-            badge={noLeidas || undefined}
-            aria-expanded={menu === 'notif'}
-            onClick={() => setMenu(menu === 'notif' ? null : 'notif')}
-          />
+          {!plataforma && (
+            <IconButton
+              icon="bell"
+              label="Notificaciones"
+              badge={noLeidas || undefined}
+              aria-expanded={menu === 'notif'}
+              onClick={() => setMenu(menu === 'notif' ? null : 'notif')}
+            />
+          )}
           <button
             type="button"
             className="ui-avatar-btn"
@@ -134,19 +138,23 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
             </div>
           </div>
           <div className="ui-divisor" style={{ marginTop: 0 }} />
-          <button type="button" role="menuitem" className="ui-menuitem" onClick={() => ir('/perfil')}>
-            <Icon name="user" size={18} />
-            Ver perfil
-          </button>
-          <button type="button" role="menuitem" className="ui-menuitem" onClick={() => ir('/notificaciones')}>
-            <Icon name="bell" size={18} />
-            Notificaciones
-            {noLeidas > 0 && (
-              <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'var(--danger)' }}>
-                {noLeidas}
-              </span>
-            )}
-          </button>
+          {!plataforma && (
+            <>
+              <button type="button" role="menuitem" className="ui-menuitem" onClick={() => ir('/perfil')}>
+                <Icon name="user" size={18} />
+                Ver perfil
+              </button>
+              <button type="button" role="menuitem" className="ui-menuitem" onClick={() => ir('/notificaciones')}>
+                <Icon name="bell" size={18} />
+                Notificaciones
+                {noLeidas > 0 && (
+                  <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'var(--danger)' }}>
+                    {noLeidas}
+                  </span>
+                )}
+              </button>
+            </>
+          )}
           <div className="ui-menuitem" style={{ justifyContent: 'space-between', cursor: 'default' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Icon name="settings" size={18} />

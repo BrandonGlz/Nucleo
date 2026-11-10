@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Avatar, Button, Input, Logo, LogoMark } from '../../design-system/componentes/index.js'
 import { useSesion } from '../../context/SesionContext'
+import { inicioDe } from '../index'
 import { cuentasDemo, PASSWORD_DEMO } from '../../services/auth'
 import { USAR_MOCKS } from '../../services/config'
 import { nombreCompleto, ROL } from '../../utils/convertir'
@@ -56,8 +57,8 @@ export function AccesoPage() {
     setError(undefined)
     setEnviando(true)
     try {
-      await login(c, p)
-      navegar(location.state?.desde || '/panel', { replace: true })
+      const u = await login(c, p)
+      navegar(location.state?.desde || inicioDe(u?.rol), { replace: true })
     } catch (err) {
       setError(
         err.status === 400 || err.status === 401

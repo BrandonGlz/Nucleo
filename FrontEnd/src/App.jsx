@@ -1,24 +1,24 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useSesion } from './context/SesionContext'
-import { acceso, modulos } from './features'
+import { acceso, inicioDe, modulos, puedeVer } from './features'
 import { MainLayout } from './layouts/MainLayout'
 import { HomePage } from './pages/HomePage'
 
-// Sin sesión, cualquier ruta del marco lleva a /acceso; un rol sin permiso vuelve al panel.
-function Protegida({ roles, children }) {
+// Sin sesión, cualquier ruta del marco lleva a /acceso; un rol sin permiso vuelve a su inicio.
+function Protegida({ modulo, children }) {
   const { usuario, rol } = useSesion()
   const location = useLocation()
   if (!usuario) return <Navigate to="/acceso" replace state={{ desde: location.pathname }} />
-  if (roles && !roles.includes(rol)) return <Navigate to="/panel" replace />
+  if (modulo && !puedeVer(modulo, rol)) return <Navigate to={inicioDe(rol)} replace />
   return children
 }
 
 function App() {
-  const { usuario } = useSesion()
+  const { usuario, rol } = useSesion()
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={usuario ? '/panel' : '/acceso'} replace />} />
-      <Route path={acceso.ruta} element={usuario ? <Navigate to="/panel" replace /> : <acceso.Pagina />} />
+      <Route path="/" element={<Navigate to={usuario ? inicioDe(rol) : '/acceso'} replace />} />
+      <Route path={acceso.ruta} element={usuario ? <Navigate to={inicioDe(rol)} replace /> : <acceso.Pagina />} />
       <Route path="/estado" element={<HomePage />} />
       <Route
         element={
@@ -27,13 +27,13 @@ function App() {
           </Protegida>
         }
       >
-        {modulos.map(({ ruta, Pagina, roles }) => (
+        {modulos.map((m) => (
           <Route
-            key={ruta}
-            path={ruta}
+            key={m.ruta}
+            path={m.ruta}
             element={
-              <Protegida roles={roles}>
-                <Pagina />
+              <Protegida modulo={m}>
+                <m.Pagina />
               </Protegida>
             }
           />
