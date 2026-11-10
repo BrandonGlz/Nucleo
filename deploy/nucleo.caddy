@@ -13,6 +13,16 @@ http://:8081 {
 		}
 	}
 
+	# APK de la app móvil (fuera de git): se copia a __RAIZ__/descargas; ver deploy/README.md
+	handle_path /app/* {
+		root * __RAIZ__/descargas
+		@apk path *.apk
+		header @apk Content-Type application/vnd.android.package-archive
+		header @apk Content-Disposition attachment
+		header Cache-Control no-cache
+		file_server
+	}
+
 	handle_path /static/* {
 		root * __RAIZ__/BackEnd/staticfiles
 		file_server

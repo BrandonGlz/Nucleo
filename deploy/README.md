@@ -56,6 +56,17 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 - `docker exec nucleo_tailscale tailscale --socket=/tmp/tailscaled.sock funnel status` — qué publica la máquina `nucleo`.
 - `bash deploy/respaldar.sh` — respaldo inmediato en `~/respaldos/nucleo` y en Drive (`gdrive-nucleo:servidor/nucleo`).
 
+### App móvil (APK)
+
+El APK se descarga en `https://nucleo.<tailnet>.ts.net/app/nucleo.apk`. Caddy entrega la carpeta
+`descargas/` del proyecto, que no va a git. Para publicar una versión nueva:
+
+1. Compilar con la API de producción (perfil `piloto` de `Mobile/eas.json`): en `Mobile/`,
+   `npx expo prebuild --platform android --clean` y `cd android && ./gradlew assembleRelease`, con
+   `EXPO_PUBLIC_API_BASE_URL=https://nucleo.<tailnet>.ts.net/api/v1` y `EXPO_PUBLIC_USE_MOCKS=false`.
+2. Copiar `android/app/build/outputs/apk/release/app-release.apk` a `descargas/nucleo.apk` en la laptop.
+   El enlace no cambia y no hace falta reiniciar nada.
+
 ## Instalación desde cero
 
 1. Copia los respaldos a `~/traspaso` y corre `bash deploy/restaurar.sh ~/traspaso`.

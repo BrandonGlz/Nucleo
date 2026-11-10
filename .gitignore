@@ -63,3 +63,6 @@ Thumbs.db
 Mosquitto/certs/*
 !Mosquitto/certs/.gitkeep
 Mosquitto/config/passwd
+
+# APK de la app móvil publicado en /app/ (no va a git)
+/descargas/
