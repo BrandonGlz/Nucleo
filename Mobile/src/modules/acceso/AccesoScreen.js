@@ -119,6 +119,7 @@ export function AccesoScreen() {
             />
             <Input
               label="Contraseña"
+              icon="lock"
               value={password}
               onChangeText={setPassword}
               placeholder="Tu contraseña"

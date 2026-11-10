@@ -439,19 +439,13 @@ button.ui-menuitem:hover {
   background: #121413;
   color: #f3f5f2;
 }
-/* Espacio libre entre el logo y el lema; el anillo toma el lado menor de ese espacio */
-.acceso__centro {
-  flex: 1;
-  min-height: 0;
-  container-type: size;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 24px 0;
-}
+/* Anillo con el ícono: mide el 60 % del alto de la pantalla (sin pasar de 720 px ni alcanzar el lema)
+   y su centro queda en el borde izquierdo del panel, que tapa la mitad derecha */
 .acceso__anillo {
-  --lado: min(720px, 100cqh, 100cqw);
-  flex: none;
+  --lado: max(0px, min(720px, 60vh, calc((100vw - 600px - 580px) * 2)));
+  position: absolute;
+  left: calc(100% - 600px - var(--lado) / 2);
+  top: calc(50% - var(--lado) / 2);
   width: var(--lado);
   height: var(--lado);
   box-sizing: border-box;
@@ -462,7 +456,7 @@ button.ui-menuitem:hover {
   justify-content: center;
 }
 .acceso__anillo svg {
-  width: 70%;
+  width: 66%;
   height: auto;
 }
 .acceso__lema {
@@ -471,6 +465,7 @@ button.ui-menuitem:hover {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   padding: 56px 64px;
 }
 .acceso__logo-movil {
@@ -537,7 +532,8 @@ button.ui-menuitem:hover {
 }
 /* Pantallas angostas: solo el formulario, a todo lo ancho, con el logo arriba */
 @media (max-width: 1000px) {
-  .acceso__lema {
+  .acceso__lema,
+  .acceso__anillo {
     display: none;
   }
   .acceso__panel {

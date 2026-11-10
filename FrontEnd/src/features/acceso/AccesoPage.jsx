@@ -85,14 +85,12 @@ export function AccesoPage() {
 
   return (
     <div className="acceso">
+      {/* Anillo con el ícono, centrado en el borde del panel: el panel tapa la mitad derecha */}
+      <div className="acceso__anillo" aria-hidden="true">
+        <LogoMark tone="verde" size={500} />
+      </div>
       <div className="acceso__lema">
         <Logo size={48} inverse />
-        {/* El ícono va dentro del anillo y el anillo ocupa solo el espacio libre entre el logo y el lema */}
-        <div className="acceso__centro">
-          <div className="acceso__anillo">
-            <LogoMark tone="verde" size={500} />
-          </div>
-        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <span className="ui-eyebrow" style={{ color: '#9DA39E' }}>
             Plataforma IoT
@@ -123,6 +121,7 @@ export function AccesoPage() {
             <Input
               label="Contraseña"
               type="password"
+              icon="lock"
               autoComplete="current-password"
               value={password}
               error={error}
