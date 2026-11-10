@@ -110,7 +110,7 @@ Origen → Destino                                Protocolo                  Est
 ├── Mobile → Backend                            HTTP/JSON con token        API lista; la app solo consulta salud
 ├── Web / Mobile → Backend                      WebSocket /ws/panel/       Activo en el backend; sin cliente todavía
 ├── Backend → Redis                             Capa de canales            Activo
-├── Backend → Expo Push                         HTTPS                      Implementado; apagado por defecto
+├── Backend → Expo Push                         HTTPS                      Activo en producción; Firebase
 ├── Backend → PostgreSQL nucleo_db              SQL/psycopg 3              Activo; 16 tablas
 ├── ESP32 → Mosquitto                           MQTT sobre TLS :8883       Firmware base escrito; sin probar en hardware
 ├── Mosquitto → Backend                         MQTT (escuchar_mqtt)       Activo
@@ -123,12 +123,8 @@ Origen → Destino                                Protocolo                  Est
 
 ## Límites y decisiones abiertas
 
-- Notificaciones push con Expo: el envío está implementado y apagado
-  (`NUCLEO_PUSH_HABILITADO`); falta probarlo con un teléfono real.
-- Proveedores del servicio de IA y del correo.
-- Proyecto de Firebase y de Expo (EAS) para los push en Android (ver `deploy/README.md`).
-- Despliegue del broker y de los certificados fuera de desarrollo.
-- Estrategia de retención, respaldo y recuperación.
+- Proveedor de un servicio de IA externo (hoy la redacción es local, con plantillas).
+- Estrategia de retención de lecturas a largo plazo.
 - Validación del modelo exacto de ESP32, pinout y circuito de alimentación.
 
 Las decisiones tomadas se registran en

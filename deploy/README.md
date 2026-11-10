@@ -1,6 +1,6 @@
 # Servidor de Núcleo
 
-Núcleo corre en una laptop con Debian 13 (`homelab`, 4 GB de RAM). Se publica
+Núcleo corre en una laptop con Debian 13 (`homelab`, 8 GB de RAM). Se publica
 en internet con Tailscale Funnel, sin dominio ni puertos abiertos en el router, así que se
 llega desde cualquier red.
 
@@ -74,18 +74,21 @@ tarea a la vez para cuidar la memoria y tarda más. La memoria se usa solo mient
 
 #### Notificaciones push
 
-Con la app abierta las alertas llegan por el canal en vivo. Para que lleguen con la app cerrada,
-Android necesita Firebase y Expo (una vez):
+Con la app abierta las alertas llegan por el canal en vivo (y la app oculta el push repetido);
+con la app cerrada llegan por push: el backend las manda a Expo y Expo las entrega por Firebase.
+Ya está configurado y probado en un teléfono:
 
-1. En https://expo.dev crea el proyecto `nucleo-mobile` y copia su *Project ID* en
-   `EXPO_PUBLIC_EAS_PROJECT_ID` del perfil `piloto` de `Mobile/eas.json`.
-2. En https://console.firebase.google.com crea un proyecto, agrega una app Android con el
-   paquete `com.nucleo.mobile` y copia su `google-services.json` a `Mobile/` en la laptop
-   (no va a git).
-3. En Firebase → Configuración → Cuentas de servicio, genera una clave privada y súbela en
-   expo.dev → proyecto → Credentials → Android → *FCM V1 service account key*.
-4. `NUCLEO_PUSH_HABILITADO=true` en `BackEnd/.env`, recompila el APK y reinicia
-   `nucleo-daphne` y `nucleo-mqtt`.
+| Pieza | Dónde |
+| --- | --- |
+| Proyecto de Expo | cuenta `nucleo-expo`, proyecto `-nucleo-mobile` (así quedó el nombre); su ID va en `Mobile/app.json` (`extra.eas.projectId`) y en `EXPO_PUBLIC_EAS_PROJECT_ID` de `Mobile/eas.json` |
+| Firebase | proyecto `nucleo-firebase`, app Android `com.nucleo.mobile` |
+| `google-services.json` | `Mobile/` de la laptop, fuera de git; sin él el APK no recibe push |
+| Clave FCM V1 | subida a Expo y asignada a `com.nucleo.mobile` (`npx eas-cli credentials -p android` con la sesión de `nucleo-expo`) |
+| Backend | `NUCLEO_PUSH_HABILITADO=true` en `BackEnd/.env` |
+
+Si se pierde `google-services.json`, se vuelve a descargar en Firebase → Configuración del
+proyecto → General → Tus apps, se copia a `Mobile/` y se recompila el APK. Para probar un push,
+la app debe estar cerrada.
 
 Requisitos (una vez): `sudo apt install openjdk-21-jdk-headless unzip` y las herramientas de línea de comandos
 de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas

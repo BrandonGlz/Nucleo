@@ -77,7 +77,7 @@
 **Tiempo real y notificaciones**
 
 - Canal WebSocket `ws/panel/?token=<token>` con grupo por organización y filtro por rol — *Aceptada*. Eventos `alerta.nueva`, `alerta.atendida`, `alerta.descartada` y `dispositivo.estado`, publicados al confirmarse la transacción.
-- Push con la API de Expo vía `urllib` — *Aceptada*. Implementado y apagado por defecto (`NUCLEO_PUSH_HABILITADO`); elimina el teléfono si Expo responde `DeviceNotRegistered`.
+- Push con la API de Expo vía `urllib` — *Aceptada*. Activo en producción con `NUCLEO_PUSH_HABILITADO` (apagado por defecto en desarrollo) y entregado por Firebase; elimina el teléfono si Expo responde `DeviceNotRegistered`.
 
 **Seguridad de base de datos**
 

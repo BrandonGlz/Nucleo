@@ -1,54 +1,50 @@
 # Núcleo — Gestión y monitoreo del ambiente
 
-> **En simple:** Núcleo mide temperatura, humedad y calidad del aire. Tiene una
-> web, una app móvil, un servidor compartido, PostgreSQL para la app, TimescaleDB
-> para IoT, un broker MQTT y un ESP32 que toma las mediciones.
-
-Hoy el backend, el modelo de datos, el broker y el canal en vivo están completos y
-probados. El firmware base del ESP32 está escrito y falta probarlo en la placa. La web y
-la app móvil son un esqueleto: cada módulo ya tiene su carpeta, su ruta y una pantalla
-provisional enlazada por la navegación; sus pantallas de negocio son lo que sigue.
+Hoy todo el sistema funciona y está publicado: el backend, el modelo de datos, el broker,
+el canal en vivo, la web con todas sus pantallas y la app Android (APK) con notificaciones
+push. El firmware del ESP32 está escrito y probado en su lógica; falta probarlo en la placa
+con los sensores, así que por ahora las lecturas vienen del simulador.
 
 ## Qué funciona
 
 - **Backend**
-  - Hoy: inicio de sesión con token, permisos por rol, aislamiento por organización
-    y la API de usuarios, dispositivos, umbrales, lecturas, alertas y reportes.
-    Recibe las lecturas por MQTT, crea alertas, envía el correo y transmite en vivo por
-    WebSocket las alertas y los cambios de estado. El token caduca a los 7 días sin uso.
-    Los reportes incluyen gráficas de tendencia en el PDF y su texto se redacta a partir
-    de las cifras. Un agente por dispositivo responde preguntas con sus lecturas y alertas.
-    El push con Expo está implementado y apagado.
-  - Después: probar el push en un teléfono real y conectar un servicio de IA para la
-    redacción y el agente.
+  - Inicio de sesión con token (caduca a los 7 días sin uso, máximo 10 intentos por
+    minuto), permisos por rol y aislamiento por organización.
+  - API de organizaciones, áreas, usuarios, dispositivos, sensores, umbrales, lecturas,
+    alertas, notificaciones y reportes.
+  - Recibe las lecturas por MQTT, crea alertas de advertencia o peligro, avisa por correo
+    y por push, y transmite en vivo por WebSocket las alertas y los cambios de estado.
+  - Reportes con cifras, gráficas y PDF, manuales o programados por correo; el texto se
+    redacta a partir de las cifras (`IA_PROVEEDOR=local`).
+  - **Núcleo AI:** un agente por dispositivo que responde con sus lecturas y alertas, y
+    genera reportes cuando se le piden («reporte de octubre», «de la semana pasada»).
 - **Web**
-  - Hoy: pantalla inicial con el estado de la API y un menú con un módulo por ruta
-    (`acceso`, `panel`, `dispositivos`, `mediciones`, `alertas`, `reportes`, `usuarios`,
-    `organizaciones`), cada uno con «Hola mundo, este es el módulo de…».
-  - Después: implementar cada módulo (login, panel, gráficas, alertas, umbrales, reportes
-    y gestión de usuarios).
-- **App móvil**
-  - Hoy: la misma comprobación de salud y una pantalla por módulo (`acceso`, `panel`,
-    `dispositivos`, `mediciones`, `alertas`) con navegación y «Hola mundo, este es el
-    módulo de…».
-  - Después: implementar cada módulo (login, datos en tiempo real del dispositivo asignado,
-    historial y alertas).
+  - Panel en vivo, Dispositivos (con estado, batería, señal y «Calentando»), Detalle de
+    dispositivo, Histórico, Alertas (atender o descartar), Reportes, Núcleo AI, Umbrales,
+    Usuarios, Empresa y áreas, Mi perfil y Notificaciones, con tema claro u oscuro.
+  - **Organizaciones**, solo para el administrador de plataforma: alta, edición,
+    suspensión, baja y primer administrador de cada empresa cliente.
+- **App móvil (Android)**
+  - Inicio con el dispositivo en vivo (selector si hay varios), Detalle de variable,
+    Alertas y su detalle, Núcleo AI y Perfil.
+  - Canal en vivo con la app abierta y notificaciones push con la app cerrada; las de
+    peligro suenan y vibran. Modo de bajo consumo y preferencias guardadas en el teléfono.
+  - Se instala con el APK de https://nucleo.tailb3f7d8.ts.net/app/nucleo.apk.
 - **IoT**
-  - Hoy: firmware base de MicroPython (`boot.py`, `main.py` y el paquete `nucleo/`) con
-    DHT22, CCS811, pantalla OLED, LED RGB, buzzer y MQTT con TLS, cola de lecturas sin
-    conexión y baseline del CCS811, con 16 pruebas de su lógica, más las bibliotecas y
-    herramientas listas.
-  - Después: carga en un ESP32 real, ajuste de pines y calibración del CCS811.
+  - Firmware de MicroPython (`boot.py`, `main.py` y el paquete `nucleo/`) con DHT22,
+    CCS811, pantalla OLED, LED RGB, buzzer y MQTT con TLS, cola de lecturas sin conexión y
+    baseline del CCS811, con 16 pruebas de su lógica.
+  - Falta: cargarlo en un ESP32 real, ajustar los pines y calibrar el CCS811.
 - **Broker MQTT**
-  - Hoy: Mosquitto con TLS en el puerto 8883, un usuario por dispositivo y permisos que lo
+  - Mosquitto con TLS en el puerto 8883, un usuario por dispositivo y permisos que lo
     limitan a su propio tópico.
 - **Base de datos**
-  - Hoy: PostgreSQL con las 16 tablas del modelo relacional, TimescaleDB con la
-    hypertable de lecturas, Redis para el canal en vivo y scripts locales de práctica para
-    cada base, más `crear-roles.sh` para usuarios de base de datos sin superusuario.
+  - PostgreSQL con las 16 tablas del modelo relacional, TimescaleDB con la hypertable de
+    lecturas, Redis para el canal en vivo y scripts de práctica para cada base. Cada base
+    corre en su propio contenedor con su propio usuario.
 - **Documentación**
-  - Hoy: READMEs por stack, `Context/` técnico completo y, en `Docs/`, el SRS, el
-    modelo relacional y los documentos de planificación y análisis.
+  - READMEs por stack, `Context/` técnico completo y, en `Docs/`, el SRS, el modelo
+    relacional y los documentos de planificación y análisis.
 
 ## Cómo funciona
 
@@ -58,13 +54,14 @@ provisional enlazada por la navegación; sus pantallas de negocio son lo que sig
 3. Si una lectura sale de los límites de advertencia o de peligro de su dispositivo,
    crea la alerta en PostgreSQL y avisa por correo al supervisor del área.
 4. El backend publica la alerta y los cambios de estado en Redis y llegan por WebSocket a
-   la web y la app.
+   la web y la app. Con la app cerrada, la alerta llega al teléfono por push (Expo y
+   Firebase).
 5. La web y la app móvil piden los datos al mismo backend con su token; cada
    persona ve solo lo que su rol y su organización permiten.
 
-Hoy el flujo de punta a punta funciona entre el broker, la API y el canal en vivo; la
-web y la app móvil comprueban la salud del backend y tienen sus módulos como esqueleto,
-y el firmware del ESP32 espera su primera prueba en hardware.
+Hoy el flujo funciona de punta a punta desde el broker hasta la web y la app; mientras el
+ESP32 no se prueba en la placa, `simular_dispositivos` publica lecturas con el mismo
+formato que el firmware.
 
 ## Stack
 
@@ -92,7 +89,8 @@ Nucleo/
 ├── IoT/                   MicroPython para ESP32, bibliotecas y README
 ├── Mosquitto/             Configuración del broker MQTT y scripts de certificados y dispositivos
 ├── Database/              Scripts .sql de práctica: Web-Mobile (PostgreSQL) e IoT (TimescaleDB),
-│                          y crear-roles.sh
+│                          y crear-roles.sh (opcional)
+├── deploy/                Instalación, despliegue, respaldos y APK del servidor
 ├── Context/               Documentación técnica completa para el equipo y la IA
 ├── Docs/                  SRS, modelo relacional, planificación y análisis
 ├── docker-compose.yml     PostgreSQL, TimescaleDB, Redis y Mosquitto en Docker
@@ -166,6 +164,10 @@ Todos los comandos se ejecutan desde la carpeta principal del proyecto.
 - `cd Mobile && npm start` — "abre Expo y muestra un código QR; se detiene con `Ctrl+C`."
 - `cd Mobile && npm run android` — "abre la app en un emulador Android."
 
+Las notificaciones push solo llegan en el APK compilado (`deploy/compilar_apk.sh`), con
+`Mobile/google-services.json` (fuera de git); en Expo Go o en el emulador se prueban con la
+app abierta por el canal en vivo.
+
 **IoT**
 
 - `python3.12 -m venv IoT/.venv` — "crea el entorno de herramientas del ESP32."
@@ -196,7 +198,7 @@ archivos `.db`: PostgreSQL no trabaja con ese formato. Los comandos `docker exec
 ## Comprobaciones
 
 - `cd BackEnd && .venv/bin/python manage.py check` — "revisa Django; muestra `System check identified no issues`."
-- `cd BackEnd && .venv/bin/python manage.py test` — "ejecuta las pruebas; muestra `Ran 134 tests` y `OK`."
+- `cd BackEnd && .venv/bin/python manage.py test` — "ejecuta las pruebas; muestra `Ran 147 tests` y `OK`."
 - `cd BackEnd && .venv/bin/ruff check .` — "revisa el estilo; muestra `All checks passed!`."
 - `cd FrontEnd && npm run lint` — "revisa la web; no muestra avisos si todo está bien."
 - `cd FrontEnd && npm run build` — "genera `FrontEnd/dist/`; Vite muestra `built in ...`."
@@ -311,7 +313,8 @@ Si un commit necesita muchas líneas para explicarse, probablemente son varios c
 
 Núcleo está publicado en **https://nucleo.tailb3f7d8.ts.net** (web) y
 **https://nucleo.tailb3f7d8.ts.net/api/v1** (API de la app). Corre en un servidor propio: una
-laptop con Debian 13 sin escritorio (4 GB de RAM, disco de 698 GB) que funciona como VPS casero.
+laptop con Debian 13 sin escritorio (8 GB de RAM, disco de 698 GB) que funciona como VPS casero.
+La app Android se descarga en **https://nucleo.tailb3f7d8.ts.net/app/nucleo.apk**.
 
 **Cómo llega una visita**
 
@@ -334,10 +337,14 @@ Navegador o app ──HTTPS──▶ Tailscale Funnel ──▶ Caddy :8081 ─�
 - **Reportes:** `nucleo-reportes.timer` genera cada 15 minutos los reportes programados, con el
   texto redactado por `IA_PROVEEDOR=local`.
 - **Correo:** Gmail por SMTP con una contraseña de aplicación de la cuenta del proyecto.
+- **Push:** `NUCLEO_PUSH_HABILITADO=true`; el backend envía a Expo, que entrega por Firebase
+  (proyecto `nucleo-firebase`) a los teléfonos registrados al iniciar sesión en la app.
+- **App:** `deploy/compilar_apk.sh` compila el APK en el mismo servidor y lo publica en
+  `/app/nucleo.apk`.
 - **Respaldos:** `nucleo-respaldo.timer` respalda a diario las dos bases y la configuración del
   broker: 7 días en el servidor y 30 en Google Drive.
 - **Disponibilidad:** todos los servicios arrancan con el equipo y se reinician solos; los
-  contenedores tienen límite de memoria para caber en 4 GB. El equipo no se suspende con la tapa
+  contenedores tienen límite de memoria. El equipo no se suspende con la tapa
   cerrada ni por inactividad, usa el cable si está conectado y el Wi-Fi como respaldo.
 
 **Actualizar el servidor** después de subir cambios a `dev`: desde el servidor,

@@ -26,18 +26,20 @@ TimescaleDB y Redis.
   - Marca como "Sin conexión" a los dispositivos que dejan de enviar datos.
   - Calcula las cifras de los reportes, genera el PDF y envía por correo las
     programaciones diarias, semanales o mensuales a sus destinatarios.
-  - Registra los teléfonos de la app móvil al iniciar sesión y los quita al cerrarla.
+  - Registra los teléfonos de la app móvil al iniciar sesión y los quita al cerrarla;
+    `auth/telefono/` los activa o desactiva desde el perfil sin cerrar sesión.
   - Transmite en vivo por WebSocket (`/ws/panel/?token=`) las alertas nuevas o resueltas y
     los cambios de estado de los dispositivos, filtrados por rol, usando Redis.
   - Incluye una curva por variable (promedio, mínimo y máximo) en los reportes y su PDF.
-  - Envía notificaciones push con Expo cuando se activa `NUCLEO_PUSH_HABILITADO`.
+  - Envía notificaciones push con Expo cuando se activa `NUCLEO_PUSH_HABILITADO` (activo y
+    probado en producción): las de peligro por el canal de Android con sonido.
   - Redacta el texto de los reportes a partir de las cifras con `IA_PROVEEDOR=local`.
   - Responde preguntas en `POST /api/v1/agente/`: hay un agente por dispositivo y arma
     la respuesta con sus lecturas, umbrales y alertas. Un operador lo usa solo si tiene
-    `acceso_agente`.
+    `acceso_agente`. Si se le pide un «reporte» o «informe», genera el del área del
+    dispositivo con el periodo que se nombre (solo ADMIN, SUPER y ANALISTA).
   - Simula los ESP32 con `simular_dispositivos`, con el mismo mensaje que el firmware.
 - **Después:** conectar un servicio de IA externo para la redacción y el agente.
-- **Todavía no:** el push está apagado por defecto y sin probar con un teléfono real.
 
 ## Cómo funciona
 
