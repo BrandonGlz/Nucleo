@@ -198,7 +198,7 @@ export function UmbralesPage() {
               )
             })}
           </div>
-          <Card className="nc-grow" style={{ minHeight: 230 }}>
+          <Card className="nc-grow" style={{ minHeight: 190 }}>
             <div className="nc-card__head" style={{ marginBottom: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 className="nc-card__title">Vista previa contra las últimas lecturas</h3>
