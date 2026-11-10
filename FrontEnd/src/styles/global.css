@@ -204,7 +204,7 @@ button.ui-link {
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #c6ef4e;
+  color: #0abe52;
 }
 .nc-ink__titulo {
   font-size: 40px;
@@ -232,7 +232,7 @@ button.ui-link {
   top: 0;
   bottom: 0;
   border-radius: 99px;
-  background: #c6ef4e;
+  background: #0abe52;
 }
 .nc-ink__marca {
   position: absolute;
@@ -271,8 +271,8 @@ button.ui-link {
   line-height: 16px;
   color: var(--text-muted);
 }
-.tono-lima {
-  color: #c6ef4e;
+.tono-verde {
+  color: #0abe52;
 }
 .tono-peligro {
   color: var(--danger);
@@ -439,19 +439,23 @@ button.ui-menuitem:hover {
   background: #121413;
   color: #f3f5f2;
 }
+/* El anillo se centra en la zona oscura (todo menos el panel de 600 px) y el ícono en el anillo */
 .acceso__anillo {
+  --lado: min(720px, calc(100vh - 120px), calc(100vw - 720px));
   position: absolute;
-  left: 17%;
-  top: 1%;
-  width: 720px;
-  height: 720px;
+  left: calc((100% - 600px - var(--lado)) / 2);
+  top: calc((100% - var(--lado)) / 2);
+  width: var(--lado);
+  height: var(--lado);
   border-radius: 999px;
   border: 2px solid rgba(243, 245, 242, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.acceso__marca {
-  position: absolute;
-  left: 23%;
-  top: 15%;
+.acceso__anillo svg {
+  width: 70%;
+  height: auto;
 }
 .acceso__lema {
   position: relative;
@@ -1676,7 +1680,7 @@ article.ui-hoja,
 
 /* ---------------------------------------------------------------------------------------
    Reporte formal (hoja A4): papel blanco en ambos temas, tipografía de documento, bloques
-   con filetes finos y la línea lima de Núcleo como único acento. Los altos de línea son
+   con filetes finos y la línea verde de Núcleo como único acento. Los altos de línea son
    proporcionales y las columnas toman el ancho de su contenido, para que nada se encime
    aunque el navegador agrande la letra.
    --------------------------------------------------------------------------------------- */
@@ -1693,13 +1697,13 @@ article.ui-hoja,
   --success: #0f7a45;
   --success-soft: #e3f4e8;
   --danger: #c4291c;
-  --accent-soft: #eef8cf;
-  --chart-line: #16864f;
-  --chart-area: #1fa463;
+  --accent-soft: #ddf5e6;
+  --chart-line: #089a45;
+  --chart-area: #0abe52;
   --chart-grid: #e6e9e2;
   --chart-bar: #d5d9cf;
   --chart-bar-active: #121413;
-  --logo-color: #03c051;
+  --logo-color: #0abe52;
   color-scheme: light;
   padding: 52px 56px 76px;
   font-size: 12px;
@@ -1717,7 +1721,7 @@ article.ui-hoja,
   left: 0;
   right: 0;
   height: 6px;
-  background: linear-gradient(90deg, #121413 0 72%, #c6ef4e 72% 100%);
+  background: linear-gradient(90deg, #121413 0 72%, #0abe52 72% 100%);
 }
 .ui-hoja .ui-eyebrow {
   font-size: 10.5px;
@@ -1996,7 +2000,7 @@ article.ui-hoja,
   height: 36px;
   margin-top: -18px;
   border-radius: 4px;
-  background: var(--accent-secondary, #1fa463);
+  background: var(--accent-secondary, #079a43);
   cursor: ew-resize;
 }
 .ui-editor__asa-alto {
@@ -2006,7 +2010,7 @@ article.ui-hoja,
   height: 8px;
   margin-left: -18px;
   border-radius: 4px;
-  background: var(--accent-secondary, #1fa463);
+  background: var(--accent-secondary, #079a43);
   cursor: ns-resize;
 }
 .ui-hoja .ui-editor__etiqueta {
@@ -2461,8 +2465,8 @@ article.ui-hoja,
 .ui-ia-marca--grande {
   width: 64px;
   height: 64px;
-  background: radial-gradient(circle at 30% 25%, #2a3314, #121413 70%);
-  box-shadow: 0 0 0 8px var(--accent-soft), 0 12px 32px -8px rgba(31, 164, 99, 0.45);
+  background: radial-gradient(circle at 30% 25%, #0f2b1b, #121413 70%);
+  box-shadow: 0 0 0 8px var(--accent-soft), 0 12px 32px -8px rgba(10, 190, 82, 0.45);
 }
 .ui-ia-marca.is-pensando {
   position: relative;
@@ -2502,7 +2506,7 @@ article.ui-hoja,
   letter-spacing: -0.02em;
 }
 .ui-ia-inicio h2 span {
-  background: linear-gradient(90deg, var(--accent-secondary), #8fcf2a);
+  background: linear-gradient(90deg, var(--accent-secondary), #3fd37f);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

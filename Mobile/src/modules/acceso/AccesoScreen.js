@@ -91,7 +91,7 @@ export function AccesoScreen() {
         <View style={[s.arriba, { paddingTop: inset.top + 48 }]}>
           <View style={s.anillo} />
           <View style={{ position: 'absolute', right: -70, top: inset.top + 84 }}>
-            <LogoMark tone="lima" size={260} />
+            <LogoMark tone="verde" size={260} />
           </View>
           <Logo size={40} inverse />
         </View>

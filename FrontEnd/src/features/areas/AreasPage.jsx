@@ -328,7 +328,7 @@ export function AreasPage() {
     ? {
         principal: { etiqueta: 'Áreas', valor: datos.areas.length, unidad: org ? `en ${org.nombre}` : '', sub: org ? `${org.ciudad} · ${org.estado === 'ACTIVA' ? 'Activa' : org.estado}` : '' },
         cifras: [
-          { etiqueta: 'Dispositivos', valor: datos.dispositivos.length, tono: 'lima' },
+          { etiqueta: 'Dispositivos', valor: datos.dispositivos.length, tono: 'verde' },
           { etiqueta: 'Supervisores', valor: datos.usuarios.filter((u) => u.rol === 'SUPER').length },
           { etiqueta: 'Usuarios', valor: datos.usuarios.length },
         ],

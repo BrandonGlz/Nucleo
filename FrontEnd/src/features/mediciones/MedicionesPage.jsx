@@ -83,14 +83,14 @@ export function MedicionesPage() {
           valor: num(vista.max, info.decimales),
           unidad,
           tonoUnidad: vista.sobre.length ? 'peligro' : undefined,
-          tonoSub: vista.sobre.length ? 'peligro' : 'lima',
+          tonoSub: vista.sobre.length ? 'peligro' : 'verde',
           sub: vista.sobre.length
             ? `Máximo del día · ${vista.sobre.length * 30} min sobre el máximo · desde las ${hora(vista.sobre[0].periodo)}`
             : `Máximo del día · en rango ${rangoUmbral(u, unidad)}`,
         },
         cifras: [
           { etiqueta: 'Mínimo', valor: num(vista.min, info.decimales), unidad },
-          { etiqueta: 'Promedio', valor: num(vista.prom, info.decimales), unidad, tono: 'lima' },
+          { etiqueta: 'Promedio', valor: num(vista.prom, info.decimales), unidad, tono: 'verde' },
           { etiqueta: 'Lecturas', valor: miles(lect.datos.lecturas.length / 3), sub: `Cada ${actual?.intervalo_muestreo_seg ?? 30} s` },
         ],
       }

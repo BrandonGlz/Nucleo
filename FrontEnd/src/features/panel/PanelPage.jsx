@@ -45,11 +45,11 @@ function cifrasPanel({ dispositivos, umbrales, areas, alertas }) {
       valor: num(temp),
       unidad: '°C',
       sub: `${enRango ? 'En rango' : 'Fuera de rango'} · ${min} – ${max} °C`,
-      tonoSub: enRango ? 'lima' : 'peligro',
+      tonoSub: enRango ? 'verde' : 'peligro',
     },
     barra: u ? { desde: pct(min), ancho: pct(max) - pct(min), marca: pct(temp) } : null,
     cifras: [
-      { etiqueta: 'Humedad', valor: num(hum), unidad: '%HR', sub: area?.nombre, tono: 'lima' },
+      { etiqueta: 'Humedad', valor: num(hum), unidad: '%HR', sub: area?.nombre, tono: 'verde' },
       { etiqueta: 'En línea', valor: activos.length, unidad: `/ ${dispositivos.length}`, sub: `${dispositivos.length - activos.length} sin conexión` },
       { etiqueta: 'Aire', valor: num(aire, 0), unidad: 'ppm', sub: 'Promedio general' },
       {

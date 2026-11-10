@@ -15,7 +15,7 @@ export function TemaProvider({ children }) {
 
 export const useTema = () => useContext(TemaContext)
 
-// Fija un tema para una parte de la pantalla (la zona oscura, los mosaicos lima), como
+// Fija un tema para una parte de la pantalla (la zona oscura, los mosaicos verdes), como
 // data-theme en la web, sin cambiar el de la app.
 export function TemaFijo({ tema, children }) {
   const padre = useContext(TemaContext)

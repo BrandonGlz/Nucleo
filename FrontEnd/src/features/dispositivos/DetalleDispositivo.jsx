@@ -60,7 +60,7 @@ function cifrasDetalle({ d, lecturas, umbrales }, sinConexion) {
       unidad: principal.l.unidad,
       tonoValor: sinConexion ? 'tenue' : undefined,
       tonoUnidad: sinConexion ? 'tenue' : fuera ? 'peligro' : undefined,
-      tonoSub: sinConexion ? undefined : fuera ? 'peligro' : 'lima',
+      tonoSub: sinConexion ? undefined : fuera ? 'peligro' : 'verde',
       sub: sinConexion
         ? `Sin conexión · última lectura ${haceCuanto(d.ultima_conexion)}`
         : `${fuera ? 'Fuera de rango' : 'En rango'} · ${rangoUmbral(principal.u, principal.l.unidad)}`,
@@ -73,7 +73,7 @@ function cifrasDetalle({ d, lecturas, umbrales }, sinConexion) {
           valor: num(f.l.valor, f.info.decimales),
           unidad: f.l.unidad,
           sub: sinConexion ? 'Última conocida' : rangoUmbral(f.u, f.l.unidad),
-          tono: sinConexion ? 'tenue' : f.nivel === 'normal' ? 'lima' : 'peligro',
+          tono: sinConexion ? 'tenue' : f.nivel === 'normal' ? 'verde' : 'peligro',
         })),
       {
         etiqueta: 'Batería', valor: d.nivel_bateria, unidad: '%',

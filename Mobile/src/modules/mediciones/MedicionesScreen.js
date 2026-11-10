@@ -12,7 +12,7 @@ import { enLinea, escala, nivelLectura, posicion, UNIDAD, VARIABLE } from '../..
 import { esHoy, hora, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
-const TONO = { normal: marca.lima, warning: colors.dark.warning, critical: colors.dark.danger }
+const TONO = { normal: marca.verde, warning: colors.dark.warning, critical: colors.dark.danger }
 const TEXTO = { normal: 'en rango', warning: 'cerca del límite', critical: 'fuera de rango' }
 
 // Detalle de una variable del dispositivo asignado: medidor en vivo y últimas 24 h.
@@ -74,7 +74,7 @@ export function MedicionesScreen({ navigation, route }) {
           <View style={s.tres}>
             {[
               ['Mín', stat(Math.min), c.surface, c.textPrimary, c.textMuted],
-              ['Prom', prom, marca.lima, marca.tinta, 'rgba(18,20,19,0.6)'],
+              ['Prom', prom, marca.verde, marca.tinta, 'rgba(18,20,19,0.6)'],
               ['Máx', stat(Math.max), marca.tinta, marca.claro, marca.tenue],
             ].map(([k, v, bg, fg, et]) => (
               <View key={k} style={[s.cifra, { backgroundColor: bg }]}>

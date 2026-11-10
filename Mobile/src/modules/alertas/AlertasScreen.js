@@ -91,7 +91,7 @@ export function AlertasScreen({ navigation }) {
         </View>
       ) : (
         <View style={[s.fila14, { alignItems: 'flex-end' }]}>
-          <T peso={800} size={112} lh={104} num color={marca.lima} style={{ letterSpacing: -6.7 }}>
+          <T peso={800} size={112} lh={104} num color={marca.verde} style={{ letterSpacing: -6.7 }}>
             {pendientes}
           </T>
           <View style={{ gap: 2, paddingBottom: 12 }}>
@@ -156,7 +156,7 @@ const s = StyleSheet.create({
   entre: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   fila14: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   fila12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  check: { width: 64, height: 64, borderRadius: 32, backgroundColor: marca.lima, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 64, height: 64, borderRadius: 32, backgroundColor: marca.verde, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tarjeta: { flexDirection: 'row', gap: 14, paddingVertical: 16, paddingRight: 16, paddingLeft: 14, borderRadius: 22 },
   franja: { width: 4, borderRadius: 4 },

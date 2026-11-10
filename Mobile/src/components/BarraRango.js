@@ -1,9 +1,9 @@
 import { View } from 'react-native'
 import { marca } from '../theme'
 
-// Barra de rango de la zona oscura: banda permitida en lima y marca en el valor actual.
+// Barra de rango de la zona oscura: banda permitida en verde y marca en el valor actual.
 // desde, ancho y marca van de 0 a 1 sobre la escala de la variable.
-export function BarraRango({ desde, ancho, marca: m, color = marca.lima }) {
+export function BarraRango({ desde, ancho, marca: m, color = marca.verde }) {
   return (
     <View style={{ height: 10, borderRadius: 99, backgroundColor: 'rgba(243,245,242,0.1)' }}>
       {ancho != null && (

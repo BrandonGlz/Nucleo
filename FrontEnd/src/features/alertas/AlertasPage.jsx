@@ -148,7 +148,7 @@ export function AlertasPage() {
           etiqueta: 'Alertas pendientes',
           valor: pendientes.length,
           unidad: 'por atender',
-          tonoValor: 'lima',
+          tonoValor: 'verde',
           tonoUnidad: 'claro',
           sub: ultimaPend
             ? `${pendientes.filter((a) => a.nivel === 'PELIGRO').length} crítica · la más reciente a las ${hora(ultimaPend.fecha_hora)}`

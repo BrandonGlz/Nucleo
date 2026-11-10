@@ -178,7 +178,7 @@ export function UsuariosPage() {
         principal: { etiqueta: 'Usuarios', valor: usuarios.length, unidad: 'cuentas', sub: `${usuarios.filter((u) => u.estado_usuario === 'ACT').length} activas · ${org}` },
         cifras: [
           { etiqueta: 'Administradores', valor: cuenta('ADMIN') },
-          { etiqueta: 'Supervisores', valor: cuenta('SUPER'), tono: 'lima' },
+          { etiqueta: 'Supervisores', valor: cuenta('SUPER'), tono: 'verde' },
           { etiqueta: 'Analistas', valor: cuenta('ANALISTA') },
           { etiqueta: 'Operadores', valor: cuenta('OPER') },
         ],

@@ -85,9 +85,9 @@ export function AccesoPage() {
 
   return (
     <div className="acceso">
-      <div className="acceso__anillo" />
-      <div className="acceso__marca">
-        <LogoMark tone="lima" size={560} />
+      {/* El ícono va dentro del anillo para que los dos compartan el mismo centro */}
+      <div className="acceso__anillo">
+        <LogoMark tone="verde" size={500} />
       </div>
       <div className="acceso__lema">
         <Logo size={48} inverse />

@@ -38,7 +38,7 @@ export function NotificacionesPage() {
           etiqueta: 'Notificaciones',
           valor: noLeidas,
           unidad: 'sin leer',
-          tonoValor: 'lima',
+          tonoValor: 'verde',
           tonoUnidad: 'claro',
           sub: ultima ? `La más reciente a las ${hora(ultima.fecha)}` : 'Estás al día',
         },
@@ -46,7 +46,7 @@ export function NotificacionesPage() {
           { etiqueta: 'Hoy', valor: cuenta((n) => esHoy(n.fecha)) },
           { etiqueta: 'Ayer', valor: cuenta((n) => esAyer(n.fecha)) },
           { etiqueta: 'Críticas', valor: cuenta((n) => n.nivel === 'PELIGRO'), tono: 'peligro' },
-          { etiqueta: 'Advertencias', valor: cuenta((n) => n.nivel === 'ADVERTENCIA'), tono: 'lima' },
+          { etiqueta: 'Advertencias', valor: cuenta((n) => n.nivel === 'ADVERTENCIA'), tono: 'verde' },
         ],
       }}
     >

@@ -94,7 +94,7 @@ export function UmbralesPage() {
           valor: num(hum?.valor, 0),
           unidad: '%HR',
           tonoUnidad: nivelHum !== 'normal' ? 'peligro' : undefined,
-          tonoSub: nivelHum !== 'normal' ? 'peligro' : 'lima',
+          tonoSub: nivelHum !== 'normal' ? 'peligro' : 'verde',
           sub: nivelHum === 'critical' ? `Supera el máximo de ${Number(uHum.peligro_max)} %HR · umbral por dispositivo` : `En rango · ${rangoUmbral(uHum, '%HR')}`,
         },
         cifras: [
@@ -103,7 +103,7 @@ export function UmbralesPage() {
             valor: num(lectura(v)?.valor, VARIABLE[v].decimales),
             unidad: UNIDAD[v],
             sub: `Umbral ${rangoUmbral(borrador[v], UNIDAD[v])}`,
-            tono: nivelLectura(lectura(v)?.valor, borrador[v]) === 'normal' ? 'lima' : 'peligro',
+            tono: nivelLectura(lectura(v)?.valor, borrador[v]) === 'normal' ? 'verde' : 'peligro',
           })),
           { etiqueta: 'Último cambio', valor: ultimo ? hora(ultimo.fecha_actualizacion) : '—', sub: autor ? `Por ${nombreCorto(autor)}` : haceCuanto(ultimo?.fecha_actualizacion) },
         ],

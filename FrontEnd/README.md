@@ -71,7 +71,7 @@ FrontEnd/
 ├── public/                     Archivos que se sirven tal cual
 ├── src/
 │   ├── api/                    Rutas del backend como constantes, un archivo por módulo
-│   ├── assets/logos/           Logos oficiales (logo e ícono, en verde y lima)
+│   ├── assets/logos/           Logos oficiales (logo e ícono, en verde)
 │   ├── components/             Pantalla, CifrasClave (tarjeta oscura), EstadoError y
 │   │                           la tarjeta de salud de /estado
 │   ├── context/                SesionContext (sesión y tema) y AvisosContext

@@ -5,7 +5,7 @@ import { TemaFijo, useTema } from '../context/TemaContext'
 import { marca } from '../theme'
 import { LogoMark } from './ui'
 
-// Decoraciones de la zona oscura: anillos y el ícono lima, según la pantalla.
+// Decoraciones de la zona oscura: anillos y el ícono verde, según la pantalla.
 function Deco({ tipo }) {
   const anillo = (st, color = 'rgba(243,245,242,0.08)') => <View style={[s.anillo, { borderColor: color }, st]} />
   if (tipo === 'centro') return <View style={s.deco}>{anillo({ alignSelf: 'center', top: 60, width: 330, height: 330 })}</View>
@@ -15,7 +15,7 @@ function Deco({ tipo }) {
         {anillo({ alignSelf: 'center', top: -40, width: 360, height: 360 })}
         {anillo({ alignSelf: 'center', top: 15, width: 250, height: 250 })}
         <View style={{ position: 'absolute', right: -36, bottom: -40 }}>
-          <LogoMark tone="lima" size={120} />
+          <LogoMark tone="verde" size={120} />
         </View>
       </View>
     )
@@ -26,7 +26,7 @@ function Deco({ tipo }) {
       {anillo({ right: -100, bottom: -120, width: 200, height: 200 }, rojo ? 'rgba(255,107,94,0.14)' : undefined)}
       {!rojo && (
         <View style={{ position: 'absolute', right: -50, bottom: -60, opacity: 0.2 }}>
-          <LogoMark tone="lima" size={150} />
+          <LogoMark tone="verde" size={150} />
         </View>
       )}
     </View>

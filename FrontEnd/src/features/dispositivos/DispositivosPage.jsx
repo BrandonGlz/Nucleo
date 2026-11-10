@@ -144,7 +144,7 @@ export function DispositivosPage() {
           ? {
               principal: { etiqueta: 'Dispositivos', valor: todos.length, unidad: `en ${areas.length} áreas`, sub: organizacion },
               cifras: [
-                { etiqueta: 'En línea', valor: activos, sub: 'Enviando lecturas', tono: 'lima' },
+                { etiqueta: 'En línea', valor: activos, sub: 'Enviando lecturas', tono: 'verde' },
                 { etiqueta: 'Advertencia', valor: cuenta('warning'), sub: 'Cerca del umbral' },
                 { etiqueta: 'Crítico', valor: cuenta('critical'), sub: 'Fuera de rango', tono: 'peligro' },
                 { etiqueta: 'Sin conexión', valor: cuenta('offline'), sub: 'Revisar energía o red', tono: 'tenue' },

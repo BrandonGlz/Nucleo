@@ -86,7 +86,7 @@ export function PerfilPage() {
       cifras={{
         principal: { etiqueta: 'Mi perfil', titulo: nombre, sub: `${ROL[usuario.rol]} · ${area} · ${usuario.correo}` },
         cifras: [
-          { etiqueta: 'Dispositivos', valor: datos ? datos.dispositivos.length : '—', sub: usuario.area ? 'En tu área' : 'En la organización', tono: 'lima' },
+          { etiqueta: 'Dispositivos', valor: datos ? datos.dispositivos.length : '—', sub: usuario.area ? 'En tu área' : 'En la organización', tono: 'verde' },
           { etiqueta: 'Atendidas', valor: atendidas, sub: 'Alertas resueltas' },
           { etiqueta: 'Reportes', valor: datos ? datos.programados : '—', sub: 'Programados por correo' },
           { etiqueta: 'Último acceso', valor: accesoCorto(usuario.ultimo_acceso), sub: 'Este navegador' },

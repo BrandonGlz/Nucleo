@@ -37,7 +37,7 @@ export function PerfilScreen({ navigation }) {
     { k: 'Correo', v: usuario.correo, ancho: true },
     { k: 'Área', v: area },
     { k: 'Dispositivo asignado', v: d ? `${d.nombre} · ${d.codigo_mqtt}` : '—' },
-    { k: 'Supervisor', v: supers?.[0] ? nombreCompleto(supers[0]) : '—', ancho: true, lima: true },
+    { k: 'Supervisor', v: supers?.[0] ? nombreCompleto(supers[0]) : '—', ancho: true, verde: true },
   ]
   const nombre = nombreCompleto(usuario)
 
@@ -64,11 +64,11 @@ export function PerfilScreen({ navigation }) {
     <Pantalla zona={zona} deco="perfil">
       <View style={s.rejilla}>
         {filas.map((f) => (
-          <View key={f.k} style={[s.dato, { backgroundColor: f.lima ? marca.lima : c.surface, width: f.ancho ? '100%' : '48.5%' }]}>
-            <T mayus color={f.lima ? 'rgba(18,20,19,0.6)' : c.textMuted}>
+          <View key={f.k} style={[s.dato, { backgroundColor: f.verde ? marca.verde : c.surface, width: f.ancho ? '100%' : '48.5%' }]}>
+            <T mayus color={f.verde ? 'rgba(18,20,19,0.6)' : c.textMuted}>
               {f.k}
             </T>
-            <T peso={700} size={14} lh={20} color={f.lima ? marca.tinta : undefined}>
+            <T peso={700} size={14} lh={20} color={f.verde ? marca.tinta : undefined}>
               {f.v}
             </T>
           </View>
@@ -118,8 +118,8 @@ export function PerfilScreen({ navigation }) {
 
 const s = StyleSheet.create({
   centro: { alignItems: 'center', gap: 8, paddingTop: 8, paddingBottom: 6 },
-  aro: { padding: 5, borderRadius: 999, borderWidth: 3, borderColor: marca.lima },
-  area: { marginTop: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: marca.lima },
+  aro: { padding: 5, borderRadius: 999, borderWidth: 3, borderColor: marca.verde },
+  area: { marginTop: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: marca.verde },
   rejilla: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
   dato: { gap: 4, padding: 14, borderRadius: 20 },
   tarjeta: { gap: 16, padding: 18, borderRadius: 24 },

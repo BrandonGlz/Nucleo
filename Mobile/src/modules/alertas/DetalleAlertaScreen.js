@@ -94,7 +94,7 @@ export function DetalleAlertaScreen({ navigation, route }) {
       <View style={{ gap: 8 }}>
         <View>
           <BarraRango desde={0} ancho={valor / tope} color={color} />
-          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${(limite / tope) * 100}%`, borderRadius: 99, backgroundColor: marca.lima }} />
+          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${(limite / tope) * 100}%`, borderRadius: 99, backgroundColor: marca.verde }} />
           <View style={{ position: 'absolute', left: `${(limite / tope) * 100}%`, top: -6, width: 2, height: 22, borderRadius: 2, backgroundColor: marca.claro }} />
         </View>
         <View style={s.entre}>

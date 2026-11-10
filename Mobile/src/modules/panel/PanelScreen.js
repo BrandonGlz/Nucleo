@@ -14,7 +14,7 @@ import { enLinea, escala, nivelLectura, posicion, UNIDAD, VARIABLE } from '../..
 import { haceCuanto, hora, hoyTexto, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
-const TONO_ZONA = { normal: marca.lima, warning: colors.dark.warning, critical: colors.dark.danger }
+const TONO_ZONA = { normal: marca.verde, warning: colors.dark.warning, critical: colors.dark.danger }
 const TEXTO_NIVEL = { normal: 'En rango', warning: 'Cerca del límite', critical: 'Fuera de rango' }
 
 function Pastilla({ punto, icono, children }) {
@@ -111,7 +111,7 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
   return (
     <>
       {cabeza}
-      <FilaEquipo punto={marca.lima} bateria={d.nivel_bateria}>
+      <FilaEquipo punto={marca.verde} bateria={d.nivel_bateria}>
         {`${d.nombre} · ${op.area?.nombre ?? 'en línea'} · cada ${d.intervalo_muestreo_seg} s`}
       </FilaEquipo>
       <View>
@@ -141,11 +141,11 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
   )
 }
 
-// Mosaico de una variable: lima (humedad), tinta (aire) o apagado sin conexión.
+// Mosaico de una variable: verde (humedad), tinta (aire) o apagado sin conexión.
 function Mosaico({ variable, lectura, serie, tipo, sinConexion, desde, onPress }) {
   const { c, oscuro } = useTema()
   const info = VARIABLE[variable]
-  const lima = tipo === 'lima' && !sinConexion
+  const verde = tipo === 'verde' && !sinConexion
   const tinta = tipo === 'tinta' && !sinConexion
   const tenue = tinta ? colors.dark.textMuted : c.textMuted
   const contenido = (
@@ -155,21 +155,21 @@ function Mosaico({ variable, lectura, serie, tipo, sinConexion, desde, onPress }
       accessibilityLabel={`${info.etiqueta}: ver detalle`}
       style={({ pressed }) => [
         s.mosaico,
-        { backgroundColor: lima ? marca.lima : tinta ? (oscuro ? '#1E2120' : marca.tinta) : c.surface, minHeight: sinConexion ? 132 : 140 },
+        { backgroundColor: verde ? marca.verde : tinta ? (oscuro ? '#1E2120' : marca.tinta) : c.surface, minHeight: sinConexion ? 132 : 140 },
         tinta && oscuro && { borderWidth: 1, borderColor: 'rgba(243,245,242,0.06)' },
         pressed && { opacity: 0.9 },
       ]}
     >
-      {!sinConexion && <View style={[s.anilloMini, { borderColor: lima ? 'rgba(18,20,19,0.12)' : 'rgba(243,245,242,0.08)' }]} />}
+      {!sinConexion && <View style={[s.anilloMini, { borderColor: verde ? 'rgba(18,20,19,0.12)' : 'rgba(243,245,242,0.08)' }]} />}
       <View style={s.fila6}>
-        <Icon name={info.icono} size={14} color={lima ? marca.tinta : tenue} />
-        <T mayus color={lima ? marca.tinta : tenue}>
+        <Icon name={info.icono} size={14} color={verde ? marca.tinta : tenue} />
+        <T mayus color={verde ? marca.tinta : tenue}>
           {info.corta}
         </T>
       </View>
-      <T peso={800} size={42} lh={46} num color={sinConexion ? c.textMuted : lima ? marca.tinta : undefined} style={{ letterSpacing: -1.8 }}>
+      <T peso={800} size={42} lh={46} num color={sinConexion ? c.textMuted : verde ? marca.tinta : undefined} style={{ letterSpacing: -1.8 }}>
         {num(lectura?.valor, info.decimales)}
-        <T peso={800} size={variable === 'AIRE' ? 16 : 18} color={lima ? marca.tinta : tenue}>
+        <T peso={800} size={variable === 'AIRE' ? 16 : 18} color={verde ? marca.tinta : tenue}>
           {variable === 'AIRE' ? ` ${UNIDAD[variable]}` : UNIDAD[variable]}
         </T>
       </T>
@@ -182,13 +182,13 @@ function Mosaico({ variable, lectura, serie, tipo, sinConexion, desde, onPress }
             </T>
           </View>
         ) : (
-          <Sparkline data={serie} width={128} height={36} color={lima ? marca.tinta : marca.lima} />
+          <Sparkline data={serie} width={128} height={36} color={verde ? marca.tinta : marca.verde} />
         )}
       </View>
     </Pressable>
   )
   if (tinta) return <TemaFijo tema="dark">{contenido}</TemaFijo>
-  if (lima) return <TemaFijo tema="light">{contenido}</TemaFijo>
+  if (verde) return <TemaFijo tema="light">{contenido}</TemaFijo>
   return contenido
 }
 
@@ -268,7 +268,7 @@ export function PanelScreen({ navigation }) {
       ) : (
         <>
           <View style={s.dos}>
-            <Mosaico variable="HUM" tipo="lima" lectura={lecturaDe(op, 'HUM')} serie={(sH ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('HUM')} />
+            <Mosaico variable="HUM" tipo="verde" lectura={lecturaDe(op, 'HUM')} serie={(sH ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('HUM')} />
             <Mosaico variable="AIRE" tipo="tinta" lectura={lecturaDe(op, 'AIRE')} serie={(sA ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('AIRE')} />
           </View>
           {!sinConexion && sT && <Barras24 serie={sT} onPress={() => ver('TEMP')} />}
