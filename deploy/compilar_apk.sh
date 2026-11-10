@@ -38,7 +38,10 @@ CI=1 NODE_ENV=production bajo npx expo prebuild --platform android --clean --no-
 git -C "$raiz" checkout -- Mobile/package.json  # prebuild cambia los scripts de npm; no es parte del proyecto
 
 cd android
+# Solo arm64-v8a: la de todos los celulares Android actuales (A56, S24 Ultra, Redmi 10). Compilar las 4
+# arquitecturas tarda el doble; para agregar otra: NUCLEO_ABIS=arm64-v8a,armeabi-v7a bash deploy/compilar_apk.sh
 bajo ./gradlew assembleRelease --no-daemon -Dorg.gradle.workers.max=2 \
+  -PreactNativeArchitectures="${NUCLEO_ABIS:-arm64-v8a}" \
   -Pandroid.injected.signing.store.file="$firma/nucleo.keystore" \
   -Pandroid.injected.signing.store.password="$FIRMA_CLAVE" \
   -Pandroid.injected.signing.key.alias=nucleo \
