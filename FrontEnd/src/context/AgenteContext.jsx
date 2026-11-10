@@ -150,7 +150,7 @@ export function AgenteProvider({ children }) {
       dispositivos,
       agente: agenteValido,
       dispositivoAgente,
-      nombreAgente: (num) => dispositivos.find((d) => d.num === num)?.nombre ?? 'Agente',
+      nombreAgente: (num) => dispositivos.find((d) => d.num === num)?.nombre ?? 'Núcleo AI',
       preguntar,
       detener,
       nueva,

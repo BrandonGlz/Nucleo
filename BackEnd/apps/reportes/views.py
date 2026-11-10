@@ -108,7 +108,7 @@ class AgenteView(APIView):
 
     def post(self, request):
         if request.user.rol_id not in roles.TODOS or not request.user.puede_usar_agente:
-            raise PermissionDenied("No tienes acceso al agente IA.")
+            raise PermissionDenied("No tienes acceso a Núcleo AI.")
         entrada = PreguntaAgenteSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
         dispositivo = (

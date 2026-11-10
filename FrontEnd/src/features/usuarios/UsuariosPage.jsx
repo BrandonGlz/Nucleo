@@ -154,11 +154,11 @@ export function UsuariosPage() {
     return [
       { label: 'Editar usuario', icon: 'pencil', disabled: bloqueado, onClick: () => setModal({ usuario: u }) },
       u.rol === 'OPER' && {
-        label: u.acceso_agente ? 'Quitar el agente IA' : 'Permitir el agente IA',
+        label: u.acceso_agente ? 'Quitar Núcleo AI' : 'Permitir Núcleo AI',
         icon: 'sparkles',
         nota: 'En la app móvil',
         onClick: () =>
-          cambiar(u, { acceso_agente: !u.acceso_agente }, u.acceso_agente ? `${u.nombre} ya no ve el agente IA.` : `${u.nombre} ya puede usar el agente IA.`),
+          cambiar(u, { acceso_agente: !u.acceso_agente }, u.acceso_agente ? `${u.nombre} ya no ve Núcleo AI.` : `${u.nombre} ya puede usar Núcleo AI.`),
       },
       { label: 'Copiar correo', icon: 'mail', onClick: () => navigator.clipboard?.writeText(u.correo).then(() => avisar('Correo copiado.')).catch(() => {}) },
       {
@@ -246,7 +246,7 @@ export function UsuariosPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Badge tone={ROL_TONO[u.rol]}>{ROL[u.rol]}</Badge>
                           {u.rol === 'OPER' && u.acceso_agente && (
-                            <span className="ui-etiqueta-ia" title="Puede usar el agente IA en la app">
+                            <span className="ui-etiqueta-ia" title="Puede usar Núcleo AI en la app">
                               <Icon name="sparkles" size={12} /> IA
                             </span>
                           )}

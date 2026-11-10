@@ -8,7 +8,7 @@ import { fechaLarga, hora, mesAnio, miles, periodo } from '../../utils/formato'
 const ORIGEN = {
   MANUAL: { tone: 'neutral', icon: 'user', label: 'Manual' },
   PROGRAMADO: { tone: 'neutral', icon: 'calendar-clock', label: 'Programado' },
-  AGENTE: { tone: 'accent', icon: 'sparkles', label: 'Agente IA' },
+  AGENTE: { tone: 'accent', icon: 'sparkles', label: 'Núcleo AI' },
 }
 const dias = (inicio, fin) => Math.round((new Date(fin) - new Date(inicio)) / 86400000)
 
