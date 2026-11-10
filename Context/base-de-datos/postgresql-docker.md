@@ -33,13 +33,15 @@ y 55433, publicados solo en loopback.
   contraseña `REDIS_PASSWORD`; el backend la usa en `REDIS_URL`.
 
 Las contraseñas son `POSTGRES_PASSWORD` e `IOT_PASSWORD` en `.env`. Las imágenes
-crean usuarios con privilegios de superusuario dentro del contenedor; son
-credenciales de desarrollo y no deben reutilizarse en producción.
+crean usuarios con privilegios de superusuario dentro del contenedor. Son los que usa el
+backend, también en producción (SRS 3.3.2): cada base vive en su propio contenedor, con su
+propio usuario y contraseña, y los puertos solo escuchan en `127.0.0.1`, así que ningún
+usuario entra en la base del otro ni la base queda expuesta.
 
-## Usuarios sin superusuario para producción
+## Usuarios sin superusuario (opcional)
 
-`Database/crear-roles.sh` crea los roles con los que debe conectarse el backend fuera de
-desarrollo: `nucleo_backend` (en `nucleo_db`) y `nucleo_backend_iot` (en `nucleo_iot`), ambos
+`Database/crear-roles.sh` crea, si se quiere endurecer más, roles sin superusuario para el
+backend (hoy no se usan): `nucleo_backend` (en `nucleo_db`) y `nucleo_backend_iot` (en `nucleo_iot`), ambos
 `NOSUPERUSER NOCREATEDB NOCREATEROLE`, dueños solo de su base, con `CONNECT` revocado a
 `PUBLIC` para que ninguno entre en la base del otro. La extensión `timescaledb` la crea el
 script con el administrador del contenedor, de modo que `migrate --database=iot` funciona

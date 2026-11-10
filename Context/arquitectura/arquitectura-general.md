@@ -31,8 +31,8 @@ reportes, y expone una API REST que consumen la web y la app móvil.
     desarrollo) y `dispositivo.sh` (alta de un usuario por dispositivo).
 - **`Database/`**
   - Scripts SQL de práctica: `Web-Mobile/` (16 tablas, en `nucleo_test`) e `IoT/`
-    (hypertable `lectura`, en `nucleo_iot_test`), y `crear-roles.sh` para usuarios de base
-    de datos sin superusuario.
+    (hypertable `lectura`, en `nucleo_iot_test`), y `crear-roles.sh` (opcional) para usuarios de
+    base de datos sin superusuario.
 - **`Context/`**
   - Arquitectura, instalación, estructura y decisiones.
 - **`Docs/`**
@@ -129,8 +129,6 @@ Origen → Destino                                Protocolo                  Est
 - Clientes web y móvil del canal en vivo (el backend ya lo ofrece).
 - Despliegue del broker y de los certificados fuera de desarrollo.
 - Estrategia de retención, respaldo y recuperación.
-- Aplicar los usuarios de base de datos sin superusuario (`Database/crear-roles.sh`) en el
-  despliegue; en Docker de desarrollo siguen siendo superusuarios dentro de su contenedor.
 - Validación del modelo exacto de ESP32, pinout y circuito de alimentación.
 
 Las decisiones tomadas se registran en

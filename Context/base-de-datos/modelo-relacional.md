@@ -148,5 +148,6 @@ calentamiento del CCS811: no generan alertas ni entran en los reportes.
 ## Usuarios de las bases
 
 `nucleo_app` y `nucleo_iot` son los usuarios que crean los contenedores de PostgreSQL y
-de TimescaleDB y por eso tienen privilegios de superusuario dentro de ellos. Son
-credenciales de desarrollo.
+de TimescaleDB y por eso tienen privilegios de superusuario dentro de ellos. Son los
+que usa el backend también en producción: cada base corre en su propio contenedor y ningún
+usuario tiene acceso a la otra.

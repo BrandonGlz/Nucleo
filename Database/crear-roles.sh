@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Crea los usuarios de base de datos con los que debe conectarse el backend en producción
-# (SRS 3.3.2): sin superusuario, sin CREATEDB ni CREATEROLE, dueños solo de su propia base
+# Opcional: crea usuarios de base de datos para el backend más restringidos que los de cada
+# contenedor (hoy el backend usa los del contenedor, ver SRS 3.3.2): sin superusuario, sin CREATEDB ni CREATEROLE, dueños solo de su propia base
 # y sin acceso a la otra. Las migraciones de Django funcionan con ellos, incluida la
 # hypertable de TimescaleDB (la extensión se crea aquí, con el administrador del contenedor).
 #

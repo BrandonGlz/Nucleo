@@ -304,5 +304,5 @@ comando aplica solo las migraciones de sus apps. TimescaleDB debe estar encendid
 SSL y cookies seguras, y permite configurar HSTS y proxy TLS por variables de
 entorno. El servidor de desarrollo no debe usarse en producción. En producción se sirve con
 Daphne (`config.asgi:application`, HTTP y WebSocket) con Redis encendido; el proxy inverso
-y su configuración de WebSocket quedan pendientes de decisión. Los usuarios de base de datos
-sin superusuario se crean con `Database/crear-roles.sh`.
+y su configuración de WebSocket quedan pendientes de decisión. El backend se conecta con el
+usuario propio de cada contenedor (ver `Context/base-de-datos/postgresql-docker.md`).
