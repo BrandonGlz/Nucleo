@@ -68,8 +68,8 @@ Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.j
 
 Es incremental: si `Mobile/` no cambió desde el último APK no compila; reinstala `node_modules` solo si cambió
 `package-lock.json` y regenera `android/` solo si cambió la configuración nativa (`app.json`, `eas.json`,
-dependencias). Un cambio solo de pantallas tarda unos minutos; desde cero, 15-20 min. La memoria se usa solo
-mientras corre. Opciones: `--forzar` (compila aunque no haya cambios) y `--limpio` (borra `node_modules` y
+dependencias). Un cambio solo de pantallas tarda alrededor de 1 min (unos 2 GB de RAM); desde cero va con una
+tarea a la vez para cuidar la memoria y tarda más. La memoria se usa solo mientras corre. Opciones: `--forzar` (compila aunque no haya cambios) y `--limpio` (borra `node_modules` y
 `android/` y compila todo, por si algo sale raro).
 
 Requisitos (una vez): `sudo apt install openjdk-21-jdk-headless unzip` y las herramientas de línea de comandos

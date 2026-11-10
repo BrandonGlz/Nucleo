@@ -4,7 +4,7 @@
 # de ~/nucleo-app, que no va a git y entra en el respaldo diario. La primera vez crea la llave.
 # Solo consume memoria mientras compila; al terminar no queda nada corriendo.
 # Es incremental: reinstala dependencias y regenera android/ solo si cambiaron, y Gradle reutiliza lo ya
-# compilado. Un cambio solo de pantallas tarda unos minutos; la primera vez o con --limpio, unos 15-20.
+# compilado. Un cambio solo de pantallas tarda ~1 min; la primera vez o con --limpio, bastante más.
 #   bash deploy/compilar_apk.sh            compila si Mobile/ cambió desde el último APK publicado
 #   bash deploy/compilar_apk.sh --forzar   compila aunque no haya cambios
 #   bash deploy/compilar_apk.sh --limpio   borra node_modules y android/ y compila todo desde cero
@@ -69,7 +69,11 @@ eval "$(node -e 'const e = require("./eas.json").build.piloto.env; for (const [k
 version="$(node -p 'require("./app.json").expo.version')"
 echo "Compilando Núcleo $version contra $EXPO_PUBLIC_API_BASE_URL"
 
+# Compilación completa (android/ nuevo): 1 tarea a la vez para que el pico de RAM no se acerque al total
+# del servidor (con 2 llegaba a ~7 GB de 7.6). La incremental usa poca memoria y va con 2.
+hilos=2
 if [[ "$(cat android/.huella 2>/dev/null)" != "$h_nativo" ]]; then
+  hilos=1
   CI=1 NODE_ENV=production bajo npx expo prebuild --platform android --clean --no-install
   git -C "$raiz" checkout -- Mobile/package.json  # prebuild cambia los scripts de npm; no es parte del proyecto
   echo "$h_nativo" > android/.huella
@@ -84,7 +88,7 @@ sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx2560m -XX:MaxMetaspaceSi
 cd android
 # Solo arm64-v8a: la de todos los celulares Android actuales (A56, S24 Ultra, Redmi 10). Compilar las 4
 # arquitecturas tarda el doble; para agregar otra: NUCLEO_ABIS=arm64-v8a,armeabi-v7a bash deploy/compilar_apk.sh
-bajo ./gradlew assembleRelease --no-daemon --build-cache -Dorg.gradle.workers.max=2 \
+bajo ./gradlew assembleRelease --no-daemon --build-cache -Dorg.gradle.workers.max="$hilos" \
   -PreactNativeArchitectures="$abis" \
   -Pandroid.injected.signing.store.file="$firma/nucleo.keystore" \
   -Pandroid.injected.signing.store.password="$FIRMA_CLAVE" \
