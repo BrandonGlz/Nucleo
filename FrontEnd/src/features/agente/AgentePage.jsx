@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowUp,
@@ -90,12 +90,61 @@ function Pensando() {
   )
 }
 
-// Reporte que generó el agente, con la misma hoja A4 y el mismo formato que en Reportes; el PDF
-// sale de esa hoja, igual que al descargarlo desde Reportes.
-function ReporteChat({ resumen, navegar }) {
+const ZOOMS = [0.5, 0.75, 0.9, 1, 1.25, 1.5]
+const nombreReporte = (resumen) => `Reporte ${resumen.titulo ?? `R-${resumen.num}`}`
+
+// Reporte que generó el agente, como un archivo adjunto: se descarga directo (PDF del servidor)
+// o se visualiza en el visor lateral.
+function AdjuntoReporte({ resumen, visualizar, abierto }) {
+  const [bajando, setBajando] = useState(false)
+  const [error, setError] = useState(false)
+  const descargar = async () => {
+    setBajando(true)
+    setError(false)
+    try {
+      await reportesApi.descargarArchivo(resumen.num, nombreReporte(resumen))
+    } catch {
+      setError(true)
+    }
+    setBajando(false)
+  }
+  return (
+    <div className={`ui-ia-adjunto${abierto ? ' is-abierto' : ''}`}>
+      <button type="button" className="ui-ia-adjunto__archivo" onClick={() => visualizar(resumen)}>
+        <span className="ui-ia-adjunto__icono">
+          <Icon name="file-text" size={18} />
+        </span>
+        <span className="ui-ia-adjunto__texto">
+          <strong>{nombreReporte(resumen)}</strong>
+          <span className="ui-muted">
+            Documento · PDF · {periodo(resumen.periodo_inicio, resumen.periodo_fin)}
+          </span>
+        </span>
+      </button>
+      <div className="ui-ia-adjunto__botones">
+        <Button variant="secondary" size="sm" icon="eye" onClick={() => visualizar(resumen)}>
+          Visualizar
+        </Button>
+        <Button size="sm" icon="download" disabled={bajando} onClick={descargar}>
+          {bajando ? 'Descargando…' : 'Descargar PDF'}
+        </Button>
+      </div>
+      {error && (
+        <span className="ui-ia-sobre" role="alert">
+          No se pudo descargar. Intenta de nuevo.
+        </span>
+      )}
+    </div>
+  )
+}
+
+// Visor lateral del reporte, como el de un documento adjunto: hojas A4 con zoom, descarga,
+// pantalla completa y cierre (también con Escape).
+function VisorReporte({ resumen, cerrar, ampliado, ampliar }) {
   const [r, setR] = useState(null)
   const [error, setError] = useState(false)
-  const [amplio, setAmplio] = useState(false)
+  const [zoom, setZoom] = useState(null)
+  const [ajuste, setAjuste] = useState(1)
   const caja = useRef(null)
   const ed = useEdicion(resumen.num)
   useEffect(() => {
@@ -108,43 +157,62 @@ function ReporteChat({ resumen, navegar }) {
       vivo = false
     }
   }, [resumen.num])
+  useEffect(() => {
+    const tecla = (e) => e.key === 'Escape' && (ampliado ? ampliar(false) : cerrar())
+    document.addEventListener('keydown', tecla)
+    return () => document.removeEventListener('keydown', tecla)
+  }, [ampliado, ampliar, cerrar])
   const areas = r ? [{ num: r.area, nombre: resumen.titulo?.split(' · ')[0] ?? 'Todas las áreas' }] : []
+  const actual = zoom ?? ajuste
   return (
-    <div ref={caja} className="ui-ia-hallazgos ui-ia-reporte">
-      <div className="ui-ia-reporte__cabeza">
-        <span className="ui-ia-reporte__icono">
-          <Icon name="file-text" size={18} />
+    <aside ref={caja} className={`ui-ia-visor${ampliado ? ' is-ampliado' : ''}`} aria-label="Vista del reporte">
+      <header className="ui-ia-visor__barra">
+        <span className="ui-ia-visor__titulo">
+          <strong>{nombreReporte(resumen)}</strong>
+          <span className="ui-muted"> · PDF</span>
         </span>
-        <div>
-          <strong>{r?.cifras.titulo ?? resumen.titulo}</strong>
-          <span className="ui-muted">
-            {periodo(resumen.periodo_inicio, resumen.periodo_fin)} · Folio R-{String(resumen.num).padStart(4, '0')} · Formato: {ed.formato.nombre}
+        <label className="ui-ia-visor__zoom">
+          <span className="ui-sr-only">Zoom</span>
+          <select value={zoom ?? 'ajustar'} onChange={(e) => setZoom(e.target.value === 'ajustar' ? null : Number(e.target.value))}>
+            <option value="ajustar">{`${Math.round(ajuste * 100)} % · Ajustar`}</option>
+            {ZOOMS.map((z) => (
+              <option key={z} value={z}>
+                {Math.round(z * 100)} %
+              </option>
+            ))}
+          </select>
+          <Icon name="chevron-down" size={14} />
+        </label>
+        <Button size="sm" icon="download" disabled={!r} onClick={() => descargarPdf(`${nombreReporte(resumen)} · ${ed.formato.nombre}`, caja.current)}>
+          Descargar como PDF
+        </Button>
+        <button
+          type="button"
+          className="ui-ia-icono"
+          aria-label={ampliado ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          title={ampliado ? 'Reducir' : 'Pantalla completa'}
+          onClick={() => ampliar(!ampliado)}
+        >
+          <Icon name={ampliado ? 'minimize-2' : 'maximize-2'} size={17} />
+        </button>
+        <button type="button" className="ui-ia-icono" aria-label="Cerrar vista" title="Cerrar" onClick={cerrar}>
+          <Icon name="x" size={18} />
+        </button>
+      </header>
+      <div className="ui-ia-visor__hojas nc-scroll" data-zoom={Math.round(actual * 100)}>
+        {error ? (
+          <span className="ui-aviso ui-aviso--danger" role="alert">
+            No se pudo cargar el reporte. Intenta de nuevo o ábrelo en Reportes.
           </span>
-        </div>
+        ) : r ? (
+          <DashboardReporte r={r} areas={areas} ed={ed} zoom={zoom ?? undefined} alEscalar={setAjuste} />
+        ) : (
+          <div className="ui-ia-visor__cargando">
+            <Skeleton variant="card" />
+          </div>
+        )}
       </div>
-      {error ? (
-        <span className="ui-aviso ui-aviso--danger" role="alert">
-          No se pudo cargar la vista previa. Ábrelo en Reportes.
-        </span>
-      ) : r ? (
-        <div className={`ui-visor nc-scroll ui-ia-reporte__visor${amplio ? ' is-amplio' : ''}`}>
-          <DashboardReporte r={r} areas={areas} ed={ed} />
-        </div>
-      ) : (
-        <Skeleton variant="card" />
-      )}
-      <div className="ui-ia-siguientes">
-        <Button size="sm" icon="download" disabled={!r} onClick={() => descargarPdf(`${r.cifras.titulo} · ${ed.formato.nombre}`, caja.current)}>
-          Descargar PDF
-        </Button>
-        <Button variant="secondary" size="sm" icon={amplio ? 'chevron-up' : 'chevron-down'} disabled={!r} onClick={() => setAmplio((a) => !a)}>
-          {amplio ? 'Reducir' : 'Ver todas las páginas'}
-        </Button>
-        <Button variant="ghost" size="sm" icon="sliders-horizontal" onClick={() => navegar(`/reportes?reporte=${resumen.num}`)}>
-          Personalizar en Reportes
-        </Button>
-      </div>
-    </div>
+    </aside>
   )
 }
 
@@ -185,7 +253,7 @@ function Hallazgos({ m }) {
   )
 }
 
-function Respuesta({ m, autor, ultima, animar, regenerar, calificar }) {
+function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto }) {
   const navegar = useNavigate()
   const [completa, setCompleta] = useState(!animar)
   const [copiado, setCopiado] = useState(false)
@@ -210,7 +278,7 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar }) {
         {completa && m.reporte && (
           <div className="ui-ia-aparece">
             {m.reporte.variables ? (
-              <ReporteChat resumen={m.reporte} navegar={navegar} />
+              <AdjuntoReporte resumen={m.reporte} visualizar={visualizar} abierto={visorAbierto === m.reporte.num} />
             ) : (
               // Conversaciones guardadas antes del resumen solo traen el número del reporte.
               <div className="ui-ia-siguientes">
@@ -338,6 +406,12 @@ export function AgentePage() {
   const { conversaciones, actual, conv, pensando, animada, dispositivos, dispositivoAgente } = ag
   const [texto, setTexto] = useState('')
   const [panel, setPanel] = useState(true)
+  const [visor, setVisor] = useState(null)
+  const [ampliado, setAmpliado] = useState(false)
+  const cerrarVisor = useCallback(() => {
+    setVisor(null)
+    setAmpliado(false)
+  }, [])
   const hilo = useRef(null)
 
   const mensajes = conv?.mensajes ?? []
@@ -394,8 +468,8 @@ export function AgentePage() {
 
   return (
     <Pantalla eyebrow="Pregunta sobre los sensores de tu organización" titulo="Núcleo AI">
-      <div className={`ui-ia${panel ? '' : ' is-sin-panel'}`}>
-        {panel && (
+      <div className={`ui-ia${panel && !visor ? '' : ' is-sin-panel'}${visor ? ' con-visor' : ''}`}>
+        {panel && !visor && (
           <aside className="ui-ia-panel" aria-label="Conversaciones">
             <button type="button" className="ui-ia-nueva" onClick={nueva}>
               <SquarePen size={16} /> Nueva conversación
@@ -507,6 +581,8 @@ export function AgentePage() {
                         animar={m.clave === animada}
                         regenerar={regenerar}
                         calificar={(voto) => ag.editar(actual, (ms) => ms.map((x, j) => (j === i ? { ...x, voto } : x)))}
+                        visualizar={setVisor}
+                        visorAbierto={visor?.num}
                       />
                     ),
                   )}
@@ -520,6 +596,7 @@ export function AgentePage() {
             Núcleo AI responde solo sobre los sensores de tu organización y puede equivocarse. Verifica las cifras en Histórico.
           </p>
         </section>
+        {visor && <VisorReporte key={visor.num} resumen={visor} cerrar={cerrarVisor} ampliado={ampliado} ampliar={setAmpliado} />}
       </div>
     </Pantalla>
   )

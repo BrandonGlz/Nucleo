@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Eye, EyeOff, GripVertical, Plus, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { BarChart, Badge, Icon, Logo, TrendChart } from '../../design-system/componentes/index.js'
 import { UNIDAD, VARIABLE } from '../../utils/convertir'
@@ -683,7 +683,8 @@ function paginar(altos, nFilas) {
 
 // Hojas A4 de la vista previa. Mide las filas en una copia oculta, las reparte en páginas
 // sin cortar ninguna y, si la columna es más angosta que la hoja, reduce todo a escala.
-function Paginas({ cabeza, bloques, vacio, editando }) {
+// `zoom` fija la escala (visor de Núcleo AI); sin él la hoja se ajusta al ancho disponible.
+function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar }) {
   const medidor = useRef(null)
   const marco = useRef(null)
   const [altos, setAltos] = useState(null)
@@ -712,6 +713,11 @@ function Paginas({ cabeza, bloques, vacio, editando }) {
     return () => obs.disconnect()
   }, [])
 
+  // Avisa la escala de ajuste a quien la muestre (el zoom del visor de Núcleo AI).
+  useEffect(() => {
+    alEscalar?.(escala)
+  }, [escala, alEscalar])
+
   const paginas = paginar(altos, filas.length)
   const fila = (i) => (
     <div key={filas[i].map((b) => b.id).join()} className="ui-dash__rejilla" data-fila>
@@ -724,7 +730,7 @@ function Paginas({ cabeza, bloques, vacio, editando }) {
         <div data-cabeza>{cabeza}</div>
         {filas.map((_, i) => fila(i))}
       </div>
-      <div ref={marco} className={`ui-paginas${editando ? ' is-editando' : ''}`} style={{ zoom: escala }}>
+      <div ref={marco} className={`ui-paginas${editando ? ' is-editando' : ''}`} style={{ zoom: zoom ?? escala }}>
         {paginas.map((p, n) => (
           <article key={n} className="ui-hoja" aria-label={`Página ${n + 1} de ${paginas.length}`}>
             {n === 0 && cabeza}
@@ -824,7 +830,7 @@ function bloquesEdicion(r, ed) {
 
 // Vista previa del reporte tal como sale en el PDF, en hojas A4. Con `ed.editando` las
 // tarjetas se pueden arrastrar y elegir; la elección vale para todos los reportes en este navegador.
-export function DashboardReporte({ r, areas, ed }) {
+export function DashboardReporte({ r, areas, ed, zoom, alEscalar }) {
   const c = r.cifras
   const origen = ORIGEN[r.origen] ?? ORIGEN.MANUAL
   const area = areas.find((a) => a.num === r.area)?.nombre ?? 'Todas las áreas'
@@ -873,6 +879,8 @@ export function DashboardReporte({ r, areas, ed }) {
   )
   return (
     <Paginas
+      zoom={zoom}
+      alEscalar={alEscalar}
       cabeza={cabeza}
       bloques={bloques}
       editando={ed.editando}

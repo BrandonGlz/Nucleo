@@ -1,6 +1,7 @@
-import { AREAS, DISPOSITIVOS, PROGRAMACIONES_REPORTE, REPORTE, REPORTES } from '../api'
+import { AREAS, DISPOSITIVOS, PROGRAMACIONES_REPORTE, REPORTE, REPORTE_PDF, REPORTES } from '../api'
+import { API_BASE_URL } from './api/client'
 import { pagina } from '../utils/convertir'
-import { USAR_MOCKS, pedir } from './config'
+import { USAR_MOCKS, leerToken, pedir } from './config'
 import * as mock from './mock/handlers'
 
 const ORDEN = ['TEMP', 'HUM', 'AIRE']
@@ -75,4 +76,17 @@ export async function obtener(num) {
   if (USAR_MOCKS) return (await mock.reportes()).find((r) => r.num === num) ?? null
   const [r, [areas, nombres]] = await Promise.all([pedir(REPORTE(num)), contexto()])
   return adaptar(r, areas, nombres)
+}
+
+// Descarga directa del PDF que genera el servidor (formato estándar, el mismo de los correos).
+export async function descargarArchivo(num, nombre) {
+  if (USAR_MOCKS) throw new Error('Sin PDF en modo simulado.')
+  const r = await fetch(`${API_BASE_URL}${REPORTE_PDF(num)}`, { headers: { Authorization: `Token ${leerToken()}` } })
+  if (!r.ok) throw new Error(`La API respondió con el estado ${r.status}.`)
+  const url = URL.createObjectURL(await r.blob())
+  const a = Object.assign(document.createElement('a'), { href: url, download: `${nombre}.pdf` })
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

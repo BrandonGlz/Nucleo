@@ -303,7 +303,7 @@ def generar_reporte(usuario, dispositivo, pregunta):
         "texto": (
             f"Listo: generé el reporte de {area.nombre} de {descripcion} "
             f"({timezone.localtime(inicio):%d/%m/%Y} – {timezone.localtime(fin):%d/%m/%Y}). "
-            "Aquí tienes el resumen; descárgalo en PDF o ábrelo completo en Reportes."
+            "Puedes visualizarlo aquí o descargarlo en PDF."
         ),
         "reporte": resumen_reporte(reporte, f"{area.nombre} · {descripcion}"),
     }
