@@ -59,13 +59,17 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 ### App móvil (APK)
 
 El APK se descarga en `https://nucleo.<tailnet>.ts.net/app/nucleo.apk`. Caddy entrega la carpeta
-`descargas/` del proyecto, que no va a git. Para publicar una versión nueva:
+`descargas/` del proyecto (no va a git), donde también queda una copia por versión (`nucleo-<versión>.apk`).
 
-1. Compilar con la API de producción (perfil `piloto` de `Mobile/eas.json`): en `Mobile/`,
-   `npx expo prebuild --platform android --clean` y `cd android && ./gradlew assembleRelease`, con
-   `EXPO_PUBLIC_API_BASE_URL=https://nucleo.<tailnet>.ts.net/api/v1` y `EXPO_PUBLIC_USE_MOCKS=false`.
-2. Copiar `android/app/build/outputs/apk/release/app-release.apk` a `descargas/nucleo.apk` en la laptop.
-   El enlace no cambia y no hace falta reiniciar nada.
+Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.json` y correr
+`bash deploy/compilar_apk.sh` (mejor en tmux y en horario de poco uso). Compila en la laptop con la API del
+perfil `piloto` de `Mobile/eas.json`, con prioridad baja; tarda 15-25 min y usa 3-4 GB de RAM solo mientras
+corre. El enlace no cambia y no hace falta reiniciar nada.
+
+Requisitos (una vez): `sudo apt install openjdk-21-jdk-headless unzip` y las herramientas de línea de comandos
+de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
+(`yes | sdkmanager --licenses`); Gradle descarga el resto. La llave de firma vive en `~/nucleo-app`
+(fuera de git) y entra en el respaldo diario: sin ella no se puede actualizar la app ya instalada.
 
 ## Instalación desde cero
 

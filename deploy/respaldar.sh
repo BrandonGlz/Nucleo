@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Respaldo de Núcleo: pg_dump de nucleo_db y nucleo_iot (TimescaleDB) + usuarios y
-# certificados del broker. Guarda 7 días en ~/respaldos/nucleo y, si rclone tiene el
+# certificados del broker, y la llave de firma de la app (~/nucleo-app). Guarda 7 días en ~/respaldos/nucleo y, si rclone tiene el
 # remoto "gdrive-nucleo" (o "gdrive"), sube a Google Drive (gdrive:servidor/nucleo) y borra allá lo de más de 30 días.
 # Lo ejecuta el timer nucleo-respaldo.timer; a mano:  bash deploy/respaldar.sh
 set -euo pipefail
@@ -17,6 +17,10 @@ volcar nucleo_postgres nucleo_db
 volcar nucleo_timescaledb nucleo_iot
 tar -czf "$destino/nucleo_broker_media_$fecha.tar.gz" -C "$raiz" \
   Mosquitto/certs Mosquitto/config/passwd BackEnd/media
+# Sin la llave de firma no se puede publicar una actualización de la app instalada
+if [[ -d "$HOME/nucleo-app" ]]; then
+  tar -czf "$destino/nucleo_firma_app_$fecha.tar.gz" -C "$HOME" nucleo-app
+fi
 chmod 600 "$destino"/*"$fecha"*
 find "$destino" -type f -mtime +7 -delete
 echo "Respaldo local: $destino ($fecha)"
