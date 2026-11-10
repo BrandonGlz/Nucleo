@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Chip, Icon, T } from '../../components/ui'
+import { SelectorDispositivo } from '../../components/SelectorDispositivo'
+import { Icon, T } from '../../components/ui'
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
-import { useDatos } from '../../hooks/useDatos'
+import { useOperador } from '../../hooks/useOperador'
 import * as agenteApi from '../../services/agente'
-import * as dispositivosApi from '../../services/dispositivos'
-import { pagina } from '../../utils/convertir'
 import { hora } from '../../utils/formato'
 import { font, marca } from '../../theme'
 
 const SUGERENCIAS = ['¿Cómo está la temperatura ahora?', '¿Hubo picos de humedad hoy?', '¿Cómo está la calidad del aire?']
 
-// Agente IA en la app: hay un agente por dispositivo. El operador habla con el de su dispositivo;
-// las demás cuentas eligen el dispositivo. Solo aparece para las cuentas autorizadas.
+// Núcleo AI en la app: hay un agente por dispositivo. El operador habla con el de su dispositivo;
+// las demás cuentas lo eligen en un select. Solo aparece para las cuentas autorizadas.
+// Con el teclado abierto el campo sube sobre él y la conversación se recorre al final.
 export function AgenteScreen() {
   const { c } = useTema()
   const { usuario } = useSesion()
@@ -26,17 +26,24 @@ export function AgenteScreen() {
   const [mensajes, setMensajes] = useState({})
   const [pensando, setPensando] = useState(false)
 
-  const { datos } = useDatos(async () => {
-    const todos = pagina(await dispositivosApi.lista())
-    return usuario.rol === 'OPER' ? todos.filter((d) => d.operador === usuario.num) : todos
-  }, [usuario.num])
-  const dispositivos = datos ?? []
-  const d = dispositivos.find((x) => x.num === elegido) ?? dispositivos[0]
+  const [teclado, setTeclado] = useState(false)
+  const { datos: op } = useOperador()
+  const dispositivos = op?.dispositivos ?? []
+  const d = dispositivos.find((x) => x.num === elegido) ?? op?.dispositivo ?? dispositivos[0]
   const lista = d ? (mensajes[d.num] ?? []) : []
 
   useEffect(() => {
     hilo.current?.scrollToEnd({ animated: true })
-  }, [lista.length, pensando])
+  }, [lista.length, pensando, teclado])
+
+  useEffect(() => {
+    const abre = Keyboard.addListener('keyboardDidShow', () => setTeclado(true))
+    const cierra = Keyboard.addListener('keyboardDidHide', () => setTeclado(false))
+    return () => {
+      abre.remove()
+      cierra.remove()
+    }
+  }, [])
 
   const preguntar = async (pregunta) => {
     const p = pregunta.trim()
@@ -57,7 +64,7 @@ export function AgenteScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: marca.tinta }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: marca.tinta }} behavior="padding">
       <StatusBar style="light" />
       <TemaFijo tema="dark">
         <View style={[s.zona, { paddingTop: inset.top + 16 }]}>
@@ -67,21 +74,15 @@ export function AgenteScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <T peso={700} size={22} lh={28} style={{ letterSpacing: -0.5 }}>
-                Agente IA
+                Núcleo AI
               </T>
               <T size={12} color={marca.tenue}>
-                {d ? `Agente de ${d.nombre}` : 'Cargando tu dispositivo…'}
+                {d ? `Responde con los datos de ${d.nombre}` : 'Cargando tu dispositivo…'}
               </T>
             </View>
           </View>
-          {dispositivos.length > 1 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {dispositivos.map((x) => (
-                <Chip key={x.num} selected={x.num === d?.num} onPress={() => setElegido(x.num)}>
-                  {x.nombre}
-                </Chip>
-              ))}
-            </ScrollView>
+          {dispositivos.length > 1 && !teclado && (
+            <SelectorDispositivo dispositivos={dispositivos} valor={d?.num} onElegir={setElegido} etiqueta="Preguntar sobre" />
           )}
         </View>
       </TemaFijo>
@@ -119,7 +120,7 @@ export function AgenteScreen() {
                   </T>
                   {m.hora && (
                     <T size={11} color={c.textMuted}>
-                      {`Agente de ${d?.nombre} · ${m.hora}`}
+                      {`Núcleo AI · ${d?.nombre} · ${m.hora}`}
                     </T>
                   )}
                 </View>
@@ -135,7 +136,7 @@ export function AgenteScreen() {
             </View>
           )}
         </ScrollView>
-        <View style={[s.compositor, { backgroundColor: c.surface, borderColor: c.border, marginBottom: 104 + inset.bottom }]}>
+        <View style={[s.compositor, { backgroundColor: c.surface, borderColor: c.border, marginBottom: teclado ? 10 : 104 + inset.bottom }]}>
           <TextInput
             value={texto}
             onChangeText={setTexto}

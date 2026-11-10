@@ -2,7 +2,7 @@
   "expo": {
     "name": "Núcleo",
     "slug": "nucleo-mobile",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "orientation": "portrait",
     "scheme": "nucleo",
     "userInterfaceStyle": "automatic",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.nucleo.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icono-adaptativo.png",
         "monochromeImage": "./assets/icono-monocromo.png",

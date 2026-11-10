@@ -4,6 +4,7 @@ import { Cabecera } from '../../components/Cabecera'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { ActivityFeed, Badge, Card, Skeleton, StatusBadge, T, TrendChart } from '../../components/ui'
+import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
 import { useOperador } from '../../hooks/useOperador'
@@ -35,6 +36,7 @@ async function cargarDetalle(num_) {
 export function DetalleAlertaScreen({ navigation, route }) {
   const { c } = useTema()
   const { datos: op } = useOperador()
+  const oper = useSesion().usuario?.rol === 'OPER'
   const { estado, datos, reintentar } = useDatos(() => cargarDetalle(route.params.num), [route.params.num])
   const a = datos?.a
   const volver = <Cabecera titulo="Alerta" onVolver={() => navigation.goBack()} />
@@ -63,10 +65,10 @@ export function DetalleAlertaScreen({ navigation, route }) {
       time: hora(notif.fecha_envio),
     },
     a.estado === 'PENDIENTE'
-      ? { level: 'info', icon: 'clock', title: 'Pendiente', meta: 'Tu supervisor la atenderá', time: '' }
+      ? { level: 'info', icon: 'clock', title: 'Pendiente', meta: oper ? 'Tu supervisor la atenderá' : 'Se atiende desde la web', time: '' }
       : {
           level: a.estado === 'ATENDIDA' ? 'normal' : 'offline', icon: a.estado === 'ATENDIDA' ? undefined : 'circle-x',
-          title: `${a.estado === 'ATENDIDA' ? 'Atendida' : 'Descartada'} por ${nombreCorto(datos.quien) || 'tu supervisor'}`,
+          title: `${a.estado === 'ATENDIDA' ? 'Atendida' : 'Descartada'} por ${nombreCorto(datos.quien) || (oper ? 'tu supervisor' : 'el supervisor')}`,
           meta: a.observaciones || 'Sin observaciones', time: hora(a.fecha_atencion),
         },
   ].filter(Boolean)
@@ -85,7 +87,7 @@ export function DetalleAlertaScreen({ navigation, route }) {
           {tituloAlerta(a)}
         </T>
         <T size={13} color={colors.dark.textSecondary}>
-          {`${a.dispositivo_nombre} · ${op?.area?.nombre ?? ''} · ${hora(a.fecha_hora)}`}
+          {`${a.dispositivo_nombre}${a.dispositivo === op?.dispositivo?.num && op?.area ? ` · ${op.area.nombre}` : ''} · ${hora(a.fecha_hora)}`}
         </T>
       </View>
       <T peso={800} size={a.variable === 'AIRE' ? 88 : 104} lh={100} num style={{ letterSpacing: -5.5 }}>

@@ -3,10 +3,11 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { Badge, Chip, Icon, IconCircle, Skeleton, StatusBadge, T } from '../../components/ui'
+import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { pendientesDe, useOperador } from '../../hooks/useOperador'
 import { ESTADO_ALERTA, NIVEL_ALERTA, tituloAlerta, valorAlerta } from '../../utils/convertir'
-import { esHoy, hora } from '../../utils/formato'
+import { diaCorto } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const FILTROS = [
@@ -34,7 +35,7 @@ export function TarjetaAlerta({ a, onPress }) {
             {tituloAlerta(a)}
           </T>
           <T size={12} num color={c.textMuted}>
-            {esHoy(a.fecha_hora) ? hora(a.fecha_hora) : 'Ayer'}
+            {diaCorto(a.fecha_hora)}
           </T>
         </View>
         <T size={13} lh={18} color={c.textSecondary}>
@@ -51,9 +52,12 @@ export function TarjetaAlerta({ a, onPress }) {
   )
 }
 
-// Alertas del dispositivo del operador. Solo consulta: el supervisor las atiende.
+// Alertas: el operador ve las de su dispositivo; las demás cuentas, todas las de su alcance (como en
+// la web). En la app solo se consultan: se atienden desde la web.
 export function AlertasScreen({ navigation }) {
   const { c } = useTema()
+  const { usuario } = useSesion()
+  const oper = usuario.rol === 'OPER'
   const { estado, datos: op, reintentar } = useOperador()
   const [filtro, setFiltro] = useState('todas')
   const alertas = [...(op?.alertas ?? [])].sort((x, y) => (x.fecha_hora < y.fecha_hora ? 1 : -1))
@@ -70,7 +74,7 @@ export function AlertasScreen({ navigation }) {
           Alertas
         </T>
         <T size={12} color={colors.dark.textMuted} style={{ paddingBottom: 8 }}>
-          {op?.dispositivo ? `${op.dispositivo.nombre} · ${op.area?.nombre ?? ''}` : ' '}
+          {!oper ? 'Todos tus dispositivos' : op?.dispositivo ? `${op.dispositivo.nombre} · ${op.area?.nombre ?? ''}` : ' '}
         </T>
       </View>
       {estado === 'cargando' ? (
@@ -142,7 +146,7 @@ export function AlertasScreen({ navigation }) {
                 )}
               </View>
               <T size={13} lh={20} color={c.textMuted} style={{ textAlign: 'center', paddingHorizontal: 16 }}>
-                Tu supervisor atiende las alertas. Aquí puedes consultarlas.
+                {oper ? 'Tu supervisor atiende las alertas. Aquí puedes consultarlas.' : 'Las alertas se atienden desde la web. Aquí puedes consultarlas.'}
               </T>
             </>
           )}

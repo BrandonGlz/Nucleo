@@ -1,4 +1,5 @@
-import { View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Keyboard, View } from 'react-native'
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
@@ -22,6 +23,17 @@ function BarraInferior({ state, navigation }) {
   const pestanas = pestanasDe(usuario)
   const { datos } = useOperador()
   const pendientes = pendientesDe(datos).length
+  // Con el teclado abierto la barra se oculta para no tapar lo que se escribe (Núcleo AI).
+  const [teclado, setTeclado] = useState(false)
+  useEffect(() => {
+    const abre = Keyboard.addListener('keyboardDidShow', () => setTeclado(true))
+    const cierra = Keyboard.addListener('keyboardDidHide', () => setTeclado(false))
+    return () => {
+      abre.remove()
+      cierra.remove()
+    }
+  }, [])
+  if (teclado) return null
   return (
     <View style={{ position: 'absolute', left: 16, right: 16, bottom: 24 + inset.bottom }}>
       <TabBar

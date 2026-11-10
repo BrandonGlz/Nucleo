@@ -9,13 +9,14 @@ import { useDatos } from '../../hooks/useDatos'
 import { lecturaDe, umbralDe, useOperador } from '../../hooks/useOperador'
 import * as lecturasApi from '../../services/lecturas'
 import { enLinea, escala, nivelLectura, posicion, UNIDAD, VARIABLE } from '../../utils/convertir'
-import { esHoy, hora, num } from '../../utils/formato'
+import { cuando, fechaCorta, hora, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const TONO = { normal: marca.verde, warning: colors.dark.warning, critical: colors.dark.danger }
 const TEXTO = { normal: 'en rango', warning: 'cerca del límite', critical: 'fuera de rango' }
 
-// Detalle de una variable del dispositivo asignado: medidor en vivo y últimas 24 h.
+// Detalle de una variable del dispositivo a la vista: medidor en vivo y últimas 24 h. Sin lecturas
+// recientes muestra las 24 h que terminan en la última lectura guardada, como en la web.
 export function MedicionesScreen({ navigation, route }) {
   const variable = route.params?.variable ?? 'TEMP'
   const info = VARIABLE[variable]
@@ -25,11 +26,13 @@ export function MedicionesScreen({ navigation, route }) {
   const d = op?.dispositivo
   const l = lecturaDe(op, variable)
   const u = umbralDe(op, variable)
-  const serie = useDatos(() => (d ? lecturasApi.serie(d.num, variable) : new Promise(() => {})), [d?.num, variable])
+  const serie = useDatos(() => (d ? lecturasApi.serieConDatos(d.num, variable) : new Promise(() => {})), [d?.num, variable])
+  const puntos = serie.datos?.puntos
+  const ultima = serie.datos?.ultima
   const [min, max] = u ? escala(u, variable) : [0, 1]
   const nivel = nivelLectura(l?.valor, u)
   const vivo = d && enLinea(d)
-  const valores = (serie.datos ?? []).map((p) => Number(p.promedio))
+  const valores = (puntos ?? []).map((p) => Number(p.promedio))
   const stat = (f) => (valores.length ? f(...valores) : null)
   const prom = valores.length ? valores.reduce((a, b) => a + b, 0) / valores.length : null
   const dec = info.decimales
@@ -81,8 +84,12 @@ export function MedicionesScreen({ navigation, route }) {
                 <T mayus color={et}>
                   {k}
                 </T>
-                {v == null ? (
+                {v == null && !puntos ? (
                   <Skeleton height={24} width={60} />
+                ) : v == null ? (
+                  <T peso={700} size={22} lh={28} color={fg}>
+                    —
+                  </T>
                 ) : (
                   <T peso={700} size={22} lh={28} num color={fg} style={{ letterSpacing: -0.4 }}>
                     {v.toFixed(dec)}
@@ -95,19 +102,28 @@ export function MedicionesScreen({ navigation, route }) {
           <Card padding="sm">
             <View style={[s.entre, { paddingHorizontal: 4, paddingBottom: 8, alignItems: 'baseline' }]}>
               <T peso={700} size={15}>
-                Últimas 24 h
+                {ultima ? `24 h hasta el ${fechaCorta(ultima)}` : 'Últimas 24 h'}
               </T>
-              {serie.datos?.length ? (
+              {puntos?.length ? (
                 <T size={12} color={c.textMuted}>
-                  {`${esHoy(serie.datos[0].periodo) ? 'Hoy' : 'Ayer'} ${hora(serie.datos[0].periodo)} – hoy ${hora(serie.datos.at(-1).periodo)}`}
+                  {`${cuando(puntos[0].periodo)} – ${cuando(puntos.at(-1).periodo)}`}
                 </T>
               ) : null}
             </View>
-            {serie.datos ? (
+            {ultima && (
+              <T size={12} lh={17} color={c.warning} style={{ paddingHorizontal: 4, paddingBottom: 8 }}>
+                Sin lecturas recientes · se muestran las últimas guardadas
+              </T>
+            )}
+            {puntos && !puntos.length ? (
+              <T size={14} color={c.textMuted} style={{ textAlign: 'center', paddingVertical: 60 }}>
+                Este dispositivo aún no tiene lecturas guardadas.
+              </T>
+            ) : puntos ? (
               <TrendChart
-                data={serie.datos.map((p, i) => ({
+                data={puntos.map((p, i) => ({
                   label: i % 6 === 0 ? hora(p.periodo) : '',
-                  time: `${esHoy(p.periodo) ? 'Hoy' : 'Ayer'} · ${hora(p.periodo)}`,
+                  time: cuando(p.periodo),
                   value: Number(p.promedio),
                 }))}
                 unit={unidad}

@@ -36,6 +36,12 @@ export const esAyer = (iso) => {
   return new Date(iso).toDateString() === d.toDateString()
 }
 
+// Día y hora cortos para ejes y listas: «Hoy 14:05», «Ayer 18:21», «7 nov 09:10».
+export const cuando = (iso) =>
+  `${esHoy(iso) ? 'Hoy' : esAyer(iso) ? 'Ayer' : fechaCorta(iso)} ${hora(iso)}`
+// Solo el día para listas: la hora si es hoy, «Ayer» o la fecha.
+export const diaCorto = (iso) => (esHoy(iso) ? hora(iso) : esAyer(iso) ? 'Ayer' : fechaCorta(iso))
+
 // «hace 4 s», «hace 6 min», «hace 2 h», «Ayer, 17:42», «12 ago, 08:10».
 export function haceCuanto(iso) {
   if (!iso) return 'Nunca'

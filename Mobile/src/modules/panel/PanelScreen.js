@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { BarraRango } from '../../components/BarraRango'
+import { SelectorDispositivo } from '../../components/SelectorDispositivo'
 import { Pantalla } from '../../components/Pantalla'
 import { Avatar, Battery, Icon, IconButton, Skeleton, Sparkline, T } from '../../components/ui'
 import { useSesion } from '../../context/SesionContext'
@@ -11,31 +12,56 @@ import { ESTADO_FORZADO } from '../../services/mock/handlers'
 import { USAR_MOCKS } from '../../services/config'
 import * as lecturasApi from '../../services/lecturas'
 import { enLinea, escala, nivelLectura, posicion, UNIDAD, VARIABLE } from '../../utils/convertir'
-import { haceCuanto, hora, hoyTexto, num } from '../../utils/formato'
+import { cuando, fechaCorta, haceCuanto, hora, hoyTexto, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const TONO_ZONA = { normal: marca.verde, warning: colors.dark.warning, critical: colors.dark.danger }
 const TEXTO_NIVEL = { normal: 'En rango', warning: 'Cerca del límite', critical: 'Fuera de rango' }
 
-function Pastilla({ punto, icono, children }) {
-  return (
-    <View style={s.pastilla}>
+function Pastilla({ punto, icono, children, onPress }) {
+  const contenido = (
+    <>
       {icono ? <Icon name={icono} size={14} color={marca.claro} /> : <View style={[s.punto, { backgroundColor: punto, shadowColor: punto }]} />}
       <T peso={600} size={12} numberOfLines={1} style={{ flexShrink: 1 }}>
         {children}
       </T>
-    </View>
+      {onPress && <Icon name="chevron-down" size={16} color={marca.claro} />}
+    </>
+  )
+  if (!onPress) return <View style={s.pastilla}>{contenido}</View>
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${children}. Cambiar de dispositivo`}
+      style={({ pressed }) => [s.pastilla, s.pastillaBoton, pressed && { opacity: 0.8 }]}
+    >
+      {contenido}
+    </Pressable>
   )
 }
 
 // Pastilla del dispositivo con su batería a la derecha: todo el estado del equipo en una línea.
+// Con varios dispositivos (administrador, supervisor, analista) la pastilla abre el selector.
 function FilaEquipo({ punto, icono, children, bateria }) {
+  const { datos: op, elegir } = useOperador()
+  const varios = (op?.dispositivos?.length ?? 0) > 1
   return (
     <View style={s.entre}>
       <View style={{ flexShrink: 1 }}>
-        <Pastilla punto={punto} icono={icono}>
-          {children}
-        </Pastilla>
+        {varios ? (
+          <SelectorDispositivo dispositivos={op.dispositivos} valor={op.dispositivo?.num} onElegir={elegir}>
+            {(abrir) => (
+              <Pastilla punto={punto} icono={icono} onPress={abrir}>
+                {children}
+              </Pastilla>
+            )}
+          </SelectorDispositivo>
+        ) : (
+          <Pastilla punto={punto} icono={icono}>
+            {children}
+          </Pastilla>
+        )}
       </View>
       {bateria != null && (
         <View style={[s.pastilla, { paddingLeft: 12 }]} accessibilityLabel={`Batería al ${bateria} %`}>
@@ -68,7 +94,7 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
       ) : null}
     </View>
   )
-  if (estado === 'cargando' || estado === 'error' || !d) {
+  if (estado === 'error' || !d) {
     return (
       <>
         {cabeza}
@@ -102,7 +128,7 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
           </T>
         </View>
         <T size={13} lh={20} color={c.textSecondary} style={{ maxWidth: 300 }}>
-          Tu dispositivo sigue alertando con LED y buzzer aunque no llegue a la plataforma.
+          El dispositivo sigue alertando con LED y buzzer aunque no llegue a la plataforma.
         </T>
       </>
     )
@@ -194,7 +220,9 @@ function Mosaico({ variable, lectura, serie, tipo, sinConexion, desde, onPress }
   return contenido
 }
 
-function Barras24({ serie, onPress }) {
+// Barras de temperatura de las últimas 24 h; sin datos recientes, las 24 h que terminan en la última
+// lectura guardada (ultima), como en la web.
+function Barras24({ serie, ultima, onPress }) {
   const { c } = useTema()
   const valores = serie.map((p) => Number(p.promedio))
   const mn = Math.min(...valores)
@@ -203,7 +231,7 @@ function Barras24({ serie, onPress }) {
     <Pressable onPress={onPress} accessibilityRole="button" style={[s.tarjeta, { backgroundColor: c.surface, gap: 10 }]}>
       <View style={s.entre}>
         <T peso={700} size={15}>
-          Temperatura · últimas 24 h
+          {ultima ? `Temperatura · 24 h hasta el ${fechaCorta(ultima)}` : 'Temperatura · últimas 24 h'}
         </T>
         <View style={s.fila6}>
           <T peso={600} size={13} color={c.textSecondary}>
@@ -225,10 +253,10 @@ function Barras24({ serie, onPress }) {
         ))}
       </View>
       <View style={s.entre}>
-        <T size={11} color={c.textMuted}>{`Ayer ${hora(serie[0].periodo)}`}</T>
+        <T size={11} color={c.textMuted}>{cuando(serie[0].periodo)}</T>
         <T size={11} num color={c.textMuted}>{`Mín ${mn.toFixed(1)} · Máx ${mx.toFixed(1)} °C`}</T>
         <T size={11} color={c.textMuted}>
-          Ahora
+          {ultima ? hora(serie.at(-1).periodo) : 'Ahora'}
         </T>
       </View>
     </Pressable>
@@ -242,11 +270,11 @@ export function PanelScreen({ navigation }) {
   const { estado, datos: op, reintentar } = useOperador()
   const d = op?.dispositivo
   const series = useDatos(
-    () => (d ? Promise.all(['TEMP', 'HUM', 'AIRE'].map((v) => lecturasApi.serie(d.num, v))) : new Promise(() => {})),
+    () => (d ? Promise.all(['TEMP', 'HUM', 'AIRE'].map((v) => lecturasApi.serieConDatos(d.num, v))) : new Promise(() => {})),
     [d?.num, d?.ultima_conexion],
   )
   const sinConexion = (USAR_MOCKS && ESTADO_FORZADO === 'sinConexion') || (d && !enLinea(d))
-  const cargando = estado === 'cargando' || (!!d && !sinConexion && series.estado === 'cargando' && !series.datos)
+  const cargando = (estado === 'cargando' && !op) || (!!d && !sinConexion && series.estado === 'cargando' && !series.datos)
   const [sT, sH, sA] = series.datos ?? []
   const ver = (variable) => navigation.navigate('Variable', { variable })
 
@@ -279,10 +307,10 @@ export function PanelScreen({ navigation }) {
       ) : (
         <>
           <View style={s.dos}>
-            <Mosaico variable="HUM" tipo="verde" lectura={lecturaDe(op, 'HUM')} serie={(sH ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('HUM')} />
-            <Mosaico variable="AIRE" tipo="tinta" lectura={lecturaDe(op, 'AIRE')} serie={(sA ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('AIRE')} />
+            <Mosaico variable="HUM" tipo="verde" lectura={lecturaDe(op, 'HUM')} serie={(sH?.puntos ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('HUM')} />
+            <Mosaico variable="AIRE" tipo="tinta" lectura={lecturaDe(op, 'AIRE')} serie={(sA?.puntos ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('AIRE')} />
           </View>
-          {!sinConexion && sT && <Barras24 serie={sT} onPress={() => ver('TEMP')} />}
+          {sT?.puntos?.length > 1 && <Barras24 serie={sT.puntos} ultima={sT.ultima} onPress={() => ver('TEMP')} />}
         </>
       )}
     </Pantalla>
@@ -293,6 +321,7 @@ const s = StyleSheet.create({
   fila12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   fila6: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   entre: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  pastillaBoton: { borderWidth: 1, borderColor: 'rgba(243,245,242,0.16)' },
   pastilla: { alignSelf: 'flex-start', flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingLeft: 10, paddingRight: 12, borderRadius: 999, backgroundColor: 'rgba(243,245,242,0.08)' },
   punto: { width: 8, height: 8, borderRadius: 4, shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } },
   gigante: { letterSpacing: -4.6, includeFontPadding: false },
