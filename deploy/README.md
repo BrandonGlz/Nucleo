@@ -62,10 +62,15 @@ El APK se descarga en `https://nucleo.<tailnet>.ts.net/app/nucleo.apk`. Caddy en
 `deploy/descargas/` del proyecto (no va a git), donde también queda una copia por versión (`nucleo-<versión>.apk`).
 
 Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.json` y correr
-`bash deploy/compilar_apk.sh` (mejor en tmux y en horario de poco uso). Compila en la laptop con la API del
-perfil `piloto` de `Mobile/eas.json`, con prioridad baja; tarda 15-25 min y usa 3-4 GB de RAM solo mientras
-corre. Compila solo para arm64-v8a (todos los celulares actuales); otra arquitectura se agrega con
-`NUCLEO_ABIS=arm64-v8a,armeabi-v7a`. El enlace no cambia y no hace falta reiniciar nada.
+`bash deploy/compilar_apk.sh` (mejor en tmux). Compila en la laptop con la API del perfil `piloto` de
+`Mobile/eas.json`, con prioridad baja y solo para arm64-v8a (todos los celulares actuales; otra arquitectura con
+`NUCLEO_ABIS=arm64-v8a,armeabi-v7a`). El enlace no cambia y no hace falta reiniciar nada.
+
+Es incremental: si `Mobile/` no cambió desde el último APK no compila; reinstala `node_modules` solo si cambió
+`package-lock.json` y regenera `android/` solo si cambió la configuración nativa (`app.json`, `eas.json`,
+dependencias). Un cambio solo de pantallas tarda unos minutos; desde cero, 15-20 min. La memoria se usa solo
+mientras corre. Opciones: `--forzar` (compila aunque no haya cambios) y `--limpio` (borra `node_modules` y
+`android/` y compila todo, por si algo sale raro).
 
 Requisitos (una vez): `sudo apt install openjdk-21-jdk-headless unzip` y las herramientas de línea de comandos
 de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
