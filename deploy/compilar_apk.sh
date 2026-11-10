@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Genera el APK de la app móvil en la laptop y lo publica en descargas/ (lo entrega Caddy en /app/).
+# Genera el APK de la app móvil en la laptop y lo publica en deploy/descargas/ (lo entrega Caddy en /app/).
 # Usa la configuración del perfil "piloto" de Mobile/eas.json (API de producción) y firma con la llave
 # de ~/nucleo-app, que no va a git y entra en el respaldo diario. La primera vez crea la llave.
 # Solo consume memoria mientras compila (unos 3-4 GB, 15-25 min); al terminar no queda nada corriendo.
@@ -46,9 +46,9 @@ bajo ./gradlew assembleRelease --no-daemon -Dorg.gradle.workers.max=2 \
 pkill -u "$(id -u)" -f KotlinCompileDaemon || true  # que no quede memoria ocupada después
 
 # Se publica con nombre fijo (enlace que no cambia) y se guarda una copia por versión
-install -d "$raiz/descargas"
-cp app/build/outputs/apk/release/app-release.apk "$raiz/descargas/nucleo-$version.apk"
-cp "$raiz/descargas/nucleo-$version.apk" "$raiz/descargas/.nucleo.apk.tmp"
-mv -f "$raiz/descargas/.nucleo.apk.tmp" "$raiz/descargas/nucleo.apk"
-ls -lh "$raiz/descargas"
-echo "Listo: versión $version publicada en /app/nucleo.apk y guardada como descargas/nucleo-$version.apk"
+install -d "$raiz/deploy/descargas"
+cp app/build/outputs/apk/release/app-release.apk "$raiz/deploy/descargas/nucleo-$version.apk"
+cp "$raiz/deploy/descargas/nucleo-$version.apk" "$raiz/deploy/descargas/.nucleo.apk.tmp"
+mv -f "$raiz/deploy/descargas/.nucleo.apk.tmp" "$raiz/deploy/descargas/nucleo.apk"
+ls -lh "$raiz/deploy/descargas"
+echo "Listo: versión $version publicada en /app/nucleo.apk y guardada como deploy/descargas/nucleo-$version.apk"

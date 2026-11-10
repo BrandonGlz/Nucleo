@@ -65,4 +65,4 @@ Mosquitto/certs/*
 Mosquitto/config/passwd
 
 # APK de la app móvil publicado en /app/ (no va a git)
-/descargas/
+/deploy/descargas/

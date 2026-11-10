@@ -59,7 +59,7 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 ### App móvil (APK)
 
 El APK se descarga en `https://nucleo.<tailnet>.ts.net/app/nucleo.apk`. Caddy entrega la carpeta
-`descargas/` del proyecto (no va a git), donde también queda una copia por versión (`nucleo-<versión>.apk`).
+`deploy/descargas/` del proyecto (no va a git), donde también queda una copia por versión (`nucleo-<versión>.apk`).
 
 Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.json` y correr
 `bash deploy/compilar_apk.sh` (mejor en tmux y en horario de poco uso). Compila en la laptop con la API del
