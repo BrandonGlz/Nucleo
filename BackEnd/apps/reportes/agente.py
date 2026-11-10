@@ -6,6 +6,7 @@ conexión) y arma la respuesta con las lecturas de TimescaleDB y las alertas de 
 no inventa cifras.
 """
 
+import re
 import unicodedata
 from collections import Counter
 from datetime import timedelta
@@ -200,3 +201,109 @@ def responder(dispositivo, pregunta):
         )
         tema = conteo[0] if conteo else roles.VARIABLE_TEMPERATURA
     return _variable(dispositivo, tema, desde)
+
+
+# ── Reportes pedidos al agente (SRS 3.2.12) ─────────────────────────────────────────────
+PALABRAS_REPORTE = ("reporte", "informe")
+MESES = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
+
+def pide_reporte(pregunta):
+    texto = _normalizar(pregunta)
+    return any(p in texto for p in PALABRAS_REPORTE)
+
+
+def periodo_de(pregunta, ahora=None):
+    """Periodo que nombra la petición: ``(inicio, fin, descripcion)`` en hora local.
+
+    Entiende «hoy», «ayer», «esta semana», «semana pasada», «este mes», «mes pasado»,
+    «últimos N días» y el nombre de un mes (con año opcional). Sin periodo, los últimos 7 días.
+    """
+    ahora = timezone.localtime(ahora or timezone.now())
+    hoy = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
+    texto = _normalizar(pregunta)
+
+    def mes(anio, numero):
+        inicio = hoy.replace(year=anio, month=numero, day=1)
+        if numero == 12:
+            fin = inicio.replace(year=anio + 1, month=1)
+        else:
+            fin = inicio.replace(month=numero + 1)
+        return inicio, min(fin, ahora), f"{MESES[numero - 1]} de {anio}"
+
+    dias = re.search(r"ultim[oa]s?\s+(\d{1,3})\s+dias", texto)
+    if dias:
+        n = max(1, min(int(dias.group(1)), 366))
+        return ahora - timedelta(days=n), ahora, f"los últimos {n} días"
+    if "ayer" in texto:
+        return hoy - timedelta(days=1), hoy, "ayer"
+    if "hoy" in texto:
+        return hoy, ahora, "hoy"
+    if "semana pasada" in texto:
+        lunes = hoy - timedelta(days=hoy.weekday())
+        return lunes - timedelta(days=7), lunes, "la semana pasada"
+    if "esta semana" in texto:
+        return hoy - timedelta(days=hoy.weekday()), ahora, "esta semana"
+    if "mes pasado" in texto:
+        anterior = hoy.replace(day=1) - timedelta(days=1)
+        return mes(anterior.year, anterior.month)
+    if "este mes" in texto:
+        return mes(hoy.year, hoy.month)
+    for i, nombre in enumerate(MESES, start=1):
+        if nombre in texto:
+            anio = re.search(r"\b(20\d{2})\b", texto)
+            anio = int(anio.group(1)) if anio else hoy.year
+            if not re.search(r"\b20\d{2}\b", texto) and i > hoy.month:
+                anio -= 1  # «octubre» en enero se refiere al octubre pasado
+            return mes(anio, i)
+    return ahora - PERIODO, ahora, "los últimos 7 días"
+
+
+def generar_reporte(usuario, dispositivo, pregunta):
+    """Genera, con las mismas cifras que la sección Reportes, el reporte del área del dispositivo.
+
+    Solo pueden pedirlo administradores, supervisores y analistas; el agente no modifica nada
+    más. Si la IA no está disponible, no se guarda y se avisa.
+    """
+    from apps.reportes import ia, servicios
+    from apps.reportes.models import Reporte
+
+    if usuario.rol_id not in (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA):
+        return {
+            "texto": "Los reportes los generan administradores, supervisores y analistas. "
+            "Puedo responderte sobre las lecturas y alertas de tu dispositivo."
+        }
+    inicio, fin, descripcion = periodo_de(pregunta)
+    if inicio >= fin:
+        return {"texto": f"Ese periodo ({descripcion}) todavía no tiene datos."}
+    area = dispositivo.area
+    try:
+        reporte = servicios.generar_reporte(
+            usuario.organizacion, area, inicio, fin, Reporte.Origen.AGENTE, usuario=usuario
+        )
+    except ia.IANoDisponible:
+        return {
+            "texto": "No pude redactar el reporte: el servicio de IA no está disponible por "
+            "ahora. El monitoreo y las alertas siguen funcionando."
+        }
+    return {
+        "texto": (
+            f"Listo: generé el reporte de {area.nombre} de {descripcion} "
+            f"({timezone.localtime(inicio):%d/%m/%Y} – {timezone.localtime(fin):%d/%m/%Y}). "
+            "Lo puedes ver y descargar en PDF en la sección Reportes de la web."
+        ),
+        "reporte": {"num": reporte.pk},
+    }

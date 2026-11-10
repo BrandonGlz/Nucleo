@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.mediciones.models import Lectura
-from apps.reportes import ia, servicios
+from apps.reportes import agente, ia, servicios
 from apps.reportes.models import ProgramacionReporte, Reporte
 from common.testing import Escenario, PruebaBase, cliente_de
 
@@ -279,6 +279,11 @@ class ProgramacionTests(PruebaBase):
 
 class AgenteTests(PruebaBase):
     def setUp(self):
+        # Los reportes que genera el agente guardan su PDF: van a una carpeta temporal
+        carpeta = tempfile.mkdtemp()
+        medios = override_settings(MEDIA_ROOT=carpeta)
+        medios.enable()
+        self.addCleanup(medios.disable)
         self.e = Escenario()
         ahora = timezone.now()
         for i, valor in enumerate((22, 26.4, 23)):
@@ -320,6 +325,54 @@ class AgenteTests(PruebaBase):
         self.assertEqual(
             cliente.post("/api/v1/agente/", self.pregunta, format="json").status_code, 200
         )
+
+    @override_settings(IA_PROVEEDOR="local")
+    def test_genera_un_reporte_del_area_cuando_se_le_pide(self):
+        r = cliente_de(self.e.supervisor).post(
+            "/api/v1/agente/",
+            {**self.pregunta, "pregunta": "Hazme un reporte de la temperatura de hoy"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        reporte = Reporte.objects.get(pk=r.json()["reporte"]["num"])
+        self.assertEqual(reporte.origen, Reporte.Origen.AGENTE)
+        self.assertEqual(reporte.area, self.e.dispositivo.area)
+        self.assertEqual(reporte.generado_por, self.e.supervisor)
+        self.assertIn("sección Reportes", r.json()["texto"])
+
+    @override_settings(IA_PROVEEDOR="local")
+    def test_operador_no_genera_reportes(self):
+        self.e.operador.acceso_agente = True
+        self.e.operador.save(update_fields=["acceso_agente"])
+        r = cliente_de(self.e.operador).post(
+            "/api/v1/agente/", {**self.pregunta, "pregunta": "Dame un reporte"}, format="json"
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("reporte", r.json())
+        self.assertFalse(Reporte.objects.exists())
+
+    @override_settings(IA_PROVEEDOR="")
+    def test_reporte_sin_ia_no_se_guarda(self):
+        r = cliente_de(self.e.analista).post(
+            "/api/v1/agente/",
+            {**self.pregunta, "pregunta": "informe del mes pasado"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("no está disponible", r.json()["texto"])
+        self.assertFalse(Reporte.objects.exists())
+
+    def test_periodos_que_entiende(self):
+        ahora = timezone.make_aware(timezone.datetime(2026, 11, 10, 12, 0))
+        inicio, fin, texto = agente.periodo_de("reporte de octubre", ahora)
+        self.assertEqual((inicio.month, inicio.day, fin.month, fin.day), (10, 1, 11, 1))
+        self.assertEqual(texto, "octubre de 2026")
+        inicio, _, texto = agente.periodo_de("reporte de diciembre", ahora)
+        self.assertEqual((inicio.year, inicio.month), (2025, 12))
+        inicio, fin, texto = agente.periodo_de("reporte de los últimos 3 días", ahora)
+        self.assertEqual(fin - inicio, timedelta(days=3))
+        _, _, texto = agente.periodo_de("un reporte", ahora)
+        self.assertEqual(texto, "los últimos 7 días")
 
     def test_dispositivo_de_otra_organizacion_no_existe(self):
         otra = Escenario("b")

@@ -25,6 +25,9 @@ const SUGERENCIAS = [
   { icono: 'thermometer', titulo: 'Temperatura', texto: '¿Cómo estuvo la temperatura en Moldeo esta semana?' },
   { icono: 'wifi-off', titulo: 'Conexión', texto: '¿Qué sensores perdieron conexión en los últimos 7 días?' },
 ]
+// Quienes generan reportes pueden pedírselos al agente; para ellos sustituye a la de conexión.
+const SUGERENCIA_REPORTE = { icono: 'file-text', titulo: 'Reporte del mes', texto: 'Genera el reporte de este mes' }
+const ROLES_REPORTE = ['ADMIN', 'SUPER', 'ANALISTA']
 // Pasos que se muestran mientras el agente prepara la respuesta.
 const PASOS = ['Entendiendo la pregunta', 'Consultando las lecturas', 'Comparando con los umbrales', 'Redactando la respuesta']
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
@@ -141,6 +144,15 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar }) {
           <span className="ui-muted">{m.hora}</span>
         </div>
         <TextoEscrito texto={m.texto} animar={animar} listo={() => setCompleta(true)} />
+        {completa && m.reporte && (
+          <div className="ui-ia-aparece">
+            <div className="ui-ia-siguientes">
+              <Button variant="secondary" size="sm" icon="file-text" onClick={() => navegar(`/reportes?reporte=${m.reporte.num}`)}>
+                Ver reporte
+              </Button>
+            </div>
+          </div>
+        )}
         {completa && m.picos && (
           <div className="ui-ia-aparece">
             <Hallazgos m={m} />
@@ -378,7 +390,7 @@ export function AgentePage() {
               <p className="ui-muted">¿Qué quieres saber hoy de {nombreAgente}?</p>
               <div className="ui-ia-inicio__compositor">{compositor}</div>
               <div className="ui-ia-sugerencias">
-                {SUGERENCIAS.map((s) => (
+                {(ROLES_REPORTE.includes(usuario?.rol) ? [...SUGERENCIAS.slice(0, 3), SUGERENCIA_REPORTE] : SUGERENCIAS).map((s) => (
                   <button key={s.texto} type="button" onClick={() => preguntar(s.texto)}>
                     <span className="ui-ia-sugerencias__icono">
                       <Icon name={s.icono} size={16} />

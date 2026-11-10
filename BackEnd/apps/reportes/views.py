@@ -119,4 +119,7 @@ class AgenteView(APIView):
         )
         if dispositivo is None:
             raise NotFound("El dispositivo no existe o no está a su alcance.")
-        return Response(agente.responder(dispositivo, entrada.validated_data["pregunta"]))
+        pregunta = entrada.validated_data["pregunta"]
+        if agente.pide_reporte(pregunta):
+            return Response(agente.generar_reporte(request.user, dispositivo, pregunta))
+        return Response(agente.responder(dispositivo, pregunta))

@@ -1,5 +1,6 @@
 import { useSesion } from '../../context/SesionContext'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import {
   Badge, Button, Card, IconCircle, IconButton, Skeleton,
@@ -167,7 +168,9 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
 export function ReportesPage() {
   const { organizacion } = useSesion()
   const { estado, datos, reintentar, actualizar } = useDatos(cargar, [])
-  const [elegido, setElegido] = useState(null)
+  // ?reporte=<num> abre ese reporte (lo usa Núcleo AI al generar uno).
+  const [params] = useSearchParams()
+  const [elegido, setElegido] = useState(() => Number(params.get('reporte')) || null)
   const [modal, setModal] = useState(false)
   const reportes = datos?.reportes ?? []
   const actual = reportes.find((r) => r.num === elegido) ?? reportes[0]
