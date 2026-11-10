@@ -2768,92 +2768,16 @@ article.ui-hoja,
   border-radius: 10px;
   background: var(--surface-muted);
 }
-.ui-ia-reporte__cifras {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border: 1px solid var(--border);
-  border-radius: 12px;
+/* Hoja del reporte dentro del chat: una página a la vista, todas al ampliarla */
+.ui-ia-reporte__visor {
+  max-height: 560px;
+  transition: max-height 0.35s ease;
 }
-.ui-ia-reporte__cifras > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  font-size: 12px;
+.ui-ia-reporte__visor.is-amplio {
+  max-height: 1600px;
 }
-.ui-ia-reporte__cifras > div + div {
-  border-left: 1px solid var(--border);
-}
-.ui-ia-reporte__cifras strong {
-  font-size: 20px;
-  line-height: 26px;
-}
-.ui-ia-reporte__alerta {
-  color: var(--warning);
-}
-.ui-ia-reporte__variables {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 8px;
-}
-.ui-ia-reporte__var {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  font-size: 12px;
-}
-.ui-ia-reporte__var-cabeza {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-weight: 600;
-}
-.ui-ia-reporte__var-cabeza > span:first-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.ui-ia-reporte__alertas {
-  color: var(--warning);
-}
-.ui-ia-reporte__var strong {
-  font-size: 22px;
-  line-height: 1.2;
-}
-.ui-ia-reporte__var small {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.ui-ia-reporte__rango {
-  position: relative;
-  height: 2px;
-  margin: 6px 0 2px;
-  background: var(--text-primary);
-}
-.ui-ia-reporte__rango span {
-  position: absolute;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--text-primary);
-  border-radius: 50%;
-  background: var(--surface);
-  transform: translate(-50%, -50%);
-}
-.ui-ia-reporte__extremos {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-}
-.ui-ia-reporte__resumen {
-  margin: 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--text-secondary);
+.ui-ia-reporte__visor .ui-paginas {
+  padding: 16px 0;
 }
 .ui-ia-hallazgos__cabeza {
   display: flex;
@@ -3519,4 +3443,159 @@ button.ui-menuitem:not(:disabled):hover svg {
 .ui-aviso-ultima {
   color: var(--warning);
   font-weight: 600;
+}
+
+/* Movimiento común de los módulos, con las mismas curvas y duraciones que los menús y las
+   ventanas: el contenido entra escalonado, el menú lateral se desliza y responde al tacto. */
+@keyframes ui-entra-lado {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+@keyframes ui-aparece-fila {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes ui-activa {
+  from {
+    transform: scale(0.94);
+  }
+}
+
+/* Menú lateral */
+.app > .nc-sidebar .nc-sidebar__brand,
+.app > .nc-sidebar .app__nav-group,
+.app > .nc-sidebar .nc-sidebar__foot {
+  animation: ui-entra-lado var(--duration-slow) var(--ease-standard) both;
+}
+.app > .nc-sidebar .app__nav-group:nth-of-type(2) {
+  animation-delay: 60ms;
+}
+.app > .nc-sidebar .app__nav-group:nth-of-type(3) {
+  animation-delay: 120ms;
+}
+.app > .nc-sidebar .app__nav-group:nth-of-type(n + 4),
+.app > .nc-sidebar .nc-sidebar__foot {
+  animation-delay: 180ms;
+}
+.app > .nc-sidebar .nc-navitem {
+  transition: background var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+.app > .nc-sidebar .nc-navitem > svg,
+.app > .nc-sidebar .nc-navitem > span:first-child {
+  transition: transform var(--duration-base) var(--ease-emphasized);
+}
+.app > .nc-sidebar .nc-navitem:hover > svg,
+.app > .nc-sidebar .nc-navitem:hover > span:first-child {
+  transform: translateX(2px) scale(1.06);
+}
+.app > .nc-sidebar .nc-navitem:active {
+  transform: scale(0.97);
+}
+.app > .nc-sidebar .nc-navitem.is-active {
+  animation: ui-activa var(--duration-slow) var(--ease-emphasized);
+}
+.app > .nc-sidebar .nc-navitem__count {
+  animation: ui-activa var(--duration-slow) var(--ease-emphasized);
+}
+.nc-sidebar__user {
+  transition: background var(--duration-base) var(--ease-standard);
+}
+
+/* Contenido de cada módulo: encabezado, cifras clave y tarjetas entran en orden */
+.app__main > :not(.ui-modal):not(.ui-critica) {
+  animation: ui-sube var(--duration-slow) var(--ease-standard) both;
+}
+.app__main > :nth-child(2):not(.ui-modal) {
+  animation-delay: 50ms;
+}
+.app__main > :nth-child(3):not(.ui-modal) {
+  animation-delay: 100ms;
+}
+.app__main > :nth-child(n + 4):not(.ui-modal) {
+  animation-delay: 150ms;
+}
+.app__main .ui-fila > *,
+.app__main .ui-col > * {
+  animation: ui-sube var(--duration-slow) var(--ease-standard) both;
+}
+.app__main .ui-fila > :nth-child(2),
+.app__main .ui-col > :nth-child(2) {
+  animation-delay: 70ms;
+}
+.app__main .ui-fila > :nth-child(n + 3),
+.app__main .ui-col > :nth-child(n + 3) {
+  animation-delay: 140ms;
+}
+
+/* Filas de tablas y elementos de listas */
+.nc-table tbody tr,
+.ui-item {
+  animation: ui-aparece-fila var(--duration-slow) var(--ease-standard) both;
+}
+.nc-table tbody tr:nth-child(2),
+.ui-item:nth-child(2) {
+  animation-delay: 25ms;
+}
+.nc-table tbody tr:nth-child(3),
+.ui-item:nth-child(3) {
+  animation-delay: 50ms;
+}
+.nc-table tbody tr:nth-child(4),
+.ui-item:nth-child(4) {
+  animation-delay: 75ms;
+}
+.nc-table tbody tr:nth-child(5),
+.ui-item:nth-child(5) {
+  animation-delay: 100ms;
+}
+.nc-table tbody tr:nth-child(6),
+.ui-item:nth-child(6) {
+  animation-delay: 125ms;
+}
+.nc-table tbody tr:nth-child(7),
+.ui-item:nth-child(7) {
+  animation-delay: 150ms;
+}
+.nc-table tbody tr:nth-child(n + 8),
+.ui-item:nth-child(n + 8) {
+  animation-delay: 175ms;
+}
+.ui-item--boton {
+  transition: background var(--duration-base) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+}
+.ui-item--boton:active {
+  transform: scale(0.985);
+}
+
+/* Mensajes nuevos de Núcleo AI y la hoja del reporte en el chat */
+.ui-ia-reporte {
+  animation: ui-sube var(--duration-slow) var(--ease-standard) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app > .nc-sidebar .nc-sidebar__brand,
+  .app > .nc-sidebar .app__nav-group,
+  .app > .nc-sidebar .nc-sidebar__foot,
+  .app > .nc-sidebar .nc-navitem.is-active,
+  .app > .nc-sidebar .nc-navitem__count,
+  .app__main > *,
+  .app__main .ui-fila > *,
+  .app__main .ui-col > *,
+  .nc-table tbody tr,
+  .ui-item,
+  .ui-ia-reporte {
+    animation: none;
+  }
+  .app > .nc-sidebar .nc-navitem,
+  .app > .nc-sidebar .nc-navitem > svg,
+  .app > .nc-sidebar .nc-navitem > span:first-child,
+  .ui-item--boton {
+    transition: none;
+    transform: none !important;
+  }
 }

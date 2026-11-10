@@ -73,13 +73,19 @@ export function ReporteChat({ r }) {
                   {VARIABLE[v.variable]?.etiqueta ?? v.nombre}
                 </T>
               </View>
-              <T size={12} peso={600} color={v.alertas ? c.warning : c.textMuted}>
-                {v.alertas ? `${v.alertas} alertas` : 'Sin alertas'}
-              </T>
+              <View style={[s.insignia, { backgroundColor: v.alertas ? c.warningSoft : c.successSoft }]}>
+                <Icon name={v.alertas ? 'triangle-alert' : 'circle-check'} size={11} color={v.alertas ? c.warning : c.success} />
+                <T size={11} peso={600} color={v.alertas ? c.warning : c.success}>
+                  {v.alertas ? `${v.alertas} ${v.alertas === 1 ? 'alerta' : 'alertas'}` : 'Sin alertas'}
+                </T>
+              </View>
             </View>
+            <T mayus size={10} color={c.textMuted} style={{ marginTop: 4 }}>
+              Promedio
+            </T>
             <T peso={700} size={20} num>
               {cifra(v.promedio, v.unidad)}
-              <T size={12} peso={600} color={c.textMuted}>{` ${v.unidad} promedio`}</T>
+              <T size={12} peso={600} color={c.textMuted}>{` ${v.unidad}`}</T>
             </T>
             <View style={[s.rango, { backgroundColor: c.textPrimary }]}>
               <View style={[s.punto, { left: `${pos}%`, borderColor: c.textPrimary, backgroundColor: c.surface }]} />
@@ -141,4 +147,5 @@ const s = StyleSheet.create({
   punto: { position: 'absolute', top: -4, width: 10, height: 10, marginLeft: -5, borderRadius: 5, borderWidth: 2 },
   boton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999 },
   secundario: { borderWidth: 1 },
+  insignia: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2, paddingHorizontal: 6, borderRadius: 6 },
 })

@@ -1,8 +1,9 @@
 // Descarga el reporte en PDF con las mismas hojas A4 de la vista previa: las copia a un
 // contenedor de impresión y abre el diálogo del navegador, donde se elige «Guardar como PDF».
 // El nombre sugerido del archivo es el título del documento, que se cambia mientras dura.
-export function descargarPdf(nombre) {
-  const paginas = document.querySelector('.ui-paginas')
+// `raiz` limita la búsqueda de las hojas (el chat de Núcleo AI tiene la suya).
+export function descargarPdf(nombre, raiz = document) {
+  const paginas = raiz.querySelector('.ui-paginas')
   if (!paginas) return
   const contenedor = document.createElement('div')
   contenedor.id = 'ui-impresion'
