@@ -204,7 +204,7 @@ button.ui-link {
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #0abe52;
+  color: #2bc47a;
 }
 .nc-ink__titulo {
   font-size: 40px;
@@ -232,7 +232,7 @@ button.ui-link {
   top: 0;
   bottom: 0;
   border-radius: 99px;
-  background: #0abe52;
+  background: #2bc47a;
 }
 .nc-ink__marca {
   position: absolute;
@@ -272,7 +272,7 @@ button.ui-link {
   color: var(--text-muted);
 }
 .tono-verde {
-  color: #0abe52;
+  color: #2bc47a;
 }
 .tono-peligro {
   color: var(--danger);
@@ -429,22 +429,25 @@ button.ui-menuitem:hover {
   cursor: pointer;
 }
 
-/* Login a pantalla completa */
+/* Login a pantalla completa. --panel es el ancho del formulario y --texto el espacio que ocupa el lema
+   a la izquierda; en pantallas medianas o bajas ambos se reducen junto con la tipografía. */
 .acceso {
+  --panel: 600px;
+  --texto: 580px;
   position: relative;
   display: flex;
   height: 100vh;
-  min-height: 640px;
+  min-height: 600px;
   overflow: hidden;
   background: #121413;
   color: #f3f5f2;
 }
-/* Anillo con el ícono: mide el 60 % del alto de la pantalla (sin pasar de 720 px ni alcanzar el lema)
-   y su centro queda en el borde izquierdo del panel, que tapa la mitad derecha */
+/* Anillo con el ícono detrás del panel: mide el 64 % del alto (sin pasar de 760 px ni alcanzar el lema) y
+   su centro queda a un 17 % de su lado antes del borde del panel, para que asome algo más de la mitad */
 .acceso__anillo {
-  --lado: max(0px, min(720px, 60vh, calc((100vw - 600px - 580px) * 2)));
+  --lado: max(0px, min(760px, 64vh, calc((100vw - var(--panel) - var(--texto)) / 0.67)));
   position: absolute;
-  left: calc(100% - 600px - var(--lado) / 2);
+  left: calc(100% - var(--panel) - var(--lado) * 0.67);
   top: calc(50% - var(--lado) / 2);
   width: var(--lado);
   height: var(--lado);
@@ -455,9 +458,11 @@ button.ui-menuitem:hover {
   align-items: center;
   justify-content: center;
 }
+/* Ladeado para que se vean completas tres ramas: arriba, izquierda y abajo */
 .acceso__anillo svg {
-  width: 66%;
+  width: 76%;
   height: auto;
+  transform: rotate(-10deg);
 }
 .acceso__lema {
   position: relative;
@@ -468,20 +473,6 @@ button.ui-menuitem:hover {
   justify-content: space-between;
   padding: 56px 64px;
 }
-.acceso__logo-movil {
-  display: none;
-}
-/* Pantallas bajas: lema más compacto para dejarle espacio al ícono */
-@media (max-height: 820px) {
-  .acceso__lema {
-    padding: 40px 56px;
-  }
-  .acceso__lema h2 {
-    font-size: 36px;
-    line-height: 42px;
-  }
-}
-
 .acceso__lema h2 {
   margin: 0;
   max-width: 480px;
@@ -492,11 +483,14 @@ button.ui-menuitem:hover {
   text-wrap: pretty;
   color: #f3f5f2;
 }
+.acceso__logo-movil {
+  display: none;
+}
 .acceso__panel {
   position: relative;
   z-index: 1;
   flex: none;
-  width: 600px;
+  width: var(--panel);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -529,6 +523,39 @@ button.ui-menuitem:hover {
   padding-top: 24px;
   font-size: 12px;
   color: var(--text-muted);
+}
+/* Pantallas medianas o bajas (laptops de 1366 a 1600 px): todo un poco más chico */
+@media (max-width: 1600px), (max-height: 820px) {
+  .acceso {
+    --panel: 500px;
+    --texto: 470px;
+  }
+  .acceso__lema {
+    padding: 40px 48px;
+  }
+  .acceso__lema .nc-logo svg {
+    width: auto;
+    height: 52px;
+  }
+  .acceso__lema h2 {
+    max-width: 400px;
+    font-size: 34px;
+    line-height: 40px;
+  }
+  .acceso__panel {
+    padding: 40px 56px;
+  }
+  .acceso__form,
+  .acceso__pie {
+    max-width: 380px;
+  }
+  .acceso__form {
+    gap: 24px;
+  }
+  .acceso__form h1 {
+    font-size: 32px;
+    line-height: 40px;
+  }
 }
 /* Pantallas angostas: solo el formulario, a todo lo ancho, con el logo arriba */
 @media (max-width: 1000px) {
@@ -1731,13 +1758,13 @@ article.ui-hoja,
   --success: #0f7a45;
   --success-soft: #e3f4e8;
   --danger: #c4291c;
-  --accent-soft: #ddf5e6;
-  --chart-line: #089a45;
-  --chart-area: #0abe52;
+  --accent-soft: #dff5ea;
+  --chart-line: #1e9a5e;
+  --chart-area: #2bc47a;
   --chart-grid: #e6e9e2;
   --chart-bar: #d5d9cf;
   --chart-bar-active: #121413;
-  --logo-color: #0abe52;
+  --logo-color: #2bc47a;
   color-scheme: light;
   padding: 52px 56px 76px;
   font-size: 12px;
@@ -1755,7 +1782,7 @@ article.ui-hoja,
   left: 0;
   right: 0;
   height: 6px;
-  background: linear-gradient(90deg, #121413 0 72%, #0abe52 72% 100%);
+  background: linear-gradient(90deg, #121413 0 72%, #2bc47a 72% 100%);
 }
 .ui-hoja .ui-eyebrow {
   font-size: 10.5px;
@@ -2034,7 +2061,7 @@ article.ui-hoja,
   height: 36px;
   margin-top: -18px;
   border-radius: 4px;
-  background: var(--accent-secondary, #079a43);
+  background: var(--accent-secondary, #1fa463);
   cursor: ew-resize;
 }
 .ui-editor__asa-alto {
@@ -2044,7 +2071,7 @@ article.ui-hoja,
   height: 8px;
   margin-left: -18px;
   border-radius: 4px;
-  background: var(--accent-secondary, #079a43);
+  background: var(--accent-secondary, #1fa463);
   cursor: ns-resize;
 }
 .ui-hoja .ui-editor__etiqueta {
@@ -2499,8 +2526,8 @@ article.ui-hoja,
 .ui-ia-marca--grande {
   width: 64px;
   height: 64px;
-  background: radial-gradient(circle at 30% 25%, #0f2b1b, #121413 70%);
-  box-shadow: 0 0 0 8px var(--accent-soft), 0 12px 32px -8px rgba(10, 190, 82, 0.45);
+  background: radial-gradient(circle at 30% 25%, #10291d, #121413 70%);
+  box-shadow: 0 0 0 8px var(--accent-soft), 0 12px 32px -8px rgba(43, 196, 122, 0.45);
 }
 .ui-ia-marca.is-pensando {
   position: relative;
@@ -2540,7 +2567,7 @@ article.ui-hoja,
   letter-spacing: -0.02em;
 }
 .ui-ia-inicio h2 span {
-  background: linear-gradient(90deg, var(--accent-secondary), #3fd37f);
+  background: linear-gradient(90deg, var(--accent-secondary), #5bd79a);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

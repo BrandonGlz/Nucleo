@@ -164,7 +164,7 @@ export function AgenteScreen() {
 const s = StyleSheet.create({
   zona: { paddingHorizontal: 20, paddingBottom: 24, gap: 16 },
   fila12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  marca: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,190,82,0.14)' },
+  marca: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(43,196,122,0.14)' },
   hoja: { flex: 1, marginTop: -4, borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden' },
   sugerencia: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 18, borderWidth: 1 },
   mio: { alignSelf: 'flex-end', maxWidth: '85%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderBottomRightRadius: 6 },
