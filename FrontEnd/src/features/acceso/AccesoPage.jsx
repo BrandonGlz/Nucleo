@@ -85,12 +85,14 @@ export function AccesoPage() {
 
   return (
     <div className="acceso">
-      {/* El ícono va dentro del anillo para que los dos compartan el mismo centro */}
-      <div className="acceso__anillo">
-        <LogoMark tone="verde" size={500} />
-      </div>
       <div className="acceso__lema">
         <Logo size={48} inverse />
+        {/* El ícono va dentro del anillo y el anillo ocupa solo el espacio libre entre el logo y el lema */}
+        <div className="acceso__centro">
+          <div className="acceso__anillo">
+            <LogoMark tone="verde" size={500} />
+          </div>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <span className="ui-eyebrow" style={{ color: '#9DA39E' }}>
             Plataforma IoT
@@ -100,6 +102,9 @@ export function AccesoPage() {
       </div>
       <div className="acceso__panel">
         <form className="acceso__form" onSubmit={enviar} noValidate>
+          <span className="acceso__logo-movil">
+            <Logo size={40} />
+          </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <h1>Inicia sesión</h1>
             <p style={{ margin: 0, fontSize: 16, lineHeight: '26px', color: 'var(--text-secondary)' }}>

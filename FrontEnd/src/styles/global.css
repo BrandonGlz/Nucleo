@@ -439,14 +439,22 @@ button.ui-menuitem:hover {
   background: #121413;
   color: #f3f5f2;
 }
-/* El anillo se centra en la zona oscura (todo menos el panel de 600 px) y el ícono en el anillo */
+/* Espacio libre entre el logo y el lema; el anillo toma el lado menor de ese espacio */
+.acceso__centro {
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 24px 0;
+}
 .acceso__anillo {
-  --lado: min(720px, calc(100vh - 120px), calc(100vw - 720px));
-  position: absolute;
-  left: calc((100% - 600px - var(--lado)) / 2);
-  top: calc((100% - var(--lado)) / 2);
+  --lado: min(720px, 100cqh, 100cqw);
+  flex: none;
   width: var(--lado);
   height: var(--lado);
+  box-sizing: border-box;
   border-radius: 999px;
   border: 2px solid rgba(243, 245, 242, 0.08);
   display: flex;
@@ -460,11 +468,25 @@ button.ui-menuitem:hover {
 .acceso__lema {
   position: relative;
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   padding: 56px 64px;
 }
+.acceso__logo-movil {
+  display: none;
+}
+/* Pantallas bajas: lema más compacto para dejarle espacio al ícono */
+@media (max-height: 820px) {
+  .acceso__lema {
+    padding: 40px 56px;
+  }
+  .acceso__lema h2 {
+    font-size: 36px;
+    line-height: 42px;
+  }
+}
+
 .acceso__lema h2 {
   margin: 0;
   max-width: 480px;
@@ -482,7 +504,6 @@ button.ui-menuitem:hover {
   width: 600px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   padding: 48px 80px;
   box-sizing: border-box;
@@ -497,6 +518,8 @@ button.ui-menuitem:hover {
   width: 100%;
   max-width: 420px;
   gap: 32px;
+  /* Centrado vertical que no corta el inicio cuando el contenido es más alto que la pantalla */
+  margin: auto 0;
 }
 .acceso__form h1 {
   margin: 0;
@@ -506,11 +529,26 @@ button.ui-menuitem:hover {
   letter-spacing: -0.025em;
 }
 .acceso__pie {
-  position: absolute;
-  left: 90px;
-  bottom: 48px;
+  width: 100%;
+  max-width: 420px;
+  padding-top: 24px;
   font-size: 12px;
   color: var(--text-muted);
+}
+/* Pantallas angostas: solo el formulario, a todo lo ancho, con el logo arriba */
+@media (max-width: 1000px) {
+  .acceso__lema {
+    display: none;
+  }
+  .acceso__panel {
+    width: 100%;
+    padding: 40px 24px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .acceso__logo-movil {
+    display: block;
+  }
 }
 
 /* Modal */
