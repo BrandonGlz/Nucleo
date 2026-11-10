@@ -12,7 +12,7 @@ import * as lecturasApi from '../../services/lecturas'
 import * as umbralesApi from '../../services/umbrales'
 import * as usuariosApi from '../../services/usuarios'
 import { nivelLectura, nombreCorto, pagina, puedeEditar, rangoUmbral, UNIDAD, VARIABLE } from '../../utils/convertir'
-import { haceCuanto, hora, num } from '../../utils/formato'
+import { avisoUltima, haceCuanto, hora, num, puntoSerie } from '../../utils/formato'
 
 const LIMITES = ['peligro_min', 'advertencia_min', 'advertencia_max', 'peligro_max']
 const ETIQUETA = { peligro_min: 'Peligro mín', advertencia_min: 'Advertencia mín', advertencia_max: 'Advertencia máx', peligro_max: 'Peligro máx' }
@@ -22,7 +22,7 @@ async function cargar(disp, rol) {
   const [umb, lecturas, serie] = await Promise.all([
     umbralesApi.lista(disp),
     dispositivosApi.ultimasLecturas(disp),
-    lecturasApi.serie(disp, 'HUM'),
+    lecturasApi.serieConDatos(disp, 'HUM'),
   ])
   let usuarios = []
   if (puedeEditar(rol)) {
@@ -198,15 +198,19 @@ export function UmbralesPage() {
               )
             })}
           </div>
-          <Card className="nc-grow" style={{ minHeight: 140 }}>
+          <Card className="nc-grow" style={{ minHeight: 230 }}>
             <div className="nc-card__head" style={{ marginBottom: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 className="nc-card__title">Vista previa contra las últimas lecturas</h3>
-                <p className="nc-card__sub">Humedad · hoy · {rangoUmbral(uHum, '%HR')}</p>
+                <p className="nc-card__sub">
+                  Humedad · últimas 24 h · {rangoUmbral(uHum, '%HR')}
+                  {datos.serie.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(datos.serie.ultima)}</span>}
+                </p>
               </div>
             </div>
             <GraficaAjustable
-              data={datos.serie.map((p) => ({ label: hora(p.periodo), time: hora(p.periodo), value: Number(p.promedio) }))}
+              data={datos.serie.puntos.map((p) => puntoSerie(p))}
+              vacio="Este dispositivo aún no tiene lecturas guardadas"
               unit="%HR"
               threshold={uHum ? { min: Number(uHum.peligro_min), max: Number(uHum.peligro_max) } : undefined}
               tooltip={false}

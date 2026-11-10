@@ -114,7 +114,9 @@ function TrendChart(p) {
       className: 'nc-trend__axis'
     }, fmt(tv, 0)));
   }), data.map(function (d, i) {
-    return i % labelEvery === 0 ? h('text', {
+    // Con varios puntos por día la fecha se repetiría: solo se escribe cuando cambia
+    var repetida = i % labelEvery === 0 && i > 0 && d.label === data[Math.max(0, i - labelEvery)].label;
+    return i % labelEvery === 0 && !repetida ? h('text', {
       key: 'x' + i,
       x: X(i),
       y: H - 6,
