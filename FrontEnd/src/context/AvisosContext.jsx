@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useSesion } from './SesionContext'
 import * as alertasApi from '../services/alertas'
 import { EVENTO, escucharPanel } from '../services/tiempoReal'
 import { limiteAlerta, NIVEL_ALERTA, pagina, tituloAlerta, valorAlerta } from '../utils/convertir'
@@ -16,7 +17,11 @@ const leerLeidas = () => {
 }
 
 // Alertas pendientes (contador del menú) y notificaciones del usuario (campana y su pantalla).
+// El administrador ve como notificación cada alerta de su organización, aunque el aviso por correo
+// le llegue al supervisor del área.
 export function AvisosProvider({ children }) {
+  const { usuario } = useSesion()
+  const todas = usuario?.rol === 'ADMIN'
   const [alertas, setAlertas] = useState([])
   const [notifs, setNotifs] = useState([])
   const [leidas, setLeidas] = useState(leerLeidas)
@@ -51,7 +56,8 @@ export function AvisosProvider({ children }) {
 
   const notificaciones = useMemo(() => {
     const porNum = new Map(alertas.map((a) => [a.num, a]))
-    return notifs
+    const origen = todas ? alertas.map((a) => ({ num: `a${a.num}`, alerta: a.num, fecha_envio: a.fecha_hora })) : notifs
+    return origen
       .map((n) => {
         const a = porNum.get(n.alerta)
         if (!a) return null
@@ -68,7 +74,7 @@ export function AvisosProvider({ children }) {
       })
       .filter(Boolean)
       .sort((x, y) => (x.fecha < y.fecha ? 1 : -1))
-  }, [alertas, notifs, leidas])
+  }, [alertas, notifs, leidas, todas])
 
   const marcarLeidas = useCallback(
     (nums) => {
