@@ -27,3 +27,5 @@ yarn-error.*
 
 # Firebase (push en Android): se copia a mano en la laptop
 google-services.json
+# Claves privadas de cuentas de servicio (nunca a git)
+*-firebase-adminsdk-*.json
