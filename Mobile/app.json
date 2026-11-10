@@ -29,6 +29,11 @@
           "color": "#2BC47A"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9dfd5c1a-95a1-490b-86c3-6079efd52269"
+      }
+    }
   }
 }
