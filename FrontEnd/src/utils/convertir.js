@@ -51,6 +51,8 @@ export function statusDispositivo(d, lecturas = [], umbrales = []) {
     const n = nivelLectura(l.valor, umbrales.find((u) => u.dispositivo === d.num && u.variable === l.variable))
     if (PESO[n] > PESO[peor]) peor = n
   }
+  // Recién encendido, el sensor de aire se estabiliza: se avisa salvo que haya algo peor.
+  if (d.estado_dispositivo === 'CALENT' && peor === 'normal') return { status: 'warning', label: 'Calentando' }
   return { status: peor, label: undefined }
 }
 

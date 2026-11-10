@@ -15,7 +15,7 @@ import * as organizacionesApi from '../../services/organizaciones'
 import * as umbralesApi from '../../services/umbrales'
 import * as usuariosApi from '../../services/usuarios'
 import {
-  enLinea, nivelLectura, nombreCompleto, pagina, puedeEditar, rangoUmbral, UNIDAD, VARIABLE,
+  enLinea, nivelLectura, statusDispositivo, nombreCompleto, pagina, puedeEditar, rangoUmbral, UNIDAD, VARIABLE,
 } from '../../utils/convertir'
 import { avisoUltima, fechaLarga, haceCuanto, num, puntoSerie } from '../../utils/formato'
 
@@ -183,10 +183,7 @@ export function DetalleDispositivo() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <strong style={{ fontSize: 20, lineHeight: '28px', fontWeight: 700, letterSpacing: '-0.01em' }}>{d.nombre}</strong>
-              <StatusBadge
-                status={sinConexion ? 'offline' : datos.lecturas.some((l) => nivelLectura(l.valor, umbrales.find((u) => u.variable === l.variable)) === 'critical') ? 'critical' : 'normal'}
-                label={sinConexion ? 'Sin conexión' : undefined}
-              />
+              <StatusBadge {...(sinConexion ? { status: 'offline', label: 'Sin conexión' } : statusDispositivo(d, datos.lecturas, umbrales))} />
             </div>
             <span className="ui-muted" style={{ fontSize: 14 }}>
               {d.codigo_mqtt} · {area?.nombre} · cada {d.intervalo_muestreo_seg} s

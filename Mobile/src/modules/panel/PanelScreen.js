@@ -133,14 +133,18 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
       </>
     )
   }
+  const calentando = d.estado_dispositivo === 'CALENT'
   const [min, max] = escala(u, 'TEMP')
   const nivel = nivelLectura(l?.valor, u)
   const color = TONO_ZONA[nivel]
   return (
     <>
       {cabeza}
-      <FilaEquipo punto={marca.verde} bateria={d.nivel_bateria}>
-        {`${d.nombre} · ${op.area?.nombre ?? 'en línea'} · cada ${d.intervalo_muestreo_seg} s`}
+      {/* Recién encendido, el sensor de aire se estabiliza unos 20 min: se muestra «Calentando». */}
+      <FilaEquipo punto={calentando ? colors.dark.warning : marca.verde} bateria={d.nivel_bateria}>
+        {calentando
+          ? `${d.nombre} · calentando · cada ${d.intervalo_muestreo_seg} s`
+          : `${d.nombre} · ${op.area?.nombre ?? 'en línea'} · cada ${d.intervalo_muestreo_seg} s`}
       </FilaEquipo>
       <View>
         <T mayus color={c.textMuted}>
