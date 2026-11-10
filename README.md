@@ -17,7 +17,8 @@ con los sensores, así que por ahora las lecturas vienen del simulador.
   - Reportes con cifras, gráficas y PDF, manuales o programados por correo; el texto se
     redacta a partir de las cifras (`IA_PROVEEDOR=local`).
   - **Núcleo AI:** un agente por dispositivo que responde con sus lecturas y alertas, y
-    genera reportes cuando se le piden («reporte de octubre», «de la semana pasada»).
+    genera reportes cuando se le piden («reporte de octubre», «de la semana pasada»); el
+    resumen y el PDF se ven en el mismo chat de la web y de la app.
 - **Web**
   - Panel en vivo, Dispositivos (con estado, batería, señal y «Calentando»), Detalle de
     dispositivo, Histórico, Alertas (atender o descartar), Reportes, Núcleo AI, Umbrales,

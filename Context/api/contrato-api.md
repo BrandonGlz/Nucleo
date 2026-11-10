@@ -126,7 +126,11 @@ Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
                                             analista), genera el del área del dispositivo con
                                             el periodo que nombre (hoy, ayer, esta semana,
                                             mes pasado, octubre, últimos N días; si no, 7
-                                            días) y responde además {"reporte": {"num"}}
+                                            días) y responde además {"reporte": {num, titulo,
+                                            periodo_inicio, periodo_fin, dias, lecturas,
+                                            alertas, peligro, variables[{variable, nombre,
+                                            unidad, promedio, minimo, maximo, alertas}],
+                                            resumen}}, que la web y la app muestran en el chat
 ```
 
 Las fechas se envían y se reciben en ISO 8601 con zona horaria, por ejemplo

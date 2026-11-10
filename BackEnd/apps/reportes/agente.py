@@ -303,7 +303,44 @@ def generar_reporte(usuario, dispositivo, pregunta):
         "texto": (
             f"Listo: generé el reporte de {area.nombre} de {descripcion} "
             f"({timezone.localtime(inicio):%d/%m/%Y} – {timezone.localtime(fin):%d/%m/%Y}). "
-            "Lo puedes ver y descargar en PDF en la sección Reportes de la web."
+            "Aquí tienes el resumen; descárgalo en PDF o ábrelo completo en Reportes."
         ),
-        "reporte": {"num": reporte.pk},
+        "reporte": resumen_reporte(reporte, f"{area.nombre} · {descripcion}"),
+    }
+
+
+ORDEN_VARIABLES = ("TEMP", "HUM", "AIRE")
+
+
+def resumen_reporte(reporte, titulo):
+    """Lo que la web y la app muestran del reporte en el chat: cifras clave por variable y
+    el primer párrafo del análisis. El reporte completo sigue en la sección Reportes."""
+    cifras = reporte.cifras or {}
+    variables = cifras.get("variables") or {}
+    alertas = cifras.get("alertas") or {}
+    por_variable = alertas.get("por_variable") or {}
+    dias = max(1, round((reporte.periodo_fin - reporte.periodo_inicio) / timedelta(days=1)))
+    return {
+        "num": reporte.pk,
+        "titulo": titulo,
+        "periodo_inicio": reporte.periodo_inicio.isoformat(),
+        "periodo_fin": reporte.periodo_fin.isoformat(),
+        "dias": dias,
+        "lecturas": sum(v.get("muestras") or 0 for v in variables.values()),
+        "alertas": alertas.get("total", 0),
+        "peligro": (alertas.get("por_nivel") or {}).get("PELIGRO", 0),
+        "variables": [
+            {
+                "variable": codigo,
+                "nombre": variables[codigo].get("nombre", codigo),
+                "unidad": variables[codigo].get("unidad", ""),
+                "promedio": variables[codigo].get("promedio"),
+                "minimo": variables[codigo].get("minimo"),
+                "maximo": variables[codigo].get("maximo"),
+                "alertas": por_variable.get(codigo, 0),
+            }
+            for codigo in ORDEN_VARIABLES
+            if codigo in variables
+        ],
+        "resumen": (reporte.contenido or "").split("\n\n")[0].strip(),
     }

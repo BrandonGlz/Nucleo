@@ -18,6 +18,8 @@ import { Desplegable } from '../../components/Desplegable'
 import { Pantalla } from '../../components/Pantalla'
 import { useAgente } from '../../context/AgenteContext'
 import { useSesion } from '../../context/SesionContext'
+import * as reportesApi from '../../services/reportes'
+import { VARIABLE } from '../../utils/convertir'
 
 const SUGERENCIAS = [
   { icono: 'droplets', titulo: 'Picos de humedad', texto: '¿A qué hora hubo picos de humedad esta semana en Sala limpia?' },
@@ -85,6 +87,93 @@ function Pensando() {
   )
 }
 
+const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+const cifra = (v, unidad) => (v == null ? '—' : `${Number(v).toFixed(unidad === 'ppm' ? 0 : 1)}`)
+
+// Resumen del reporte que generó el agente: cifras clave, rango por variable y el inicio del
+// análisis, con la descarga del PDF; el reporte completo sigue en la sección Reportes.
+function ReporteChat({ r, navegar }) {
+  const [bajando, setBajando] = useState(false)
+  const [error, setError] = useState(false)
+  const descargar = async () => {
+    setBajando(true)
+    setError(false)
+    try {
+      await reportesApi.descargarPdf(r.num, `Reporte ${r.titulo}`)
+    } catch {
+      setError(true)
+    }
+    setBajando(false)
+  }
+  return (
+    <div className="ui-ia-hallazgos ui-ia-reporte">
+      <div className="ui-ia-reporte__cabeza">
+        <span className="ui-ia-reporte__icono">
+          <Icon name="file-text" size={18} />
+        </span>
+        <div>
+          <strong>{r.titulo}</strong>
+          <span className="ui-muted">
+            {fechaCorta(r.periodo_inicio)} – {fechaCorta(r.periodo_fin)} · Folio R-{String(r.num).padStart(4, '0')}
+          </span>
+        </div>
+      </div>
+      <div className="ui-ia-reporte__cifras">
+        <div>
+          <span className="ui-eyebrow">Lecturas</span>
+          <strong className="ui-num">{r.lecturas.toLocaleString('es-MX')}</strong>
+        </div>
+        <div>
+          <span className="ui-eyebrow">Alertas</span>
+          <strong className={`ui-num${r.alertas ? ' ui-ia-reporte__alerta' : ''}`}>{r.alertas}</strong>
+          {r.peligro > 0 && <span className="ui-ia-sobre">{r.peligro} de peligro</span>}
+        </div>
+        <div>
+          <span className="ui-eyebrow">Días</span>
+          <strong className="ui-num">{r.dias}</strong>
+        </div>
+      </div>
+      <div className="ui-ia-reporte__variables">
+        {r.variables.map((v) => {
+          const ancho = v.maximo - v.minimo
+          const pos = ancho > 0 ? ((v.promedio - v.minimo) / ancho) * 100 : 50
+          return (
+            <div key={v.variable} className="ui-ia-reporte__var">
+              <div className="ui-ia-reporte__var-cabeza">
+                <span>
+                  <Icon name={VARIABLE[v.variable]?.icono ?? 'activity'} size={14} /> {VARIABLE[v.variable]?.etiqueta ?? v.nombre}
+                </span>
+                {v.alertas > 0 ? <span className="ui-ia-reporte__alertas">{v.alertas} alertas</span> : <span className="ui-muted">Sin alertas</span>}
+              </div>
+              <strong className="ui-num">
+                {cifra(v.promedio, v.unidad)}
+                <small> {v.unidad}</small>
+              </strong>
+              <div className="ui-ia-reporte__rango" aria-hidden="true">
+                <span style={{ left: `${Math.min(100, Math.max(0, pos))}%` }} />
+              </div>
+              <div className="ui-ia-reporte__extremos ui-muted">
+                <span>Mín {cifra(v.minimo, v.unidad)}</span>
+                <span>Máx {cifra(v.maximo, v.unidad)}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {r.resumen && <p className="ui-ia-reporte__resumen">{r.resumen}</p>}
+      <div className="ui-ia-siguientes">
+        <Button size="sm" icon="download" disabled={bajando} onClick={descargar}>
+          {bajando ? 'Descargando…' : 'Descargar PDF'}
+        </Button>
+        <Button variant="secondary" size="sm" icon="file-text" onClick={() => navegar(`/reportes?reporte=${r.num}`)}>
+          Ver completo
+        </Button>
+        {error && <span className="ui-ia-sobre">No se pudo descargar. Intenta de nuevo.</span>}
+      </div>
+    </div>
+  )
+}
+
 // Cifras y gráfica de la respuesta, en una tarjeta aparte dentro del mensaje.
 function Hallazgos({ m }) {
   const valores = [...m.serie, m.maximo]
@@ -146,11 +235,16 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar }) {
         <TextoEscrito texto={m.texto} animar={animar} listo={() => setCompleta(true)} />
         {completa && m.reporte && (
           <div className="ui-ia-aparece">
-            <div className="ui-ia-siguientes">
-              <Button variant="secondary" size="sm" icon="file-text" onClick={() => navegar(`/reportes?reporte=${m.reporte.num}`)}>
-                Ver reporte
-              </Button>
-            </div>
+            {m.reporte.variables ? (
+              <ReporteChat r={m.reporte} navegar={navegar} />
+            ) : (
+              // Conversaciones guardadas antes del resumen solo traen el número del reporte.
+              <div className="ui-ia-siguientes">
+                <Button variant="secondary" size="sm" icon="file-text" onClick={() => navegar(`/reportes?reporte=${m.reporte.num}`)}>
+                  Ver reporte
+                </Button>
+              </div>
+            )}
           </div>
         )}
         {completa && m.picos && (

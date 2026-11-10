@@ -338,7 +338,12 @@ class AgenteTests(PruebaBase):
         self.assertEqual(reporte.origen, Reporte.Origen.AGENTE)
         self.assertEqual(reporte.area, self.e.dispositivo.area)
         self.assertEqual(reporte.generado_por, self.e.supervisor)
-        self.assertIn("sección Reportes", r.json()["texto"])
+        resumen = r.json()["reporte"]
+        self.assertEqual(resumen["titulo"].split(" · ")[0], self.e.dispositivo.area.nombre)
+        self.assertEqual(resumen["lecturas"], 3)
+        temperatura = next(v for v in resumen["variables"] if v["variable"] == "TEMP")
+        self.assertEqual((temperatura["minimo"], temperatura["maximo"]), (22.0, 26.4))
+        self.assertTrue(resumen["resumen"])
 
     @override_settings(IA_PROVEEDOR="local")
     def test_operador_no_genera_reportes(self):

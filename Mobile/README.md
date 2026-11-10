@@ -20,6 +20,9 @@ simulados.
   operador solo las consulta; las atiende su supervisor.
 - **Detalle de alerta:** valor que la disparó, cuánto superó el límite, la curva
   alrededor del evento y su línea de tiempo.
+- **Núcleo AI:** preguntas sobre el dispositivo elegido. Supervisores, analistas y
+  administradores también le piden reportes: el resumen aparece en el chat, con el PDF
+  (se abre con el menú de compartir del teléfono) y el enlace al reporte en la web.
 - **Perfil:** datos de la cuenta y del supervisor, preferencias guardadas en el teléfono
   (bajo consumo, push, sonido en alertas de peligro, tema claro u oscuro), diagnóstico
   de la API y cierre de sesión.

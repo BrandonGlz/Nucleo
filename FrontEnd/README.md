@@ -15,7 +15,7 @@ Ambos hablan solo con la API REST; el navegador no se conecta al broker MQTT.
 - **Monitoreo:** Panel con lecturas en vivo, Dispositivos, Detalle de dispositivo,
   Histórico y Alertas (atender o descartar con nota).
 - **Análisis:** Reportes (vista previa y generación) y Núcleo AI, que también genera
-  reportes cuando se le piden.
+  reportes cuando se le piden y los muestra en el chat con sus cifras y la descarga del PDF.
 - **Configuración:** Umbrales, Usuarios (ADMIN y SUPER) y Empresa y áreas (ADMIN).
 - **Plataforma:** Organizaciones (solo ADMINPLAT): alta, edición, suspensión, baja y
   primer administrador. Esa cuenta entra directo ahí y no ve los demás módulos.

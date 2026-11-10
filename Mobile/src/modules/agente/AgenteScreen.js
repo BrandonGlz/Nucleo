@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ReporteChat } from '../../components/ReporteChat'
 import { SelectorDispositivo } from '../../components/SelectorDispositivo'
 import { Icon, T } from '../../components/ui'
 import { useSesion } from '../../context/SesionContext'
@@ -12,6 +13,9 @@ import { hora } from '../../utils/formato'
 import { font, marca } from '../../theme'
 
 const SUGERENCIAS = ['¿Cómo está la temperatura ahora?', '¿Hubo picos de humedad hoy?', '¿Cómo está la calidad del aire?']
+// Quienes generan reportes también pueden pedírselos al agente.
+const SUGERENCIA_REPORTE = 'Genera el reporte de esta semana'
+const ROLES_REPORTE = ['ADMIN', 'SUPER', 'ANALISTA']
 
 // Núcleo AI en la app: hay un agente por dispositivo. El operador habla con el de su dispositivo;
 // las demás cuentas lo eligen en un select. Solo aparece para las cuentas autorizadas.
@@ -55,7 +59,7 @@ export function AgenteScreen() {
     setPensando(true)
     try {
       const r = await agenteApi.preguntar(p, num)
-      agregar({ de: 'agente', texto: r.texto, hora: hora(new Date().toISOString()) })
+      agregar({ de: 'agente', texto: r.texto, reporte: r.reporte?.variables ? r.reporte : null, hora: hora(new Date().toISOString()) })
     } catch (e) {
       agregar({ de: 'error', texto: e.status === 503 ? 'El agente no está disponible por ahora.' : 'No se pudo obtener la respuesta.' })
     } finally {
@@ -96,7 +100,7 @@ export function AgenteScreen() {
               <T size={14} lh={20} color={c.textMuted} style={{ textAlign: 'center', marginBottom: 8 }}>
                 {d ? `Pregunta lo que necesites sobre ${d.nombre}.` : ' '}
               </T>
-              {SUGERENCIAS.map((p) => (
+              {(ROLES_REPORTE.includes(usuario.rol) ? [...SUGERENCIAS, SUGERENCIA_REPORTE] : SUGERENCIAS).map((p) => (
                 <Pressable key={p} onPress={() => preguntar(p)} style={({ pressed }) => [s.sugerencia, { backgroundColor: c.surface, borderColor: c.border }, pressed && { opacity: 0.7 }]}>
                   <Icon name="sparkles" size={14} color={c.textSecondary} />
                   <T size={14} style={{ flex: 1 }}>
@@ -114,10 +118,11 @@ export function AgenteScreen() {
                   </T>
                 </View>
               ) : (
-                <View key={i} style={[s.suyo, { backgroundColor: c.surface, borderColor: m.de === 'error' ? c.danger : c.border }]}>
+                <View key={i} style={[s.suyo, m.reporte && s.conReporte, { backgroundColor: c.surface, borderColor: m.de === 'error' ? c.danger : c.border }]}>
                   <T size={14} lh={21} color={m.de === 'error' ? c.danger : undefined}>
                     {m.texto}
                   </T>
+                  {m.reporte && <ReporteChat r={m.reporte} />}
                   {m.hora && (
                     <T size={11} color={c.textMuted}>
                       {`Núcleo AI · ${d?.nombre} · ${m.hora}`}
@@ -169,6 +174,7 @@ const s = StyleSheet.create({
   hoja: { flex: 1, marginTop: -4, borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden' },
   sugerencia: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 18, borderWidth: 1 },
   mio: { alignSelf: 'flex-end', maxWidth: '85%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderBottomRightRadius: 6 },
+  conReporte: { alignSelf: 'stretch', maxWidth: '100%' },
   suyo: { alignSelf: 'flex-start', maxWidth: '90%', gap: 6, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 20, borderBottomLeftRadius: 6, borderWidth: 1 },
   compositor: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginHorizontal: 16, padding: 6, paddingLeft: 16, borderRadius: 26, borderWidth: 1 },
   entrada: { flex: 1, minHeight: 40, maxHeight: 110, paddingTop: 10, paddingBottom: 10, fontSize: 15 },

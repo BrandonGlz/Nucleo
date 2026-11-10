@@ -2743,6 +2743,118 @@ article.ui-hoja,
   border-radius: 18px;
   background: var(--surface);
 }
+.ui-ia-reporte__cabeza {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ui-ia-reporte__cabeza > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 12px;
+}
+.ui-ia-reporte__cabeza strong {
+  font-size: 15px;
+  line-height: 20px;
+}
+.ui-ia-reporte__icono {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+.ui-ia-reporte__cifras {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.ui-ia-reporte__cifras > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.ui-ia-reporte__cifras > div + div {
+  border-left: 1px solid var(--border);
+}
+.ui-ia-reporte__cifras strong {
+  font-size: 20px;
+  line-height: 26px;
+}
+.ui-ia-reporte__alerta {
+  color: var(--warning);
+}
+.ui-ia-reporte__variables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+.ui-ia-reporte__var {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 12px;
+}
+.ui-ia-reporte__var-cabeza {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+.ui-ia-reporte__var-cabeza > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ui-ia-reporte__alertas {
+  color: var(--warning);
+}
+.ui-ia-reporte__var strong {
+  font-size: 22px;
+  line-height: 1.2;
+}
+.ui-ia-reporte__var small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.ui-ia-reporte__rango {
+  position: relative;
+  height: 2px;
+  margin: 6px 0 2px;
+  background: var(--text-primary);
+}
+.ui-ia-reporte__rango span {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--text-primary);
+  border-radius: 50%;
+  background: var(--surface);
+  transform: translate(-50%, -50%);
+}
+.ui-ia-reporte__extremos {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+.ui-ia-reporte__resumen {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
 .ui-ia-hallazgos__cabeza {
   display: flex;
   justify-content: space-between;
