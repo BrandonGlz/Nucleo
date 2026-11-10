@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native'
-import { EstadoError } from '../../components/EstadoError'
+import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { BarraRango } from '../../components/BarraRango'
 import { Pantalla } from '../../components/Pantalla'
 import { Avatar, Battery, Icon, IconButton, Skeleton, Sparkline, T } from '../../components/ui'
@@ -63,14 +63,16 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
           Hola, {usuario.nombre}
         </T>
       </View>
-      <IconButton icon="bell" label="Alertas" badge={pendientes || undefined} size="lg" inverse onPress={onAlertas} />
+      {usuario.organizacion ? (
+        <IconButton icon="bell" label="Alertas" badge={pendientes || undefined} size="lg" inverse onPress={onAlertas} />
+      ) : null}
     </View>
   )
   if (estado === 'cargando' || estado === 'error' || !d) {
     return (
       <>
         {cabeza}
-        <Pastilla punto={c.textMuted}>{estado === 'error' ? 'Sin datos' : 'Conectando…'}</Pastilla>
+        <Pastilla punto={c.textMuted}>{estado === 'error' ? 'Sin datos' : estado === 'cargando' ? 'Conectando…' : 'Sin dispositivo'}</Pastilla>
         <View>
           <T mayus color={c.textMuted}>
             Temperatura
@@ -244,7 +246,7 @@ export function PanelScreen({ navigation }) {
     [d?.num, d?.ultima_conexion],
   )
   const sinConexion = (USAR_MOCKS && ESTADO_FORZADO === 'sinConexion') || (d && !enLinea(d))
-  const cargando = estado === 'cargando' || (!sinConexion && series.estado === 'cargando' && !series.datos)
+  const cargando = estado === 'cargando' || (!!d && !sinConexion && series.estado === 'cargando' && !series.datos)
   const [sT, sH, sA] = series.datos ?? []
   const ver = (variable) => navigation.navigate('Variable', { variable })
 
@@ -257,6 +259,15 @@ export function PanelScreen({ navigation }) {
     >
       {estado === 'error' ? (
         <EstadoError onReintentar={reintentar} />
+      ) : !cargando && !d ? (
+        <EstadoVacio
+          titulo="Sin dispositivos"
+          mensaje={
+            usuario.organizacion
+              ? 'Tu cuenta aún no tiene dispositivos a la vista. Pide al administrador que te asigne uno o que registre los de tu área.'
+              : 'La cuenta de plataforma administra las organizaciones desde la web; no tiene dispositivos propios.'
+          }
+        />
       ) : cargando ? (
         <>
           <View style={s.dos}>

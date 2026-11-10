@@ -9,6 +9,7 @@ import { useDatos } from './useDatos'
 // Datos del operador: su dispositivo asignado con área, últimas lecturas y umbrales, y sus alertas.
 // Las demás cuentas ven el primer dispositivo de su área (o el primero, si ven todas las áreas).
 export async function cargarOperador(usuario) {
+  if (!usuario?.organizacion) return { dispositivo: null, area: null, lecturas: [], umbrales: [], alertas: [] }
   const dispositivos = pagina(await dispositivosApi.lista())
   const dispositivo =
     dispositivos.find((d) => d.operador === usuario?.num) ??

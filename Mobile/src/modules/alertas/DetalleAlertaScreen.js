@@ -21,7 +21,8 @@ async function cargarDetalle(num_) {
   const [serie, notificaciones, usuarios] = await Promise.all([
     lecturasApi.serie(a.dispositivo, a.variable, { intervalo: 'minuto', desde, hasta }),
     alertasApi.notificaciones().then(pagina),
-    a.atendida_por ? usuariosApi.lista().then(pagina) : Promise.resolve([]),
+    // Solo administradores y supervisores pueden listar usuarios; los demás ven «tu supervisor».
+    a.atendida_por ? usuariosApi.lista().then(pagina).catch(() => []) : Promise.resolve([]),
   ])
   return {
     a, serie,
