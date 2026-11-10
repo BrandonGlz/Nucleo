@@ -24,3 +24,6 @@ yarn-error.*
 
 /ios
 /android
+
+# Firebase (push en Android): se copia a mano en la laptop
+google-services.json

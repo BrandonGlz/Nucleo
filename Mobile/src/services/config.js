@@ -8,6 +8,7 @@ let token = null
 export const guardarToken = (t) => {
   token = t || null
 }
+export const leerToken = () => token
 
 // Las listas de la API van paginadas; la app pide hasta 1000 registros por consulta.
 const POR_PAGINA = 1000

@@ -1,15 +1,19 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import { useColorScheme } from 'react-native'
 import { colors } from '../theme'
+import { usePreferencias } from './PreferenciasContext'
 
 const TemaContext = createContext(null)
 
-// El tema sigue al sistema; el Perfil puede fijarlo en claro u oscuro mientras la app está abierta.
+// El tema sigue al sistema hasta que el Perfil lo fija en claro u oscuro; la elección se guarda.
 export function TemaProvider({ children }) {
   const sistema = useColorScheme()
-  const [elegido, setTema] = useState(null)
-  const tema = elegido ?? (sistema === 'dark' ? 'dark' : 'light')
-  const valor = useMemo(() => ({ tema, c: colors[tema], oscuro: tema === 'dark', setTema }), [tema])
+  const { prefs, cambiar } = usePreferencias()
+  const tema = prefs.tema ?? (sistema === 'dark' ? 'dark' : 'light')
+  const valor = useMemo(
+    () => ({ tema, c: colors[tema], oscuro: tema === 'dark', setTema: (t) => cambiar({ tema: t }) }),
+    [tema, cambiar],
+  )
   return <TemaContext.Provider value={valor}>{children}</TemaContext.Provider>
 }
 

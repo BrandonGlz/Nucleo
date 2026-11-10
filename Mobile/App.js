@@ -8,6 +8,7 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans'
 import { View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { PreferenciasProvider, usePreferencias } from './src/context/PreferenciasContext'
 import { SesionProvider } from './src/context/SesionContext'
 import { TemaProvider } from './src/context/TemaContext'
 import { AppNavigator } from './src/navigation/AppNavigator'
@@ -23,11 +24,22 @@ export default function App() {
   if (!fuentes) return <View style={{ flex: 1, backgroundColor: '#121413' }} />
   return (
     <SafeAreaProvider>
-      <TemaProvider>
-        <SesionProvider>
-          <AppNavigator />
-        </SesionProvider>
-      </TemaProvider>
+      <PreferenciasProvider>
+        <ConPreferencias />
+      </PreferenciasProvider>
     </SafeAreaProvider>
+  )
+}
+
+// Espera a leer las preferencias guardadas para no mostrar un instante el tema equivocado.
+function ConPreferencias() {
+  const { listas } = usePreferencias()
+  if (!listas) return <View style={{ flex: 1, backgroundColor: '#121413' }} />
+  return (
+    <TemaProvider>
+      <SesionProvider>
+        <AppNavigator />
+      </SesionProvider>
+    </TemaProvider>
   )
 }

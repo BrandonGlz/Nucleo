@@ -99,6 +99,13 @@ class CierreSesionSerializer(serializers.Serializer):
     token_expo = serializers.CharField(max_length=255, required=False)
 
 
+class TelefonoSerializer(serializers.Serializer):
+    """Teléfono de la sesión para los push; la plataforma solo hace falta al registrarlo."""
+
+    token_expo = serializers.CharField(max_length=255)
+    plataforma = serializers.ChoiceField(choices=TelefonoPush.Plataforma.choices, required=False)
+
+
 class PrimerAdministradorSerializer(serializers.ModelSerializer):
     """Alta del primer administrador de una organización por el administrador de plataforma."""
 

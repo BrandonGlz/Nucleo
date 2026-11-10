@@ -72,6 +72,21 @@ dependencias). Un cambio solo de pantallas tarda alrededor de 1 min (unos 2 GB d
 tarea a la vez para cuidar la memoria y tarda más. La memoria se usa solo mientras corre. Opciones: `--forzar` (compila aunque no haya cambios) y `--limpio` (borra `node_modules` y
 `android/` y compila todo, por si algo sale raro).
 
+#### Notificaciones push
+
+Con la app abierta las alertas llegan por el canal en vivo. Para que lleguen con la app cerrada,
+Android necesita Firebase y Expo (una vez):
+
+1. En https://expo.dev crea el proyecto `nucleo-mobile` y copia su *Project ID* en
+   `EXPO_PUBLIC_EAS_PROJECT_ID` del perfil `piloto` de `Mobile/eas.json`.
+2. En https://console.firebase.google.com crea un proyecto, agrega una app Android con el
+   paquete `com.nucleo.mobile` y copia su `google-services.json` a `Mobile/` en la laptop
+   (no va a git).
+3. En Firebase → Configuración → Cuentas de servicio, genera una clave privada y súbela en
+   expo.dev → proyecto → Credentials → Android → *FCM V1 service account key*.
+4. `NUCLEO_PUSH_HABILITADO=true` en `BackEnd/.env`, recompila el APK y reinicia
+   `nucleo-daphne` y `nucleo-mqtt`.
+
 Requisitos (una vez): `sudo apt install openjdk-21-jdk-headless unzip` y las herramientas de línea de comandos
 de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
 (`yes | sdkmanager --licenses`); Gradle descarga el resto. La llave de firma vive en `~/nucleo-app`

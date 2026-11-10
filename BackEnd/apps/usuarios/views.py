@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -12,6 +13,7 @@ from apps.usuarios.serializers import (
     CambiarPasswordSerializer,
     CierreSesionSerializer,
     LoginSerializer,
+    TelefonoSerializer,
     UsuarioSerializer,
 )
 from common import roles
@@ -68,6 +70,33 @@ class LogoutView(APIView):
         if token_expo:
             TelefonoPush.objects.filter(usuario=request.user, token_expo=token_expo).delete()
         Token.objects.filter(user=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TelefonoView(APIView):
+    """Activa (``POST``) o desactiva (``DELETE``) los push en el teléfono de la sesión.
+
+    Lo usa el interruptor «Notificaciones push» del perfil de la app sin cerrar sesión.
+    """
+
+    def post(self, request):
+        entrada = TelefonoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        datos = entrada.validated_data
+        if "plataforma" not in datos:
+            raise ValidationError({"plataforma": "Indique la plataforma del teléfono."})
+        TelefonoPush.objects.update_or_create(
+            token_expo=datos["token_expo"],
+            defaults={"usuario": request.user, "plataforma": datos["plataforma"]},
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def delete(self, request):
+        entrada = TelefonoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        TelefonoPush.objects.filter(
+            usuario=request.user, token_expo=entrada.validated_data["token_expo"]
+        ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

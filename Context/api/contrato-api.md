@@ -34,6 +34,9 @@ POST /auth/login/              {"correo", "password", "token_expo"?, "plataforma
                                máximo 10 por minuto. La app móvil envía token_expo y plataforma
                                (ANDROID o IOS) juntos para registrar su teléfono
 POST /auth/logout/             {"token_expo"?}; invalida el token actual y elimina ese teléfono
+POST /auth/telefono/           {"token_expo", "plataforma"}; activa los push en ese teléfono sin
+                               volver a entrar (interruptor del perfil de la app)
+DELETE /auth/telefono/         {"token_expo"}; los desactiva
 GET  /auth/yo/                 Usuario autenticado
 POST /auth/cambiar-password/   {"password_actual", "password_nueva"}; invalida el token
 ```
@@ -118,7 +121,12 @@ Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
                                             variable con lecturas sobre el máximo, "picos"
                                             [{cuando, valor}], "serie" y "etiquetas" (máximo
                                             diario de 7 días), "unidad" y "maximo"; 404 si el
-                                            dispositivo no está a su alcance
+                                            dispositivo no está a su alcance. Si se le pide un
+                                            «reporte» o «informe» (admin, supervisor o
+                                            analista), genera el del área del dispositivo con
+                                            el periodo que nombre (hoy, ayer, esta semana,
+                                            mes pasado, octubre, últimos N días; si no, 7
+                                            días) y responde además {"reporte": {"num"}}
 ```
 
 Las fechas se envían y se reciben en ISO 8601 con zona horaria, por ejemplo

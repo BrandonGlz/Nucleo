@@ -1,18 +1,18 @@
-import { Platform } from 'react-native'
 import { AUTH_LOGIN, AUTH_LOGOUT, AUTH_YO } from '../api'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
+import { telefono } from './notificaciones'
 
 // La API registra el teléfono para las notificaciones push solo si recibe el token de Expo y
 // la plataforma juntos; sin token se entra sin registrar el teléfono.
 export async function login(correo, password, tokenExpo) {
   if (USAR_MOCKS) return mock.login({ correo, password })
-  const telefono = tokenExpo ? { token_expo: tokenExpo, plataforma: Platform.OS === 'ios' ? 'IOS' : 'ANDROID' } : {}
-  return pedir(AUTH_LOGIN, { metodo: 'POST', cuerpo: { correo, password, ...telefono } })
+  return pedir(AUTH_LOGIN, { metodo: 'POST', cuerpo: { correo, password, ...telefono(tokenExpo) } })
 }
-export async function logout() {
+// Con el token de Expo, la API quita el teléfono de los push al cerrar la sesión.
+export async function logout(tokenExpo) {
   if (USAR_MOCKS) return mock.logout()
-  return pedir(AUTH_LOGOUT, { metodo: 'POST', cuerpo: {} })
+  return pedir(AUTH_LOGOUT, { metodo: 'POST', cuerpo: tokenExpo ? { token_expo: tokenExpo } : {} })
 }
 export async function yo() {
   if (USAR_MOCKS) return (await mock.login({ correo: '' })).usuario

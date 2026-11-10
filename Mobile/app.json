@@ -2,7 +2,7 @@
   "expo": {
     "name": "Núcleo",
     "slug": "nucleo-mobile",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "orientation": "portrait",
     "scheme": "nucleo",
     "userInterfaceStyle": "automatic",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.nucleo.mobile",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icono-adaptativo.png",
         "monochromeImage": "./assets/icono-monocromo.png",
@@ -21,7 +21,14 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icono-monocromo.png",
+          "color": "#2BC47A"
+        }
+      ]
     ]
   }
 }

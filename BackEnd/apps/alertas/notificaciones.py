@@ -84,13 +84,15 @@ def enviar_push(telefono, alerta):
     canal solo se usa con ``NUCLEO_PUSH_HABILITADO``.
     """
     titulo, cuerpo = _texto_push(alerta)
+    # Canales de Android que crea la app: «alertas» suena y vibra; «alertas-silencio», no.
+    peligro = alerta.nivel == alerta.Nivel.PELIGRO
     carga = {
         "to": telefono.token_expo,
         "title": titulo,
         "body": cuerpo,
-        "sound": "default",
+        "sound": "default" if peligro else None,
         "priority": "high",
-        "channelId": "alertas",
+        "channelId": "alertas" if peligro else "alertas-silencio",
         "data": {"alerta": alerta.pk, "nivel": alerta.nivel},
     }
     try:

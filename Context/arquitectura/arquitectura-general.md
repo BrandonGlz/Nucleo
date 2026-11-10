@@ -126,7 +126,7 @@ Origen → Destino                                Protocolo                  Est
 - Notificaciones push con Expo: el envío está implementado y apagado
   (`NUCLEO_PUSH_HABILITADO`); falta probarlo con un teléfono real.
 - Proveedores del servicio de IA y del correo.
-- Clientes web y móvil del canal en vivo (el backend ya lo ofrece).
+- Proyecto de Firebase y de Expo (EAS) para los push en Android (ver `deploy/README.md`).
 - Despliegue del broker y de los certificados fuera de desarrollo.
 - Estrategia de retención, respaldo y recuperación.
 - Validación del modelo exacto de ESP32, pinout y circuito de alimentación.

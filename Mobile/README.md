@@ -20,8 +20,12 @@ simulados.
   operador solo las consulta; las atiende su supervisor.
 - **Detalle de alerta:** valor que la disparó, cuánto superó el límite, la curva
   alrededor del evento y su línea de tiempo.
-- **Perfil:** datos de la cuenta y del supervisor, preferencias, tema claro u oscuro,
-  diagnóstico de la API y cierre de sesión.
+- **Perfil:** datos de la cuenta y del supervisor, preferencias guardadas en el teléfono
+  (bajo consumo, push, sonido en alertas de peligro, tema claro u oscuro), diagnóstico
+  de la API y cierre de sesión.
+- **Avisos:** con la app al frente, cada alerta nueva llega por el canal en vivo y se
+  muestra como notificación (las de peligro con sonido y vibración si el perfil lo
+  permite); al tocarla se abre su detalle. Con la app cerrada llegan por push.
 
 ## Cómo funciona
 
@@ -30,9 +34,14 @@ simulados.
 2. `AppNavigator` crea las pantallas a partir de `src/modules/index.js`: las que tienen
    `pestana` van en la barra inferior flotante (Inicio, Alertas, Perfil) y las demás
    se apilan encima (detalles y diagnóstico).
-3. `OperadorProvider` (`hooks/useOperador.js`) pide una sola vez, y luego cada 30 s, el
-   dispositivo asignado, sus últimas lecturas, sus umbrales y sus alertas; todas las
-   pestañas leen de ahí.
+3. `OperadorProvider` (`hooks/useOperador.js`) pide el dispositivo a la vista, sus
+   últimas lecturas, sus umbrales y las alertas; todas las pestañas leen de ahí. Con la
+   app al frente abre el canal en vivo (`services/tiempoReal.js`) y consulta cada 30 s de
+   respaldo; en modo de bajo consumo, sin canal y cada 2 min. En segundo plano cierra el
+   canal y deja de consultar.
+   Los push (`services/notificaciones.js`) necesitan `EXPO_PUBLIC_EAS_PROJECT_ID` en
+   `eas.json` y `google-services.json` en `Mobile/` (ver `deploy/README.md`); sin ellos la
+   app no registra el teléfono y solo avisa con el canal en vivo.
 4. Cada pantalla usa `Pantalla`: una zona oscura arriba con el dato principal y una
    hoja clara que sube sobre ella con el resto.
 5. Cada servicio de `src/services/` decide: con `EXPO_PUBLIC_USE_MOCKS=true` responde

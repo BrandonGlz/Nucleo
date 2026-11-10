@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Keyboard, View } from 'react-native'
-import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native'
+import { DarkTheme, DefaultTheme, NavigationContainer, createNavigationContainerRef } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -8,6 +8,7 @@ import { TabBar } from '../components/ui'
 import { useSesion } from '../context/SesionContext'
 import { useTema } from '../context/TemaContext'
 import { OperadorProvider, pendientesDe, useOperador } from '../hooks/useOperador'
+import { alTocar } from '../services/notificaciones'
 import { acceso, modulos } from '../modules'
 
 const Stack = createNativeStackNavigator()
@@ -57,9 +58,16 @@ function Principal() {
   )
 }
 
+const navegacion = createNavigationContainerRef()
+
 // Sin sesión: Acceso. Con sesión: las pestañas y, encima, las pantallas de detalle.
 export function AppNavigator() {
   const { usuario } = useSesion()
+  // Tocar una notificación de alerta (push o del canal en vivo) abre su detalle.
+  useEffect(() => {
+    if (!usuario) return undefined
+    return alTocar((num) => navegacion.isReady() && navegacion.navigate('DetalleAlerta', { num }))
+  }, [usuario])
   const { c, oscuro } = useTema()
   const base = oscuro ? DarkTheme : DefaultTheme
   const tema = { ...base, colors: { ...base.colors, background: c.background, card: c.surface, text: c.textPrimary, border: c.border, primary: c.accent } }
@@ -78,7 +86,7 @@ export function AppNavigator() {
     </Stack.Navigator>
   )
   return (
-    <NavigationContainer theme={tema}>
+    <NavigationContainer ref={navegacion} theme={tema}>
       {usuario ? <OperadorProvider usuario={usuario}>{pilas}</OperadorProvider> : pilas}
     </NavigationContainer>
   )

@@ -132,6 +132,24 @@ class TelefonosPushTests(PruebaBase):
         self.assertEqual(r.status_code, 204)
         self.assertFalse(TelefonoPush.objects.exists())
 
+    def test_el_perfil_activa_y_desactiva_los_push_sin_cerrar_sesion(self):
+        cliente = cliente_de(self.e.operador)
+        token = {"token_expo": "ExponentPushToken[xyz]"}
+        r = cliente.post(
+            "/api/v1/auth/telefono/", {**token, "plataforma": "ANDROID"}, format="json"
+        )
+        self.assertEqual(r.status_code, 204, r.content)
+        self.assertEqual(TelefonoPush.objects.get().usuario, self.e.operador)
+        self.assertEqual(
+            cliente.post("/api/v1/auth/telefono/", token, format="json").status_code, 400
+        )
+        # Otro usuario no puede quitar el teléfono ajeno
+        cliente_de(self.e.supervisor).delete("/api/v1/auth/telefono/", token, format="json")
+        self.assertTrue(TelefonoPush.objects.exists())
+        r = cliente.delete("/api/v1/auth/telefono/", token, format="json")
+        self.assertEqual(r.status_code, 204)
+        self.assertFalse(TelefonoPush.objects.exists())
+
     def test_un_telefono_que_cambia_de_usuario_se_reasigna(self):
         datos = {"token_expo": "ExponentPushToken[abc]", "plataforma": "IOS"}
         self.login(**datos)

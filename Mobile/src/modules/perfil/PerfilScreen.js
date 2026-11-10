@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import { Pantalla } from '../../components/Pantalla'
 import { Avatar, Button, Icon, T, Tabs, Toggle } from '../../components/ui'
+import { usePreferencias } from '../../context/PreferenciasContext'
 import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
 import { useOperador } from '../../hooks/useOperador'
+import { activarPush } from '../../services/notificaciones'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as usuariosApi from '../../services/usuarios'
 import { nombreCompleto, pagina, ROL } from '../../utils/convertir'
@@ -16,7 +18,7 @@ export function PerfilScreen({ navigation }) {
   const { c, tema, setTema } = useTema()
   const { usuario, logout } = useSesion()
   const { datos: op } = useOperador()
-  const [prefs, setPrefs] = useState({ bajoConsumo: false, push: true, sonido: true })
+  const { prefs, cambiar } = usePreferencias()
   const [saliendo, setSaliendo] = useState(false)
   const extra = useDatos(
     () =>
@@ -75,9 +77,17 @@ export function PerfilScreen({ navigation }) {
         ))}
       </View>
       <View style={[s.tarjeta, { backgroundColor: c.surface }]}>
-        <Toggle label="Modo de bajo consumo" value={prefs.bajoConsumo} onChange={(v) => setPrefs({ ...prefs, bajoConsumo: v })} />
-        <Toggle label="Notificaciones push" value={prefs.push} onChange={(v) => setPrefs({ ...prefs, push: v })} />
-        <Toggle label="Sonido en alertas críticas" value={prefs.sonido} onChange={(v) => setPrefs({ ...prefs, sonido: v })} />
+        {/* Bajo consumo: sin canal en vivo y consultas cada 2 min. Las preferencias se guardan en el teléfono. */}
+        <Toggle label="Modo de bajo consumo" value={prefs.bajoConsumo} onChange={(v) => cambiar({ bajoConsumo: v })} />
+        <Toggle
+          label="Notificaciones push"
+          value={prefs.push}
+          onChange={(v) => {
+            cambiar({ push: v })
+            activarPush(v)
+          }}
+        />
+        <Toggle label="Sonido en alertas críticas" value={prefs.sonido} onChange={(v) => cambiar({ sonido: v })} />
         <View style={s.entre}>
           <T peso={600} size={14}>
             Tema

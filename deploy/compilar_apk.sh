@@ -45,8 +45,8 @@ abis="${NUCLEO_ABIS:-arm64-v8a}"
 huella() { sha256sum | cut -c1-16; }
 # Huellas: dependencias (lock), parte nativa (todo Mobile/ menos el código JS) y el APK completo
 h_npm=$(huella < package-lock.json)
-h_nativo=$(git ls-files -s -- . ':!src' ':!App.js' ':!index.js' ':!README.md' ':!package.json' | huella)
-h_apk=$({ git rev-parse HEAD:Mobile; git status --porcelain -- .; echo "$abis"; sha256sum "$raiz/deploy/compilar_apk.sh"; } | huella)
+h_nativo=$({ git ls-files -s -- . ':!src' ':!App.js' ':!index.js' ':!README.md' ':!package.json'; sha256sum google-services.json 2>/dev/null; } | huella)
+h_apk=$({ git rev-parse HEAD:Mobile; git status --porcelain -- .; echo "$abis"; sha256sum "$raiz/deploy/compilar_apk.sh"; sha256sum google-services.json 2>/dev/null; } | huella)
 ultima="$raiz/deploy/descargas/.huella"
 
 if (( ! forzar )) && [[ -f "$raiz/deploy/descargas/nucleo.apk" && "$(cat "$ultima" 2>/dev/null)" == "$h_apk" ]]; then
