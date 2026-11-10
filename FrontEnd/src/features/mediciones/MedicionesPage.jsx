@@ -10,7 +10,7 @@ import * as lecturasApi from '../../services/lecturas'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as umbralesApi from '../../services/umbrales'
 import { nivelLectura, pagina, rangoUmbral, UNIDAD, VARIABLE } from '../../utils/convertir'
-import { fechaCorta, horaSeg, miles, num, puntoSerie } from '../../utils/formato'
+import { avisoUltima, fechaCorta, horaSeg, miles, num, puntoSerie } from '../../utils/formato'
 import { useSesion } from '../../context/SesionContext'
 
 const PERIODOS = [
@@ -24,12 +24,13 @@ async function cargarCatalogo() {
   return { dispositivos: pagina(d), areas: pagina(a) }
 }
 async function cargarLecturas(disp, variable, periodo) {
+  const rango = await lecturasApi.rangoConDatos(disp, variable, periodo)
   const [serie, lect, umb] = await Promise.all([
-    lecturasApi.serie(disp, variable, periodo),
-    lecturasApi.lista({ dispositivo: disp, desde: lecturasApi.rangoPeriodo(periodo).desde }),
+    lecturasApi.serie(disp, variable, rango),
+    lecturasApi.lista({ dispositivo: disp, desde: rango.desde, hasta: rango.hasta }),
     umbralesApi.lista(disp),
   ])
-  return { serie, lecturas: pagina(lect), umbrales: pagina(umb) }
+  return { serie, lecturas: pagina(lect), umbrales: pagina(umb), ultima: rango.ultima }
 }
 
 // Junta las lecturas de las tres variables que se midieron en el mismo momento en una fila.
@@ -146,6 +147,7 @@ export function MedicionesPage() {
                 <h3 className="nc-card__title">{info.etiqueta} · {nombrePeriodo}</h3>
                 <p className="nc-card__sub">
                   {actual?.nombre} · umbral {rangoUmbral(u, unidad)}
+                  {lect.datos?.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(lect.datos.ultima)}</span>}
                 </p>
               </div>
             </div>

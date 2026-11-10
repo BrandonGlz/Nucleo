@@ -17,7 +17,7 @@ import * as usuariosApi from '../../services/usuarios'
 import {
   enLinea, nivelLectura, nombreCompleto, pagina, puedeEditar, rangoUmbral, UNIDAD, VARIABLE,
 } from '../../utils/convertir'
-import { fechaLarga, haceCuanto, hora, num, puntoSerie } from '../../utils/formato'
+import { avisoUltima, fechaLarga, haceCuanto, num, puntoSerie } from '../../utils/formato'
 
 const SENSOR = {
   OPERA: ['success', 'circle-check', 'Operando'],
@@ -88,17 +88,18 @@ function cifrasDetalle({ d, lecturas, umbrales }, sinConexion) {
 function Grafica({ d, umbrales, variable }) {
   const [periodo, setPeriodo] = useState('Hoy')
   const clave = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }[periodo]
-  const { datos } = useDatos(() => lecturasApi.serie(d.num, variable, clave), [d.num, variable, clave])
+  const { datos } = useDatos(() => lecturasApi.serieConDatos(d.num, variable, clave), [d.num, variable, clave])
   const u = umbrales.find((x) => x.variable === variable)
   const info = VARIABLE[variable]
-  const data = (datos ?? []).map((p) => puntoSerie(p, clave))
+  const data = (datos?.puntos ?? []).map((p) => puntoSerie(p, clave))
   return (
     <Card className="nc-grow">
       <div className="nc-card__head" style={{ marginBottom: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 className="nc-card__title">{info.etiqueta} · {periodo.toLowerCase()}</h3>
           <p className="nc-card__sub">
-            {enLinea(d) ? `Umbral ${rangoUmbral(u, UNIDAD[variable])}` : `Sin lecturas desde las ${hora(d.ultima_conexion)}`}
+            Umbral {rangoUmbral(u, UNIDAD[variable])}
+            {datos?.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(datos.ultima)}</span>}
           </p>
         </div>
         <PeriodFilter value={periodo} onChange={setPeriodo} />
@@ -223,7 +224,7 @@ export function DetalleDispositivo() {
         </div>
       </Card>
       {sinConexion && (
-        <Alert level="offline" title={`Sin conexión · última lectura ${haceCuanto(d.ultima_conexion)} (${hora(d.ultima_conexion)})`}>
+        <Alert level="offline" title={`Sin conexión · última lectura ${haceCuanto(d.ultima_conexion).toLowerCase()}`}>
           El dispositivo sigue alertando con LED y buzzer aunque no llegue a la plataforma. Los valores que ves son la última lectura conocida.
         </Alert>
       )}

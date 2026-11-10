@@ -3402,3 +3402,9 @@ button.ui-menuitem:not(:disabled):hover svg {
   border-top: 1px solid var(--border);
   font-size: 12px;
 }
+
+/* Aviso de que la gráfica muestra las últimas lecturas guardadas y no las del periodo actual */
+.ui-aviso-ultima {
+  color: var(--warning);
+  font-weight: 600;
+}

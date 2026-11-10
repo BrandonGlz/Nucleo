@@ -65,6 +65,9 @@ export const periodo = (inicio, fin) => {
 export const num = (v, decimales = 1) => (v == null || v === '' ? '—' : Number(v).toFixed(decimales))
 export const miles = (n) => Number(n).toLocaleString('es-MX').replace(/,/g, ' ')
 
+// Aviso cuando la gráfica muestra las últimas lecturas guardadas en lugar del periodo actual.
+export const avisoUltima = (ultima) => (ultima ? `Sin lecturas recientes · se muestran hasta el ${fechaCorta(ultima)}, ${hora(ultima)}` : '')
+
 // Punto de una serie de lecturas para las gráficas: en «hoy» el eje muestra la hora; en 7 y 30 días, la fecha.
 export const puntoSerie = (p, periodo = 'hoy') => ({
   label: periodo === 'hoy' ? hora(p.periodo) : fechaCorta(p.periodo),

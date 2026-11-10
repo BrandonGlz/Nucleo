@@ -14,25 +14,33 @@ import * as lecturasApi from '../../services/lecturas'
 import {
   enLinea, limiteAlerta, NIVEL_ALERTA, nivelLectura, statusDispositivo, tituloAlerta, valorAlerta, VARIABLE,
 } from '../../utils/convertir'
-import { haceCuanto, hora, hoyTexto, num, puntoSerie } from '../../utils/formato'
+import { avisoUltima, haceCuanto, hora, hoyTexto, num, puntoSerie } from '../../utils/formato'
 
 const lectura = (d, v) => d.lecturas.find((l) => l.variable === v)
 // La lectura que saca al dispositivo de rango (o la temperatura si todo está bien).
 function lecturaFuera(d, umbrales) {
   const fuera = d.lecturas.find((l) => nivelLectura(l.valor, umbrales.find((u) => u.dispositivo === d.num && u.variable === l.variable)) !== 'normal')
-  const l = fuera ?? lectura(d, 'TEMP')
+  const l = fuera ?? lectura(d, 'TEMP') ?? d.lecturas[0]
+  if (!l) return '—'
   return `${VARIABLE[l.variable].corta} ${num(l.valor, VARIABLE[l.variable].decimales)} ${l.unidad}`
 }
 const promedio = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
 
+const valores = (ds, v) => ds.map((d) => lectura(d, v)).filter(Boolean).map((l) => Number(l.valor))
+
 // Cifras de la tarjeta oscura: temperatura del área con más dispositivos y promedios generales.
+// Si ninguno está en línea se usan las últimas lecturas guardadas y se indica de cuándo son.
 function cifrasPanel({ dispositivos, umbrales, areas, alertas }) {
   const activos = dispositivos.filter(enLinea)
-  const area = areas[0]
-  const delArea = activos.filter((d) => d.area === area?.num)
-  const temp = promedio(delArea.map((d) => Number(lectura(d, 'TEMP').valor)))
-  const hum = promedio(delArea.map((d) => Number(lectura(d, 'HUM').valor)))
-  const aire = promedio(activos.map((d) => Number(lectura(d, 'AIRE').valor)))
+  const conLecturas = dispositivos.filter((d) => d.lecturas.length)
+  const enVivo = activos.some((d) => d.lecturas.length)
+  const base = enVivo ? activos : conLecturas
+  const area = areas.find((a) => base.some((d) => d.area === a.num)) ?? areas[0]
+  const delArea = base.filter((d) => d.area === area?.num)
+  const temp = promedio(valores(delArea, 'TEMP'))
+  const hum = promedio(valores(delArea, 'HUM'))
+  const aire = promedio(valores(base, 'AIRE'))
+  const ultima = conLecturas.flatMap((d) => d.lecturas.map((l) => l.fecha_hora)).sort().at(-1)
   const u = umbrales.find((x) => x.dispositivo === delArea[0]?.num && x.variable === 'TEMP')
   const [min, max] = u ? [Number(u.advertencia_min), Number(u.advertencia_max)] : [0, 0]
   const escala = [min - (max - min) / 2, max + (max - min) / 2]
@@ -41,17 +49,19 @@ function cifrasPanel({ dispositivos, umbrales, areas, alertas }) {
   const enRango = temp != null && temp >= min && temp <= max
   return {
     principal: {
-      etiqueta: `Temperatura · ${area?.nombre ?? ''}`,
+      etiqueta: `Temperatura · ${area?.nombre ?? ''}${enVivo || !ultima ? '' : ` · última lectura ${haceCuanto(ultima).toLowerCase()}`}`,
       valor: num(temp),
       unidad: '°C',
-      sub: `${enRango ? 'En rango' : 'Fuera de rango'} · ${min} – ${max} °C`,
+      sub: temp == null
+        ? 'Sin lecturas guardadas'
+        : `${enRango ? 'En rango' : 'Fuera de rango'} · ${min} – ${max} °C${enVivo ? '' : ` · última lectura ${haceCuanto(ultima).toLowerCase()}`}`,
       tonoSub: enRango ? 'verde' : 'peligro',
     },
     barra: u ? { desde: pct(min), ancho: pct(max) - pct(min), marca: pct(temp) } : null,
     cifras: [
       { etiqueta: 'Humedad', valor: num(hum), unidad: '%HR', sub: area?.nombre, tono: 'verde' },
       { etiqueta: 'En línea', valor: activos.length, unidad: `/ ${dispositivos.length}`, sub: `${dispositivos.length - activos.length} sin conexión` },
-      { etiqueta: 'Aire', valor: num(aire, 0), unidad: 'ppm', sub: 'Promedio general' },
+      { etiqueta: 'Aire', valor: num(aire, 0), unidad: 'ppm', sub: enVivo ? 'Promedio general' : 'Última lectura' },
       {
         etiqueta: 'Pendientes', valor: pend.length, tono: pend.length ? 'peligro' : undefined,
         sub: `${pend.filter((a) => a.nivel === 'PELIGRO').length} crítica`,
@@ -68,8 +78,8 @@ const CIFRAS_CARGANDO = {
 function Tendencia({ dispositivo, umbral }) {
   const [periodo, setPeriodo] = useState('Hoy')
   const clave = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }[periodo]
-  const { datos } = useDatos(() => lecturasApi.serie(dispositivo.num, 'TEMP', clave), [dispositivo.num, clave])
-  const data = (datos ?? []).map((p) => puntoSerie(p, clave))
+  const { datos } = useDatos(() => lecturasApi.serieConDatos(dispositivo.num, 'TEMP', clave), [dispositivo.num, clave])
+  const data = (datos?.puntos ?? []).map((p) => puntoSerie(p, clave))
   return (
     <Card className="nc-grow ui-tendencia">
       <div className="nc-card__head" style={{ marginBottom: 12 }}>
@@ -77,6 +87,7 @@ function Tendencia({ dispositivo, umbral }) {
           <h3 className="nc-card__title">Tendencia de temperatura</h3>
           <p className="nc-card__sub">
             {dispositivo.nombre} · máx {Number(umbral?.peligro_max)} °C
+            {datos?.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(datos.ultima)}</span>}
           </p>
         </div>
         <PeriodFilter value={periodo} onChange={setPeriodo} />
@@ -182,7 +193,7 @@ export function PanelPage() {
                         </div>
                       </td>
                       <td className="ui-num">
-                        {enLinea(d) ? lecturaFuera(d, datos.umbrales) : '—'}
+                        {lecturaFuera(d, datos.umbrales)}
                       </td>
                       <td>{haceCuanto(d.ultima_conexion)}</td>
                       <td>
