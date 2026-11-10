@@ -28,7 +28,7 @@ fi
 . "$firma/firma.env"
 
 cd "$raiz/Mobile"
-bajo npm ci --no-audit --no-fund
+bajo npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-maxtimeout=120000 --fetch-timeout=600000  # reintenta si la red se corta
 # Variables EXPO_PUBLIC_* del perfil piloto (URL de la API de producción, sin datos simulados)
 eval "$(node -e 'const e = require("./eas.json").build.piloto.env; for (const [k, v] of Object.entries(e)) console.log(`export ${k}=${JSON.stringify(v)}`)')"
 version="$(node -p 'require("./app.json").expo.version')"
