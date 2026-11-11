@@ -69,3 +69,48 @@ export function planDe(pregunta, dispositivo = 'el dispositivo') {
     pasos: ['Entendiendo la pregunta', `Consultando las lecturas de ${dispositivo}`, 'Comparando con los umbrales', 'Redactando la respuesta'],
   }
 }
+
+// Preguntas para seguir la conversación, según el tema de la última pregunta. Todas tienen respuesta
+// prediseñada en el backend (temas de agente.py), así que contestan al instante sin pasar por la IA.
+const SEGUIR = {
+  TEMP: { icono: 'thermometer', texto: '¿Cómo estuvo la temperatura esta semana?' },
+  HUM: { icono: 'droplets', texto: '¿Hubo picos de humedad esta semana?' },
+  AIRE: { icono: 'wind', texto: '¿Cómo está la calidad del aire?' },
+  ALERTAS: { icono: 'bell', texto: '¿Hubo alertas en los últimos 7 días?' },
+  PICOS: { icono: 'activity', texto: '¿Qué variable tuvo más picos?' },
+  CONEXION: { icono: 'signal', texto: '¿Está conectado el dispositivo?' },
+  REPORTE: { icono: 'file-text', texto: 'Genera el reporte de esta semana' },
+  REPORTE_MES: { icono: 'file-text', texto: 'Genera el reporte del mes pasado' },
+}
+const DESPUES = {
+  TEMP: ['HUM', 'ALERTAS', 'REPORTE'],
+  HUM: ['TEMP', 'PICOS', 'REPORTE'],
+  AIRE: ['TEMP', 'ALERTAS', 'REPORTE'],
+  ALERTAS: ['PICOS', 'CONEXION', 'REPORTE'],
+  PICOS: ['ALERTAS', 'HUM', 'REPORTE'],
+  CONEXION: ['ALERTAS', 'TEMP', 'AIRE'],
+  REPORTE: ['REPORTE_MES', 'ALERTAS', 'PICOS'],
+  OTRO: ['TEMP', 'HUM', 'ALERTAS'],
+}
+
+export function temaDe(pregunta) {
+  const t = normalizar(pregunta)
+  if (REPORTE.test(t) || (VERBOS.test(t) && PERIODO.test(t))) return 'REPORTE'
+  if (/(conex|bateri|senal|linea|desconect|apag)/.test(t)) return 'CONEXION'
+  if (/(alerta|aviso|incidente)/.test(t)) return 'ALERTAS'
+  if (/(temperatura|calor|frio|grados)/.test(t)) return 'TEMP'
+  if (/humed/.test(t)) return 'HUM'
+  if (/(aire|co2|calidad|ppm|ventila)/.test(t)) return 'AIRE'
+  if (/(pico|lectura|sensor|medicion|valor|umbral|rango)/.test(t)) return 'PICOS'
+  return 'OTRO'
+}
+
+// `hechas`: preguntas ya hechas en la conversación (no se vuelven a sugerir).
+export function siguientes(pregunta, { reporte = false, hechas = [] } = {}) {
+  const ya = new Set(hechas.map(normalizar))
+  return DESPUES[temaDe(pregunta)]
+    .filter((c) => reporte || !c.startsWith('REPORTE'))
+    .map((c) => SEGUIR[c])
+    .filter((s) => !ya.has(normalizar(s.texto)))
+    .slice(0, 3)
+}

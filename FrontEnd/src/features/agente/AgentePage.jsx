@@ -23,7 +23,7 @@ import { DashboardReporte } from '../reportes/DashboardReporte'
 import { descargarPdf } from '../reportes/pdf'
 import { useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
-import { planDe } from './proceso'
+import { planDe, siguientes } from './proceso'
 import { periodo } from '../../utils/formato'
 
 const SUGERENCIAS = [
@@ -271,7 +271,7 @@ function Hallazgos({ m }) {
   )
 }
 
-function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto }) {
+function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto, sugerencias, preguntar }) {
   const navegar = useNavigate()
   const [completa, setCompleta] = useState(!animar)
   const [copiado, setCopiado] = useState(false)
@@ -359,6 +359,19 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             >
               <ThumbsDown size={16} />
             </button>
+          </div>
+        )}
+        {completa && ultima && sugerencias?.length > 0 && (
+          <div className="ui-ia-seguir" aria-label="Preguntas sugeridas">
+            <span className="ui-muted">Puedes preguntar</span>
+            <div className="ui-ia-seguir__lista">
+              {sugerencias.map((x) => (
+                <button key={x.texto} type="button" onClick={() => preguntar(x.texto)}>
+                  <Icon name={x.icono} size={14} />
+                  {x.texto}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -624,6 +637,15 @@ export function AgentePage() {
                         calificar={(voto) => ag.editar(actual, (ms) => ms.map((x, j) => (j === i ? { ...x, voto } : x)))}
                         visualizar={setVisor}
                         visorAbierto={visor?.num}
+                        preguntar={preguntar}
+                        sugerencias={
+                          i === mensajes.length - 1
+                            ? siguientes(mensajes.findLast((x) => x.de === 'yo')?.texto ?? '', {
+                                reporte: ROLES_REPORTE.includes(usuario?.rol),
+                                hechas: mensajes.filter((x) => x.de === 'yo').map((x) => x.texto),
+                              })
+                            : null
+                        }
                       />
                     ),
                   )}
