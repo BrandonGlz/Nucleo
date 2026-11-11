@@ -444,13 +444,9 @@ están en [`deploy/README.md`](deploy/README.md).
 
 ## Nico AI
 
-Nico AI es el agente de cada dispositivo: responde en lenguaje natural sobre sus lecturas,
-alertas, sensores, umbrales y reportes (SRS 3.2.12). Es de **solo lectura**: no modifica
-umbrales, usuarios ni dispositivos, y cada cifra que menciona sale de una consulta del backend;
-la IA nunca calcula ni inventa valores. Lo usan el administrador, el supervisor, el analista y
-el operador con `acceso_agente`, cada uno solo sobre los dispositivos de su organización y área.
-
-**Cómo funciona**
+Agente de cada dispositivo que responde en lenguaje natural sobre sus lecturas, alertas,
+sensores, umbrales y reportes. Es de solo lectura y las cifras siempre salen del backend; la IA
+solo interpreta y redacta.
 
 ```mermaid
 flowchart LR
@@ -476,16 +472,16 @@ flowchart LR
     W -->|"1 · POST /api/v1/agente/<br/>pregunta + token"| TS
     A -->|"1"| TS
     TS --> C -->|"/api"| D
-    D <-->|"2 · consultas"| BD
-    D -->|"3 · trabajo para la IA"| R
-    E -->|"4 · GET /puente/tomar/<br/>Wi-Fi · HTTPS"| TS
+    D <-->|"1 · consultas"| BD
+    D -->|"2 · trabajo para la IA"| R
+    E -->|"3 · GET /puente/tomar/<br/>Wi-Fi · HTTPS"| TS
     R -.->|trabajo| E
-    E -->|"5 · /puente-ia/api/chat<br/>X-Puente-Clave"| C
+    E -->|"3 · /puente-ia/api/chat<br/>X-Puente-Clave"| C
     C -->|proxy| O
     O -.->|texto y tokens| E
-    E -->|"6 · POST /puente/entregar/"| D
-    D -->|"7 · respuesta JSON<br/>texto · gráfica · tabla"| W
-    D -->|"7"| A
+    E -->|"3 · POST /puente/entregar/"| D
+    D -->|"4 · respuesta JSON<br/>texto · gráfica · tabla"| W
+    D -->|"4"| A
     classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
     classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
     classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
@@ -505,53 +501,15 @@ flowchart LR
     style BD fill:transparent,stroke:#facc15,stroke-dasharray:3 3
 ```
 
-1. El usuario escribe en el chat de Nico AI de la web o de la app, que envía la pregunta al
-   servidor con su token.
-2. El backend revisa permisos y consulta las cifras en PostgreSQL y TimescaleDB.
-3. Si necesita la IA (interpretar una pregunta libre o redactar el texto), deja el trabajo
-   en Redis.
-4. El ESP32 de Núcleo A-01 está conectado por Wi-Fi y le pregunta al servidor si hay
-   trabajo; cuando lo hay, lo toma.
-5. El ESP lo envía a Ollama, en el mismo servidor, por `/puente-ia/` con su clave.
-6. Recibe el texto y lo entrega al backend.
-7. El backend arma la respuesta con las cifras, que vuelve al chat.
+1. La web o la app envía la pregunta al backend, que consulta las cifras.
+2. Si hace falta la IA, el backend deja el trabajo en Redis.
+3. El ESP32 de **Núcleo A-01 (NC-0501)** lo toma por Wi-Fi, lo envía a Ollama
+   (`qwen2.5:0.5b`, en el mismo servidor) y devuelve el texto.
+4. El backend responde al chat.
 
-**IA local por el ESP32.** El modelo es `qwen2.5:0.5b` en Ollama (contenedor
-`nucleo_ollama`). Solo lo usa el dispositivo físico **Núcleo A-01 (NC-0501)**; los demás son
-simulados y responden con las reglas y el catálogo, sin IA. El backend nunca llama a Ollama
-directamente; si el ESP no devuelve la respuesta en 20 s, responde solo con las reglas.
+Solo A-01 usa la IA; los demás dispositivos son simulados y responden sin ella. Si el ESP no
+responde en 20 s, el agente contesta solo con las reglas.
 
-El ESP mantiene la conexión HTTPS abierta (keep-alive), así que cada petición tarda ~70 ms
-después de la primera. Si el ESP está apagado, el agente de A-01 lo indica, y el resto del
-monitoreo y las alertas sigue funcionando.
-
-**Cómo responde una pregunta**
-
-1. **Entender.** Una petición repetida se reenvía la segunda vez y se omite a partir de la
-   tercera. El texto tecleado al azar se ignora o se responde «No entendí». Si se pide otra
-   área u otro dispositivo, se aclara que cada agente solo ve el suyo. Los saludos y
-   comentarios se contestan sin consultar datos.
-2. **Interpretar.** La pregunta, con la anterior como contexto si es un seguimiento («¿y
-   ayer?»), se convierte en una petición: qué se pide, de qué variable, de qué periodo y qué
-   dato (máximo, mínimo o promedio).
-3. **Consultar.** Una herramienta del catálogo (`apps/reportes/herramientas.py`) hace la
-   consulta. Si las reglas no reconocen la pregunta, se usa una ruta aprendida con 👍 y, en
-   el dispositivo físico, Ollama elige la herramienta; solo puede escoger una del catálogo que
-   tenga pistas en la pregunta.
-4. **Verificar.** La respuesta se compara con la petición: la variable, el periodo, la última
-   medición o la gráfica pedidas. Si no cumple, se rehace con la pregunta canónica; si
-   tampoco, se pide aclaración en vez de dar un dato equivocado.
-
-**Aprendizaje y calidad**
-
-- Una respuesta entra al banco cuando recibe **dos 👍** con la misma plantilla. No entran los
-  seguimientos, las correcciones, los comentarios ni las preguntas de menos de 3 o más de 25
-  palabras. Un 👎 la desactiva.
-- `apps/reportes/casos_agente.py` es el banco de casos: preguntas reales, incluidas las que
-  fallaron, con lo que se espera de cada una. Se corre en cada `manage.py test`.
-- `manage.py evaluar_agente --dispositivo NC-0501 [--fallas]` lo corre contra los datos
-  reales sin guardar nada y lista las 👎 y las «no entendidas» para convertirlas en casos.
-- `estadoServer.sh` en el servidor muestra si Nico AI está activo, sus peticiones y los
-  tokens del día.
-
-El detalle técnico está en [`Context/backend/estructura-backend.md`](Context/backend/estructura-backend.md#agente-ia).
+Para validar cambios: `manage.py evaluar_agente --dispositivo NC-0501` corre el banco de casos
+(`apps/reportes/casos_agente.py`) sin guardar nada. El detalle está en
+[`Context/backend/estructura-backend.md`](Context/backend/estructura-backend.md#agente-ia).
