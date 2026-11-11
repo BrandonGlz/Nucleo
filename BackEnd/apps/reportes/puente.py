@@ -313,12 +313,52 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
     return _limpiar(r["texto"], permitidos, base), _tokens(r)
 
 
+# El modelo pequeño no conversa bien con una instrucción abierta: se le pide explicar los
+# hechos con sus palabras, con un ejemplo, y ``_fiel`` descarta lo que agregue.
 CONVERSAR = (
-    "Responde como Nico AI, conversando de forma natural y amable, en máximo dos frases. Usa "
-    "solo los hechos verificados; no agregues cifras, fechas, áreas ni causas que no estén en "
-    "ellos. Si el usuario insiste en algo que los hechos contradicen, explícale con calma lo que "
-    "muestran los datos. Si no estás seguro de qué quiere, dilo y hazle una pregunta concreta."
+    "Contesta al mensaje del usuario explicando los hechos con tus palabras, en máximo dos "
+    "frases. No saludes ni hables de ti. Menciona lo principal de los hechos y no agregues nada "
+    "que no esté en ellos.\n"
+    "Ejemplo:\n"
+    "Hechos: No hay un área «bodega 2» registrada en tu organización. Un administrador puede "
+    "darla de alta en Empresa y áreas.\n"
+    "Usuario: pero sí existe\n"
+    "Respuesta: Entiendo, pero «bodega 2» no aparece registrada en tu organización; si existe, "
+    "un administrador puede darla de alta en Empresa y áreas."
 )
+# Palabras de enlace que la IA puede usar aunque no estén en los hechos.
+NEUTRAS = frozenset(
+    "entiendo comprendo claro gracias aparece aparecen registrada registrado existe existen "
+    "puede pueden puedes podrias debes debe deberia revisar reviso revise segun ahora todavia "
+    "sigue siguen tambien entonces mientras cuando donde quieres quieras necesitas ayudarte "
+    "consultar consultarla consultarlo indica indican muestra muestran marca marcan tienes "
+    "tiene tienen sobre desde hasta porque aunque mismo misma estos estas esos esas lecturas "
+    "lectura datos sensores sensor dispositivo cualquier momento verdad".split()
+)
+SALUDO_IA = re.compile(
+    r"\b(hola|estoy bien|como estas|soy nico|en que (te )?puedo ayudar|buen(os|as) (dias|tardes|"
+    r"noches))\b"
+)
+
+
+def _palabras(texto):
+    return [w for w in re.findall(r"[a-zñ]+", agente._normalizar(texto)) if len(w) >= 5]
+
+
+def _fiel(texto, hechos, mensaje="", contexto=""):
+    """La respuesta de la IA solo dice lo que dicen los hechos: cada palabra con contenido
+    viene de los hechos, del mensaje del usuario o de las palabras de enlace, retoma lo
+    principal de los hechos y no es charla («¡Hola! Estoy bien»)."""
+    if SALUDO_IA.search(agente._normalizar(texto)):
+        return False
+    # La conversación anterior (ya verificada) también vale: da continuidad al chat.
+    raices = {w[:5] for w in _palabras(f"{hechos} {mensaje} {contexto}")}
+    propias = [w for w in _palabras(texto) if w not in NEUTRAS]
+    if any(w[:5] not in raices for w in propias):
+        return False
+    claves = {w[:5] for w in _palabras(hechos) if w not in NEUTRAS}
+    usadas = {w[:5] for w in propias} & claves
+    return len(usadas) >= min(3, len(claves))
 
 
 def conversar(dispositivo, mensaje, hechos, historial=(), espera=None):
@@ -341,8 +381,9 @@ def conversar(dispositivo, mensaje, hechos, historial=(), espera=None):
                 {"role": "system", "content": SISTEMA.format(nombre=dispositivo.nombre)},
                 {
                     "role": "user",
-                    "content": (f"Conversación reciente:\n{charla}\n" if charla else "")
-                    + f"Hechos verificados: {hechos}\nMensaje del usuario: {mensaje}\n{CONVERSAR}",
+                    "content": f"{CONVERSAR}\n\n"
+                    + (f"Conversación reciente:\n{charla}\n" if charla else "")
+                    + f"Hechos: {hechos}\nUsuario: {mensaje}\nRespuesta:",
                 },
             ],
             90,
@@ -352,10 +393,13 @@ def conversar(dispositivo, mensaje, hechos, historial=(), espera=None):
     r = cola().esperar(trabajo["id"], espera)
     if not r or r.get("error") or not (r.get("texto") or "").strip():
         return None, _tokens(r or {})
-    base = hechos + " " + " ".join(r for _, r in historial)
-    permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(base)}
+    permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(hechos)}
     permitidos |= {float(n) for n in range(0, 25)}
-    return _limpiar(r["texto"], permitidos, base), _tokens(r)
+    texto = _limpiar(r["texto"], permitidos, hechos)
+    contexto = " ".join(f"{p} {r}" for p, r in historial)
+    if texto and not _fiel(texto, hechos, mensaje, contexto):
+        texto = None
+    return texto, _tokens(r)
 
 
 # ── Herramientas: la IA solo elige cuál usar ────────────────────────────────────────────

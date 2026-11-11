@@ -559,6 +559,36 @@ class NicoAprendeTests(PruebaBase):
         estado = self.cliente.get("/api/v1/agente/estado/").json()
         self.assertEqual(estado["activos"], [self.e.dispositivo.pk])
 
+    def test_ia_solo_dice_lo_que_dicen_los_hechos(self):
+        # Respuestas reales del modelo en el servidor: solo pasan las fieles a los hechos.
+        hechos = (
+            "Revisé de nuevo y no hay un área «ventas» registrada en tu organización, así que no "
+            "tengo lecturas suyas. Si el área existe, un administrador debe darla de alta en "
+            "Empresa y áreas y asignarle un dispositivo."
+        )
+        self.assertFalse(puente._fiel("¡Hola! Estoy bien.", hechos, "si, si tengo"))
+        self.assertTrue(
+            puente._fiel(
+                "Entiendo, pero «Ventas» no aparece registrada en tu organización; si existe, un "
+                "administrador debe darla de alta en Empresa y áreas.",
+                hechos,
+                "si, si tengo",
+            )
+        )
+        medicion = (
+            "Lo reviso con los sensores. La última medición de Núcleo A-01 fue del Lun 9 · 02:21: "
+            "temperatura 16.1 °C, dentro del rango (14–25 °C)."
+        )
+        self.assertFalse(
+            puente._fiel(medicion + " Hasta ahora, el ambiente es muy caloroso.", medicion, "")
+        )
+        equipo = "Reviso el equipo. Sensores: DHT22 operando, CCS811 operando."
+        self.assertFalse(
+            puente._fiel(
+                "El sensor DHT22 y CCS811 están funcionando correctamente, pero fallan.", equipo
+            )
+        )
+
     @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
     def test_ia_conversa_cuando_el_usuario_insiste(self):
         codigo = self.e.dispositivo.codigo_mqtt
@@ -568,7 +598,10 @@ class NicoAprendeTests(PruebaBase):
 
         def responder(trabajo):
             vistos.append(trabajo["cuerpo"]["messages"][-1]["content"])
-            return "Entiendo, pero no encuentro un área de ventas registrada; ¿quieres ver Área a?"
+            return (
+                "Entiendo, pero «ventas» no aparece registrada en tu organización; si existe, "
+                "un administrador debe darla de alta en Empresa y áreas."
+            )
 
         hilo = self._esp(responder)
         r = self.cliente.post(
@@ -578,8 +611,9 @@ class NicoAprendeTests(PruebaBase):
         ).json()
         hilo.join()
         self.assertEqual(r["via"], "IA")
-        self.assertIn("no encuentro un área de ventas", r["texto"])
-        self.assertIn("Hechos verificados: Revisé de nuevo", vistos[0])
+        self.assertIn("no aparece registrada", r["texto"])
+        self.assertIn("Hechos: Revisé de nuevo", vistos[0])
+        self.assertIn("Usuario: si si tengo uno", vistos[0])
         registro = PreguntaAgente.objects.get(pk=r["registro"])
         self.assertEqual(registro.tokens_salida, 18)
         # Si la IA inventa una cifra, se queda el texto de las reglas.
