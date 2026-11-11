@@ -13,6 +13,14 @@ http://:8081 {
 		}
 	}
 
+	# IA local (Ollama) para el ESP32 puente de Nico AI: solo con la clave del puente
+	# (__PUENTE_CLAVE__ la pone deploy/instalar.sh desde IA_PUENTE_CLAVE de BackEnd/.env).
+	handle_path /puente-ia/* {
+		@sin_clave not header X-Puente-Clave "__PUENTE_CLAVE__"
+		respond @sin_clave 403
+		reverse_proxy 127.0.0.1:11434
+	}
+
 	# APK de la app móvil (fuera de git): se copia a __RAIZ__/deploy/descargas; ver deploy/README.md
 	handle_path /app/* {
 		root * __RAIZ__/deploy/descargas

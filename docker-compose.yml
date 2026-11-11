@@ -78,6 +78,26 @@ services:
       retries: 12
       start_period: 5s
 
+  # IA local de Nico AI (solo en el servidor: docker compose --profile ia up -d ollama). Un modelo
+  # chico (qwen2.5:0.5b) cargado ocupa ~1 GB; el tope es 3 GB. Lo usa el ESP32 puente de cada
+  # dispositivo a través de Caddy (/puente-ia/, con su clave); ver apps/reportes/puente.py.
+  ollama:
+    image: ollama/ollama:0.40.16
+    container_name: nucleo_ollama
+    profiles: ["ia"]
+    mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    restart: unless-stopped
+    environment:
+      OLLAMA_NUM_PARALLEL: 2
+      OLLAMA_MAX_LOADED_MODELS: 1
+      OLLAMA_MAX_QUEUE: 8
+      OLLAMA_CONTEXT_LENGTH: 1024
+      OLLAMA_KEEP_ALIVE: 10m
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
   # Solo en el servidor (docker compose --profile servidor up -d tailscale): una máquina de
   # Tailscale llamada «nucleo» que publica la web y la API (Caddy en 127.0.0.1:8081) con Funnel
   # en https://nucleo.<tailnet>.ts.net. Usa red del anfitrión en modo userspace, así que convive
@@ -101,6 +121,8 @@ services:
       - ./deploy/tailscale-serve.json:/config/serve.json:ro
 
 volumes:
+  ollama_data:
+    name: nucleo_ollama_data
   postgres_data:
     name: nucleo_postgres_data
   timescale_data:

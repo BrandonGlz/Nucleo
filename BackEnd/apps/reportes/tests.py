@@ -591,6 +591,23 @@ class NicoAprendeTests(PruebaBase):
         cuerpo = self._pedir("¿es grave la temperatura?")
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
 
+    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_ia_que_inventa_cifras_usa_la_predefinida(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        hilo = self._esp(lambda t: "Mañana subirá a 31.7 °C. Es grave.")
+        cuerpo = self._pedir("¿es grave la temperatura?")
+        hilo.join()
+        self.assertEqual(cuerpo["via"], "PREDEFINIDA")
+        self.assertNotIn("31.7", cuerpo["texto"])
+
+    def test_errores_de_dedo_y_dato_pedido(self):
+        self.assertEqual(agente._tema("como esta la temperatrua"), "TEMP")
+        cuerpo = self._pedir("¿cuál fue la temperatura máxima?")
+        self.assertTrue(cuerpo["texto"].startswith("La máxima de temperatura"))
+        self.assertIn(
+            "26.4 °C", cuerpo["texto"].split(".")[0] + "." + cuerpo["texto"].split(".")[1]
+        )
+
     def test_cifra_inventada_no_entra_al_banco(self):
         self.assertIsNone(aprendizaje.a_plantilla("Subirá a 31 °C.", {"actual": 23.0}))
         self.assertEqual(aprendizaje.rellenar("{actual} °C", {"actual": 22.5}), "22.5 °C")

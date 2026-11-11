@@ -47,6 +47,14 @@ def _tema(pregunta):
             return tema
     if any(c in texto for c in GENERICAS):
         return "GENERICA"
+    # Errores de dedo («temperatrua», «humeda», «alertsa»): palabra parecida a una clave larga.
+    palabras = [w for w in re.findall(r"[a-z]+", texto) if len(w) >= 5]
+    for tema, claves in TEMAS:
+        for clave in claves:
+            if len(clave) >= 5 and any(
+                SequenceMatcher(None, w, clave).ratio() >= 0.8 for w in palabras
+            ):
+                return tema
     return None
 
 
@@ -98,17 +106,19 @@ def _conexion(dispositivo):
     }
 
 
-def _alertas(dispositivo, desde):
+def _alertas(dispositivo, desde, hasta=None, descripcion="los últimos 7 días"):
     alertas = Alerta.objects.filter(umbral__dispositivo=dispositivo, fecha_hora__gte=desde)
+    if hasta is not None:
+        alertas = alertas.filter(fecha_hora__lt=hasta)
     total = alertas.count()
     if not total:
-        return {"texto": f"{dispositivo.nombre} no tuvo alertas en los últimos 7 días."}
+        return {"texto": f"{dispositivo.nombre} no tuvo alertas en {descripcion}."}
     por_variable = dict(alertas.values_list("umbral__variable__nombre").annotate(n=Count("num")))
     principal = max(por_variable, key=por_variable.get)
     pendientes = alertas.filter(estado=Alerta.Estado.PENDIENTE).count()
     peligro = alertas.filter(nivel=Alerta.Nivel.PELIGRO).count()
     texto = (
-        f"{dispositivo.nombre} tuvo {total} alertas en los últimos 7 días ({peligro} de peligro). "
+        f"{dispositivo.nombre} tuvo {total} alertas en {descripcion} ({peligro} de peligro). "
         f"La mayoría fue de {principal.lower()} ({por_variable[principal]})."
     )
     texto += (
@@ -119,19 +129,19 @@ def _alertas(dispositivo, desde):
     return {"texto": texto}
 
 
-def _variable(dispositivo, codigo, desde):
+def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 7 días", pide=None):
     variable = VariableAmbiental.objects.get(pk=codigo)
     umbral = dispositivo.umbrales.filter(variable_id=codigo, activo=True).first()
     sensores = list(dispositivo.sensores.values_list("num", flat=True))
     lecturas = Lectura.objects.filter(
         sensor_num__in=sensores, variable_codigo=codigo, estabilizada=True, fecha_hora__gte=desde
     )
+    if hasta is not None:
+        lecturas = lecturas.filter(fecha_hora__lt=hasta)
     resumen = lecturas.aggregate(promedio=Avg("valor"), minimo=Min("valor"), maximo=Max("valor"))
     nombre = variable.nombre.lower()
     if resumen["promedio"] is None:
-        return {
-            "texto": f"{dispositivo.nombre} no tiene lecturas de {nombre} en los últimos 7 días."
-        }
+        return {"texto": f"{dispositivo.nombre} no tiene lecturas de {nombre} en {descripcion}."}
 
     unidad = variable.unidad
     ultima = lecturas.order_by("-fecha_hora").first()
@@ -141,11 +151,33 @@ def _variable(dispositivo, codigo, desde):
         .annotate(maximo=Max("valor"))
         .order_by("dia")
     )
+    # «Ahora marca» solo si el periodo llega hasta hoy; si no, la última lectura del periodo.
+    reciente = timezone.now() - ultima.fecha_hora < timedelta(hours=2)
+    ahora = (
+        f"Ahora marca {_fmt(ultima.valor, unidad)}."
+        if reciente
+        else f"Su última lectura del periodo fue {_fmt(ultima.valor, unidad)} el "
+        f"{_cuando(ultima.fecha_hora)}."
+    )
     base = (
-        f"Ahora marca {_fmt(ultima.valor, unidad)}. En los últimos 7 días promedió "
+        f"{ahora} En {descripcion} promedió "
         f"{_fmt(resumen['promedio'], unidad)}, con mínimo de {_fmt(resumen['minimo'], unidad)} "
         f"y máximo de {_fmt(resumen['maximo'], unidad)}."
     )
+    # «¿Cuál fue la máxima?», «¿a qué hora fue la mínima?»: el dato pedido va primero, con cuándo.
+    if pide in ("maximo", "minimo"):
+        extremo = lecturas.order_by("-valor" if pide == "maximo" else "valor").first()
+        palabra = "máxima" if pide == "maximo" else "mínima"
+        directo = (
+            f"La {palabra} de {nombre} en {descripcion} fue {_fmt(extremo.valor, unidad)}, "
+            f"el {_cuando(extremo.fecha_hora)}."
+        )
+        return {"texto": f"{directo} {base}"}
+    if pide == "promedio":
+        return {
+            "texto": f"En {descripcion}, la {nombre} de {dispositivo.nombre} promedió "
+            f"{_fmt(resumen['promedio'], unidad)}. {ahora}"
+        }
     if umbral is None:
         return {"texto": f"{base} Este dispositivo no tiene umbral de {nombre} configurado."}
 
@@ -170,7 +202,7 @@ def _variable(dispositivo, codigo, desde):
     return {
         "texto": (
             f"Hubo {sobre} lecturas sobre el máximo de {nombre} ({float(limite):g} {unidad}) "
-            f"esta semana en {dispositivo.nombre}, en {len(dias_vistos)} días distintos; "
+            f"en {descripcion} en {dispositivo.nombre}, en {len(dias_vistos)} días distintos; "
             f"la mayoría {franja}. La más alta fue de {_fmt(picos[0].valor, unidad)} el "
             f"{_cuando(picos[0].fecha_hora)}. {base}"
         ),
@@ -188,12 +220,16 @@ def datos_de(dispositivo, pregunta):
     Son los datos que recibe la IA y los que rellenan las respuestas aprendidas.
     """
     tema = _tema(pregunta)
-    desde = timezone.now() - PERIODO
+    desde, hasta, _ = periodo_de(pregunta)
     datos = {}
     if tema in ORDEN_VARIABLES:
         sensores = list(dispositivo.sensores.values_list("num", flat=True))
         lecturas = Lectura.objects.filter(
-            sensor_num__in=sensores, variable_codigo=tema, estabilizada=True, fecha_hora__gte=desde
+            sensor_num__in=sensores,
+            variable_codigo=tema,
+            estabilizada=True,
+            fecha_hora__gte=desde,
+            fecha_hora__lt=hasta,
         )
         resumen = lecturas.aggregate(
             promedio=Avg("valor"), minimo=Min("valor"), maximo=Max("valor")
@@ -210,7 +246,7 @@ def datos_de(dispositivo, pregunta):
             datos["lecturas_sobre_max"] = lecturas.filter(valor__gt=umbral.advertencia_max).count()
     if tema in (*ORDEN_VARIABLES, "ALERTAS", "GENERICA"):
         datos["alertas_7_dias"] = Alerta.objects.filter(
-            umbral__dispositivo=dispositivo, fecha_hora__gte=desde
+            umbral__dispositivo=dispositivo, fecha_hora__gte=desde, fecha_hora__lt=hasta
         ).count()
     return datos
 
@@ -232,7 +268,7 @@ def con_contexto(pregunta, anterior):
 def responder(dispositivo, pregunta):
     """Respuesta del agente del dispositivo: ``{"texto", "picos"?, "serie"?, ...}``."""
     tema = _tema(pregunta)
-    desde = timezone.now() - PERIODO
+    desde, hasta, descripcion = periodo_de(pregunta)
     if tema is None:
         return {
             "texto": f"Solo puedo responder sobre {dispositivo.nombre} y sus sensores. "
@@ -241,7 +277,7 @@ def responder(dispositivo, pregunta):
     if tema == "CONEXION":
         return _conexion(dispositivo)
     if tema == "ALERTAS":
-        return _alertas(dispositivo, desde)
+        return _alertas(dispositivo, desde, hasta, descripcion)
     if tema == "GENERICA":
         conteo = (
             Alerta.objects.filter(umbral__dispositivo=dispositivo, fecha_hora__gte=desde)
@@ -251,7 +287,19 @@ def responder(dispositivo, pregunta):
             .first()
         )
         tema = conteo[0] if conteo else roles.VARIABLE_TEMPERATURA
-    return _variable(dispositivo, tema, desde)
+    return _variable(dispositivo, tema, desde, hasta, descripcion, pide=_dato_pedido(pregunta))
+
+
+def _dato_pedido(pregunta):
+    """Qué cifra concreta se pide: «máxima», «mínima» o «promedio» (o ``None``)."""
+    texto = _normalizar(pregunta)
+    if re.search(r"\b(maxim[oa]|mas alt[oa]|pico mas|tope)\b", texto):
+        return "maximo"
+    if re.search(r"\b(minim[oa]|mas baj[oa])\b", texto):
+        return "minimo"
+    if re.search(r"\b(promedio|media)\b", texto):
+        return "promedio"
+    return None
 
 
 # ── Reportes pedidos al agente (SRS 3.2.12) ─────────────────────────────────────────────

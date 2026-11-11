@@ -27,6 +27,9 @@ from . import agente
 
 ACTIVO_SEGUNDOS = 30  # sin consultar en este tiempo, el agente del dispositivo está inactivo
 ESPERA_TOMAR = 20  # espera larga del ESP
+MAX_EN_COLA = 2  # con más peticiones esperando, se responde con la predefinida sin esperar
+CALENTAR_CADA = 240  # segundos: el modelo sigue cargado (keep_alive 10 min) mientras haya uso
+NUMERO = re.compile(r"\d+(?:[.,]\d+)?")
 SISTEMA = (
     "Eres Nico AI, el asistente del dispositivo de monitoreo ambiental {nombre}. Responde en "
     "español, en máximo dos frases claras, usando solo los datos que se te dan. No inventes "
@@ -68,6 +71,15 @@ class _Memoria:
         with self.cond:
             self.colas[codigo].append(json.dumps(trabajo))
             self.cond.notify_all()
+
+    def pendientes(self, codigo):
+        return len(self.colas[codigo])
+
+    def una_vez(self, clave, segundos):
+        if time.time() < self.vistos.get(clave, 0):
+            return False
+        self.vistos[clave] = time.time() + segundos
+        return True
 
     def tomar(self, codigo, espera):
         fin = time.time() + espera
@@ -112,6 +124,12 @@ class _Redis:
         self.r.rpush(clave, json.dumps(trabajo))
         self.r.expire(clave, 60)
 
+    def pendientes(self, codigo):
+        return self.r.llen(f"puente:cola:{codigo}")
+
+    def una_vez(self, clave, segundos):
+        return bool(self.r.set(f"puente:{clave}", 1, ex=segundos, nx=True))
+
     def tomar(self, codigo, espera):
         r = self.r.blpop([f"puente:cola:{codigo}"], timeout=espera)
         return json.loads(r[1]) if r else None
@@ -143,9 +161,17 @@ def activo(dispositivo):
 def tomar(codigo, espera=ESPERA_TOMAR):
     """Lo llama el ESP: marca su dispositivo como activo y espera una petición."""
     cola().visto(codigo)
-    trabajo = cola().tomar(codigo, espera)
+    fin = time.time() + espera
+    while (resta := fin - time.time()) > 0:
+        trabajo = cola().tomar(codigo, max(1, round(resta)))
+        if trabajo is None:
+            break
+        # Una petición que ya venció (el usuario ya recibió la predefinida) no se procesa.
+        if trabajo.get("vence", 0) >= time.time():
+            cola().visto(codigo)
+            return trabajo
     cola().visto(codigo)
-    return trabajo
+    return None
 
 
 def entregar(codigo, id_, texto=None, error=None):
@@ -153,25 +179,83 @@ def entregar(codigo, id_, texto=None, error=None):
     cola().entregar(id_, {"texto": texto, "error": error})
 
 
-def redactar(dispositivo, pregunta, datos, espera=None):
-    """Pide a la IA, por el ESP del dispositivo, una respuesta corta a partir de ``datos``
-    (el texto predefinido con las cifras). Devuelve el texto o ``None`` si no llegó a tiempo."""
+def _cuerpo(dispositivo, mensajes, num_predict):
+    return {
+        "model": settings.IA_MODELO_LOCAL,
+        "stream": False,
+        "keep_alive": "10m",
+        # Contexto corto y pocas palabras: en la CPU del servidor, 0.5b responde en 2-5 s.
+        # 3 hilos de 4 para que la API y MQTT sigan atendiendo mientras la IA trabaja.
+        "options": {
+            "num_predict": num_predict,
+            "num_ctx": 1024,
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "num_thread": 3,
+        },
+        "messages": mensajes,
+    }
+
+
+def calentar(dispositivo):
+    """Carga el modelo antes de la primera pregunta (al abrir el chat), una vez cada 4 min."""
+    if not habilitado() or not cola().una_vez("calentar", CALENTAR_CADA):
+        return
+    if cola().pendientes(dispositivo.codigo_mqtt):
+        return
+    cola().poner(
+        dispositivo.codigo_mqtt,
+        {
+            "id": uuid.uuid4().hex,
+            "ruta": "/api/chat",
+            "vence": time.time() + 30,
+            "calentar": True,
+            "cuerpo": _cuerpo(dispositivo, [{"role": "user", "content": "hola"}], 1),
+        },
+    )
+
+
+def _limpiar(texto, permitidos):
+    """Máximo dos frases y sin cifras inventadas: toda cifra debe venir de los datos.
+    Devuelve ``None`` si la IA puso un número que no está en ellos."""
+    texto = re.sub(r"\s+", " ", texto.replace("*", "")).strip()
+    frases = re.split(r"(?<=[.!?])\s+", texto)
+    texto = " ".join(frases[:2])[:320].strip()
+    for n in NUMERO.findall(texto):
+        if round(float(n.replace(",", ".")), 1) not in permitidos:
+            return None
+    return texto or None
+
+
+def redactar(dispositivo, pregunta, base, datos, espera=None):
+    """Pide a la IA, por el ESP del dispositivo, una respuesta corta a partir del texto
+    predefinido (``base``) y de las cifras (``datos``). Devuelve el texto o ``None`` si no llegó
+    a tiempo, la cola está llena o inventó cifras: entonces se usa la respuesta predefinida."""
+    codigo = dispositivo.codigo_mqtt
+    if cola().pendientes(codigo) >= MAX_EN_COLA:
+        return None
+    espera = espera or settings.IA_ESPERA_SEGUNDOS
+    cifras = "; ".join(f"{k}={v}" for k, v in datos.items())
     trabajo = {
         "id": uuid.uuid4().hex,
         "ruta": "/api/chat",
-        "cuerpo": {
-            "model": settings.IA_MODELO_LOCAL,
-            "stream": False,
-            "keep_alive": "10m",
-            "options": {"num_predict": 90, "num_ctx": 1024, "temperature": 0.3, "num_thread": 3},
-            "messages": [
+        "vence": time.time() + espera,
+        "cuerpo": _cuerpo(
+            dispositivo,
+            [
+                # El mensaje de sistema es igual en cada petición del dispositivo: Ollama reutiliza
+                # su caché y solo procesa lo nuevo.
                 {"role": "system", "content": SISTEMA.format(nombre=dispositivo.nombre)},
-                {"role": "user", "content": f"Datos: {datos}\nPregunta: {pregunta}"},
+                {"role": "user", "content": f"Datos: {base} ({cifras})\nPregunta: {pregunta}"},
             ],
-        },
+            90,
+        ),
     }
-    cola().poner(dispositivo.codigo_mqtt, trabajo)
-    r = cola().esperar(trabajo["id"], espera or settings.IA_ESPERA_SEGUNDOS)
+    cola().poner(codigo, trabajo)
+    r = cola().esperar(trabajo["id"], espera)
     if not r or r.get("error") or not (r.get("texto") or "").strip():
         return None
-    return r["texto"].strip()
+    permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(base)}
+    permitidos |= {round(float(v), 1) for v in datos.values() if isinstance(v, int | float)}
+    permitidos |= {float(n) for n in range(0, 25)}  # «2 frases», «7 días», horas del día…
+    return _limpiar(r["texto"], permitidos)

@@ -51,7 +51,10 @@ VITE_API_BASE_URL="$origen/api/v1" VITE_USE_MOCKS="${WEB_USE_MOCKS:-false}" \
   NODE_OPTIONS=--max-old-space-size=1536 npm run build
 
 paso "Caddy y servicios de systemd (pide sudo)"
-plantilla() { sed -e "s#__RAIZ__#$raiz#g" -e "s#__USUARIO__#$usuario#g" "$raiz/deploy/$1" | sudo tee "$2" >/dev/null; }
+# Clave del puente de Nico AI; sin ella la ruta /puente-ia/ queda cerrada con una clave al azar.
+puente="$(sed -n 's/^IA_PUENTE_CLAVE=//p' "$raiz/BackEnd/.env")"
+clave_caddy="${puente:-$(openssl rand -hex 24)}"
+plantilla() { sed -e "s#__RAIZ__#$raiz#g" -e "s#__USUARIO__#$usuario#g" -e "s#__PUENTE_CLAVE__#$clave_caddy#g" "$raiz/deploy/$1" | sudo tee "$2" >/dev/null; }
 sudo install -d /etc/caddy/sitios
 if ! grep -q 'import /etc/caddy/sitios/\*.caddy' /etc/caddy/Caddyfile 2>/dev/null; then
   printf '{\n\tauto_https off\n}\n\nimport /etc/caddy/sitios/*.caddy\n' | sudo tee /etc/caddy/Caddyfile >/dev/null
@@ -70,6 +73,18 @@ sudo systemctl enable "${servicios[@]}" nucleo-reportes.timer nucleo-respaldo.ti
 sudo systemctl restart "${servicios[@]}"
 sudo systemctl start nucleo-reportes.timer nucleo-respaldo.timer
 sudo systemctl reload-or-restart caddy
+
+if [[ -n "$puente" ]]; then
+  paso "IA local de Nico AI (Ollama, $(sed -n 's/^IA_MODELO_LOCAL=//p' "$raiz/BackEnd/.env" | grep . || echo qwen2.5:0.5b))"
+  cd "$raiz"
+  docker compose --profile ia up -d ollama
+  modelo="$(sed -n 's/^IA_MODELO_LOCAL=//p' "$raiz/BackEnd/.env")"
+  for _ in 1 2 3 4 5; do docker exec nucleo_ollama ollama list >/dev/null 2>&1 && break; sleep 2; done
+  docker exec nucleo_ollama ollama pull "${modelo:-qwen2.5:0.5b}"
+else
+  # Sin clave el puente está apagado: Ollama no corre ni ocupa memoria.
+  (cd "$raiz" && docker compose --profile ia stop ollama >/dev/null 2>&1 || true)
+fi
 
 paso "Comprobación"
 sleep 3

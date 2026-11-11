@@ -95,6 +95,29 @@ de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
 (`yes | sdkmanager --licenses`); Gradle descarga el resto. La llave de firma vive en `~/nucleo-app`
 (fuera de git) y entra en el respaldo diario: sin ella no se puede actualizar la app ya instalada.
 
+## Nico AI con IA local (Ollama) y el ESP32 puente
+
+Nico AI responde primero con respuestas predefinidas y con las que aprendió de los 👍 de los
+usuarios (tabla `respuesta_aprendida`). Solo cuando se le pide explicar, opinar o recomendar
+(«¿es grave?», «¿por qué subió?», «¿qué recomiendas?») redacta con un modelo local chico
+(`qwen2.5:0.5b`, ~1 GB de RAM cargado, tope 3 GB) que corre en el contenedor `nucleo_ollama`.
+
+El ESP32 de cada dispositivo es el puente de su agente: consulta `GET /api/v1/puente/tomar/`
+(espera larga), lleva la petición a Ollama por `https://nucleo.<tailnet>.ts.net/puente-ia/` y
+devuelve la respuesta en `POST /api/v1/puente/entregar/`, siempre con la cabecera
+`X-Puente-Clave`. Si el ESP deja de consultar 30 s (sin corriente o sin red), el agente de ese
+dispositivo se deshabilita en la web y en la app.
+
+- Encender: poner `IA_PUENTE_CLAVE` (`openssl rand -hex 24`) en `BackEnd/.env` y correr
+  `bash deploy/instalar.sh`; levanta Ollama y descarga el modelo. La misma clave va en el ESP.
+- Apagar: dejar `IA_PUENTE_CLAVE` vacía y volver a instalar; Ollama se detiene y el agente
+  responde solo con lo predefinido, sin depender de ningún ESP.
+- Si la IA tarda más de `IA_ESPERA_SEGUNDOS` (8 s), hay 2 peticiones en cola o pone una cifra
+  que no viene de los datos, se responde con la predefinida.
+- `deploy/compilar_apk.sh` apaga Ollama mientras compila la app y lo vuelve a encender al final.
+- Preguntas y reacciones: tablas `pregunta_agente` (cómo se resolvió cada una) y
+  `respuesta_aprendida` (banco), visibles en el admin de Django.
+
 ## Instalación desde cero
 
 1. Copia los respaldos a `~/traspaso` y corre `bash deploy/restaurar.sh ~/traspaso`.

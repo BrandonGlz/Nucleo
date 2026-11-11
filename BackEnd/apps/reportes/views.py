@@ -175,7 +175,7 @@ class AgenteView(APIView):
         if texto:
             return {**r, "texto": texto}, Via.BANCO, {"datos": datos, "aprendida": aprendida}
         if puente.habilitado():
-            texto = puente.redactar(dispositivo, pregunta, f"{r['texto']} Cifras: {datos}")
+            texto = puente.redactar(dispositivo, pregunta, r["texto"], datos)
             if texto:
                 return {**r, "texto": texto}, Via.IA, {"datos": datos}
         return r, Via.PREDEFINIDA, {"datos": datos}
@@ -212,11 +212,15 @@ class EstadoAgenteView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        visibles = dispositivos_visibles(request.user).select_related("area")
+        visibles = list(dispositivos_visibles(request.user).select_related("area"))
+        activos = [d for d in visibles if puente.activo(d)]
+        # Al abrir el chat se calienta el modelo para que la primera pregunta no espere la carga.
+        if puente.habilitado() and activos:
+            puente.calentar(activos[0])
         return Response(
             {
                 "puente": puente.habilitado(),
-                "activos": [d.num for d in visibles if puente.activo(d)],
+                "activos": [d.num for d in activos],
             }
         )
 

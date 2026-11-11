@@ -53,6 +53,13 @@ if (( ! forzar )) && [[ -f "$raiz/deploy/descargas/nucleo.apk" && "$(cat "$ultim
   echo "Sin cambios en Mobile/ desde el último APK publicado; no se compila (usa --forzar para compilar igual)."
   exit 0
 fi
+# Mientras compila se apaga la IA de Nico AI (Ollama) para dejarle la memoria a Gradle; al
+# terminar (bien o mal) se vuelve a encender si estaba corriendo.
+if docker ps --format '{{.Names}}' | grep -qx nucleo_ollama; then
+  echo "Se apaga la IA de Nico AI mientras compila"
+  docker stop nucleo_ollama >/dev/null
+  trap 'echo "Se enciende de nuevo la IA de Nico AI"; docker start nucleo_ollama >/dev/null' EXIT
+fi
 if (( limpio )); then
   echo "Compilación desde cero: se borran node_modules y android/"
   rm -rf node_modules android
