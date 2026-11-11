@@ -3889,3 +3889,91 @@ button.ui-menuitem:not(:disabled):hover svg {
     transform: scaleX(0.92);
   }
 }
+
+/* Llegada de la respuesta de Nico AI: el mensaje entra, la marca hace un pequeño pop, cada palabra
+   pasa de borrosa a nítida, un punto brillante encabeza el texto y lo de abajo entra escalonado. */
+@keyframes ui-ia-palabra {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(3px);
+  }
+}
+@keyframes ui-ia-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+}
+@keyframes ui-ia-destello {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+.ui-ia-mensaje--llega {
+  animation: ui-sube var(--duration-slow) var(--ease-standard);
+}
+.ui-ia-marca.is-llega {
+  animation: ui-ia-pop 480ms var(--ease-emphasized);
+}
+.ui-ia-palabra {
+  display: inline;
+  animation: ui-ia-palabra 420ms var(--ease-standard) backwards;
+}
+.ui-ia-cursor {
+  width: 9px;
+  height: 9px;
+  margin-left: 2px;
+  border-radius: 50%;
+  vertical-align: 1px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  animation: ui-ia-destello 0.9s ease-in-out infinite;
+}
+.ui-ia-aparece {
+  animation: none;
+}
+.ui-ia-aparece > * {
+  animation: ui-sube var(--duration-slow) var(--ease-standard) backwards;
+}
+.ui-ia-aparece > :nth-child(2) {
+  animation-delay: 90ms;
+}
+.ui-ia-aparece > :nth-child(3) {
+  animation-delay: 180ms;
+}
+.ui-ia-aparece > :nth-child(n + 4) {
+  animation-delay: 260ms;
+}
+.ui-ia-acciones--llega button {
+  animation: ui-aparece-fila var(--duration-slow) var(--ease-standard) backwards;
+}
+.ui-ia-acciones--llega button:nth-child(1) {
+  animation-delay: 220ms;
+}
+.ui-ia-acciones--llega button:nth-child(2) {
+  animation-delay: 270ms;
+}
+.ui-ia-acciones--llega button:nth-child(3) {
+  animation-delay: 320ms;
+}
+.ui-ia-acciones--llega button:nth-child(n + 4) {
+  animation-delay: 370ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ia-mensaje--llega,
+  .ui-ia-marca.is-llega,
+  .ui-ia-palabra,
+  .ui-ia-cursor,
+  .ui-ia-aparece > *,
+  .ui-ia-acciones--llega button {
+    animation: none;
+  }
+}

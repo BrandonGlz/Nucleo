@@ -39,30 +39,37 @@ const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
 const sinMovimiento = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 // Marca del agente: el brote de Núcleo dentro de un círculo; gira mientras piensa.
-function Marca({ pensando, grande }) {
+function Marca({ pensando, grande, llega }) {
   return (
-    <span className={`ui-ia-marca${pensando ? ' is-pensando' : ''}${grande ? ' ui-ia-marca--grande' : ''}`} aria-hidden>
+    <span className={`ui-ia-marca${pensando ? ' is-pensando' : ''}${grande ? ' ui-ia-marca--grande' : ''}${llega ? ' is-llega' : ''}`} aria-hidden>
       <Icon name="sparkles" size={grande ? 28 : 16} />
     </span>
   )
 }
 
-// El texto aparece palabra por palabra, como en los asistentes de IA.
+// El texto aparece palabra por palabra, como en los asistentes de IA: cada palabra entra con un
+// desvanecido suave (de borrosa a nítida) y un punto brillante va al frente mientras se escribe.
 function TextoEscrito({ texto, animar, listo }) {
   const palabras = texto.split(' ')
-  const [n, setN] = useState(animar && !sinMovimiento() ? 0 : palabras.length)
+  const [escribe] = useState(() => animar && !sinMovimiento())
+  const [n, setN] = useState(escribe ? 0 : palabras.length)
   useEffect(() => {
     if (n >= palabras.length) {
       listo?.()
       return undefined
     }
-    const t = setTimeout(() => setN((x) => x + 1), 28)
+    const t = setTimeout(() => setN((x) => x + 1), 32)
     return () => clearTimeout(t)
   }, [n, palabras.length, listo])
+  if (!escribe) return <p className="ui-ia-texto">{texto}</p>
   return (
-    <p className="ui-ia-texto">
-      {palabras.slice(0, n).join(' ')}
-      {n < palabras.length && <span className="ui-ia-cursor" />}
+    <p className="ui-ia-texto" aria-label={texto}>
+      {palabras.slice(0, n).map((p, i) => (
+        <span key={i} className="ui-ia-palabra" aria-hidden>
+          {p}{' '}
+        </span>
+      ))}
+      {n < palabras.length && <span className="ui-ia-cursor" aria-hidden />}
     </p>
   )
 }
@@ -275,8 +282,8 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
     }
   }
   return (
-    <div className="ui-ia-mensaje">
-      <Marca />
+    <div className={`ui-ia-mensaje${animar ? ' ui-ia-mensaje--llega' : ''}`}>
+      <Marca llega={animar} />
       <div className="ui-ia-cuerpo">
         <div className="ui-ia-autor">
           <strong>{autor}</strong>
@@ -320,7 +327,7 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
           </div>
         )}
         {completa && (
-          <div className="ui-ia-acciones">
+          <div className={`ui-ia-acciones${animar ? ' ui-ia-acciones--llega' : ''}`}>
             <button type="button" aria-label={copiado ? 'Copiado' : 'Copiar respuesta'} title="Copiar" onClick={copiar}>
               {copiado ? <Check size={16} /> : <Copy size={16} />}
             </button>
