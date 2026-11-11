@@ -95,41 +95,15 @@ formato que el firmware.
 
 ## Stack
 
-```mermaid
-flowchart LR
-    subgraph CL["Clientes"]
-        direction TB
-        W["Web<br/>React 19.3.1 · Vite 8.3.5<br/>React Router 7 · npm 11.16.0"]
-        A["App móvil<br/>Expo 58.0.23 · React Native 0.88.1<br/>React Navigation 7 · npm 11.16.0"]
-    end
-    subgraph SV["Servidor"]
-        direction TB
-        B["Backend<br/>Python 3.12.15 · Django 5.2.18<br/>DRF 3.18.3 · Channels 4.3"]
-        D[("Base de datos<br/>PostgreSQL 17.11 · TimescaleDB 2.31.0<br/>Redis 7")]
-        M["Broker MQTT<br/>Eclipse Mosquitto 2 con TLS"]
-    end
-    I["IoT<br/>Python 3.12 · MicroPython 1.29.0 para ESP32<br/>Pymakr 2.22.5"]
-    K["Contenedores<br/>Docker Engine 29.9.2 · Compose 5.6.1"]
-    I --> M --> B
-    CL --> B
-    B --> D
-    K -.->|corre| D & M
-    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
-    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
-    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
-    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
-    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
-    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
-    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
-    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
-    class W web
-    class A cliente
-    class B backend
-    class D datos
-    class M,I iot
-    class K red
-    style CL fill:transparent,stroke:#64748b,stroke-dasharray:5 5
-    style SV fill:transparent,stroke:#64748b,stroke-dasharray:5 5
+```text
+Stack
+├── Backend          Python 3.12.15 · Django 5.2.18 · Django REST Framework 3.18.3 · Channels 4.3
+├── Base de datos    PostgreSQL 17.11 · TimescaleDB 2.31.0 · Redis 7
+├── Broker MQTT      Eclipse Mosquitto 2 con TLS
+├── Web              React 19.3.1 · Vite 8.3.5 · React Router 7 · npm 11.16.0
+├── App móvil        Expo 58.0.23 · React Native 0.88.1 · React Navigation 7 · npm 11.16.0
+├── IoT              Python 3.12 · MicroPython 1.29.0 para ESP32 · Pymakr 2.22.5
+└── Contenedores     Docker Engine 29.9.2 · Compose 5.6.1
 ```
 
 Las versiones exactas están fijadas en los `requirements.txt` de backend e IoT y
