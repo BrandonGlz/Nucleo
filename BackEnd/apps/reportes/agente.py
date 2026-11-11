@@ -182,6 +182,20 @@ def _variable(dispositivo, codigo, desde):
     }
 
 
+def con_contexto(pregunta, anterior):
+    """Completa un seguimiento corto con la pregunta anterior de la conversación.
+
+    «¿y el dashboard?» o «¿y el mes pasado?» no nombran variable ni tema: se responden sobre
+    lo que se preguntó antes («dame un dashboard de la temperatura»). Si la pregunta ya tiene
+    tema propio («¿y la humedad?»), va sola.
+    """
+    if not anterior or _tema(pregunta) is not None or len(pregunta.split()) > 8:
+        return pregunta
+    if _tema(anterior) is None:
+        return pregunta
+    return f"{anterior} {pregunta}"
+
+
 def responder(dispositivo, pregunta):
     """Respuesta del agente del dispositivo: ``{"texto", "picos"?, "serie"?, ...}``."""
     tema = _tema(pregunta)

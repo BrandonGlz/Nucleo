@@ -343,6 +343,27 @@ class AgenteTests(PruebaBase):
         self.assertIn("máximo de 26.4 °C", cuerpo["texto"])
         self.assertFalse(Reporte.objects.exists())
 
+    def test_dashboard_y_seguimiento_sin_tema(self):
+        cuerpo = self._preguntar(self.e.analista, "dame un dashboard de la temperatura")
+        self.assertEqual(cuerpo["grafica"]["variable"], "TEMP")
+        r = cliente_de(self.e.analista).post(
+            "/api/v1/agente/",
+            {
+                **self.pregunta,
+                "pregunta": "¿y el dashboard?",
+                "anterior": "¿cómo estuvo la temperatura?",
+            },
+            format="json",
+        )
+        self.assertEqual(r.json()["grafica"]["variable"], "TEMP")
+        # Con tema propio no se mezcla con la anterior.
+        r = cliente_de(self.e.analista).post(
+            "/api/v1/agente/",
+            {**self.pregunta, "pregunta": "¿y las alertas?", "anterior": "dame un dashboard"},
+            format="json",
+        )
+        self.assertNotIn("grafica", r.json())
+
     def test_grafica_de_alertas(self):
         cuerpo = self._preguntar(self.e.supervisor, "Gráfica de alertas del reporte")
         self.assertEqual(cuerpo["grafica"]["elemento"], "alertas")

@@ -12,7 +12,7 @@ const REPORTE = /\b(reporte|informe|resumen|repote|reprote)s?\b/
 const VERBOS = /\b(genera|generar|generame|hazme|haz|crea|crear|creame|dame|manda|mandame)\b/
 const PERIODO = /(semana|semanal|mes|mensual|hoy|ayer|dias|quincena)/
 // Igual que en el backend (apps/reportes/graficas.py): van antes que el reporte completo.
-const GRAFICA = /(grafica|grafico|graficame|chart|diagrama)/
+const GRAFICA = /(grafica|grafico|graficame|chart|diagrama|dashboard|tablero|visualiza|dibuja|plot)/
 const COMPARATIVA = /(compara|comparativ|comparacion|cooperativa|versus|\bvs\b|\bcontra\b|diferencia entre)/
 export const esGrafica = (pregunta) => GRAFICA.test(normalizar(pregunta))
 export const esComparativa = (pregunta) => COMPARATIVA.test(normalizar(pregunta))

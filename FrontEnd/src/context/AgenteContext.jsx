@@ -53,17 +53,22 @@ function guardarCache(agente, pregunta, r) {
 }
 // La misma pregunta en vuelo se pide una sola vez (precarga y clic al mismo tiempo).
 const enVuelo = new Map()
-function consultar(pregunta, agente) {
-  const hit = deCache(agente, pregunta)
+// Mismas palabras de tema que el agente del backend (agente.TEMAS).
+const TEMA = /(conex|bateri|senal|linea|desconect|apag|alerta|aviso|incidente|temperatura|calor|frio|grados|humed|aire|co2|calidad|ppm|ventila)/
+const sinTema = (t) => !TEMA.test(t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+function consultar(pregunta, agente, anterior = '') {
+  // Un seguimiento depende de la pregunta anterior: entra a la caché junto con ella.
+  const llave = anterior ? `${anterior} ${pregunta}` : pregunta
+  const hit = deCache(agente, llave)
   if (hit) return Promise.resolve({ r: hit, cache: true })
-  const k = claveDe(agente, pregunta)
+  const k = claveDe(agente, llave)
   if (!enVuelo.has(k)) {
     enVuelo.set(
       k,
       agenteApi
-        .preguntar(pregunta, agente)
+        .preguntar(pregunta, agente, anterior)
         .then((r) => {
-          guardarCache(agente, pregunta, r)
+          guardarCache(agente, llave, r)
           return { r, cache: false }
         })
         .finally(() => enVuelo.delete(k)),
@@ -130,14 +135,18 @@ export function AgenteProvider({ children }) {
         setActual(id)
       }
       const delAgente = conversaciones.find((c) => c.id === id)?.agente ?? agenteValido
+      const previos = base ?? conversaciones.find((c) => c.id === id)?.mensajes ?? []
+      // Solo un seguimiento sin tema propio («¿y el dashboard?») se apoya en la pregunta anterior.
+      const ultimaMia = previos.filter((m) => m.de === 'yo' && m.texto !== pregunta).at(-1)?.texto ?? ''
+      const anterior = sinTema(pregunta) && !sinTema(ultimaMia) ? ultimaMia : ''
       editar(id, (ms) => [...(base ?? ms), ...(base && !mostrar ? [] : [{ de: 'yo', texto: mostrar ?? pregunta }])])
       setEstado('pensando')
       const mio = ++turno.current
       // De caché, el proceso se muestra solo 1 s como máximo.
-      const yaEsta = Boolean(deCache(delAgente, pregunta))
+      const yaEsta = Boolean(deCache(delAgente, pregunta)) && !anterior
       const pausa = new Promise((listo) => setTimeout(listo, yaEsta ? Math.min(minimo, 1000) : minimo))
       try {
-        const { r } = await consultar(pregunta, delAgente)
+        const { r } = await consultar(pregunta, delAgente, anterior)
         await pausa
         if (mio !== turno.current) return
         const clave = nuevoId('r')

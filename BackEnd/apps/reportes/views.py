@@ -95,6 +95,8 @@ class ProgramacionReporteViewSet(viewsets.ModelViewSet):
 class PreguntaAgenteSerializer(serializers.Serializer):
     pregunta = serializers.CharField(max_length=500)
     dispositivo = serializers.IntegerField()
+    # Pregunta anterior de la conversación, para seguimientos como «¿y la gráfica?».
+    anterior = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
 
 class AgenteView(APIView):
@@ -119,7 +121,9 @@ class AgenteView(APIView):
         )
         if dispositivo is None:
             raise NotFound("El dispositivo no existe o no está a su alcance.")
-        pregunta = entrada.validated_data["pregunta"]
+        pregunta = agente.con_contexto(
+            entrada.validated_data["pregunta"], entrada.validated_data.get("anterior", "")
+        )
         # Comparativas y gráficas sueltas van antes que el reporte: «solo la gráfica del reporte»
         # o «compara el reporte de esta semana» no generan un reporte completo.
         if graficas.pide_comparativa(pregunta):

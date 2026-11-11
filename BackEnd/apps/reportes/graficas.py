@@ -18,7 +18,18 @@ from common import roles
 
 from . import agente, servicios
 
-PALABRAS_GRAFICA = ("grafica", "grafico", "graficame", "chart", "diagrama")
+PALABRAS_GRAFICA = (
+    "grafica",
+    "grafico",
+    "graficame",
+    "chart",
+    "diagrama",
+    "dashboard",
+    "tablero",
+    "visualiza",
+    "dibuja",
+    "plot",
+)
 # «cooperativa» se acepta porque así se escribe a veces al pedir una comparativa.
 PALABRAS_COMPARATIVA = (
     "compara",

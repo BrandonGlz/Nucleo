@@ -292,7 +292,7 @@ export async function preguntarAgente(pregunta, dispositivo) {
   const d = db.dispositivos.find((x) => x.num === Number(dispositivo)) ?? db.dispositivos[4]
   const t = pregunta.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   if (/(compara|comparativ|cooperativa|versus|contra)/.test(t)) return comparativaSimulada(d, t)
-  if (/(grafica|grafico|diagrama)/.test(t)) return graficaSimulada(d, t)
+  if (/(grafica|grafico|diagrama|dashboard|tablero)/.test(t)) return graficaSimulada(d, t)
   const fuera = !/humedad|temperatura|aire|sensor|alerta|dispositivo|reporte|pico|área|area|bater|conex/i.test(pregunta)
   if (fuera) return { texto: `Solo puedo responder sobre ${d.nombre} y sus sensores.` }
   const variable = /temperatura/i.test(pregunta) ? 'TEMP' : /aire/i.test(pregunta) ? 'AIRE' : 'HUM'
