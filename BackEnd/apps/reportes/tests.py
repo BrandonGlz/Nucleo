@@ -624,6 +624,39 @@ class NicoAprendeTests(PruebaBase):
         hilo.join()
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
 
+    def test_no_responde_sobre_el_futuro(self):
+        for pregunta in (
+            "¿Cómo estará la temperatura mañana?",
+            "Pronóstico de humedad",
+            "¿Subirá el CO2?",
+            "Gráfica de la próxima semana",
+            "Reporte de 2099",
+        ):
+            cuerpo = self._pedir(pregunta)
+            self.assertIn("No puedo responder sobre el futuro", cuerpo["texto"], pregunta)
+            self.assertNotIn("grafica", cuerpo)
+            self.assertNotIn("reporte", cuerpo)
+        self.assertFalse(Reporte.objects.exists())
+        # «por la mañana» y «dentro del rango» no son futuro.
+        self.assertFalse(agente.pide_futuro("¿cómo estuvo la temperatura por la mañana?"))
+        self.assertFalse(agente.pide_futuro("¿está dentro del rango?"))
+
+    def test_hoy_sin_lecturas_no_responde_con_otro_dia(self):
+        # Las lecturas de temperatura pasan a ser de hace dos días.
+        Lectura.objects.filter(variable_codigo="TEMP").delete()
+        Lectura.objects.create(
+            sensor_num=self.e.dht22.pk,
+            variable_codigo="TEMP",
+            valor=22,
+            fecha_hora=timezone.now() - timedelta(days=2),
+        )
+        texto = self._pedir("¿Cómo está la temperatura hoy?")["texto"]
+        self.assertTrue(texto.startswith("Hoy todavía no hay lecturas de temperatura"), texto)
+        self.assertIn("La última es del", texto)
+        self.assertNotIn("Ahora marca", texto)
+        alertas = self._pedir("¿Hubo alertas hoy?")["texto"]
+        self.assertIn("no tuvo alertas hoy", alertas)
+
     def test_cifra_inventada_no_entra_al_banco(self):
         self.assertIsNone(aprendizaje.a_plantilla("Subirá a 31 °C.", {"actual": 23.0}))
         self.assertEqual(aprendizaje.rellenar("{actual} °C", {"actual": 22.5}), "22.5 °C")

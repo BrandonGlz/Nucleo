@@ -175,7 +175,7 @@ def grafica(usuario, dispositivo, pregunta):
     else:
         variable = _variable_de(texto)
         if variable not in cifras["variables"]:
-            sin = f"{donde} no tiene lecturas de {NOMBRES[variable]} en {descripcion}."
+            sin = f"{donde} no tiene lecturas de {NOMBRES[variable]} {agente._en(descripcion)}."
             return {"texto": sin}
         elemento = "serie"
         info = cifras["variables"][variable]
@@ -296,7 +296,7 @@ def _entre_dispositivos(usuario, dispositivo, pregunta):
     if len(por_dispositivo) < 2:
         return {
             "texto": f"{area.nombre} no tiene al menos dos dispositivos con lecturas "
-            f"en {descripcion}."
+            f"{agente._en(descripcion)}."
         }
     alertas = dict(
         Alerta.objects.filter(

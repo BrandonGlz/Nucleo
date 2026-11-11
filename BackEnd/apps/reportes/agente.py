@@ -106,19 +106,50 @@ def _conexion(dispositivo):
     }
 
 
+def _en(descripcion):
+    """«en los últimos 7 días», pero «hoy», «ayer» y «el 3 de noviembre» sin «en»."""
+    if descripcion in ("hoy", "ayer") or descripcion.startswith("el ") and " de " in descripcion:
+        return descripcion
+    return f"en {descripcion}"
+
+
+def _En(descripcion):
+    texto = _en(descripcion)
+    return texto[0].upper() + texto[1:]
+
+
+def _sin_lecturas(dispositivo, nombre, descripcion, sensores, codigo, hasta):
+    """No hay lecturas en el periodo pedido: se dice así (no se responde con otro periodo) y se
+    indica cuándo fue la última, si la hay."""
+    previa = (
+        Lectura.objects.filter(
+            sensor_num__in=sensores, variable_codigo=codigo, fecha_hora__lt=hasta
+        )
+        .order_by("-fecha_hora")
+        .values_list("fecha_hora", flat=True)
+        .first()
+    )
+    texto = f"{dispositivo.nombre} no tiene lecturas de {nombre} {_en(descripcion)}."
+    if descripcion == "hoy":
+        texto = f"Hoy todavía no hay lecturas de {nombre} de {dispositivo.nombre}."
+    if previa:
+        texto += f" La última es del {_cuando(previa)}."
+    return {"texto": texto}
+
+
 def _alertas(dispositivo, desde, hasta=None, descripcion="los últimos 7 días"):
     alertas = Alerta.objects.filter(umbral__dispositivo=dispositivo, fecha_hora__gte=desde)
     if hasta is not None:
         alertas = alertas.filter(fecha_hora__lt=hasta)
     total = alertas.count()
     if not total:
-        return {"texto": f"{dispositivo.nombre} no tuvo alertas en {descripcion}."}
+        return {"texto": f"{dispositivo.nombre} no tuvo alertas {_en(descripcion)}."}
     por_variable = dict(alertas.values_list("umbral__variable__nombre").annotate(n=Count("num")))
     principal = max(por_variable, key=por_variable.get)
     pendientes = alertas.filter(estado=Alerta.Estado.PENDIENTE).count()
     peligro = alertas.filter(nivel=Alerta.Nivel.PELIGRO).count()
     texto = (
-        f"{dispositivo.nombre} tuvo {total} alertas en {descripcion} ({peligro} de peligro). "
+        f"{dispositivo.nombre} tuvo {total} alertas {_en(descripcion)} ({peligro} de peligro). "
         f"La mayoría fue de {principal.lower()} ({por_variable[principal]})."
     )
     texto += (
@@ -141,7 +172,9 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
     resumen = lecturas.aggregate(promedio=Avg("valor"), minimo=Min("valor"), maximo=Max("valor"))
     nombre = variable.nombre.lower()
     if resumen["promedio"] is None:
-        return {"texto": f"{dispositivo.nombre} no tiene lecturas de {nombre} en {descripcion}."}
+        return _sin_lecturas(
+            dispositivo, nombre, descripcion, sensores, codigo, hasta or timezone.now()
+        )
 
     unidad = variable.unidad
     ultima = lecturas.order_by("-fecha_hora").first()
@@ -160,7 +193,7 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
         f"{_cuando(ultima.fecha_hora)}."
     )
     base = (
-        f"{ahora} En {descripcion} promedió "
+        f"{ahora} {_En(descripcion)} promedió "
         f"{_fmt(resumen['promedio'], unidad)}, con mínimo de {_fmt(resumen['minimo'], unidad)} "
         f"y máximo de {_fmt(resumen['maximo'], unidad)}."
     )
@@ -169,13 +202,13 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
         extremo = lecturas.order_by("-valor" if pide == "maximo" else "valor").first()
         palabra = "máxima" if pide == "maximo" else "mínima"
         directo = (
-            f"La {palabra} de {nombre} en {descripcion} fue {_fmt(extremo.valor, unidad)}, "
+            f"La {palabra} de {nombre} {_en(descripcion)} fue {_fmt(extremo.valor, unidad)}, "
             f"el {_cuando(extremo.fecha_hora)}."
         )
         return {"texto": f"{directo} {base}"}
     if pide == "promedio":
         return {
-            "texto": f"En {descripcion}, la {nombre} de {dispositivo.nombre} promedió "
+            "texto": f"{_En(descripcion)}, la {nombre} de {dispositivo.nombre} promedió "
             f"{_fmt(resumen['promedio'], unidad)}. {ahora}"
         }
     if umbral is None:
@@ -202,7 +235,7 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
     return {
         "texto": (
             f"Hubo {sobre} lecturas sobre el máximo de {nombre} ({float(limite):g} {unidad}) "
-            f"en {descripcion} en {dispositivo.nombre}, en {len(dias_vistos)} días distintos; "
+            f"{_en(descripcion)} en {dispositivo.nombre}, en {len(dias_vistos)} días distintos; "
             f"la mayoría {franja}. La más alta fue de {_fmt(picos[0].valor, unidad)} el "
             f"{_cuando(picos[0].fecha_hora)}. {base}"
         ),
@@ -284,6 +317,60 @@ SOLO_ESPANOL = (
     "Solo entiendo y respondo en español. Escribe tu pregunta en español, por ejemplo: "
     "«¿Cómo está la temperatura?» o «Genera el reporte de esta semana»."
 )
+
+
+def _fecha_en(texto, hoy):
+    """Fecha concreta del texto («el 3 de noviembre», «3 de nov de 2026», «03/11/2026») a las
+    00:00 locales, o ``None``. Sin año es el de este año (puede quedar en el futuro)."""
+    m = re.search(
+        r"\b(\d{1,2})\s+de\s+(" + "|".join(MESES) + r")(?:\s+(?:de|del)\s+(\d{4}))?", texto
+    )
+    if m:
+        dia, mes, anio = int(m.group(1)), MESES.index(m.group(2)) + 1, m.group(3)
+    else:
+        m = re.search(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{4}))?\b", texto)
+        if not m:
+            return None
+        dia, mes, anio = int(m.group(1)), int(m.group(2)), m.group(3)
+    try:
+        return hoy.replace(year=int(anio) if anio else hoy.year, month=mes, day=dia)
+    except ValueError:
+        return None
+
+
+# Lo que se pregunta del futuro no tiene lecturas: no se responde (ni la IA hace pronósticos).
+FUTURO = re.compile(
+    r"\b(pasado manana|proxim[oa]s?|que viene|siguiente (semana|mes|ano|dia)|futuro|"
+    r"pronostic\w*|predic\w*|prever|va a (subir|bajar|haber|estar|ser|llegar|pasar|llover)|"
+    r"van a (subir|bajar|haber|estar|ser|llegar|pasar)|vaya a (subir|bajar|haber|llegar)|"
+    r"(subira|bajara|pasara|ocurrira|llegara|marcara|alcanzara|aumentara|disminuira|empeorara|mejorara)|"
+    r"dentro de (\d+|un|una|unos|unas|poco|pocos) ?(minutos?|horas?|dias?|semanas?|meses|anos?)?\b)"
+)
+
+
+def pide_futuro(pregunta, ahora=None):
+    """True si la pregunta es sobre algo que todavía no pasa: «mañana», «la próxima semana»,
+    «¿subirá la humedad?», o una fecha, mes o año posterior a hoy."""
+    ahora = timezone.localtime(ahora or timezone.now())
+    hoy = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
+    texto = f" {_normalizar(pregunta)} "
+    # «mañana» es futuro, salvo «por/en/de/esta la mañana» (la parte del día).
+    if re.search(r"(?<!la )(?<!esta )\bmanana\b", texto):
+        return True
+    if FUTURO.search(texto):
+        return True
+    fecha = _fecha_en(texto, hoy)
+    if fecha is not None and fecha > hoy:
+        return True
+    for anio in re.findall(r"\b(20\d{2})\b", texto):
+        anio = int(anio)
+        if anio > hoy.year:
+            return True
+        if anio == hoy.year:
+            for i, nombre in enumerate(MESES, start=1):
+                if re.search(rf"\b{nombre}\s+(de\s+|del\s+)?{anio}", texto) and i > hoy.month:
+                    return True
+    return False
 
 
 def con_contexto(pregunta, anterior):
@@ -450,6 +537,16 @@ def periodo_de(pregunta, ahora=None):
         return mes(hoy.year, hoy.month)
     if "quincena" in texto:
         return ahora - timedelta(days=15), ahora, "los últimos 15 días"
+    fecha = _fecha_en(texto, hoy)
+    if fecha is not None:
+        inicio = fecha
+        fin = min(inicio + timedelta(days=1), ahora)
+        return (
+            inicio,
+            fin,
+            f"el {inicio.day} de {MESES[inicio.month - 1]}"
+            + ("" if inicio.year == hoy.year else f" de {inicio.year}"),
+        )
     for i, nombre in enumerate(MESES, start=1):
         if nombre in texto:
             anio = re.search(r"\b(20\d{2})\b", texto)

@@ -138,11 +138,18 @@ class AgenteView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         inicio = time.monotonic()
-        if agente.es_espanol(original):
-            r, via, extra = self._resolver(request.user, dispositivo, pregunta)
-        else:
+        if not agente.es_espanol(original):
             # Solo español: otra lengua no se procesa ni pasa por la IA.
             r, via, extra = {"texto": agente.SOLO_ESPANOL}, PreguntaAgente.Via.NO_ENTENDIDA, {}
+        elif agente.pide_futuro(original):
+            # Del futuro no hay lecturas: no se responde ni se pronostica.
+            texto = (
+                f"No puedo responder sobre el futuro: solo trabajo con las lecturas ya "
+                f"registradas de {dispositivo.nombre}. Pregúntame por hoy o por días pasados."
+            )
+            r, via, extra = {"texto": texto}, PreguntaAgente.Via.NO_ENTENDIDA, {}
+        else:
+            r, via, extra = self._resolver(request.user, dispositivo, pregunta)
         registro = aprendizaje.registrar(
             request.user,
             dispositivo,
