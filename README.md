@@ -450,62 +450,82 @@ umbrales, usuarios ni dispositivos, y cada cifra que menciona sale de una consul
 la IA nunca calcula ni inventa valores. Lo usan el administrador, el supervisor, el analista y
 el operador con `acceso_agente`, cada uno solo sobre los dispositivos de su organización y área.
 
-**Cómo responde una pregunta**
+**Cómo funciona**
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    participant C as Web React / App Expo
-    participant K as Caddy :8081
-    participant D as Daphne :8001<br/>DRF AgenteView
-    participant P as PostgreSQL<br/>nucleo_db
-    participant T as TimescaleDB<br/>nucleo_iot
-    participant R as Redis
-    participant E as ESP32 NC-0501<br/>MicroPython
-    participant O as Ollama :11434<br/>qwen2.5:0.5b
+flowchart LR
+    subgraph CL["Clientes"]
+        direction TB
+        W["Chat de Nico AI<br/>Web React"]
+        A["Chat de Nico AI<br/>App Expo"]
+    end
+    subgraph HOST["Servidor · laptop Debian"]
+        direction TB
+        TS["Tailscale Funnel<br/>HTTPS"]
+        C["Caddy :8081"]
+        D["Daphne :8001<br/>Django · DRF<br/>AgenteView"]
+        R[("Redis<br/>cola del puente")]
+        subgraph BD["Bases de datos"]
+            PG[("PostgreSQL<br/>umbrales · alertas<br/>sensores · reportes")]
+            TDB[("TimescaleDB<br/>lecturas")]
+        end
+        O["Ollama :11434<br/>qwen2.5:0.5b"]
+    end
+    E["ESP32 · Núcleo A-01<br/>NC-0501 · MicroPython<br/>puente de la IA"]
 
-    loop cada ~20 s mientras está encendido
-        E->>K: GET /api/v1/puente/tomar/?dispositivo=NC-0501<br/>X-Puente-Clave · HTTPS keep-alive
-        K->>D: proxy
-        D->>R: SET puente:visto:NC-0501 EX 30<br/>BLPOP puente:cola:NC-0501 (espera)
-    end
-
-    C->>K: POST /api/v1/agente/<br/>Authorization: Token …<br/>{pregunta, dispositivo, anterior?}
-    K->>D: proxy /api
-    D->>P: PermisoPorRol + dispositivos_visibles<br/>(rol, organización, área)
-    D->>P: últimas preguntas (repetida) · Area (fuera de alcance)
-    Note over D: sin_sentido · con_contexto<br/>interprete.interpretar → Peticion
-    alt reglas o ruta aprendida (RespuestaAprendida)
-        D->>D: herramientas.CATALOGO
-    else no la reconocen y NC-0501 está activo
-        D->>R: RPUSH puente:cola:NC-0501<br/>{id, ruta: /api/chat, cuerpo con format JSON schema}
-        R-->>D: el BLPOP del ESP recibe el trabajo
-        D-->>E: 200 trabajo
-        E->>K: POST /puente-ia/api/chat
-        K->>O: proxy (solo con X-Puente-Clave)
-        O-->>E: {herramienta, variable, periodo, dato}<br/>prompt_eval_count · eval_count
-        E->>D: POST /api/v1/puente/entregar/ {id, texto, tokens}
-        D->>R: RPUSH puente:resp:id EX 60
-        R-->>D: BLPOP puente:resp:id (máx. 20 s)
-        Note over D: pregunta canónica → herramienta
-    end
-    D->>P: Umbral · Alerta · Sensor · Reporte
-    D->>T: Lectura (AVG, MIN, MAX, TruncDay)
-    Note over D: interprete.verificar(peticion, respuesta)<br/>si falla: canónica o aclaración
-    opt redactar (solo NC-0501)
-        D->>R: trabajo de redacción (texto base + cifras)
-        R-->>E: vía tomar / entregar, igual que arriba
-        E->>O: /api/chat temperature 0
-        O-->>E: texto
-        E->>D: entregar · _limpiar descarta cifras,<br/>fechas o causas inventadas
-    end
-    D->>P: INSERT pregunta_agente<br/>(vía, datos.peticion, tokens, ms)
-    D-->>K: 200 {texto, picos?, serie?, grafica?,<br/>comparativa?, reporte?, registro, via}
-    K-->>C: JSON
-    C->>K: POST /api/v1/agente/calificar/ {registro, 👍/👎}
-    K->>D: proxy
-    D->>P: calificacion · 2 👍 → RespuestaAprendida
+    W -->|"1 · POST /api/v1/agente/<br/>pregunta + token"| TS
+    A -->|"1"| TS
+    TS --> C -->|"/api"| D
+    D <-->|"2 · consultas"| BD
+    D -->|"3 · trabajo para la IA"| R
+    E -->|"4 · GET /puente/tomar/<br/>Wi-Fi · HTTPS"| TS
+    R -.->|trabajo| E
+    E -->|"5 · /puente-ia/api/chat<br/>X-Puente-Clave"| C
+    C -->|proxy| O
+    O -.->|texto y tokens| E
+    E -->|"6 · POST /puente/entregar/"| D
+    D -->|"7 · respuesta JSON<br/>texto · gráfica · tabla"| W
+    D -->|"7"| A
+    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
+    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
+    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
+    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
+    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
+    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
+    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
+    class W web
+    class A cliente
+    class TS,C red
+    class D backend
+    class R,PG,TDB datos
+    class E iot
+    class O externo
+    style CL fill:transparent,stroke:#64748b,stroke-dasharray:5 5
+    style HOST fill:transparent,stroke:#fb923c,stroke-dasharray:5 5
+    style BD fill:transparent,stroke:#facc15,stroke-dasharray:3 3
 ```
+
+1. El usuario escribe en el chat de Nico AI de la web o de la app, que envía la pregunta al
+   servidor con su token.
+2. El backend revisa permisos y consulta las cifras en PostgreSQL y TimescaleDB.
+3. Si necesita la IA (interpretar una pregunta libre o redactar el texto), deja el trabajo
+   en Redis.
+4. El ESP32 de Núcleo A-01 está conectado por Wi-Fi y le pregunta al servidor si hay
+   trabajo; cuando lo hay, lo toma.
+5. El ESP lo envía a Ollama, en el mismo servidor, por `/puente-ia/` con su clave.
+6. Recibe el texto y lo entrega al backend.
+7. El backend arma la respuesta con las cifras, que vuelve al chat.
+
+**IA local por el ESP32.** El modelo es `qwen2.5:0.5b` en Ollama (contenedor
+`nucleo_ollama`). Solo lo usa el dispositivo físico **Núcleo A-01 (NC-0501)**; los demás son
+simulados y responden con las reglas y el catálogo, sin IA. El backend nunca llama a Ollama
+directamente; si el ESP no devuelve la respuesta en 20 s, responde solo con las reglas.
+
+El ESP mantiene la conexión HTTPS abierta (keep-alive), así que cada petición tarda ~70 ms
+después de la primera. Si el ESP está apagado, el agente de A-01 lo indica, y el resto del
+monitoreo y las alertas sigue funcionando.
+
+**Cómo responde una pregunta**
 
 1. **Entender.** Una petición repetida se reenvía la segunda vez y se omite a partir de la
    tercera. El texto tecleado al azar se ignora o se responde «No entendí». Si se pide otra
@@ -521,16 +541,6 @@ sequenceDiagram
 4. **Verificar.** La respuesta se compara con la petición: la variable, el periodo, la última
    medición o la gráfica pedidas. Si no cumple, se rehace con la pregunta canónica; si
    tampoco, se pide aclaración en vez de dar un dato equivocado.
-
-**IA local por el ESP32.** El modelo es `qwen2.5:0.5b` en Ollama (contenedor
-`nucleo_ollama`). Solo lo usa el dispositivo físico **Núcleo A-01 (NC-0501)**; los demás son
-simulados y responden con las reglas y el catálogo, sin IA. El backend no llama a Ollama
-directamente: deja el trabajo en Redis y el ESP lo toma, lo envía a Ollama y devuelve la
-respuesta; si no llega en 20 s, responde solo con las reglas.
-
-El ESP mantiene la conexión HTTPS abierta (keep-alive), así que cada petición tarda ~70 ms
-después de la primera. Si el ESP está apagado, el agente de A-01 lo indica, y el resto del
-monitoreo y las alertas sigue funcionando.
 
 **Aprendizaje y calidad**
 
