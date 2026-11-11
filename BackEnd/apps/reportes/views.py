@@ -144,8 +144,25 @@ class AgenteView(APIView):
         inicio = time.monotonic()
         precarga = entrada.validated_data.get("precarga", False)
         repetida = None if precarga else self._repetida(request.user, dispositivo, original)
+        raras, limpio = agente.sin_sentido(original)
+        aviso = ""
+        if raras and puente.del_dominio(limpio) and len(limpio.split()) >= 2:
+            # Lo tecleado al azar se ignora y se responde el resto, avisando qué se ignoró.
+            aviso = f"Ignoré «{raras[0][:30]}», que no entendí. "
+            original = limpio
+            pregunta = agente.con_contexto(limpio, entrada.validated_data.get("anterior", ""))
+            raras = []
+        fuera = agente.fuera_de_alcance(dispositivo, original)
         if repetida is not None:
             r, via, extra = repetida
+        elif raras:
+            texto = (
+                f"No entendí «{raras[0][:30]}». Escribe tu pregunta de nuevo, por ejemplo: «¿cómo "
+                "está la temperatura?» o «la última medición del aire»."
+            )
+            r, via, extra = {"texto": texto}, PreguntaAgente.Via.NO_ENTENDIDA, {}
+        elif fuera:
+            r, via, extra = {"texto": fuera}, PreguntaAgente.Via.NO_ENTENDIDA, {}
         elif not agente.es_espanol(original):
             # Solo español: otra lengua no se procesa ni pasa por la IA.
             r, via, extra = {"texto": agente.SOLO_ESPANOL}, PreguntaAgente.Via.NO_ENTENDIDA, {}
@@ -173,6 +190,8 @@ class AgenteView(APIView):
             milisegundos=round((time.monotonic() - inicio) * 1000),
             **extra,
         )
+        if aviso:
+            r = {**r, "texto": aviso + r.get("texto", "")}
         return Response({**r, "registro": registro.num, "via": via})
 
     # Repetir la misma petición seguida no cambia la respuesta: la 2.ª devuelve lo ya enviado

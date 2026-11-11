@@ -657,6 +657,20 @@ class NicoAprendeTests(PruebaBase):
         self.assertIn("alertas", puente.herramientas_posibles("¿sonó algo raro?"))
         self.assertNotIn("reporte", puente.herramientas_posibles("¿cómo anda la cosa?"))
 
+    def test_entiende_antes_de_responder(self):
+        r = self._pedir("anskjndiaidsbajswdbjBK")
+        self.assertTrue(r["texto"].startswith("No entendí"))
+        r = self._pedir("anskjndiaidsbajswdbjBK primer sensor")
+        self.assertTrue(r["texto"].startswith("Ignoré «anskjndiaidsbajswdbjBK»"))
+        self.assertIn("Sensor", r["texto"])
+        r = self._pedir("dame medidas de un sensor del área de ventas")
+        self.assertIn("No hay un área llamada «ventas»", r["texto"])
+        r = self._pedir("¿qué sensores tiene?")
+        self.assertIn("sensor", r["texto"])
+        r = self._pedir("dame las medidas del sensor")
+        self.assertIn("promedió", r["texto"])
+        self.assertIn("Pregúntame por una variable", r["texto"])
+
     def test_peticion_repetida(self):
         primera = self._pedir("¿cómo está la temperatura?")
         self.assertNotEqual(primera["via"], "REPETIDA")

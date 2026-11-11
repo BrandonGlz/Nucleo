@@ -19,6 +19,7 @@ from django.utils import timezone
 from apps.alertas.models import Alerta
 from apps.catalogos.models import VariableAmbiental
 from apps.mediciones.models import Lectura
+from apps.organizaciones.models import Area
 from common import roles
 
 DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -439,6 +440,194 @@ ARRASTRE = re.compile(
 )
 
 
+# ── Entender antes de responder ─────────────────────────────────────────────────────────
+VOCALES = set("aeiou")
+
+
+def _al_azar(w):
+    w = _normalizar(w)
+    if not re.fullmatch(r"[a-zñ]+", w) or w in ("co2", "eco2", "ppm"):
+        return False
+    pocas_vocales = len(w) >= 7 and sum(c in VOCALES for c in w) / len(w) < 0.25
+    return len(w) >= 22 or pocas_vocales or (len(w) >= 7 and bool(re.search(r"[^aeiou]{5,}", w)))
+
+
+def sin_sentido(texto):
+    """Palabras tecleadas al azar («anskjndiaidsbajswdbjbk») y el texto sin ellas."""
+    raras = [w for w in texto.split() if _al_azar(w.strip("¿?¡!.,;:"))]
+    limpio = " ".join(w for w in texto.split() if w not in raras)
+    return raras, limpio
+
+
+# «¿qué sensores tiene?», «el primer sensor», «sensor 2».
+SENSORES = re.compile(
+    r"\b(que|cuales|cuantos) sensores|\bsensores (tiene|hay|instalados)|\blista de sensores|"
+    r"\b(primer|segundo|tercer|cuarto)o? sensor|\bsensor (\d)\b|\bsensor (uno|dos|tres)\b"
+)
+ORDINALES = {"primer": 1, "segundo": 2, "tercer": 3, "cuarto": 4, "uno": 1, "dos": 2, "tres": 3}
+
+
+def _variables_del_sensor(sensor):
+    funcion = _normalizar(sensor.funcion or "")
+    return [
+        c
+        for c, palabra in (("TEMP", "temperatura"), ("HUM", "humedad"), ("AIRE", "aire"))
+        if palabra in funcion
+    ]
+
+
+def sensores(dispositivo, pregunta):
+    """Los sensores del dispositivo, o uno por su orden («el primer sensor») con su lectura."""
+    m = SENSORES.search(_normalizar(pregunta))
+    if not m:
+        return None
+    lista = list(dispositivo.sensores.select_related("estado_sensor").order_by("num"))
+    if not lista:
+        return {"texto": f"{dispositivo.nombre} no tiene sensores registrados."}
+
+    def ficha(i, s):
+        calibrado = f", calibrado el {s.fecha_calibracion:%d/%m/%Y}" if s.fecha_calibracion else ""
+        estado = s.estado_sensor.nombre.lower() if hasattr(s.estado_sensor, "nombre") else ""
+        return f"{i}) {s.modelo}: {(s.funcion or 'sin función registrada').lower()}" + (
+            f" ({estado}{calibrado})" if estado or calibrado else ""
+        )
+
+    orden = m.group(3) or m.group(4) or m.group(5)
+    if orden:
+        n = int(orden) if orden.isdigit() else ORDINALES[orden]
+        if n > len(lista):
+            return {
+                "texto": f"{dispositivo.nombre} solo tiene {_n(len(lista), 'sensor', 'sensores')}: "
+                + "; ".join(ficha(i, s) for i, s in enumerate(lista, 1))
+                + "."
+            }
+        s = lista[n - 1]
+        lectura = ultima_medicion(dispositivo, _variables_del_sensor(s)) or ""
+        return {"texto": f"Sensor {ficha(n, s)[3:]}. {lectura}".strip()}
+    return {
+        "texto": f"{dispositivo.nombre} tiene {_n(len(lista), 'sensor', 'sensores')}: "
+        + "; ".join(ficha(i, s) for i, s in enumerate(lista, 1))
+        + ". Pregúntame por uno, por ejemplo «el primer sensor», o por una variable."
+    }
+
+
+NO_LUGAR = {
+    "de",
+    "del",
+    "la",
+    "el",
+    "mi",
+    "su",
+    "tu",
+    "esta",
+    "este",
+    "esa",
+    "ese",
+    "actual",
+    "que",
+    "donde",
+    "completa",
+    "completo",
+    "toda",
+    "todo",
+    "entera",
+    "general",
+    "y",
+    "o",
+    "en",
+}
+LUGAR = re.compile(
+    r"\b(?:area|zona|sala|departamento|sucursal|seccion)s?\s+(?:de\s+|del\s+)?([a-z0-9ñ]+)"
+)
+OTRO_DISPOSITIVO = re.compile(r"\b(nc-\d{3,5})\b|\bnucleo\s+([a-z]-?\d{1,3})\b")
+
+
+def _parecido(a, b):
+    return (
+        a == b or a.startswith(b) or b.startswith(a) or SequenceMatcher(None, a, b).ratio() >= 0.8
+    )
+
+
+def fuera_de_alcance(dispositivo, pregunta):
+    """Texto si la pregunta es sobre otra área u otro dispositivo (o un área que no existe);
+    ``None`` si es sobre este dispositivo. Cada agente solo ve su dispositivo."""
+    texto = _normalizar(pregunta)
+    propia = dispositivo.area
+    for nombre in LUGAR.findall(texto):
+        if nombre in NO_LUGAR:
+            continue
+        if any(_parecido(nombre, w) for w in re.findall(r"[a-z0-9ñ]+", _normalizar(propia.nombre))):
+            continue
+        otras = [
+            a
+            for a in Area.objects.filter(organizacion_id=propia.organizacion_id)
+            if any(_parecido(nombre, w) for w in re.findall(r"[a-z0-9ñ]+", _normalizar(a.nombre)))
+        ]
+        if otras:
+            return (
+                f"Este agente es de {dispositivo.nombre} y solo ve sus sensores, que están en el "
+                f"área {propia.nombre}. Para {otras[0].nombre}, abre el agente de uno de los "
+                "dispositivos de esa área."
+            )
+        return (
+            f"No hay un área llamada «{nombre}» en tu organización. {dispositivo.nombre} está en "
+            f"el área {propia.nombre}; pregúntame por sus sensores."
+        )
+    m = OTRO_DISPOSITIVO.search(texto)
+    if m:
+        pedido = m.group(1) or m.group(2).replace("-", "")
+        propio = {
+            _normalizar(dispositivo.codigo_mqtt),
+            _normalizar(dispositivo.nombre).replace("-", ""),
+        }
+        if not any(pedido.replace("-", "") in p.replace("-", "") for p in propio):
+            return (
+                f"Este agente solo responde sobre {dispositivo.nombre}. Para otro dispositivo, "
+                "elige su agente en el selector de Nico AI."
+            )
+    return None
+
+
+def resumen_general(dispositivo, desde, hasta, descripcion, pide=None):
+    """Sin variable nombrada («medidas del sensor»): las tres variables en un solo texto."""
+    sensores = list(dispositivo.sensores.values_list("num", flat=True))
+    partes = []
+    for codigo in ORDEN_VARIABLES:
+        lecturas = Lectura.objects.filter(
+            sensor_num__in=sensores,
+            variable_codigo=codigo,
+            estabilizada=True,
+            fecha_hora__gte=desde,
+        )
+        if hasta is not None:
+            lecturas = lecturas.filter(fecha_hora__lt=hasta)
+        r = lecturas.aggregate(promedio=Avg("valor"), minimo=Min("valor"), maximo=Max("valor"))
+        if r["promedio"] is None:
+            continue
+        variable = VariableAmbiental.objects.get(pk=codigo)
+        nombre, unidad = variable.nombre.lower(), variable.unidad
+        if pide in ("maximo", "minimo"):
+            e = lecturas.order_by("-valor" if pide == "maximo" else "valor").first()
+            partes.append(f"{nombre} {_fmt(e.valor, unidad)} (el {_cuando(e.fecha_hora)})")
+        elif pide == "promedio":
+            partes.append(f"{nombre} {_fmt(r['promedio'], unidad)}")
+        else:
+            partes.append(
+                f"{nombre} promedió {_fmt(r['promedio'], unidad)} "
+                f"(de {_fmt(r['minimo'], unidad)} a {_fmt(r['maximo'], unidad)})"
+            )
+    if not partes:
+        return {"texto": f"{dispositivo.nombre} no tiene lecturas {_en(descripcion)}."}
+    lista = "; ".join(partes)
+    titulo = {"maximo": "Máximas", "minimo": "Mínimas", "promedio": "Promedios"}.get(pide)
+    if titulo:
+        return {"texto": f"{titulo} de {dispositivo.nombre} {_en(descripcion)}: {lista}."}
+    return {
+        "texto": f"{_En(descripcion)}, {dispositivo.nombre}: {lista}. Pregúntame por una "
+        "variable para ver su detalle, picos y gráfica."
+    }
+
+
 def es_comentario(pregunta):
     return bool(COMENTARIO.search(_normalizar(pregunta)))
 
@@ -458,11 +647,12 @@ def con_contexto(pregunta, anterior):
     corrige = bool(CORRIGE.search(_normalizar(pregunta)))
     if tema not in (None, "GENERICA") or (not corrige and len(limpia.split()) > 8):
         return limpia
-    if _tema(anterior) in (None, "GENERICA") and tema == "GENERICA":
-        return limpia
     if _tema(anterior) is None:
         return limpia
     nombra_periodo = periodo_de(limpia)[2] != periodo_de("")[2] or pide_ultima(limpia)
+    if _tema(anterior) == "GENERICA" and not (nombra_periodo or _dato_pedido(limpia)):
+        # Una pregunta genérica anterior no da tema: solo se arrastra si se pide otro periodo.
+        return limpia
     if corrige or nombra_periodo:
         claves = [w for w in re.findall(r"[a-z0-9]+", _normalizar(anterior)) if ARRASTRE.match(w)]
         return f"{' '.join(claves)} {limpia}"
@@ -520,6 +710,9 @@ def ultima_medicion(dispositivo, codigos):
 
 def responder(dispositivo, pregunta):
     """Respuesta del agente del dispositivo: ``{"texto", "picos"?, "serie"?, ...}``."""
+    por_sensor = sensores(dispositivo, pregunta)
+    if por_sensor is not None:
+        return por_sensor
     tema = _tema(pregunta)
     desde, hasta, descripcion = periodo_de(pregunta)
     if tema is None and es_comentario(pregunta):
@@ -549,14 +742,7 @@ def responder(dispositivo, pregunta):
             texto = f"{dispositivo.nombre} todavía no tiene lecturas{de}."
         return {"texto": texto}
     if tema == "GENERICA":
-        conteo = (
-            Alerta.objects.filter(umbral__dispositivo=dispositivo, fecha_hora__gte=desde)
-            .values_list("umbral__variable_id")
-            .annotate(n=Count("num"))
-            .order_by("-n")
-            .first()
-        )
-        tema = conteo[0] if conteo else roles.VARIABLE_TEMPERATURA
+        return resumen_general(dispositivo, desde, hasta, descripcion, _dato_pedido(pregunta))
     return _variable(dispositivo, tema, desde, hasta, descripcion, pide=_dato_pedido(pregunta))
 
 
