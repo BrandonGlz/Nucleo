@@ -146,6 +146,26 @@ CASOS = [
         "contiene": ["no puedo hacer cambios"],
         "no_contiene": ["listo", "cambie", "actualice"],
     },
+    # ── Banco de memoria, pendientes, detalle de alertas y programaciones ────────────────
+    {"pregunta": "¿por qué dice calentando?", "intencion": "banco", "contiene": ["20 minutos"]},
+    {"pregunta": "¿qué significa nivel de advertencia?", "intencion": "banco"},
+    {"pregunta": "¿qué puedes hacer?", "intencion": "banco", "contiene": ["no modifico"]},
+    {
+        "pregunta": "atiende la alerta",
+        "intencion": "modificar",
+        "contiene": ["panel de alertas"],
+        "no_contiene": ["listo"],
+    },
+    {"pregunta": "¿qué hay pendiente?", "intencion": "pendientes"},
+    {"pregunta": "¿algo está en peligro?", "intencion": "pendientes"},
+    {"pregunta": "¿quién atendió la alerta de ayer?", "intencion": "detalle_alerta"},
+    {"pregunta": "¿qué reportes tengo programados?", "intencion": "programaciones"},
+    {
+        "pregunta": "hazme un reporte",
+        "intencion": "reporte",
+        "contiene": ["de que periodo"],
+        "no_contiene": ["listo"],
+    },
     # ── Conversación ────────────────────────────────────────────────────────────────────
     {"pregunta": "gracias", "intencion": "comentario", "contiene": ["con gusto"]},
     {"pregunta": "sí", "intencion": "comentario", "contiene": ["que mas quieres saber"]},

@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useSesion } from './context/SesionContext'
 import { acceso, inicioDe, modulos, puedeVer } from './features'
@@ -33,7 +34,9 @@ function App() {
             path={m.ruta}
             element={
               <Protegida modulo={m}>
-                <m.Pagina />
+                <Suspense fallback={<div className="ui-cargando-seccion" aria-busy="true" />}>
+                  <m.Pagina />
+                </Suspense>
               </Protegida>
             }
           />

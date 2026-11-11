@@ -117,7 +117,14 @@ Reportes (ADMIN, SUPER y ANALISTA)
 
 Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
 └── POST /agente/                           {"pregunta", "dispositivo"}; un agente por dispositivo;
+                                            {"accion"?} confirma una acción preparada;
                                             responde {"texto", "via", "registro", "pasos"}
+                                            y, según el caso, "codigo" (sin_permiso,
+                                            datos_faltantes, periodo_invalido, sin_datos,
+                                            fuera_de_alcance, accion_vencida,
+                                            ia_no_disponible), "faltan" [campos] o
+                                            "accion" {id, vence} (reporte preparado que
+                                            espera «sí» o «cancela», 10 min)
                                             ("pasos": lo que el agente hizo, para «Cómo lo
                                             resolví») y, si la pregunta es de una
                                             variable con lecturas sobre el máximo, "picos"
@@ -125,10 +132,12 @@ Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
                                             diario de 7 días), "unidad" y "maximo"; 404 si el
                                             dispositivo no está a su alcance. Si se le pide un
                                             «reporte» o «informe» (admin, supervisor o
-                                            analista), genera el del área del dispositivo con
-                                            el periodo que nombre (hoy, ayer, esta semana,
-                                            mes pasado, octubre, últimos N días; si no, 7
-                                            días) y responde además {"reporte": {num, titulo,
+                                            analista), prepara el del área del dispositivo
+                                            con el periodo que nombre (hoy, ayer, esta
+                                            semana, mes pasado, octubre, últimos N días; si
+                                            no nombra uno, lo pregunta) y responde "accion";
+                                            al confirmar («sí») lo genera y responde además
+                                            {"reporte": {num, titulo,
                                             periodo_inicio, periodo_fin, dias, lecturas,
                                             alertas, peligro, variables[{variable, nombre,
                                             unidad, promedio, minimo, maximo, alertas}],

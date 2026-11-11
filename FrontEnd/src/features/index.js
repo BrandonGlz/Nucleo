@@ -1,17 +1,20 @@
+import { lazy } from 'react'
 import { AccesoPage } from './acceso/AccesoPage'
-import { AgentePage } from './agente/AgentePage'
-import { AlertasPage } from './alertas/AlertasPage'
-import { AreasPage } from './areas/AreasPage'
-import { DetalleDispositivo } from './dispositivos/DetalleDispositivo'
-import { DispositivosPage } from './dispositivos/DispositivosPage'
-import { MedicionesPage } from './mediciones/MedicionesPage'
-import { OrganizacionesPage } from './organizaciones/OrganizacionesPage'
-import { NotificacionesPage } from './notificaciones/NotificacionesPage'
-import { PanelPage } from './panel/PanelPage'
-import { PerfilPage } from './perfil/PerfilPage'
-import { ReportesPage } from './reportes/ReportesPage'
-import { UmbralesPage } from './umbrales/UmbralesPage'
-import { UsuariosPage } from './usuarios/UsuariosPage'
+
+// Cada sección se descarga al abrirla: la primera carga solo trae el marco y el acceso.
+const AgentePage = lazy(() => import('./agente/AgentePage').then((m) => ({ default: m.AgentePage })))
+const AlertasPage = lazy(() => import('./alertas/AlertasPage').then((m) => ({ default: m.AlertasPage })))
+const AreasPage = lazy(() => import('./areas/AreasPage').then((m) => ({ default: m.AreasPage })))
+const DetalleDispositivo = lazy(() => import('./dispositivos/DetalleDispositivo').then((m) => ({ default: m.DetalleDispositivo })))
+const DispositivosPage = lazy(() => import('./dispositivos/DispositivosPage').then((m) => ({ default: m.DispositivosPage })))
+const MedicionesPage = lazy(() => import('./mediciones/MedicionesPage').then((m) => ({ default: m.MedicionesPage })))
+const OrganizacionesPage = lazy(() => import('./organizaciones/OrganizacionesPage').then((m) => ({ default: m.OrganizacionesPage })))
+const NotificacionesPage = lazy(() => import('./notificaciones/NotificacionesPage').then((m) => ({ default: m.NotificacionesPage })))
+const PanelPage = lazy(() => import('./panel/PanelPage').then((m) => ({ default: m.PanelPage })))
+const PerfilPage = lazy(() => import('./perfil/PerfilPage').then((m) => ({ default: m.PerfilPage })))
+const ReportesPage = lazy(() => import('./reportes/ReportesPage').then((m) => ({ default: m.ReportesPage })))
+const UmbralesPage = lazy(() => import('./umbrales/UmbralesPage').then((m) => ({ default: m.UmbralesPage })))
+const UsuariosPage = lazy(() => import('./usuarios/UsuariosPage').then((m) => ({ default: m.UsuariosPage })))
 
 // Registro único de módulos: App.jsx crea las rutas y MainLayout el menú a partir de esta lista.
 // seccion e icono los ubican en el menú lateral; sin seccion la ruta existe pero no aparece en él.

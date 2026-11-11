@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.mediciones.models import Lectura
-from apps.reportes import agente, aprendizaje, ia, puente, servicios
+from apps.reportes import agente, aprendizaje, herramientas, ia, puente, servicios
 from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte, RespuestaAprendida
 from common.testing import Escenario, PruebaBase, cliente_de
 
@@ -421,13 +421,22 @@ class AgenteTests(PruebaBase):
         cuerpo = self._preguntar(self.e.operador, "Compara los dispositivos")
         self.assertIn("no otros dispositivos", cuerpo["texto"])
 
-    @override_settings(IA_PROVEEDOR="local")
-    def test_genera_un_reporte_del_area_cuando_se_le_pide(self):
-        r = cliente_de(self.e.supervisor).post(
+    def _reporte_confirmado(self, usuario, pedido):
+        cliente = cliente_de(usuario)
+        r = cliente.post("/api/v1/agente/", {**self.pregunta, "pregunta": pedido}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn("¿Lo genero?", r.json()["texto"])
+        self.assertIn("accion", r.json())
+        self.assertFalse(Reporte.objects.exists())  # preparar no guarda nada
+        return cliente.post(
             "/api/v1/agente/",
-            {**self.pregunta, "pregunta": "Hazme un reporte de la temperatura de hoy"},
+            {**self.pregunta, "pregunta": "sí", "anterior": pedido},
             format="json",
         )
+
+    @override_settings(IA_PROVEEDOR="local")
+    def test_genera_un_reporte_del_area_cuando_se_le_pide(self):
+        r = self._reporte_confirmado(self.e.supervisor, "Hazme un reporte de la temperatura de hoy")
         self.assertEqual(r.status_code, 200, r.content)
         reporte = Reporte.objects.get(pk=r.json()["reporte"]["num"])
         self.assertEqual(reporte.origen, Reporte.Origen.AGENTE)
@@ -453,13 +462,10 @@ class AgenteTests(PruebaBase):
 
     @override_settings(IA_PROVEEDOR="")
     def test_reporte_sin_ia_no_se_guarda(self):
-        r = cliente_de(self.e.analista).post(
-            "/api/v1/agente/",
-            {**self.pregunta, "pregunta": "informe del mes pasado"},
-            format="json",
-        )
+        r = self._reporte_confirmado(self.e.analista, "informe de hoy")
         self.assertEqual(r.status_code, 200)
         self.assertIn("no está disponible", r.json()["texto"])
+        self.assertEqual(r.json()["codigo"], "ia_no_disponible")
         self.assertFalse(Reporte.objects.exists())
 
     def test_periodos_que_entiende(self):
@@ -1110,3 +1116,142 @@ class CasosAgenteTests(PruebaBase):
             if not r.ok
         ]
         self.assertEqual(fallas, [], "\n" + "\n".join(fallas))
+
+
+class HerramientasAgenteTests(PruebaBase):
+    """Catálogo de herramientas de Nico AI: banco de memoria, pendientes, detalle de alertas,
+    programaciones y el reporte en dos pasos (preparar, confirmar, cancelar, vencer)."""
+
+    def setUp(self):
+        carpeta = tempfile.mkdtemp()
+        medios = override_settings(MEDIA_ROOT=carpeta)
+        medios.enable()
+        self.addCleanup(medios.disable)
+        self.e = Escenario()
+        self.ahora = timezone.now()
+        self.lectura = Lectura.objects.create(
+            sensor_num=self.e.dht22.pk,
+            variable_codigo="TEMP",
+            valor=31,
+            fecha_hora=self.ahora - timedelta(minutes=3),
+        )
+
+    def _pedir(self, usuario, pregunta, anterior=""):
+        r = cliente_de(usuario).post(
+            "/api/v1/agente/",
+            {"pregunta": pregunta, "dispositivo": self.e.dispositivo.pk, "anterior": anterior},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def _alerta(self, umbral=None, **campos):
+        return Alerta.objects.create(
+            umbral=umbral or self.e.umbral_temp,
+            lectura_num=self.lectura.num,
+            lectura_fecha_hora=self.lectura.fecha_hora,
+            lectura_valor=self.lectura.valor,
+            nivel=Alerta.Nivel.PELIGRO,
+            tipo=Alerta.Tipo.POR_ENCIMA,
+            **campos,
+        )
+
+    def test_banco_explica_con_texto_fijo(self):
+        banco = herramientas.banco()
+        r = self._pedir(self.e.admin, "¿por qué dice calentando?")
+        calentando = next(e for e in banco["explicaciones"] if e["clave"] == "calentando")
+        self.assertEqual(r["texto"], calentando["texto"])
+        self.assertIn("certifica", self._pedir(self.e.admin, "¿cumplimos la norma?")["texto"])
+        r = self._pedir(self.e.analista, "¿qué puedes hacer?")
+        self.assertEqual(r["texto"], banco["capacidades"]["ANALISTA"])
+        consulta = herramientas.consultar_banco_memoria(intencion="reporte")
+        self.assertEqual(
+            consulta["preguntas_faltantes"]["periodo"], banco["preguntas_faltantes"]["periodo"]
+        )
+
+    def test_cambios_fuera_de_alcance(self):
+        r = self._pedir(self.e.admin, "atiende la alerta de ayer")
+        self.assertIn("panel de Alertas", r["texto"])
+        r = self._pedir(self.e.admin, "cambia el intervalo de muestreo a 30 segundos")
+        self.assertIn("No puedo modificar dispositivos", r["texto"])
+
+    def test_pendientes_de_su_alcance_y_aislados(self):
+        self._alerta()
+        otra = Escenario("b")
+        lectura = Lectura.objects.create(
+            sensor_num=otra.dht22.pk, variable_codigo="TEMP", valor=40, fecha_hora=self.ahora
+        )
+        Alerta.objects.create(
+            umbral=otra.umbral_temp,
+            lectura_num=lectura.num,
+            lectura_fecha_hora=lectura.fecha_hora,
+            lectura_valor=40,
+            nivel=Alerta.Nivel.ADVERTENCIA,
+            tipo=Alerta.Tipo.POR_ENCIMA,
+        )
+        r = self._pedir(self.e.admin, "¿qué hay pendiente?")
+        self.assertIn("1 alerta pendiente: 1 de peligro", r["texto"])
+        self.assertNotIn(otra.dispositivo.nombre, r["texto"])
+        # Un supervisor de otra área no ve las alertas de esta.
+        self.e.supervisor.area = self.e.otra_area
+        self.e.supervisor.save(update_fields=["area"])
+        texto = herramientas.pendientes(self.e.supervisor)["texto"]
+        self.assertIn("No hay alertas pendientes", texto)
+
+    def test_detalle_de_la_alerta(self):
+        alerta = self._alerta(
+            estado=Alerta.Estado.ATENDIDA,
+            atendida_por=self.e.supervisor,
+            fecha_atencion=self.ahora,
+        )
+        r = self._pedir(self.e.admin, "¿quién atendió la alerta?")
+        self.assertIn("31 °C", r["texto"])
+        self.assertIn("atendida", r["texto"].lower())
+        self.assertIn(self.e.supervisor.get_full_name() or "alguien", r["texto"])
+        alerta.delete()
+        r = self._pedir(self.e.admin, "detalle de la última alerta")
+        self.assertIn("no tiene alertas", r["texto"])
+
+    def test_programaciones_propias(self):
+        ProgramacionReporte.objects.create(
+            organizacion=self.e.organizacion,
+            area=self.e.area,
+            creada_por=self.e.supervisor,
+            frecuencia=ProgramacionReporte.Frecuencia.SEMANAL,
+            destinatarios=[self.e.supervisor.pk],
+            proxima_ejecucion=self.ahora + timedelta(days=2),
+        )
+        r = self._pedir(self.e.supervisor, "¿qué reportes tengo programados?")
+        self.assertIn("semanal", r["texto"])
+        r = self._pedir(self.e.analista, "¿qué reportes tengo programados?")
+        self.assertIn("No tienes reportes programados", r["texto"])
+
+    def test_reporte_pide_periodo_y_se_puede_cancelar(self):
+        r = self._pedir(self.e.supervisor, "hazme un reporte")
+        self.assertEqual(r["codigo"], "datos_faltantes")
+        r = self._pedir(self.e.supervisor, "de hoy", "hazme un reporte")
+        self.assertIn("¿Lo genero?", r["texto"])
+        r = self._pedir(self.e.supervisor, "cancela")
+        self.assertIn("cancelé", r["texto"])
+        r = self._pedir(self.e.supervisor, "sí")
+        self.assertNotIn("reporte", r)
+        self.assertFalse(Reporte.objects.exists())
+
+    @override_settings(IA_PROVEEDOR="local")
+    def test_accion_vencida_no_genera(self):
+        r = self._pedir(self.e.supervisor, "genera el reporte de hoy")
+        registro = PreguntaAgente.objects.order_by("-num").first()
+        registro.datos["accion"]["vence"] = (self.ahora - timedelta(minutes=1)).isoformat()
+        registro.save(update_fields=["datos"])
+        r = self._pedir(self.e.supervisor, "sí")
+        self.assertEqual(r["codigo"], "accion_vencida")
+        self.assertFalse(Reporte.objects.exists())
+        # «Sí» a volver a prepararlo: prepara de nuevo, sin generar.
+        r = self._pedir(self.e.supervisor, "sí")
+        self.assertIn("¿Lo genero?", r["texto"])
+        self.assertFalse(Reporte.objects.exists())
+
+    def test_reporte_sin_datos_del_periodo(self):
+        r = self._pedir(self.e.analista, "reporte de enero de 2020")
+        self.assertIn(r.get("codigo"), ("sin_datos", "periodo_invalido"))
+        self.assertNotIn("accion", r)

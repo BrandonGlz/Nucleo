@@ -116,6 +116,8 @@ class PreguntaAgenteSerializer(serializers.Serializer):
     anterior = serializers.CharField(max_length=500, required=False, allow_blank=True)
     # La web precarga las sugerencias: no son peticiones del usuario ni cuentan como repetidas.
     precarga = serializers.BooleanField(required=False, default=False)
+    # Confirmación explícita de una acción preparada (el id que devolvió el agente).
+    accion = serializers.CharField(required=False, max_length=32)
 
 
 class AgenteView(APIView):
@@ -173,7 +175,21 @@ class AgenteView(APIView):
             pregunta = agente.con_contexto(limpio, entrada.validated_data.get("anterior", ""))
             raras = []
         anterior = entrada.validated_data.get("anterior", "")
-        propuesta = self._propuesta(request.user, dispositivo)
+        ultimo = self._ultimo(request.user, dispositivo)
+        propuesta = (ultimo.datos or {}).get("propuesta") if ultimo else None
+        accion = (ultimo.datos or {}).get("accion") if ultimo else None
+        if entrada.validated_data.get("accion") and (
+            not accion or accion["id"] != entrada.validated_data["accion"]
+        ):
+            accion = {
+                "id": entrada.validated_data["accion"],
+                "vence": "2000-01-01T00:00:00+00:00",
+                "pregunta": "",
+            }
+        faltan = (ultimo.datos or {}).get("faltan") if ultimo else None
+        if faltan and interprete._periodo_nombrado(original) and not agente._tema(original):
+            # Respondió el dato que faltaba («esta semana»): se completa la petición.
+            pregunta = f"{faltan['pregunta']} de {original}"
         retomada = None
         if (
             agente._tema(original) is None
@@ -192,7 +208,29 @@ class AgenteView(APIView):
             pregunta = original
             if not agente.es_cortesia(original):
                 fuera = agente.insiste_fuera(dispositivo, original, anterior, request.user)
-        if repetida is not None:
+        if precarga:
+            accion = faltan = None  # una precarga nunca confirma ni cancela nada
+        if herramientas.es_cancelar(original) and not agente._tema(original):
+            texto = (
+                herramientas.banco()["errores"]["cancelado"]
+                if accion or faltan
+                else "No había nada en curso que cancelar. ¿Qué quieres consultar?"
+            )
+            r, via, extra = (
+                {"texto": texto},
+                PreguntaAgente.Via.PREDEFINIDA,
+                {"datos": {"fijo": True}},
+            )
+        elif accion and herramientas.es_confirmacion(original):
+            r = herramientas.confirmar_reporte(request.user, dispositivo, accion)
+            datos = {"fijo": True}
+            if r.get("propuesta"):
+                datos["propuesta"] = r.pop("propuesta")
+            r, via, extra = r, PreguntaAgente.Via.PREDEFINIDA, {"datos": datos}
+        elif accion and agente.es_negacion(original):
+            r = {"texto": herramientas.banco()["errores"]["cancelado"]}
+            r, via, extra = r, PreguntaAgente.Via.PREDEFINIDA, {"datos": {"fijo": True}}
+        elif repetida is not None:
             r, via, extra = repetida
         elif raras:
             texto = (
@@ -251,6 +289,8 @@ class AgenteView(APIView):
                 f"Retomé tu pregunta «{retomada}» para esta área",
             ]
             pasos = [p for p in pasos if p != "Lo relacioné con tu mensaje anterior"]
+        if "accion" in r:
+            r = {**r, "accion": {"id": r["accion"]["id"], "vence": r["accion"]["vence"]}}
         return Response({**r, "registro": registro.num, "via": via, "pasos": pasos})
 
     def _pasos(self, dispositivo, original, anterior, via, extra, fuera, aviso, repetida):
@@ -326,6 +366,7 @@ class AgenteView(APIView):
         )
         if (
             not conversacion
+            or (extra.get("datos") or {}).get("fijo")
             or "grafica" in r
             or "comparativa" in r
             or "reporte" in r
@@ -358,16 +399,16 @@ class AgenteView(APIView):
                 return p.pregunta
         return None
 
-    def _propuesta(self, usuario, dispositivo):
-        """Lo que el agente ofreció en su última respuesta («¿Quieres …?»), si sigue vigente."""
+    def _ultimo(self, usuario, dispositivo):
+        """El último intercambio reciente (no precargado): lo que el agente ofreció («¿Quieres
+        …?»), la acción que espera confirmación o el dato que le faltaba."""
         recientes = PreguntaAgente.objects.filter(
             usuario=usuario,
             dispositivo=dispositivo,
             fecha__gte=timezone.now() - self.VENTANA_REPETIDA,
         ).order_by("-fecha", "-num")[:5]
         # En Python: exclude() en JSON descarta también los registros sin la clave.
-        ultimo = next((p for p in recientes if not (p.datos or {}).get("precarga")), None)
-        return (ultimo.datos or {}).get("propuesta") if ultimo else None
+        return next((p for p in recientes if not (p.datos or {}).get("precarga")), None)
 
     def _repetida(self, usuario, dispositivo, pregunta):
         normalizada = aprendizaje.normalizar(pregunta)
@@ -438,6 +479,19 @@ class AgenteView(APIView):
         respuesta aprendida, IA (solo para explicar, opinar o recomendar) y predefinida."""
         Via = PreguntaAgente.Via
         intencion = interprete.interpretar(pregunta).intencion
+        fijo = {"datos": {"fijo": True}}
+        if intencion == "modificar":
+            return herramientas.modificar(pregunta), Via.PREDEFINIDA, fijo
+        if intencion == "banco":
+            if herramientas.pide_capacidades(pregunta):
+                return herramientas.capacidades(usuario), Via.PREDEFINIDA, fijo
+            return {"texto": herramientas.explicacion(pregunta)}, Via.PREDEFINIDA, fijo
+        if intencion == "pendientes":
+            return herramientas.pendientes(usuario), Via.PREDEFINIDA, {}
+        if intencion == "detalle_alerta":
+            return herramientas.detalle_alerta(dispositivo, pregunta), Via.PREDEFINIDA, {}
+        if intencion == "programaciones":
+            return herramientas.programaciones(usuario), Via.PREDEFINIDA, {}
         if intencion == "umbrales":
             variables = [t] if (t := agente._tema(pregunta)) in agente.ORDEN_VARIABLES else []
             r = herramientas.umbrales(dispositivo, variables, pregunta)
@@ -465,7 +519,14 @@ class AgenteView(APIView):
         if graficas.pide_grafica(pregunta):
             return graficas.grafica(usuario, dispositivo, pregunta), Via.PREDEFINIDA, {}
         if agente.pide_reporte(pregunta):
-            return agente.generar_reporte(usuario, dispositivo, pregunta), Via.PREDEFINIDA, {}
+            # Dos pasos: aquí solo se prepara; se genera cuando el usuario confirma.
+            r = herramientas.preparar_reporte(usuario, dispositivo, pregunta)
+            datos = {"fijo": True}
+            if "accion" in r:
+                datos["accion"] = r["accion"]
+            if "faltan" in r:
+                datos["faltan"] = {"campos": r["faltan"], "pregunta": pregunta}
+            return r, Via.PREDEFINIDA, {"datos": datos}
         tema = agente._tema(pregunta)
         if tema is None and not agente.pide_ultima(pregunta):
             return self._sin_tema(usuario, dispositivo, pregunta, ruteada)

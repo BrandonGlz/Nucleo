@@ -276,9 +276,11 @@ Cada pregunta sigue el mismo camino, en `apps/reportes/`:
    lectura y cada una indica el requisito del SRS (3.2.12) que atiende: `variable`,
    `ultima`, `resumen` (las tres variables), `alertas`, `conexion` (con el aviso de
    calentamiento de 20 min del sensor de aire), `sensores`, `umbrales`, `reportes`
-   (generados), `grafica`, `comparativa` y `reporte` (genera uno). Si se pide un cambio
-   («cambia el umbral»), se responde que el agente no modifica umbrales, usuarios ni
-   dispositivos. Cuando las reglas no reconocen la pregunta, la IA local (`puente.enrutar`)
+   (generados), `grafica`, `comparativa`, `detalle_alerta`, `pendientes` (alcance del
+   usuario), `programaciones`, `banco` (textos fijos de `banco_memoria.json`) y `reporte`
+   (en dos pasos: prepara y genera solo al confirmar). Si se pide un cambio («cambia el
+   umbral», «atiende la alerta»), se responde con el texto fijo de dónde hacerlo en la
+   plataforma. Detalle de cada herramienta en `Context/backend/herramientas-agente.md`. Cuando las reglas no reconocen la pregunta, la IA local (`puente.enrutar`)
    solo puede elegir una herramienta de este catálogo que tenga pistas en la pregunta.
 4. **Verificar** (`interprete.verificar`). La respuesta se compara con la petición: que no
    hable de otra variable, que traiga la última medición, la gráfica, el periodo o el dato

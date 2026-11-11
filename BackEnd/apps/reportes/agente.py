@@ -20,7 +20,6 @@ from apps.alertas.models import Alerta
 from apps.catalogos.models import VariableAmbiental
 from apps.mediciones.models import Lectura
 from apps.organizaciones.models import Area
-from common import roles
 
 DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 PERIODO = timedelta(days=7)
@@ -1163,43 +1162,6 @@ def periodo_de(pregunta, ahora=None):
                 anio -= 1  # «octubre» en enero se refiere al octubre pasado
             return mes(anio, i)
     return ahora - PERIODO, ahora, "los últimos 7 días"
-
-
-def generar_reporte(usuario, dispositivo, pregunta):
-    """Genera, con las mismas cifras que la sección Reportes, el reporte del área del dispositivo.
-
-    Solo pueden pedirlo administradores, supervisores y analistas; el agente no modifica nada
-    más. Si la IA no está disponible, no se guarda y se avisa.
-    """
-    from apps.reportes import ia, servicios
-    from apps.reportes.models import Reporte
-
-    if usuario.rol_id not in (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA):
-        return {
-            "texto": "Los reportes los generan administradores, supervisores y analistas. "
-            "Puedo responderte sobre las lecturas y alertas de tu dispositivo."
-        }
-    inicio, fin, descripcion = periodo_de(pregunta)
-    if inicio >= fin:
-        return {"texto": f"Ese periodo ({descripcion}) todavía no tiene datos."}
-    area = dispositivo.area
-    try:
-        reporte = servicios.generar_reporte(
-            usuario.organizacion, area, inicio, fin, Reporte.Origen.AGENTE, usuario=usuario
-        )
-    except ia.IANoDisponible:
-        return {
-            "texto": "No pude redactar el reporte: el servicio de IA no está disponible por "
-            "ahora. El monitoreo y las alertas siguen funcionando."
-        }
-    return {
-        "texto": (
-            f"Listo: generé el reporte de {area.nombre} de {descripcion} "
-            f"({timezone.localtime(inicio):%d/%m/%Y} – {timezone.localtime(fin):%d/%m/%Y}). "
-            "Puedes visualizarlo aquí o descargarlo en PDF."
-        ),
-        "reporte": resumen_reporte(reporte, f"{area.nombre} · {descripcion}"),
-    }
 
 
 ORDEN_VARIABLES = ("TEMP", "HUM", "AIRE")

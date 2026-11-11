@@ -87,7 +87,8 @@ export function AgenteScreen() {
     setTexto('')
     agregar({ de: 'yo', texto: p })
     // Saludos y ayuda se contestan en el teléfono, sin servidor.
-    const rapida = respuestaRapida(p, { nombre: usuario.nombre?.split(' ')[0], dispositivo: d.nombre })
+    // Con un reporte preparado, «ok» o «cancela» los responde el servidor (confirma o descarta).
+    const rapida = (mensajes[num] ?? []).at(-1)?.accion ? null : respuestaRapida(p, { nombre: usuario.nombre?.split(' ')[0], dispositivo: d.nombre })
     if (rapida && !rapida.ir) {
       agregar({ de: 'agente', texto: rapida.texto, hora: hora(new Date().toISOString()) })
       return
@@ -109,6 +110,7 @@ export function AgenteScreen() {
         registro: r.registro,
         via: r.via,
         pasos: r.pasos ?? [],
+        accion: r.accion ?? null,
         hora: hora(new Date().toISOString()),
       })
     } catch (e) {
@@ -142,7 +144,7 @@ export function AgenteScreen() {
       ? siguientes(lista.filter((m) => m.de === 'yo').at(-1)?.texto ?? '', {
           reporte: ROLES_REPORTE.includes(usuario.rol),
           hechas: lista.filter((m) => m.de === 'yo').map((m) => m.texto),
-          tema: ultimo.reporte ? 'REPORTE' : undefined,
+          tema: ultimo.accion ? 'ACCION' : ultimo.reporte ? 'REPORTE' : undefined,
         })
       : []
 

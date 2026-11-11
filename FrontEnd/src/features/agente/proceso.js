@@ -150,6 +150,9 @@ const SEGUIR = {
   COMPARA_SEMANA: { icono: 'activity', texto: 'Compara con la semana pasada' },
   COMPARA_DISP: { icono: 'cpu', texto: 'Compara los dispositivos' },
   ELEMENTOS: { icono: 'layout-grid', texto: '¿Qué elementos tiene la plantilla?' },
+  CONFIRMA: { icono: 'check', texto: 'Sí, genéralo' },
+  CANCELA: { icono: 'x', texto: 'Cancela' },
+  PENDIENTES: { icono: 'bell', texto: '¿Qué hay pendiente?' },
 }
 const DESPUES = {
   TEMP: ['HUM', 'ALERTAS', 'REPORTE'],
@@ -163,6 +166,9 @@ const DESPUES = {
   COMPARATIVA: ['COMPARA_DISP', 'GRAFICA_HUM', 'REPORTE'],
   EDICION: ['ELEMENTOS', 'GRAFICA_ALERTAS', 'COMPARA_SEMANA'],
   OTRO: ['TEMP', 'HUM', 'ALERTAS'],
+  // Un reporte preparado espera confirmación: solo se ofrece confirmarlo o cancelarlo.
+  ACCION: ['CONFIRMA', 'CANCELA'],
+  PENDIENTES: ['ALERTAS', 'CONEXION', 'REPORTE'],
 }
 
 export function temaDe(pregunta) {
@@ -171,6 +177,7 @@ export function temaDe(pregunta) {
   if (GRAFICA.test(t)) return 'GRAFICA'
   if (REPORTE.test(t) || (VERBOS.test(t) && PERIODO.test(t))) return 'REPORTE'
   if (/(conex|bateri|senal|linea|desconect|apag)/.test(t)) return 'CONEXION'
+  if (/(pendiente|en peligro|novedades|como (esta|va) todo)/.test(t)) return 'PENDIENTES'
   if (/(alerta|aviso|incidente)/.test(t)) return 'ALERTAS'
   if (/(temperatura|calor|frio|grados)/.test(t)) return 'TEMP'
   if (/humed/.test(t)) return 'HUM'
@@ -183,7 +190,7 @@ export function temaDe(pregunta) {
 export function siguientes(pregunta, { reporte = false, hechas = [], tema } = {}) {
   const ya = new Set(hechas.map(normalizar))
   return (DESPUES[tema ?? temaDe(pregunta)] ?? DESPUES.OTRO)
-    .filter((c) => reporte || !['REPORTE', 'REPORTE_MES', 'ELEMENTOS', 'COMPARA_DISP'].includes(c))
+    .filter((c) => reporte || !['REPORTE', 'REPORTE_MES', 'ELEMENTOS', 'COMPARA_DISP', 'CONFIRMA'].includes(c))
     .map((c) => SEGUIR[c])
     .filter((s) => !ya.has(normalizar(s.texto)))
     .slice(0, 3)

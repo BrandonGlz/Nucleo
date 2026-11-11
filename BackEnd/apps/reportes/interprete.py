@@ -48,6 +48,11 @@ class Peticion:
             "alertas": "las alertas",
             "conexion": "el estado de conexión",
             "reporte": "un reporte",
+            "detalle_alerta": "el detalle de la alerta",
+            "pendientes": "lo pendiente de tu alcance",
+            "programaciones": "los reportes programados",
+            "banco": "una explicación",
+            "modificar": "un cambio",
             "resumen": "un resumen de todas las variables",
         }.get(self.intencion, DATOS.get(self.dato, "cómo está"))
         de = f" de {' y '.join(NOMBRES[v] for v in self.variables)}" if self.variables else ""
@@ -108,7 +113,11 @@ def interpretar(pregunta, anterior=""):
         dato=agente._dato_pedido(texto),
         contexto=contexto,
     )
-    if (
+    if herramientas.modificar(pregunta) and not herramientas.pide_umbrales(pregunta):
+        peticion.intencion = "modificar"
+    elif herramientas.pide_capacidades(pregunta) or herramientas.explicacion(pregunta):
+        peticion.intencion = "banco"
+    elif (
         agente.es_comentario(pregunta)
         or agente.es_cortesia(pregunta)
         or agente.es_afirmacion(pregunta)
@@ -117,6 +126,12 @@ def interpretar(pregunta, anterior=""):
         peticion.intencion = "comentario"
     elif herramientas.pide_areas(pregunta):
         peticion.intencion = "areas"
+    elif herramientas.pide_programaciones(pregunta):
+        peticion.intencion = "programaciones"
+    elif herramientas.pide_detalle_alerta(pregunta):
+        peticion.intencion = "detalle_alerta"
+    elif herramientas.pide_pendientes(pregunta):
+        peticion.intencion = "pendientes"
     elif herramientas.pide_reportes(texto):
         peticion.intencion = "reportes"
     elif herramientas.pide_umbrales(texto):
@@ -167,6 +182,11 @@ def verificar(peticion, respuesta):
         "conexion",
         "umbrales",
         "areas",
+        "modificar",
+        "banco",
+        "pendientes",
+        "detalle_alerta",
+        "programaciones",
     ):
         return problemas
     # Error típico: responder de otra variable («pedí el aire y habló de la humedad»). Si la
@@ -209,7 +229,12 @@ HECHO = {
     "areas": "Revisé las áreas y los dispositivos que puedes consultar",
     "grafica": "Armé la gráfica de {var} {periodo}",
     "comparativa": "Comparé {var} entre los periodos",
-    "reporte": "Generé el reporte del periodo",
+    "reporte": "Calculé las cifras del periodo con el servicio de Reportes",
+    "detalle_alerta": "Busqué la alerta, su lectura, su umbral y quién la atendió",
+    "pendientes": "Revisé las alertas pendientes y los dispositivos de tu alcance",
+    "programaciones": "Consulté los reportes programados (solo lectura)",
+    "banco": "Respondí con el texto fijo del banco de memoria",
+    "modificar": "Revisé que es un cambio: se hace en la plataforma, no desde el chat",
     "comentario": "Tomé en cuenta tu comentario",
 }
 

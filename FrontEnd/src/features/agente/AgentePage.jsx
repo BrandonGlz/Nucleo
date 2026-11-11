@@ -534,6 +534,8 @@ export function AgentePage() {
   // Lo que se resuelve en el navegador, sin servidor ni IA: saludos y ayuda, ir a otra sección,
   // editar la plantilla del reporte de la conversación y elegir plantilla antes de generar.
   const local = (pregunta) => {
+    // Con un reporte preparado, «ok» o «cancela» los responde el servidor (confirma o descarta).
+    if (mensajes.at(-1)?.accion) return null
     const rapida = respuestaRapida(pregunta, { nombre: usuario?.nombre?.split(' ')[0], dispositivo: nombreAgente })
     if (rapida) return rapida
     const reporte = visor ?? reportes[0]
@@ -562,7 +564,10 @@ export function AgentePage() {
     const previa = (base ?? mensajes).filter((m) => m.de === 'yo' && m.texto !== pregunta).at(-1)?.texto ?? ''
     const nuevo = planDe(pregunta, nombreAgente, previa)
     setPlan(nuevo)
-    ag.preguntar(pregunta, base, nuevo.ms)
+    // La plantilla elegida acompaña al reporte hasta que se confirma (o se completa el periodo).
+    const pendiente = base ? null : mensajes.at(-1)
+    const formato = pendiente?.de === 'agente' && (pendiente.accion || pendiente.faltan) ? pendiente.formato : null
+    ag.preguntar(pregunta, base, nuevo.ms, formato ? { extra: { formato } } : undefined)
   }
   const elegirPlantilla = (pregunta, opcion) => {
     if (pensando) return
@@ -607,18 +612,20 @@ export function AgentePage() {
       ? siguientes(mensajes.findLast((x) => x.de === 'yo')?.texto ?? '', {
           reporte: puedeReporte,
           hechas: mensajes.filter((x) => x.de === 'yo').map((x) => x.texto),
-          tema: ultimo.edicion ? 'EDICION' : ultimo.reporte ? 'REPORTE' : undefined,
+          tema: ultimo.accion ? 'ACCION' : ultimo.edicion ? 'EDICION' : ultimo.reporte ? 'REPORTE' : undefined,
         })
       : []
 
   // Las sugerencias visibles se piden de antemano: al tocarlas, la respuesta ya está lista.
   const textosSugeridos = sugerencias.map((x) => x.texto).join('|')
+  const conAccion = Boolean(ultimo?.accion)
   const precargar = ag.precargar
   useEffect(() => {
-    if (!textosSugeridos) return undefined
+    // Confirmar o cancelar no se precargan: harían la acción antes de que el usuario la elija.
+    if (!textosSugeridos || conAccion) return undefined
     const t = setTimeout(() => precargar(textosSugeridos.split('|')), 600)
     return () => clearTimeout(t)
-  }, [textosSugeridos, precargar])
+  }, [textosSugeridos, precargar, conAccion])
 
   const compositor = (
     <Compositor
