@@ -73,14 +73,14 @@ export function planDe(pregunta, dispositivo = 'el dispositivo') {
 // Preguntas para seguir la conversación, según el tema de la última pregunta. Todas tienen respuesta
 // prediseñada en el backend (temas de agente.py), así que contestan al instante sin pasar por la IA.
 const SEGUIR = {
-  TEMP: { icono: 'thermometer', texto: '¿Cómo estuvo la temperatura esta semana?' },
-  HUM: { icono: 'droplets', texto: '¿Hubo picos de humedad esta semana?' },
-  AIRE: { icono: 'wind', texto: '¿Cómo está la calidad del aire?' },
-  ALERTAS: { icono: 'bell', texto: '¿Hubo alertas en los últimos 7 días?' },
-  PICOS: { icono: 'activity', texto: '¿Qué variable tuvo más picos?' },
-  CONEXION: { icono: 'signal', texto: '¿Está conectado el dispositivo?' },
-  REPORTE: { icono: 'file-text', texto: 'Genera el reporte de esta semana' },
-  REPORTE_MES: { icono: 'file-text', texto: 'Genera el reporte del mes pasado' },
+  TEMP: { icono: 'thermometer', texto: 'Temperatura de la semana' },
+  HUM: { icono: 'droplets', texto: 'Picos de humedad' },
+  AIRE: { icono: 'wind', texto: 'Calidad del aire' },
+  ALERTAS: { icono: 'bell', texto: 'Alertas de 7 días' },
+  PICOS: { icono: 'activity', texto: 'Variable con más picos' },
+  CONEXION: { icono: 'signal', texto: 'Estado de conexión' },
+  REPORTE: { icono: 'file-text', texto: 'Reporte de esta semana' },
+  REPORTE_MES: { icono: 'file-text', texto: 'Reporte del mes pasado' },
 }
 const DESPUES = {
   TEMP: ['HUM', 'ALERTAS', 'REPORTE'],
