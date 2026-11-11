@@ -2,6 +2,7 @@ import tempfile
 from datetime import UTC, timedelta
 from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 from django.core import mail
 from django.core.management import call_command
@@ -12,7 +13,7 @@ from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.mediciones.models import Lectura
-from apps.reportes import agente, aprendizaje, herramientas, ia, puente, servicios
+from apps.reportes import agente, aprendizaje, carga, herramientas, ia, puente, servicios
 from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte, RespuestaAprendida
 from common.testing import Escenario, PruebaBase, cliente_de
 
@@ -1255,3 +1256,101 @@ class HerramientasAgenteTests(PruebaBase):
         r = self._pedir(self.e.analista, "reporte de enero de 2020")
         self.assertIn(r.get("codigo"), ("sin_datos", "periodo_invalido"))
         self.assertNotIn("accion", r)
+
+    def _nombrar(self):
+        for u, nombre, apellido in (
+            (self.e.supervisor, "Ana", "López"),
+            (self.e.analista, "Ana", "Ruiz"),
+            (self.e.admin, "Luis", "Mora"),
+        ):
+            u.nombre, u.primer_apellido = nombre, apellido
+            u.save(update_fields=["nombre", "primer_apellido"])
+
+    def test_programar_con_confirmacion(self):
+        self._nombrar()
+        r = self._pedir(self.e.admin, "programa un reporte semanal")
+        self.assertEqual(r["codigo"], "datos_faltantes")  # falta a quién
+        r = self._pedir(self.e.admin, "para Ana")
+        self.assertEqual(r["codigo"], "ambiguo")  # dos Anas
+        r = self._pedir(self.e.admin, "Ana López y a mí")
+        self.assertIn("¿Lo programo?", r["texto"])
+        self.assertFalse(ProgramacionReporte.objects.exists())
+        r = self._pedir(self.e.admin, "sí")
+        p = ProgramacionReporte.objects.get()
+        self.assertEqual(p.frecuencia, "SEMANAL")
+        self.assertEqual(p.area, self.e.dispositivo.area)  # solo el área, nunca la organización
+        self.assertEqual(set(p.destinatarios), {self.e.supervisor.pk, self.e.admin.pk})
+        # Cambiar la frecuencia y agregar a alguien, y cancelar.
+        r = self._pedir(self.e.admin, "cambia la programación semanal a mensual")
+        self.assertIn("mensual", r["texto"])
+        self._pedir(self.e.admin, "sí")
+        p.refresh_from_db()
+        self.assertEqual(p.frecuencia, "MENSUAL")
+        self._pedir(self.e.admin, "agrega a Ana Ruiz a la programación")
+        self._pedir(self.e.admin, "sí")
+        p.refresh_from_db()
+        self.assertIn(self.e.analista.pk, p.destinatarios)
+        r = self._pedir(self.e.admin, "cancela la programación")
+        self.assertIn("¿La cancelo?", r["texto"])
+        self._pedir(self.e.admin, "sí")
+        p.refresh_from_db()
+        self.assertFalse(p.activa)
+
+    def test_no_programa_para_otra_organizacion(self):
+        otra = Escenario("b")
+        otra.supervisor.nombre, otra.supervisor.primer_apellido = "Zoe", "Paz"
+        otra.supervisor.save(update_fields=["nombre", "primer_apellido"])
+        r = self._pedir(self.e.admin, "programa un reporte diario para Zoe Paz")
+        self.assertEqual(r["codigo"], "datos_faltantes")
+        self.assertNotIn("Zoe", r["texto"])
+
+    @override_settings(IA_PROVEEDOR="local")
+    def test_reporte_y_envio_por_correo(self):
+        self._nombrar()
+        r = self._pedir(self.e.admin, "genera el reporte de hoy y envíaselo a Ana López")
+        self.assertIn("enviarlo por correo a Ana López", r["texto"])
+        self.assertEqual(len(mail.outbox), 0)
+        r = self._pedir(self.e.admin, "sí")
+        self.assertIn("reporte", r)
+        self.assertEqual(mail.outbox[-1].to, [self.e.supervisor.correo])
+        # Reenviar el último reporte a otra persona.
+        r = self._pedir(self.e.admin, "envía el último reporte a Ana Ruiz")
+        self.assertIn("¿Lo envío?", r["texto"])
+        self._pedir(self.e.admin, "sí")
+        self.assertEqual(mail.outbox[-1].to, [self.e.analista.correo])
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_operador_no_envia_ni_programa(self):
+        self.e.operador.acceso_agente = True
+        self.e.operador.save(update_fields=["acceso_agente"])
+        self.e.dispositivo.operador = self.e.operador
+        self.e.dispositivo.save(update_fields=["operador"])
+        r = self._pedir(self.e.operador, "programa un reporte semanal para mí")
+        self.assertEqual(r["codigo"], "sin_permiso")
+
+    def test_limite_por_carga_del_servidor(self):
+        with (
+            mock.patch.object(carga, "memoria_disponible_mb", return_value=300),
+            override_settings(NUCLEO_AGENTE_LIMITE_CRITICA=2),
+        ):
+            self.assertTrue(carga.ia_suspendida())
+            self._pedir(self.e.admin, "¿qué hay pendiente?")
+            self._pedir(self.e.admin, "¿sigue conectado?")
+            r = self._pedir(self.e.admin, "¿cómo está la temperatura?")
+            self.assertEqual(r["codigo"], "limite_peticiones")
+            precarga = cliente_de(self.e.admin).post(
+                "/api/v1/agente/",
+                {"pregunta": "hola", "dispositivo": self.e.dispositivo.pk, "precarga": True},
+                format="json",
+            )
+            self.assertEqual(precarga.status_code, 429)
+
+    def test_mantenimiento(self):
+        carpeta = Path(tempfile.mkdtemp())
+        with override_settings(NUCLEO_AGENTE_MANTENIMIENTO=str(carpeta / "marca")):
+            call_command("agente_mantenimiento", "on", stdout=StringIO())
+            r = self._pedir(self.e.admin, "¿cómo está la temperatura?")
+            self.assertEqual(r["codigo"], "mantenimiento")
+            call_command("agente_mantenimiento", "off", stdout=StringIO())
+            r = self._pedir(self.e.admin, "¿cómo está la temperatura?")
+            self.assertNotIn("codigo", r)

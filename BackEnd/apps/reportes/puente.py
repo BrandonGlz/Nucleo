@@ -169,7 +169,13 @@ def cola():
 
 def con_puente(dispositivo):
     """El dispositivo tiene ESP32 físico: su agente depende de él y puede usar la IA."""
-    return habilitado() and dispositivo.codigo_mqtt in settings.IA_PUENTE_DISPOSITIVOS
+    from apps.reportes import carga
+
+    return (
+        habilitado()
+        and dispositivo.codigo_mqtt in settings.IA_PUENTE_DISPOSITIVOS
+        and not carga.ia_suspendida()
+    )
 
 
 def activo(dispositivo):

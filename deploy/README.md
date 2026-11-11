@@ -115,6 +115,12 @@ dispositivo se deshabilita en la web y en la app.
 - Si la IA tarda más de `IA_ESPERA_SEGUNDOS` (8 s), hay 2 peticiones en cola o pone una cifra
   que no viene de los datos, se responde con la predefinida.
 - `deploy/compilar_apk.sh` apaga Ollama mientras compila la app y lo vuelve a encender al final.
+- Protección por carga: con menos de 1200 MB libres el agente deja de usar la IA (responde con
+  reglas y herramientas) y limita las preguntas por usuario (30 por minuto normal, 10 con carga
+  alta, 4 por debajo de 500 MB). Si TimescaleDB no responde, avisa que está en mantenimiento.
+- Mantenimiento manual mientras se estabiliza el servidor:
+  `cd BackEnd && .venv/bin/python manage.py agente_mantenimiento on` (`off` lo regresa; sin
+  argumento muestra el nivel y la memoria libre). El monitoreo y las alertas siguen funcionando.
 - Preguntas y reacciones: tablas `pregunta_agente` (cómo se resolvió cada una) y
   `respuesta_aprendida` (banco), visibles en el admin de Django.
 

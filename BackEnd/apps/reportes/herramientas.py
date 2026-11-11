@@ -357,8 +357,6 @@ OBJETOS = {
     "alertas": r"\b(atiende|atender|atiendela|descarta|descartar|descartala|cierra|cerrar|"
     r"resuelve|resolver|marca|marcar)\b.*\balertas?\b|\balertas?\b.*\b(como )?(atendida|"
     r"descartada|resuelta)",
-    "programaciones": CAMBIAR + r".*\b(programacion|programaciones|envio automatico)\b|"
-    r"\bprograma(me)? (un |el )?reporte",
     "dispositivos": CAMBIAR + r".*\b(dispositivo|intervalo|muestreo|sensor)\b",
     "usuarios": CAMBIAR + r".*\b(usuario|usuarios|contrasena|rol)\b",
     "areas": CAMBIAR + r".*\b(area|areas)\b",
@@ -608,8 +606,15 @@ def preparar_reporte(usuario, dispositivo, pregunta):
             "texto": f"No hay lecturas de {area.nombre} en {descripcion}. ¿Quieres otro periodo?",
             "codigo": "sin_datos",
         }
+    destinatarios = []
+    if pide_enviar(pregunta):
+        # «Genera el reporte de esta semana y envíaselo a Ana»: un paso más, misma confirmación.
+        destinatarios, ambiguos = destinatarios_de(usuario, area, pregunta)
+        if ambiguos:
+            return _ambiguo(ambiguos)
     vence = timezone.now() + VIGENCIA_ACCION
     accion = {
+        "destinatarios": [u.pk for u in destinatarios],
         "id": uuid.uuid4().hex[:12],
         "tipo": "reporte",
         "inicio": inicio.isoformat(),
@@ -625,7 +630,9 @@ def preparar_reporte(usuario, dispositivo, pregunta):
             f"({timezone.localtime(inicio):%d/%m/%Y} – {timezone.localtime(fin):%d/%m/%Y}): "
             f"{agente._n(len(cifras['dispositivos']), 'dispositivo')}, "
             f"{agente._n(lecturas, 'lectura válida', 'lecturas válidas')} y "
-            f"{agente._n(alertas, 'alerta')}. ¿Lo genero? Responde «sí» o «cancela»."
+            f"{agente._n(alertas, 'alerta')}"
+            + (f", y enviarlo por correo a {_nombres(destinatarios)}" if destinatarios else "")
+            + ". ¿Lo genero? Responde «sí» o «cancela»."
         ),
         "accion": accion,
     }
@@ -671,3 +678,465 @@ def confirmar_reporte(usuario, dispositivo, accion):
         ),
         "reporte": agente.resumen_reporte(reporte, f"{area.nombre} · {accion['descripcion']}"),
     }
+
+
+# ── Destinatarios: nombres → usuarios de la organización ────────────────────────────────────
+
+A_MI = re.compile(
+    r"\b(a|para) mi\b(?! (area|organizacion|dispositivo|equipo|sensor))|\b(mandame|enviame|"
+    r"mandamelo|enviamelo|pasamelo|a mi correo|me lo (mandas|envias))\b"
+)
+POR_ROL = {
+    roles.SUPERVISOR: r"\b(al|a los|para el|para los) supervisor(es)?\b",
+    roles.ANALISTA: r"\b(al|a los|para el|para los) analistas?\b",
+    roles.ADMIN: r"\b(al|a los|para el|para los) administrador(es)?\b",
+}
+
+
+def destinatarios_de(usuario, area, pregunta, limite=5):
+    """Usuarios de la organización nombrados en la pregunta. Devuelve ``(usuarios, ambiguos)``:
+    ``ambiguos`` son las opciones (máx. ``limite``) de un nombre que coincide con varios."""
+    from apps.usuarios.models import Usuario
+
+    texto = agente._normalizar(pregunta)
+    candidatos = list(
+        Usuario.objects.filter(
+            organizacion_id=usuario.organizacion_id, estado_usuario_id=roles.USUARIO_ACTIVO
+        ).exclude(rol_id=roles.ADMIN_PLATAFORMA)
+    )
+    elegidos = {usuario.pk: usuario} if A_MI.search(texto) else {}
+    for rol, patron in POR_ROL.items():
+        if re.search(patron, texto):
+            for u in candidatos:
+                if u.rol_id == rol and (rol == roles.ADMIN or u.area_id in (None, area.pk)):
+                    elegidos[u.pk] = u
+    # Primero nombre y apellido; lo que queda del texto se busca solo por nombre.
+    completos = {}
+    resto = texto
+    for u in candidatos:
+        nombre = agente._normalizar(u.nombre or "")
+        apellido = agente._normalizar(u.primer_apellido or "")
+        completo = rf"\b{re.escape(nombre)} {re.escape(apellido)}\b"
+        if apellido and re.search(completo, texto):
+            completos[u.pk] = u
+            resto = re.sub(completo, " ", resto)
+    # Un nombre que ya se aclaró con apellido («Ana» y luego «Ana López») no vuelve a contar.
+    aclarados = {w for u in completos.values() for w in agente._normalizar(u.nombre).split()}
+    por_nombre = {}
+    for u in candidatos:
+        if u.pk in completos:
+            continue
+        for palabra in agente._normalizar(u.nombre or "").split():
+            if (
+                len(palabra) >= 3
+                and palabra not in aclarados
+                and re.search(rf"\b{re.escape(palabra)}\b", resto)
+            ):
+                por_nombre.setdefault(palabra, []).append(u)
+    elegidos.update(completos)
+    ambiguos = []
+    for usuarios in por_nombre.values():
+        if len(usuarios) == 1:
+            elegidos[usuarios[0].pk] = usuarios[0]
+        else:
+            ambiguos = usuarios[:limite]
+    return list(elegidos.values()), ambiguos
+
+
+def _nombres(usuarios):
+    nombres = [u.get_full_name() for u in usuarios]
+    return nombres[0] if len(nombres) == 1 else ", ".join(nombres[:-1]) + " y " + nombres[-1]
+
+
+def _ambiguo(ambiguos):
+    return {
+        "texto": f"¿Te refieres a {' o a '.join(u.get_full_name() for u in ambiguos)}? Dime el "
+        "nombre con su apellido.",
+        "codigo": "ambiguo",
+        "opciones": [u.get_full_name() for u in ambiguos],
+    }
+
+
+def _accion(tipo, pregunta, **datos):
+    return {
+        "id": uuid.uuid4().hex[:12],
+        "tipo": tipo,
+        "pregunta": pregunta,
+        "vence": (timezone.now() + VIGENCIA_ACCION).isoformat(),
+        **datos,
+    }
+
+
+def _puede_reportes(usuario):
+    return usuario.rol_id in (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA)
+
+
+SIN_PERMISO_REPORTES = {
+    "texto": "Los reportes y sus envíos los gestionan administradores, supervisores y "
+    "analistas. Puedo responderte sobre las lecturas y alertas de tu dispositivo.",
+    "codigo": "sin_permiso",
+}
+
+
+def pide_envio_de_reporte(pregunta):
+    """Enviar algo que es un reporte («envía el reporte», «mándaselo», «por correo»)."""
+    texto = agente._normalizar(pregunta)
+    return bool(ENVIAR.search(texto)) and bool(
+        re.search(r"\b(reportes?|informes?|pdf|por correo)\b|\w+(selo|melo|selos)\b", texto)
+    )
+
+
+# ── Enviar un reporte por correo ────────────────────────────────────────────────────────────
+
+ENVIAR = re.compile(
+    r"\b(envia|enviar|enviale|envialo|enviaselo|enviaselos|enviame|enviamelo|manda|mandar|"
+    r"mandale|mandalo|mandaselo|mandame|mandamelo|comparte|compartelo|reenvia|reenvialo|"
+    r"pasale|pasamelo)\b|\bpor correo\b"
+)
+
+
+def pide_enviar(pregunta):
+    return bool(ENVIAR.search(agente._normalizar(pregunta)))
+
+
+def preparar_envio(usuario, dispositivo, pregunta):
+    """Envío por correo del último reporte del área (o el #n nombrado) a usuarios de la
+    organización. No envía nada: espera confirmación."""
+    if not _puede_reportes(usuario):
+        return SIN_PERMISO_REPORTES
+    area = dispositivo.area
+    reportes_area = Reporte.objects.filter(organizacion_id=usuario.organizacion_id, area=area)
+    numero = re.search(r"#\s*(\d+)|\breporte (\d+)\b", agente._normalizar(pregunta))
+    if numero:
+        reporte = reportes_area.filter(pk=int(numero.group(1) or numero.group(2))).first()
+    else:
+        reporte = reportes_area.filter(generado_por=usuario).order_by("-fecha_generacion").first()
+        reporte = reporte or reportes_area.order_by("-fecha_generacion").first()
+    if reporte is None:
+        return {
+            "texto": f"No hay reportes del área {area.nombre} para enviar. Pídeme uno, por "
+            "ejemplo: «genera el reporte de esta semana y envíaselo a mi supervisor».",
+            "codigo": "no_encontrado",
+        }
+    destinatarios, ambiguos = destinatarios_de(usuario, area, pregunta)
+    if ambiguos:
+        return _ambiguo(ambiguos)
+    if not destinatarios:
+        return {
+            "texto": "¿A quién se lo envío? Dime su nombre o «a mí».",
+            "codigo": "datos_faltantes",
+            "faltan": ["destinatarios"],
+        }
+    periodo = (
+        f"{timezone.localtime(reporte.periodo_inicio):%d/%m} – "
+        f"{timezone.localtime(reporte.periodo_fin):%d/%m/%Y}"
+    )
+    return {
+        "texto": f"Voy a enviar por correo el reporte #{reporte.num} de {area.nombre} "
+        f"({periodo}), con su PDF, a {_nombres(destinatarios)}. ¿Lo envío? Responde «sí» o "
+        "«cancela».",
+        "accion": _accion(
+            "enviar", pregunta, reporte=reporte.num, destinatarios=[u.pk for u in destinatarios]
+        ),
+    }
+
+
+# ── Programaciones: crear, cambiar y cancelar ───────────────────────────────────────────────
+
+FRECUENCIAS = (
+    (ProgramacionReporte.Frecuencia.DIARIA, r"\bdiari[oa]s?\b|\bcada dia\b|\btodos los dias\b"),
+    (ProgramacionReporte.Frecuencia.SEMANAL, r"\bsemanal(es|mente)?\b|\bcada semana\b"),
+    (ProgramacionReporte.Frecuencia.MENSUAL, r"\bmensual(es|mente)?\b|\bcada mes\b"),
+)
+PROGRAMAR = re.compile(
+    r"\b(programa|programar|programame|programalo|agenda|agendar|automatiza)\b.*\breportes?\b|"
+    r"\b(crea|crear|haz|hazme|agrega|agregar) (una |otra )?(nueva )?programacion\b|"
+    r"\breportes? (diari[oa]s?|semanal(es)?|mensual(es)?)\b.*\b(envi|mand|program)|"
+    r"\b(envi|mand)\w*\b.*\breportes?\b.*\b(cada (dia|semana|mes)|todos los dias)\b"
+)
+CANCELAR_PROGRAMACION = re.compile(
+    r"\b(cancela|cancelar|desactiva|desactivar|elimina|eliminar|borra|borrar|deten|detener|"
+    r"pausa|pausar|quita|quitar)\b (la |el |mi |las |los |esa |esta )?(programacion(es)?|"
+    r"reportes? programados?|envio automatico)"
+)
+EDITAR_PROGRAMACION = re.compile(
+    r"\b(cambia|cambiar|modifica|modificar|ajusta|edita|editar|agrega|agregar|anade|incluye|"
+    r"quita|quitar|saca|elimina|pasa|pon)\b.*\b(programacion|reportes? programados?)\b"
+)
+AGREGAR = re.compile(r"\b(agrega|agregar|anade|incluye|suma|sumale|mete)\b")
+QUITAR = re.compile(r"\b(quita|quitar|saca|sacar|elimina|eliminar|borra)\b")
+
+
+def pide_programar(pregunta):
+    return bool(PROGRAMAR.search(agente._normalizar(pregunta)))
+
+
+def pide_cancelar_programacion(pregunta):
+    return bool(CANCELAR_PROGRAMACION.search(agente._normalizar(pregunta)))
+
+
+def pide_editar_programacion(pregunta):
+    return bool(EDITAR_PROGRAMACION.search(agente._normalizar(pregunta)))
+
+
+def _frecuencias(texto):
+    """Frecuencias nombradas, en el orden en que aparecen."""
+    halladas = []
+    for valor, patron in FRECUENCIAS:
+        for m in re.finditer(patron, texto):
+            halladas.append((m.start(), valor))
+    return [v for _, v in sorted(halladas)]
+
+
+def _programaciones_de(usuario):
+    """Las mismas que ve en la sección Reportes (su organización y, con área, su área)."""
+    lista = ProgramacionReporte.objects.filter(
+        organizacion_id=usuario.organizacion_id, activa=True
+    ).select_related("area")
+    if usuario.rol_id != roles.ADMIN and usuario.area_id:
+        lista = lista.filter(area_id=usuario.area_id)
+    return lista
+
+
+def _describir_programacion(p):
+    return (
+        f"#{p.num} {p.get_frecuencia_display().lower()} de "
+        f"{p.area.nombre if p.area else 'toda la organización'}"
+    )
+
+
+def _elegir_programacion(usuario, texto, frecuencia_nueva=None):
+    """La programación a la que se refiere: por #n, por frecuencia o la única que hay."""
+    lista = _programaciones_de(usuario)
+    numero = re.search(r"#\s*(\d+)", texto)
+    if numero:
+        return list(lista.filter(pk=int(numero.group(1))))
+    frecuencias = [f for f in _frecuencias(texto) if f != frecuencia_nueva]
+    if frecuencias:
+        lista = lista.filter(frecuencia=frecuencias[0])
+    return list(lista.order_by("num")[:6])
+
+
+def _una_programacion(usuario, texto, frecuencia_nueva=None):
+    """``(programacion, error)``."""
+    lista = _elegir_programacion(usuario, texto, frecuencia_nueva)
+    if not lista:
+        return None, {
+            "texto": "No encontré esa programación entre las tuyas. Pregúntame «¿qué reportes "
+            "tengo programados?» para verlas.",
+            "codigo": "no_encontrado",
+        }
+    if len(lista) > 1:
+        opciones = [_describir_programacion(p) for p in lista[:5]]
+        return None, {
+            "texto": f"¿Cuál programación? {'; '.join(opciones)}. Dímela con su número, por "
+            "ejemplo «#" + str(lista[0].num) + "».",
+            "codigo": "ambiguo",
+            "opciones": opciones,
+        }
+    return lista[0], None
+
+
+def _serializar_programacion(usuario, datos, instancia=None):
+    """Valida con el mismo serializer de la sección Reportes (alcance y destinatarios)."""
+    from types import SimpleNamespace
+
+    from apps.reportes.serializers import ProgramacionReporteSerializer
+
+    s = ProgramacionReporteSerializer(
+        instancia,
+        data=datos,
+        partial=instancia is not None,
+        context={"request": SimpleNamespace(user=usuario)},
+    )
+    return s
+
+
+def preparar_programacion(usuario, dispositivo, pregunta):
+    """Nueva programación del área del dispositivo (el área asignada del usuario)."""
+    if not _puede_reportes(usuario):
+        return SIN_PERMISO_REPORTES
+    texto = agente._normalizar(pregunta)
+    area = dispositivo.area
+    frecuencias = _frecuencias(texto)
+    destinatarios, ambiguos = destinatarios_de(usuario, area, pregunta)
+    if ambiguos:
+        return _ambiguo(ambiguos)
+    if not frecuencias:
+        return {
+            "texto": banco()["preguntas_faltantes"]["frecuencia"],
+            "codigo": "datos_faltantes",
+            "faltan": ["frecuencia"],
+        }
+    if not destinatarios:
+        return {
+            "texto": banco()["preguntas_faltantes"]["destinatarios"],
+            "codigo": "datos_faltantes",
+            "faltan": ["destinatarios"],
+        }
+    frecuencia = frecuencias[0]
+    s = _serializar_programacion(
+        usuario,
+        {
+            "area": area.pk,
+            "frecuencia": frecuencia,
+            "destinatarios": [u.pk for u in destinatarios],
+        },
+    )
+    if not s.is_valid():
+        return {"texto": banco()["errores"]["sin_permiso"], "codigo": "sin_permiso"}
+    from apps.reportes import servicios
+
+    primera = servicios.desplazar(timezone.now(), frecuencia, 1)
+    return {
+        "texto": "Voy a programar un reporte "
+        f"{ProgramacionReporte.Frecuencia(frecuencia).label.lower()} del área {area.nombre} "
+        f"para {_nombres(destinatarios)}; el primero sale el "
+        f"{timezone.localtime(primera):%d/%m/%Y %H:%M}. ¿Lo programo? Responde «sí» o «cancela».",
+        "accion": _accion(
+            "programar",
+            pregunta,
+            area=area.pk,
+            frecuencia=frecuencia,
+            destinatarios=[u.pk for u in destinatarios],
+        ),
+    }
+
+
+def preparar_cambio_programacion(usuario, dispositivo, pregunta, cancelar=False):
+    if not _puede_reportes(usuario):
+        return SIN_PERMISO_REPORTES
+    texto = agente._normalizar(pregunta)
+    frecuencias = _frecuencias(texto)
+    # «Cambia la semanal a mensual»: la última es la nueva; con una sola, solo si se pide como
+    # cambio («a mensual», «que sea diaria»); si no, identifica a cuál programación se refiere.
+    pide_frecuencia = len(frecuencias) >= 2 or re.search(
+        r"\b(a|que sea|hazla|ponla|cambiala a|pasala a) (diari|semanal|mensual)", texto
+    )
+    nueva = frecuencias[-1] if frecuencias and pide_frecuencia and not cancelar else None
+    programacion, error = _una_programacion(usuario, texto, nueva)
+    if error:
+        return error
+    descripcion = _describir_programacion(programacion)
+    if cancelar:
+        return {
+            "texto": f"Voy a cancelar la programación {descripcion}: dejará de enviarse. "
+            "¿La cancelo? Responde «sí» o «no».",
+            "accion": _accion("cancelar_programacion", pregunta, programacion=programacion.num),
+        }
+    cambios = {}
+    partes = []
+    if nueva and nueva != programacion.frecuencia:
+        cambios["frecuencia"] = nueva
+        partes.append(f"frecuencia {ProgramacionReporte.Frecuencia(nueva).label.lower()}")
+    personas, ambiguos = destinatarios_de(usuario, dispositivo.area, pregunta)
+    if ambiguos:
+        return _ambiguo(ambiguos)
+    actuales = list(programacion.destinatarios)
+    if personas and QUITAR.search(texto):
+        quitar = {u.pk for u in personas}
+        actuales = [d for d in actuales if d not in quitar]
+        partes.append(f"sin {_nombres(personas)}")
+    elif personas:
+        actuales += [u.pk for u in personas if u.pk not in actuales]
+        partes.append(f"agregando a {_nombres(personas)}")
+    if actuales != list(programacion.destinatarios):
+        if not actuales:
+            return {
+                "texto": "La programación se quedaría sin destinatarios. Si ya no la quieres, "
+                "dime «cancela la programación».",
+                "codigo": "datos_faltantes",
+            }
+        cambios["destinatarios"] = actuales
+    if not cambios:
+        return {
+            "texto": "¿Qué cambio en la programación? Puedo cambiar su frecuencia (diaria, "
+            "semanal o mensual) o agregar o quitar destinatarios.",
+            "codigo": "datos_faltantes",
+            "faltan": ["cambio"],
+        }
+    s = _serializar_programacion(usuario, cambios, programacion)
+    if not s.is_valid():
+        return {"texto": banco()["errores"]["sin_permiso"], "codigo": "sin_permiso"}
+    return {
+        "texto": f"Voy a cambiar la programación {descripcion}: {', '.join(partes)}. ¿Aplico el "
+        "cambio? Responde «sí» o «no».",
+        "accion": _accion(
+            "editar_programacion", pregunta, programacion=programacion.num, cambios=cambios
+        ),
+    }
+
+
+# ── Confirmar cualquier acción preparada ────────────────────────────────────────────────────
+
+
+def confirmar(usuario, dispositivo, accion):
+    """Ejecuta una acción preparada y vigente. Revalida alcance y permisos al ejecutarla."""
+    if vencida(accion):
+        return {
+            "texto": banco()["errores"]["accion_vencida"],
+            "codigo": "accion_vencida",
+            "propuesta": accion["pregunta"],
+        }
+    tipo = accion.get("tipo", "reporte")
+    if tipo != "reporte" and not _puede_reportes(usuario):
+        return SIN_PERMISO_REPORTES
+    if tipo == "reporte":
+        r = confirmar_reporte(usuario, dispositivo, accion)
+        if "reporte" in r and accion.get("destinatarios"):
+            from apps.reportes import servicios
+
+            reporte = Reporte.objects.get(pk=r["reporte"]["num"])
+            correos = servicios.enviar_reporte(reporte, accion["destinatarios"])
+            r["texto"] += f" También lo envié por correo a {agente._n(len(correos), 'persona')}."
+        return r
+    if tipo == "enviar":
+        from apps.reportes import servicios
+
+        reporte = Reporte.objects.filter(
+            pk=accion["reporte"], organizacion_id=usuario.organizacion_id
+        ).first()
+        if reporte is None:
+            return {"texto": banco()["errores"]["no_encontrado"], "codigo": "no_encontrado"}
+        correos = servicios.enviar_reporte(reporte, accion["destinatarios"])
+        if not correos:
+            return {
+                "texto": "No lo envié: ninguno de los destinatarios está activo.",
+                "codigo": "sin_datos",
+            }
+        return {
+            "texto": f"Listo: envié el reporte #{reporte.num} con su PDF a "
+            f"{agente._n(len(correos), 'persona')}."
+        }
+    if tipo == "programar":
+        s = _serializar_programacion(
+            usuario,
+            {
+                "area": accion["area"],
+                "frecuencia": accion["frecuencia"],
+                "destinatarios": accion["destinatarios"],
+            },
+        )
+        if not s.is_valid():
+            return {"texto": banco()["errores"]["sin_permiso"], "codigo": "sin_permiso"}
+        p = s.save(organizacion=usuario.organizacion, creada_por=usuario)
+        return {
+            "texto": f"Listo: quedó programado el reporte {_describir_programacion(p)}. El "
+            f"primero sale el {timezone.localtime(p.proxima_ejecucion):%d/%m/%Y %H:%M}; lo "
+            "puedes ver y cambiar en Reportes."
+        }
+    programacion = _programaciones_de(usuario).filter(pk=accion["programacion"]).first()
+    if programacion is None:
+        return {"texto": banco()["errores"]["no_encontrado"], "codigo": "no_encontrado"}
+    if tipo == "cancelar_programacion":
+        programacion.activa = False
+        programacion.save(update_fields=["activa"])
+        return {
+            "texto": f"Listo: cancelé la programación {_describir_programacion(programacion)}. "
+            "Ya no se enviará."
+        }
+    s = _serializar_programacion(usuario, accion["cambios"], programacion)
+    if not s.is_valid():
+        return {"texto": banco()["errores"]["sin_permiso"], "codigo": "sin_permiso"}
+    p = s.save()
+    return {"texto": f"Listo: actualicé la programación {_describir_programacion(p)}."}

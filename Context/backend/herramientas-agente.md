@@ -26,23 +26,38 @@ octubre, últimos N días) se resuelven en el servidor con `agente.periodo_de`.
 | `umbrales` | Límites de advertencia y peligro por variable | ídem | No | `Umbral` |
 | `reportes` | Últimos reportes generados del área | ídem | No | `Reporte` |
 | `programaciones` | Programaciones vigentes (frecuencia, área, destinatarios, próxima) | ADMIN (organización), SUPER y ANALISTA (propias) | No | `ProgramacionReporte` |
+| `programar` | Nueva programación del área: frecuencia y destinatarios | ADMIN, SUPER, ANALISTA | Sí, al confirmar | `ProgramacionReporteSerializer` (mismas validaciones que Reportes) |
+| `editar_programacion` / `cancelar_programacion` | Cambia frecuencia o destinatarios, o la desactiva | ídem | Sí, al confirmar | ídem |
+| `enviar` | Envía por correo, con PDF, el último reporte del área (o el #n) a usuarios de la organización | ídem | Sí, al confirmar | `servicios.enviar_reporte` (el mismo envío de las programaciones) |
 | `areas` | Áreas que puede consultar y sus dispositivos | ídem | No | `areas_visibles` |
 | `grafica` / `comparativa` | Gráfica o comparación de periodos o dispositivos | ídem | No | `graficas`, `calcular_cifras` |
-| `reporte` | Preparar: dispositivos, lecturas válidas y alertas del periodo. Confirmar: genera y guarda | ADMIN, SUPER, ANALISTA | Sí, solo al confirmar | `servicios.calcular_cifras` y `servicios.generar_reporte` |
+| `reporte` | Preparar: dispositivos, lecturas válidas y alertas del periodo (y destinatarios si pide enviarlo). Confirmar: genera, guarda y envía | ADMIN, SUPER, ANALISTA | Sí, solo al confirmar | `servicios.calcular_cifras`, `generar_reporte` y `enviar_reporte` |
 | `banco` | Textos fijos: niveles, calentamiento, «Sin conexión», rangos físicos, normas, capacidades por rol, cambios fuera de alcance | todos | No | `banco_memoria.json` |
 
 OPER*: solo con `acceso_agente` y sobre su dispositivo asignado. SUPER y ANALISTA con área
 solo ven su área; sin área, la organización. El alcance se aplica dentro de cada herramienta
 (`common.scoping`); el agente nunca recibe ids de otra organización.
 
-## Reporte en dos pasos
+Los reportes, envíos y programaciones son siempre del **área** del dispositivo del agente (el área
+asignada del usuario), nunca de toda la organización.
+
+## Destinatarios
+
+`destinatarios_de` resuelve en el servidor los nombres a usuarios activos de la misma
+organización: nombre y apellido, solo el nombre si es único, «a mí», «al supervisor» o «a los
+analistas» (del área). Si un nombre coincide con varios, responde `ambiguo` con hasta 5
+`opciones` y la respuesta del usuario («Ana López») completa la misma petición. Usuarios de otra
+organización nunca se resuelven.
+
+## Acciones en dos pasos
 
 1. «Hazme un reporte» sin periodo → `codigo: datos_faltantes`, `faltan: ["periodo"]` y la
    pregunta fija del banco. La respuesta del usuario («de esta semana») completa la petición.
 2. Con periodo → `preparar_reporte` calcula las cifras (sin guardar) y responde
    `accion: {id, vence}` (vigencia de 10 min, guardada en `PreguntaAgente.datos`).
-3. «Sí» (o `accion` con el id) → `confirmar_reporte` genera el texto con IA y guarda el
-   reporte. «No» o «cancela» lo descartan. Vencida → `accion_vencida` y un «sí» la prepara de
+3. «Sí» (o `accion` con el id) → `herramientas.confirmar` revalida permisos y alcance y
+   ejecuta: genera y guarda el reporte (y lo envía si se pidió), envía uno existente, o crea,
+   cambia o cancela la programación. «No» o «cancela» lo descartan. Vencida → `accion_vencida` y un «sí» la prepara de
    nuevo. Sin IA → `ia_no_disponible` y no se guarda nada.
 
 ```json
@@ -53,10 +68,23 @@ POST /api/v1/agente/ {"pregunta": "sí", "dispositivo": 5}
 → {"texto": "Listo: generé el reporte de Almacén de esta semana …", "reporte": {"num": 31, ...}}
 ```
 
+Lo mismo vale para programar («programa un reporte semanal para mí y para Ana López»), cambiar
+(«cambia la programación semanal a mensual», «agrega a Ana a la programación»), cancelar
+(«cancela la programación #3») y enviar («envía el último reporte a mi supervisor»). Si falta la
+frecuencia o a quién, lo pregunta con el texto del banco.
+
+## Protección del servidor (`carga.py`)
+
+Según la memoria libre (`/proc/meminfo`): normal (≥ 1200 MB) hasta 30 preguntas por usuario por
+minuto; alta (< 1200 MB) 10 y sin IA; crítica (< 500 MB) 4 y sin IA. Sin IA el agente sigue
+respondiendo con reglas y herramientas. Si TimescaleDB no responde o se activó
+`manage.py agente_mantenimiento on`, responde `mantenimiento`. Las precargas de sugerencias en esos
+casos reciben 429 y no cuentan para el límite. Umbrales y límites en `settings` (`NUCLEO_AGENTE_*`).
+
 ## Códigos de error
 
-`sin_permiso`, `datos_faltantes`, `periodo_invalido`, `sin_datos`, `fuera_de_alcance`,
-`accion_vencida`, `ia_no_disponible`. Sus textos están en `banco_memoria.json` (`errores`).
+`sin_permiso`, `datos_faltantes`, `ambiguo`, `periodo_invalido`, `sin_datos`, `no_encontrado`,
+`fuera_de_alcance`, `accion_vencida`, `ia_no_disponible`, `mantenimiento`, `limite_peticiones`. Sus textos están en `banco_memoria.json` (`errores`).
 
 ## Banco de memoria
 
@@ -70,11 +98,11 @@ Sus textos se devuelven tal cual.
 
 `HerramientasAgenteTests` (banco, cambios fuera de alcance, pendientes con aislamiento entre
 organizaciones y áreas, detalle de alerta, programaciones, reporte con dato faltante,
-cancelación, acción vencida y sin datos) y los casos de `casos_agente.py`.
+cancelación, acción vencida sin datos, programar, cambiar y cancelar programaciones, envío por correo, nombres ambiguos
+y de otra organización, límite por carga y mantenimiento) y los casos de `casos_agente.py`.
 
-## Pendiente
+## Fuera de alcance por decisión
 
-- Reporte de toda la organización desde el chat (hoy es del área del dispositivo del agente).
-- Crear o cambiar programaciones y enviar reportes por correo desde el chat (hoy solo se consultan).
+- Reportes de toda la organización desde el chat: solo del área asignada.
 - Consultas de varios dispositivos a la vez (cada agente responde por su dispositivo; los
   pendientes sí cubren todo el alcance).

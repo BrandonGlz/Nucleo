@@ -176,6 +176,27 @@ def desplazar(fecha, frecuencia, meses_o_periodos=1):
     return fecha.replace(year=anio, month=mes, day=dia)
 
 
+def enviar_reporte(reporte, destinatarios, asunto=None):
+    """Envía el reporte en PDF a los usuarios activos de su organización. Devuelve los correos."""
+    correos = list(
+        Usuario.objects.filter(
+            pk__in=destinatarios,
+            organizacion=reporte.organizacion,
+            estado_usuario_id=roles.USUARIO_ACTIVO,
+        ).values_list("correo", flat=True)
+    )
+    if correos:
+        mensaje = EmailMessage(
+            subject=asunto or f"[Núcleo] Reporte de {reporte.organizacion.nombre}",
+            body=reporte.contenido,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=correos,
+        )
+        mensaje.attach(f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf")
+        mensaje.send()
+    return correos
+
+
 def programaciones_vencidas(ahora):
     return ProgramacionReporte.objects.filter(
         activa=True, proxima_ejecucion__lte=ahora
@@ -201,25 +222,12 @@ def ejecutar_programacion(programacion, ahora):
         Reporte.Origen.PROGRAMADO,
         usuario=programacion.creada_por,
     )
-    correos = list(
-        Usuario.objects.filter(
-            pk__in=programacion.destinatarios,
-            organizacion=programacion.organizacion,
-            estado_usuario_id=roles.USUARIO_ACTIVO,
-        ).values_list("correo", flat=True)
+    correos = enviar_reporte(
+        reporte,
+        programacion.destinatarios,
+        f"[Núcleo] Reporte {programacion.get_frecuencia_display().lower()} "
+        f"de {programacion.organizacion.nombre}",
     )
-    if correos:
-        mensaje = EmailMessage(
-            subject=(
-                f"[Núcleo] Reporte {programacion.get_frecuencia_display().lower()} "
-                f"de {programacion.organizacion.nombre}"
-            ),
-            body=reporte.contenido,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=correos,
-        )
-        mensaje.attach(f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf")
-        mensaje.send()
 
     siguiente = programacion.proxima_ejecucion
     while siguiente <= ahora:

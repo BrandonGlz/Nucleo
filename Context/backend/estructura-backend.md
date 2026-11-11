@@ -277,7 +277,7 @@ Cada pregunta sigue el mismo camino, en `apps/reportes/`:
    `ultima`, `resumen` (las tres variables), `alertas`, `conexion` (con el aviso de
    calentamiento de 20 min del sensor de aire), `sensores`, `umbrales`, `reportes`
    (generados), `grafica`, `comparativa`, `detalle_alerta`, `pendientes` (alcance del
-   usuario), `programaciones`, `banco` (textos fijos de `banco_memoria.json`) y `reporte`
+   usuario), `programaciones`, `programar`, `editar_programacion`, `cancelar_programacion`, `enviar`, `banco` (textos fijos de `banco_memoria.json`) y `reporte`
    (en dos pasos: prepara y genera solo al confirmar). Si se pide un cambio («cambia el
    umbral», «atiende la alerta»), se responde con el texto fijo de dónde hacerlo en la
    plataforma. Detalle de cada herramienta en `Context/backend/herramientas-agente.md`. Cuando las reglas no reconocen la pregunta, la IA local (`puente.enrutar`)

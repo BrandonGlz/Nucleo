@@ -11,7 +11,7 @@ from unittest import mock
 from django.db import transaction
 from rest_framework.test import APIClient
 
-from . import agente, interprete, puente
+from . import agente, carga, interprete, puente
 from .casos_agente import CASOS
 
 
@@ -51,6 +51,8 @@ def evaluar(usuario, dispositivo, casos=CASOS):
         transaction.atomic(),
         mock.patch.object(puente, "con_puente", return_value=False),
         mock.patch.object(puente, "activo", return_value=True),
+        # La evaluación hace muchas preguntas seguidas: no le aplica el límite por minuto.
+        mock.patch.object(carga, "excede_limite", return_value=False),
     ):
         for caso in casos:
             # Cada caso es independiente: sin la racha de repeticiones del anterior.

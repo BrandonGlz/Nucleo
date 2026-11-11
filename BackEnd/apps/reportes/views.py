@@ -16,6 +16,7 @@ from apps.dispositivos.models import Dispositivo
 from apps.reportes import (
     agente,
     aprendizaje,
+    carga,
     graficas,
     herramientas,
     ia,
@@ -143,6 +144,17 @@ class AgenteView(APIView):
         if dispositivo is None:
             raise NotFound("El dispositivo no existe o no está a su alcance.")
         original = entrada.validated_data["pregunta"]
+        # Protección del servidor: mantenimiento o caída de las lecturas, y límite de peticiones
+        # por minuto según la memoria libre (con poca memoria, además, sin IA).
+        nivel = carga.nivel()
+        errores = herramientas.banco()["errores"]
+        if nivel == "mantenimiento" or carga.excede_limite(request.user, nivel):
+            codigo = "mantenimiento" if nivel == "mantenimiento" else "limite_peticiones"
+            if entrada.validated_data.get("precarga"):
+                return Response({"codigo": codigo}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+            return Response(
+                {"texto": errores[codigo], "codigo": codigo, "via": "PREDEFINIDA", "pasos": []}
+            )
         pregunta = agente.con_contexto(original, entrada.validated_data.get("anterior", ""))
         # El ESP32 del dispositivo es el puente de su agente: sin él, el agente no responde.
         if not puente.activo(dispositivo):
@@ -187,9 +199,15 @@ class AgenteView(APIView):
                 "pregunta": "",
             }
         faltan = (ultimo.datos or {}).get("faltan") if ultimo else None
-        if faltan and interprete._periodo_nombrado(original) and not agente._tema(original):
-            # Respondió el dato que faltaba («esta semana»): se completa la petición.
-            pregunta = f"{faltan['pregunta']} de {original}"
+        if (
+            faltan
+            and not agente._tema(original)
+            # Una petición completa nueva («programa un reporte para mí») no se junta.
+            and interprete.interpretar(original).intencion in ("no_entendida", "comentario")
+            and self._completa(request.user, dispositivo, faltan, original)
+        ):
+            # Respondió el dato que faltaba («esta semana», «semanal», «a Ana»): se completa.
+            pregunta = f"{faltan['pregunta']} {original}"
         retomada = None
         if (
             agente._tema(original) is None
@@ -222,7 +240,7 @@ class AgenteView(APIView):
                 {"datos": {"fijo": True}},
             )
         elif accion and herramientas.es_confirmacion(original):
-            r = herramientas.confirmar_reporte(request.user, dispositivo, accion)
+            r = herramientas.confirmar(request.user, dispositivo, accion)
             datos = {"fijo": True}
             if r.get("propuesta"):
                 datos["propuesta"] = r.pop("propuesta")
@@ -399,6 +417,32 @@ class AgenteView(APIView):
                 return p.pregunta
         return None
 
+    @staticmethod
+    def _datos_accion(r, pregunta):
+        """Lo que se guarda de una acción preparada o de un dato que faltó (para retomarlo)."""
+        datos = {"fijo": True}
+        if "accion" in r:
+            datos["accion"] = r["accion"]
+        if "faltan" in r:
+            datos["faltan"] = {"campos": r.pop("faltan"), "pregunta": pregunta}
+        if "opciones" in r:
+            # Nombre ambiguo: la respuesta («Ana López») completa la misma petición.
+            datos["faltan"] = {"campos": ["destinatarios"], "pregunta": pregunta}
+        return datos
+
+    def _completa(self, usuario, dispositivo, faltan, original):
+        """True si el mensaje trae el dato que faltaba (periodo, frecuencia o destinatarios)."""
+        campos = faltan.get("campos", [])
+        texto = agente._normalizar(original)
+        if "periodo" in campos and interprete._periodo_nombrado(original):
+            return True
+        if "frecuencia" in campos and herramientas._frecuencias(texto):
+            return True
+        if "destinatarios" in campos:
+            elegidos, ambiguos = herramientas.destinatarios_de(usuario, dispositivo.area, original)
+            return bool(elegidos or ambiguos)
+        return False
+
     def _ultimo(self, usuario, dispositivo):
         """El último intercambio reciente (no precargado): lo que el agente ofreció («¿Quieres
         …?»), la acción que espera confirmación o el dato que le faltaba."""
@@ -480,6 +524,16 @@ class AgenteView(APIView):
         Via = PreguntaAgente.Via
         intencion = interprete.interpretar(pregunta).intencion
         fijo = {"datos": {"fijo": True}}
+        if intencion in ("programar", "editar_programacion", "cancelar_programacion", "enviar"):
+            if intencion == "programar":
+                r = herramientas.preparar_programacion(usuario, dispositivo, pregunta)
+            elif intencion == "enviar":
+                r = herramientas.preparar_envio(usuario, dispositivo, pregunta)
+            else:
+                r = herramientas.preparar_cambio_programacion(
+                    usuario, dispositivo, pregunta, cancelar=intencion == "cancelar_programacion"
+                )
+            return r, Via.PREDEFINIDA, {"datos": self._datos_accion(r, pregunta)}
         if intencion == "modificar":
             return herramientas.modificar(pregunta), Via.PREDEFINIDA, fijo
         if intencion == "banco":
@@ -521,12 +575,7 @@ class AgenteView(APIView):
         if agente.pide_reporte(pregunta):
             # Dos pasos: aquí solo se prepara; se genera cuando el usuario confirma.
             r = herramientas.preparar_reporte(usuario, dispositivo, pregunta)
-            datos = {"fijo": True}
-            if "accion" in r:
-                datos["accion"] = r["accion"]
-            if "faltan" in r:
-                datos["faltan"] = {"campos": r["faltan"], "pregunta": pregunta}
-            return r, Via.PREDEFINIDA, {"datos": datos}
+            return r, Via.PREDEFINIDA, {"datos": self._datos_accion(r, pregunta)}
         tema = agente._tema(pregunta)
         if tema is None and not agente.pide_ultima(pregunta):
             return self._sin_tema(usuario, dispositivo, pregunta, ruteada)

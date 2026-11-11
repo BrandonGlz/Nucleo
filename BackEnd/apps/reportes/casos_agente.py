@@ -166,6 +166,25 @@ CASOS = [
         "contiene": ["de que periodo"],
         "no_contiene": ["listo"],
     },
+    # ── Envíos y programaciones (dos pasos: nada se guarda ni se envía sin «sí») ──────────
+    {
+        "pregunta": "programa un reporte semanal",
+        "intencion": "programar",
+        "contiene": ["a quien"],
+        "no_contiene": ["listo"],
+    },
+    {
+        "pregunta": "programa un reporte para mí",
+        "intencion": "programar",
+        "contiene": ["cada cuando"],
+    },
+    {"pregunta": "cancela la programación semanal", "intencion": "cancelar_programacion"},
+    {"pregunta": "cambia la programación semanal a mensual", "intencion": "editar_programacion"},
+    {
+        "pregunta": "envía el último reporte a mi correo",
+        "intencion": "enviar",
+        "no_contiene": ["listo", "envie"],
+    },
     # ── Conversación ────────────────────────────────────────────────────────────────────
     {"pregunta": "gracias", "intencion": "comentario", "contiene": ["con gusto"]},
     {"pregunta": "sí", "intencion": "comentario", "contiene": ["que mas quieres saber"]},

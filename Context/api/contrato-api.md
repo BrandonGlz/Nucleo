@@ -120,11 +120,15 @@ Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
                                             {"accion"?} confirma una acción preparada;
                                             responde {"texto", "via", "registro", "pasos"}
                                             y, según el caso, "codigo" (sin_permiso,
-                                            datos_faltantes, periodo_invalido, sin_datos,
-                                            fuera_de_alcance, accion_vencida,
-                                            ia_no_disponible), "faltan" [campos] o
-                                            "accion" {id, vence} (reporte preparado que
-                                            espera «sí» o «cancela», 10 min)
+                                            datos_faltantes, ambiguo, periodo_invalido,
+                                            sin_datos, no_encontrado, fuera_de_alcance,
+                                            accion_vencida, ia_no_disponible,
+                                            mantenimiento, limite_peticiones), "opciones"
+                                            (nombres ambiguos, máx. 5) o "accion" {id,
+                                            vence} (reporte, envío por correo o
+                                            programación preparados que esperan «sí» o
+                                            «cancela», 10 min). Una precarga con el servidor
+                                            limitado o en mantenimiento recibe 429
                                             ("pasos": lo que el agente hizo, para «Cómo lo
                                             resolví») y, si la pregunta es de una
                                             variable con lecturas sobre el máximo, "picos"

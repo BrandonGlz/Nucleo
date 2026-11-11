@@ -1,92 +1,379 @@
 {
-  "version": 1,
+  "version": 2,
   "descripcion": "Conocimiento fijo de Nico AI: se consulta sin modelo (herramientas.consultar_banco_memoria) y sus respuestas se devuelven tal cual.",
   "valores": {
-    "variables": {"TEMP": "temperatura (°C)", "HUM": "humedad relativa (%HR)", "AIRE": "calidad del aire (ppm de eCO2)"},
-    "niveles": ["Normal", "Advertencia", "Peligro"],
-    "estados_alerta": ["Pendiente", "Atendida", "Descartada"],
-    "estados_sensor": ["Operando", "Requiere calibración", "Falla"],
-    "estados_dispositivo": ["En línea", "Calentando", "Sin conexión", "Batería baja", "Mantenimiento", "Baja"],
-    "frecuencias": ["Diaria", "Semanal", "Mensual"],
-    "periodos": ["hoy", "ayer", "esta semana", "la semana pasada", "este mes", "el mes pasado", "los últimos N días", "un mes por su nombre (octubre)"]
+    "variables": {
+      "TEMP": "temperatura (°C)",
+      "HUM": "humedad relativa (%HR)",
+      "AIRE": "calidad del aire (ppm de eCO2)"
+    },
+    "niveles": [
+      "Normal",
+      "Advertencia",
+      "Peligro"
+    ],
+    "estados_alerta": [
+      "Pendiente",
+      "Atendida",
+      "Descartada"
+    ],
+    "estados_sensor": [
+      "Operando",
+      "Requiere calibración",
+      "Falla"
+    ],
+    "estados_dispositivo": [
+      "En línea",
+      "Calentando",
+      "Sin conexión",
+      "Batería baja",
+      "Mantenimiento",
+      "Baja"
+    ],
+    "frecuencias": [
+      "Diaria",
+      "Semanal",
+      "Mensual"
+    ],
+    "periodos": [
+      "hoy",
+      "ayer",
+      "esta semana",
+      "la semana pasada",
+      "este mes",
+      "el mes pasado",
+      "los últimos N días",
+      "un mes por su nombre (octubre)"
+    ]
   },
   "intenciones": {
     "variable": {
-      "obligatorios": ["variable"],
-      "opcionales": ["periodo", "dato"],
-      "predeterminados": {"periodo": "los últimos 7 días"},
-      "ejemplos": ["¿cómo estuvo la humedad esta semana?", "¿cuál fue la temperatura máxima de ayer?", "¿a qué hora hubo más CO2 ayer?"]
+      "obligatorios": [
+        "variable"
+      ],
+      "opcionales": [
+        "periodo",
+        "dato"
+      ],
+      "predeterminados": {
+        "periodo": "los últimos 7 días"
+      },
+      "ejemplos": [
+        "¿cómo estuvo la humedad esta semana?",
+        "¿cuál fue la temperatura máxima de ayer?",
+        "¿a qué hora hubo más CO2 ayer?"
+      ]
     },
-    "ultima": {"obligatorios": [], "opcionales": ["variable"], "ejemplos": ["la última medición del aire", "¿qué temperatura marca ahorita?"]},
-    "resumen": {"obligatorios": [], "opcionales": ["periodo"], "ejemplos": ["dame las medidas del sensor", "¿cómo está el ambiente?"]},
-    "alertas": {"obligatorios": [], "opcionales": ["periodo", "nivel", "estado"], "ejemplos": ["¿hay alertas pendientes?", "¿cuántas alertas de peligro hubo en octubre?"]},
-    "detalle_alerta": {"obligatorios": [], "opcionales": ["periodo"], "ejemplos": ["¿quién atendió la alerta de ayer?", "detalle de la última alerta"]},
-    "pendientes": {"obligatorios": [], "opcionales": [], "ejemplos": ["¿qué hay pendiente?", "¿algo está en peligro?"]},
-    "conexion": {"obligatorios": [], "opcionales": [], "ejemplos": ["¿sigue conectado?", "¿cuánta batería le queda?"]},
-    "sensores": {"obligatorios": [], "opcionales": [], "ejemplos": ["¿qué sensores tiene?", "¿cuándo se calibró el sensor?"]},
-    "umbrales": {"obligatorios": [], "opcionales": ["variable"], "ejemplos": ["¿cuál es el límite de temperatura?"]},
-    "reportes": {"obligatorios": [], "opcionales": [], "ejemplos": ["¿qué reportes hay?"]},
-    "programaciones": {"obligatorios": [], "opcionales": [], "ejemplos": ["¿qué reportes tengo programados?"]},
-    "reporte": {"obligatorios": ["periodo"], "opcionales": [], "confirmacion": true, "ejemplos": ["genera el reporte de octubre"]},
-    "grafica": {"obligatorios": [], "opcionales": ["variable", "periodo"], "ejemplos": ["gráfica de la humedad de esta semana"]},
-    "comparativa": {"obligatorios": [], "opcionales": ["variable", "periodo"], "ejemplos": ["compara la temperatura con la semana pasada"]},
-    "areas": {"obligatorios": [], "opcionales": [], "ejemplos": ["¿qué áreas tengo?"]}
+    "ultima": {
+      "obligatorios": [],
+      "opcionales": [
+        "variable"
+      ],
+      "ejemplos": [
+        "la última medición del aire",
+        "¿qué temperatura marca ahorita?"
+      ]
+    },
+    "resumen": {
+      "obligatorios": [],
+      "opcionales": [
+        "periodo"
+      ],
+      "ejemplos": [
+        "dame las medidas del sensor",
+        "¿cómo está el ambiente?"
+      ]
+    },
+    "alertas": {
+      "obligatorios": [],
+      "opcionales": [
+        "periodo",
+        "nivel",
+        "estado"
+      ],
+      "ejemplos": [
+        "¿hay alertas pendientes?",
+        "¿cuántas alertas de peligro hubo en octubre?"
+      ]
+    },
+    "detalle_alerta": {
+      "obligatorios": [],
+      "opcionales": [
+        "periodo"
+      ],
+      "ejemplos": [
+        "¿quién atendió la alerta de ayer?",
+        "detalle de la última alerta"
+      ]
+    },
+    "pendientes": {
+      "obligatorios": [],
+      "opcionales": [],
+      "ejemplos": [
+        "¿qué hay pendiente?",
+        "¿algo está en peligro?"
+      ]
+    },
+    "conexion": {
+      "obligatorios": [],
+      "opcionales": [],
+      "ejemplos": [
+        "¿sigue conectado?",
+        "¿cuánta batería le queda?"
+      ]
+    },
+    "sensores": {
+      "obligatorios": [],
+      "opcionales": [],
+      "ejemplos": [
+        "¿qué sensores tiene?",
+        "¿cuándo se calibró el sensor?"
+      ]
+    },
+    "umbrales": {
+      "obligatorios": [],
+      "opcionales": [
+        "variable"
+      ],
+      "ejemplos": [
+        "¿cuál es el límite de temperatura?"
+      ]
+    },
+    "reportes": {
+      "obligatorios": [],
+      "opcionales": [],
+      "ejemplos": [
+        "¿qué reportes hay?"
+      ]
+    },
+    "programaciones": {
+      "obligatorios": [],
+      "opcionales": [],
+      "ejemplos": [
+        "¿qué reportes tengo programados?"
+      ]
+    },
+    "reporte": {
+      "obligatorios": [
+        "periodo"
+      ],
+      "opcionales": [
+        "destinatarios"
+      ],
+      "confirmacion": true,
+      "ejemplos": [
+        "genera el reporte de octubre"
+      ]
+    },
+    "grafica": {
+      "obligatorios": [],
+      "opcionales": [
+        "variable",
+        "periodo"
+      ],
+      "ejemplos": [
+        "gráfica de la humedad de esta semana"
+      ]
+    },
+    "comparativa": {
+      "obligatorios": [],
+      "opcionales": [
+        "variable",
+        "periodo"
+      ],
+      "ejemplos": [
+        "compara la temperatura con la semana pasada"
+      ]
+    },
+    "areas": {
+      "obligatorios": [],
+      "opcionales": [],
+      "ejemplos": [
+        "¿qué áreas tengo?"
+      ]
+    },
+    "programar": {
+      "obligatorios": [
+        "frecuencia",
+        "destinatarios"
+      ],
+      "opcionales": [],
+      "confirmacion": true,
+      "ejemplos": [
+        "programa un reporte semanal para mí y para Ana López"
+      ]
+    },
+    "editar_programacion": {
+      "obligatorios": [
+        "cambio"
+      ],
+      "opcionales": [
+        "programacion"
+      ],
+      "confirmacion": true,
+      "ejemplos": [
+        "cambia la programación semanal a mensual",
+        "agrega a Ana a la programación"
+      ]
+    },
+    "cancelar_programacion": {
+      "obligatorios": [],
+      "opcionales": [
+        "programacion"
+      ],
+      "confirmacion": true,
+      "ejemplos": [
+        "cancela la programación #3"
+      ]
+    },
+    "enviar": {
+      "obligatorios": [
+        "destinatarios"
+      ],
+      "opcionales": [
+        "reporte"
+      ],
+      "confirmacion": true,
+      "ejemplos": [
+        "envía el último reporte a mi supervisor",
+        "genera el reporte de esta semana y envíaselo a Ana"
+      ]
+    }
   },
   "preguntas_faltantes": {
     "variable": "¿De cuál variable: temperatura, humedad o calidad del aire?",
     "periodo": "¿De qué periodo: hoy, esta semana o este mes?",
     "area": "¿De cuál área?",
-    "dispositivo": "¿De cuál dispositivo?"
+    "dispositivo": "¿De cuál dispositivo?",
+    "frecuencia": "¿Cada cuándo lo envío: diario, semanal o mensual?",
+    "destinatarios": "¿A quién se lo envío? Dime su nombre o «a mí»."
   },
   "explicaciones": [
     {
       "clave": "niveles",
-      "palabras": ["nivel", "niveles", "advertencia", "peligro", "que significa", "normal"],
+      "palabras": [
+        "nivel",
+        "niveles",
+        "advertencia",
+        "peligro",
+        "que significa",
+        "normal"
+      ],
       "texto": "Cada lectura se compara con los umbrales de su dispositivo: Normal si está dentro del rango de advertencia, Advertencia si sale de ese rango y Peligro si sale del rango de peligro. Las de advertencia y peligro generan una alerta y se avisa al supervisor del área."
     },
     {
       "clave": "calentando",
-      "palabras": ["calentando", "calentamiento", "estabiliz", "por que dice calentando"],
+      "palabras": [
+        "calentando",
+        "calentamiento",
+        "estabiliz",
+        "por que dice calentando"
+      ],
       "texto": "El sensor de calidad del aire (CCS811) necesita 20 minutos de calentamiento cada vez que el dispositivo arranca. Mientras tanto sus lecturas no son estables: no generan alertas ni cuentan en estadísticas y reportes. Temperatura y humedad sí están disponibles."
     },
     {
       "clave": "sin_conexion",
-      "palabras": ["sin conexion", "desconectado", "cuando se marca", "deja de reportar"],
+      "palabras": [
+        "sin conexion",
+        "desconectado",
+        "cuando se marca",
+        "deja de reportar"
+      ],
       "texto": "Un dispositivo se marca «Sin conexión» cuando pasan más de 3 intervalos de muestreo sin recibir lecturas (con muestreo cada 60 s, unos 3 minutos). Vuelve a «En línea» en cuanto envía una lectura."
     },
     {
       "clave": "rangos",
-      "palabras": ["rango fisico", "rangos validos", "valor imposible", "lectura invalida"],
+      "palabras": [
+        "rango fisico",
+        "rangos validos",
+        "valor imposible",
+        "lectura invalida"
+      ],
       "texto": "Solo se guardan lecturas dentro de los rangos físicos de los sensores: temperatura de -40 a 80 °C, humedad de 0 a 100 %HR y calidad del aire de 0 a 10000 ppm. Lo que sale de esos rangos se descarta como lectura inválida."
     },
     {
       "clave": "normas",
-      "palabras": ["norma", "normas", "certifica", "nom", "cumplimiento"],
+      "palabras": [
+        "norma",
+        "normas",
+        "certifica",
+        "nom",
+        "cumplimiento"
+      ],
       "texto": "Núcleo no certifica el cumplimiento de ninguna norma: mide temperatura, humedad y calidad del aire y compara con los umbrales que define tu organización."
     },
     {
       "clave": "prediccion",
-      "palabras": ["predic", "pronostic", "va a subir", "va a bajar", "manana"],
+      "palabras": [
+        "predic",
+        "pronostic",
+        "va a subir",
+        "va a bajar",
+        "manana"
+      ],
       "texto": "No hago predicciones: solo trabajo con las lecturas ya registradas. Puedo mostrarte la tendencia reciente, por ejemplo: «gráfica de la temperatura de esta semana»."
     }
   ],
   "capacidades": {
-    "ADMIN": "Puedo responderte sobre las lecturas actuales y el histórico de tus dispositivos, sus alertas y quién las atendió, el estado de dispositivos y sensores, los umbrales, los reportes generados y programados, y generar reportes con IA (te muestro un resumen y espero tu confirmación). No modifico nada: umbrales, usuarios, dispositivos y alertas se gestionan en la plataforma.",
-    "SUPER": "Puedo responderte sobre las lecturas actuales y el histórico de los dispositivos de tu área, sus alertas y quién las atendió, el estado de dispositivos y sensores, los umbrales, tus reportes y programaciones, y generar reportes con IA (con tu confirmación). No modifico nada desde el chat.",
-    "ANALISTA": "Puedo responderte sobre las lecturas actuales y el histórico de los dispositivos de tu área, sus alertas, el estado de dispositivos y sensores, los umbrales, tus reportes y programaciones, y generar reportes con IA (con tu confirmación). No modifico nada desde el chat.",
+    "ADMIN": "Puedo responderte sobre las lecturas actuales y el histórico de tus dispositivos, sus alertas y quién las atendió, el estado de dispositivos y sensores, los umbrales y los reportes. También genero reportes del área con IA, los envío por correo a usuarios de tu organización y creo, cambio o cancelo programaciones de reportes; antes de hacerlo te muestro un resumen y espero tu «sí». No modifico umbrales, usuarios, dispositivos ni alertas: eso se hace en la plataforma.",
+    "SUPER": "Puedo responderte sobre las lecturas actuales y el histórico de los dispositivos de tu área, sus alertas y quién las atendió, el estado de dispositivos y sensores, los umbrales y los reportes. También genero reportes de tu área con IA, los envío por correo y creo, cambio o cancelo programaciones, siempre con tu confirmación. No modifico umbrales, usuarios, dispositivos ni alertas desde el chat.",
+    "ANALISTA": "Puedo responderte sobre las lecturas actuales y el histórico de los dispositivos de tu área, sus alertas, el estado de dispositivos y sensores, los umbrales y los reportes. También genero reportes de tu área con IA, los envío por correo y creo, cambio o cancelo programaciones, siempre con tu confirmación. No modifico umbrales, usuarios, dispositivos ni alertas desde el chat.",
     "OPER": "Puedo responderte sobre las lecturas, alertas, sensores y umbrales de tu dispositivo asignado. Los reportes los generan administradores, supervisores y analistas."
   },
   "permisos": {
-    "resumen": ["ADMIN", "SUPER", "ANALISTA", "OPER*"],
-    "lecturas": ["ADMIN", "SUPER", "ANALISTA", "OPER*"],
-    "historico": ["ADMIN", "SUPER", "ANALISTA", "OPER*"],
-    "alertas": ["ADMIN", "SUPER", "ANALISTA", "OPER*"],
-    "dispositivos_sensores": ["ADMIN", "SUPER", "ANALISTA", "OPER*"],
-    "umbrales": ["ADMIN", "SUPER", "ANALISTA", "OPER*"],
-    "generar_reporte": ["ADMIN", "SUPER", "ANALISTA"],
-    "reportes_programaciones": ["ADMIN", "SUPER", "ANALISTA"],
+    "resumen": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA",
+      "OPER*"
+    ],
+    "lecturas": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA",
+      "OPER*"
+    ],
+    "historico": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA",
+      "OPER*"
+    ],
+    "alertas": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA",
+      "OPER*"
+    ],
+    "dispositivos_sensores": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA",
+      "OPER*"
+    ],
+    "umbrales": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA",
+      "OPER*"
+    ],
+    "generar_reporte": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA"
+    ],
+    "reportes_programaciones": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA"
+    ],
     "modificar": [],
-    "nota": "OPER*: solo con acceso_agente y sobre su dispositivo asignado. SUPER y ANALISTA con área asignada solo ven su área; sin área, la organización. ADMINPLAT no usa el agente."
+    "nota": "OPER*: solo con acceso_agente y sobre su dispositivo asignado. Los reportes son del área asignada (la del dispositivo del agente), nunca de toda la organización. SUPER y ANALISTA con área solo ven su área. ADMINPLAT no usa el agente.",
+    "enviar_y_programar": [
+      "ADMIN",
+      "SUPER",
+      "ANALISTA"
+    ]
   },
   "errores": {
     "sin_permiso": "No tienes acceso a esa información.",
@@ -100,14 +387,15 @@
     "fuera_de_alcance": "Eso no lo puedo hacer desde el chat, pero puedes hacerlo en la plataforma. Puedo ayudarte con lecturas, histórico, alertas, dispositivos, umbrales y reportes.",
     "accion_vencida": "La solicitud expiró. ¿Quieres que la prepare de nuevo?",
     "ia_no_disponible": "No puedo procesar tu petición en este momento. Intenta de nuevo en unos minutos.",
-    "cancelado": "Listo, cancelé lo que estaba preparando."
+    "cancelado": "Listo, cancelé lo que estaba preparando.",
+    "mantenimiento": "Nico AI está en mantenimiento en este momento. El monitoreo y las alertas siguen funcionando; intenta de nuevo en unos minutos.",
+    "limite_peticiones": "El servidor está con mucha carga y llegaste al límite de preguntas por minuto. Espera un momento y vuelve a intentarlo; el monitoreo y las alertas siguen funcionando."
   },
   "modificar": {
     "umbrales": "No puedo modificar umbrales. Puedes cambiarlos en Umbrales, en la plataforma.",
     "alertas": "Eso no lo puedo hacer desde el chat. Puedes atender o descartar la alerta en el panel de Alertas.",
     "dispositivos": "No puedo modificar dispositivos ni su intervalo de muestreo. Se cambian en Dispositivos, en la plataforma.",
     "usuarios": "No puedo modificar usuarios. Se gestionan en Usuarios, en la plataforma.",
-    "areas": "No puedo modificar áreas. Se gestionan en Empresa y áreas, en la plataforma.",
-    "programaciones": "No puedo crear ni cambiar programaciones de reportes. Se gestionan en Reportes, en la plataforma."
+    "areas": "No puedo modificar áreas. Se gestionan en Empresa y áreas, en la plataforma."
   }
 }

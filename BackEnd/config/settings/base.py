@@ -188,6 +188,17 @@ MQTT_PUBLICAR_CONFIG = env.bool("MQTT_PUBLICAR_CONFIG", default=False)
 
 # Reglas de monitoreo.
 NUCLEO_SIN_CONEXION_FACTOR = env.int("NUCLEO_SIN_CONEXION_FACTOR", default=3)
+
+# Nico AI según la carga del servidor (apps/reportes/carga.py): memoria libre en MB y peticiones
+# por usuario por minuto en cada nivel. Con memoria «alta» o «crítica» no se usa la IA.
+NUCLEO_AGENTE_RAM_ALTA_MB = env.int("NUCLEO_AGENTE_RAM_ALTA_MB", default=1200)
+NUCLEO_AGENTE_RAM_CRITICA_MB = env.int("NUCLEO_AGENTE_RAM_CRITICA_MB", default=500)
+NUCLEO_AGENTE_LIMITE_NORMAL = env.int("NUCLEO_AGENTE_LIMITE_NORMAL", default=30)
+NUCLEO_AGENTE_LIMITE_ALTA = env.int("NUCLEO_AGENTE_LIMITE_ALTA", default=10)
+NUCLEO_AGENTE_LIMITE_CRITICA = env.int("NUCLEO_AGENTE_LIMITE_CRITICA", default=4)
+NUCLEO_AGENTE_MANTENIMIENTO = env(
+    "NUCLEO_AGENTE_MANTENIMIENTO", default=str(BASE_DIR / "var" / "agente-mantenimiento")
+)
 NUCLEO_BATERIA_BAJA_PCT = env.int("NUCLEO_BATERIA_BAJA_PCT", default=20)
 NUCLEO_ALERTAS_MAX_SEGUNDOS = 120
 NUCLEO_TOKEN_DIAS_SIN_USO = env.int("NUCLEO_TOKEN_DIAS_SIN_USO", default=7)
