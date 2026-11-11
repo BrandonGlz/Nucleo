@@ -271,7 +271,7 @@ function Hallazgos({ m }) {
   )
 }
 
-function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto, sugerencias, preguntar }) {
+function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto, alTerminar }) {
   const navegar = useNavigate()
   const [completa, setCompleta] = useState(!animar)
   const [copiado, setCopiado] = useState(false)
@@ -292,7 +292,11 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
           <strong>{autor}</strong>
           <span className="ui-muted">{m.hora}</span>
         </div>
-        <TextoEscrito texto={m.texto} animar={animar} listo={() => setCompleta(true)} />
+        <TextoEscrito texto={m.texto} animar={animar} listo={() => {
+            setCompleta(true)
+            alTerminar?.()
+          }}
+        />
         {completa && m.reporte && (
           <div className="ui-ia-aparece">
             {m.reporte.variables ? (
@@ -359,19 +363,6 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             >
               <ThumbsDown size={16} />
             </button>
-          </div>
-        )}
-        {completa && ultima && sugerencias?.length > 0 && (
-          <div className="ui-ia-seguir" aria-label="Preguntas sugeridas">
-            <span className="ui-muted">Puedes preguntar</span>
-            <div className="ui-ia-seguir__lista">
-              {sugerencias.map((x) => (
-                <button key={x.texto} type="button" onClick={() => preguntar(x.texto)}>
-                  <Icon name={x.icono} size={14} />
-                  {x.texto}
-                </button>
-              ))}
-            </div>
           </div>
         )}
       </div>
@@ -506,6 +497,17 @@ export function AgentePage() {
     if (i >= 0) preguntar(mensajes[i].texto, mensajes.slice(0, i + 1))
   }
   const borrar = ag.borrar
+  // Banco de preguntas sugeridas, justo arriba de la caja de texto: aparece cuando la última
+  // respuesta termina de escribirse y cambia según su tema. Todas responden al instante.
+  const [terminada, setTerminada] = useState(null)
+  const ultimo = mensajes.at(-1)
+  const listo = ultimo?.de === 'agente' && !pensando && (ultimo.clave !== animada || terminada === ultimo.clave)
+  const sugerencias = listo
+    ? siguientes(mensajes.findLast((x) => x.de === 'yo')?.texto ?? '', {
+        reporte: ROLES_REPORTE.includes(usuario?.rol),
+        hechas: mensajes.filter((x) => x.de === 'yo').map((x) => x.texto),
+      })
+    : []
 
   const compositor = (
     <Compositor
@@ -637,22 +639,26 @@ export function AgentePage() {
                         calificar={(voto) => ag.editar(actual, (ms) => ms.map((x, j) => (j === i ? { ...x, voto } : x)))}
                         visualizar={setVisor}
                         visorAbierto={visor?.num}
-                        preguntar={preguntar}
-                        sugerencias={
-                          i === mensajes.length - 1
-                            ? siguientes(mensajes.findLast((x) => x.de === 'yo')?.texto ?? '', {
-                                reporte: ROLES_REPORTE.includes(usuario?.rol),
-                                hechas: mensajes.filter((x) => x.de === 'yo').map((x) => x.texto),
-                              })
-                            : null
-                        }
+                        alTerminar={() => setTerminada(m.clave)}
                       />
                     ),
                   )}
                   {pensando && <Pensando plan={plan} />}
                 </div>
               </div>
-              <div className="ui-ia-pie">{compositor}</div>
+              <div className="ui-ia-pie">
+                {sugerencias.length > 0 && (
+                  <div key={ultimo?.clave ?? mensajes.length} className="ui-ia-seguir" aria-label="Preguntas sugeridas">
+                    {sugerencias.map((x) => (
+                      <button key={x.texto} type="button" onClick={() => preguntar(x.texto)}>
+                        <Icon name={x.icono} size={14} />
+                        {x.texto}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {compositor}
+              </div>
             </>
           )}
           <p className="ui-ia-aviso">
