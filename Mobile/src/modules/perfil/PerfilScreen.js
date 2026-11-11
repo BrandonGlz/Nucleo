@@ -12,6 +12,7 @@ import * as organizacionesApi from '../../services/organizaciones'
 import * as usuariosApi from '../../services/usuarios'
 import { nombreCompleto, pagina, ROL } from '../../utils/convertir'
 import { marca } from '../../theme'
+import app from '../../../app.json'
 
 // Perfil del operador: datos de su cuenta, preferencias del teléfono, tema y cierre de sesión.
 export function PerfilScreen({ navigation }) {
@@ -109,6 +110,9 @@ export function PerfilScreen({ navigation }) {
         </T>
         <Icon name="chevron-right" size={18} color={c.textMuted} />
       </Pressable>
+      <T size={12} color={c.textMuted} style={{ textAlign: 'center' }}>
+        {`Versión ${app.expo.version} (build ${app.expo.android?.versionCode ?? '—'})`}
+      </T>
       <Button
         variant="secondary"
         size="lg"
