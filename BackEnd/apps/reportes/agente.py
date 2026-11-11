@@ -177,7 +177,9 @@ def _sin_lecturas(dispositivo, nombre, descripcion, sensores, codigo, hasta):
     if descripcion == "hoy":
         texto = f"Hoy todavía no hay lecturas de {nombre} de {dispositivo.nombre}."
     if previa:
-        texto += f" La última es del {_cuando(previa)}."
+        texto += f" La última es del {_cuando(previa)}. ¿Quieres que te la muestre?"
+        # Si responde «sí», se le da esa última medición (continuidad del chat).
+        return {"texto": texto, "propuesta": f"última medición de {nombre}"}
     return {"texto": texto}
 
 
@@ -626,6 +628,14 @@ def lugar_pedido(dispositivo, pregunta):
             if any(_parecido(nombre, w) for w in re.findall(r"[a-z0-9ñ]+", _normalizar(a.nombre)))
         ]
         return ("otra_area", nombre, otras[0]) if otras else ("no_existe", nombre, None)
+    # Otra área nombrada sin decir «área»: «¿cómo estuvo la temperatura en Moldeo?».
+    palabras = set(re.findall(r"[a-z0-9ñ]+", texto))
+    for a in Area.objects.filter(organizacion_id=propia.organizacion_id).exclude(pk=propia.pk):
+        nombre = _normalizar(a.nombre)
+        if len(nombre) >= 4 and (
+            nombre in palabras or (" " in nombre and re.search(rf"\b{re.escape(nombre)}\b", texto))
+        ):
+            return ("otra_area", nombre, a)
     m = OTRO_DISPOSITIVO.search(texto)
     if m:
         pedido = m.group(1) or m.group(2).replace("-", "")
@@ -642,7 +652,12 @@ def insiste_fuera(dispositivo, pregunta, anterior, usuario=None):
     """Respuesta a «sí la tengo» / «pero sí existe» después de un área o dispositivo ajeno:
     no se junta con la pregunta anterior (daría los datos de este dispositivo)."""
     lugar = lugar_pedido(dispositivo, anterior) if anterior else None
-    if lugar is None or _tema(pregunta) is not None or lugar_pedido(dispositivo, pregunta):
+    if (
+        lugar is None
+        or _tema(pregunta) is not None
+        or pide_ultima(pregunta)  # pide algo concreto de este dispositivo: se responde
+        or lugar_pedido(dispositivo, pregunta)
+    ):
         return None
     tipo, nombre, otra = lugar
     areas = _lista_areas(usuario)
@@ -813,7 +828,9 @@ def con_contexto(pregunta, anterior):
 # «la última medición», «la lectura más reciente», «el valor actual».
 ULTIMA = re.compile(
     r"\bultim[oa]s? (medicion|medida|lectura|dato|registro|valor|muestra)|"
-    r"\b(medicion|lectura|valor|dato) (actual|mas reciente)|\bmas reciente\b"
+    r"\b(medicion|lectura|valor|dato) (actual|mas reciente)|\bmas reciente\b|"
+    r"\blo ultimo (que )?(tienes|tengas|hay|haya|se )?(registrad|guardad|medid|leid)?|"
+    r"\bultimo (registrad|guardad)|\bultimas? lecturas?\b"
 )
 
 
@@ -866,6 +883,10 @@ def responder(dispositivo, pregunta):
         return por_sensor
     tema = _tema(pregunta)
     desde, hasta, descripcion = periodo_de(pregunta)
+    if tema is None and pide_ultima(pregunta):
+        # «Dame lo último que tienes registrado»: la última medición de cada variable.
+        texto = ultima_medicion(dispositivo, list(ORDEN_VARIABLES))
+        return {"texto": texto or f"{dispositivo.nombre} todavía no tiene lecturas."}
     if tema is None and es_afirmacion(pregunta):
         return {
             "texto": f"Perfecto. ¿Qué más quieres saber de {dispositivo.nombre}? Puedo darte su "

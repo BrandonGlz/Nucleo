@@ -744,6 +744,27 @@ class NicoAprendeTests(PruebaBase):
         r = self._pedir("no era eso")
         self.assertIn("no era eso", r["texto"])
 
+    def test_otra_area_nombrada_sin_decir_area(self):
+        self.e.otra_area.nombre = "Moldeo"
+        self.e.otra_area.save()
+        r = self._pedir("¿Cómo estuvo la temperatura en Moldeo esta semana?")
+        self.assertIn("Para Moldeo, abre el agente", r["texto"])
+        self.assertIn("Encontré el área Moldeo", r["pasos"])
+
+    def test_ofrece_la_ultima_medicion_si_no_hay_del_periodo(self):
+        Lectura.objects.filter(sensor_num=self.e.dht22.pk).delete()
+        Lectura.objects.create(
+            sensor_num=self.e.dht22.pk,
+            variable_codigo="TEMP",
+            valor=21,
+            fecha_hora=timezone.now() - timedelta(days=20),
+        )
+        r = self._pedir("¿cómo estuvo la temperatura esta semana?")
+        self.assertIn("¿Quieres que te la muestre?", r["texto"])
+        r = self._pedir("sí")
+        self.assertIn("última medición", r["texto"])
+        self.assertIn("temperatura", r["texto"])
+
     def test_insiste_en_un_area_que_no_existe(self):
         r = self._pedir("como esta la temperatura del departamento de ventas")
         self.assertIn("No hay un área llamada «ventas»", r["texto"])

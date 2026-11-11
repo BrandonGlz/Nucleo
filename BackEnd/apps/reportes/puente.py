@@ -473,7 +473,8 @@ DOMINIO = re.compile(
     r"sensor|lectura|medici|valor|nivel|alerta|alarma|aviso|umbral|limite|rango|bateria|"
     r"senal|wifi|conex|linea|apagad|encendid|vivo|funciona|aparato|equipo|dispositivo|"
     r"reporte|informe|pdf|grafic|tendencia|compar|historial|promedio|maximo|minimo|"
-    r"bodega|almacen|area|zona|sala|cuarto|hoy|ayer|semana|mes|dia|hora|raro|normal|bien|mal"
+    r"bodega|almacen|area|zona|sala|cuarto|hoy|ayer|semana|mes|dia|hora|raro|normal|bien|mal|"
+    r"registr|ultim|reciente"
 )
 
 

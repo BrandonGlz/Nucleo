@@ -385,6 +385,9 @@ class AgenteView(APIView):
         peticion = interprete.interpretar(pregunta)
         r, via, extra = self._resolver(usuario, dispositivo, pregunta)
         datos = {**extra.get("datos", {}), "peticion": peticion.como_dict()}
+        if r.get("propuesta"):
+            # La respuesta ofrece algo («¿Quieres que te la muestre?»): un «sí» lo hace.
+            datos["propuesta"] = r.pop("propuesta")
         problemas = [] if via == Via.NO_ENTENDIDA else interprete.verificar(peticion, r)
         if problemas:
             r2, via2, extra2 = self._resolver(
@@ -434,7 +437,7 @@ class AgenteView(APIView):
         if agente.pide_reporte(pregunta):
             return agente.generar_reporte(usuario, dispositivo, pregunta), Via.PREDEFINIDA, {}
         tema = agente._tema(pregunta)
-        if tema is None:
+        if tema is None and not agente.pide_ultima(pregunta):
             return self._sin_tema(usuario, dispositivo, pregunta, ruteada)
         r = agente.responder(dispositivo, pregunta)
         if not puente.pide_ia(pregunta):

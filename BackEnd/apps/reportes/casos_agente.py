@@ -101,6 +101,25 @@ CASOS = [
         "no_contiene": ["ventas"],
     },
     {"pregunta": "¿qué áreas tengo?", "intencion": "areas", "contiene": ["esta en el area"]},
+    # Seguimiento sin variable (falló: «Solo puedo responder…»).
+    {
+        "pregunta": "bueno, entonces dame acerca de lo ultimo que tienes registrado",
+        "anterior": "¿Cómo estuvo la temperatura esta semana?",
+        "intencion": "ultima",
+        "contiene": ["ultima medicion"],
+        "no_contiene": ["solo puedo responder"],
+    },
+    {
+        "pregunta": "bueno, entonces dame acerca de lo ultimo que tienes registrado",
+        "anterior": "¿cómo está la temperatura del área de ventas?",
+        "contiene": ["ultima medicion"],
+        "no_contiene": ["no estoy seguro"],
+    },
+    {
+        "pregunta": "dame lo último que tienes registrado",
+        "intencion": "ultima",
+        "contiene": ["ultima medicion"],
+    },
     # ── Catálogo del SRS ────────────────────────────────────────────────────────────────
     {"pregunta": "¿qué sensores tiene?", "intencion": "sensores", "contiene": ["dht22"]},
     {"pregunta": "el segundo sensor", "intencion": "sensores", "contiene": ["ccs811"]},

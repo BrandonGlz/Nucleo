@@ -133,7 +133,7 @@ def interpretar(pregunta, anterior=""):
         peticion.intencion = "conexion"
     elif tema == "ALERTAS":
         peticion.intencion = "alertas"
-    elif agente.pide_ultima(texto) and tema is not None:
+    elif agente.pide_ultima(texto):
         peticion.intencion = "ultima"
     elif tema == "GENERICA":
         peticion.intencion = "resumen"
