@@ -92,7 +92,7 @@ export function AgenteScreen() {
       agregar({ de: 'agente', texto: rapida.texto, hora: hora(new Date().toISOString()) })
       return
     }
-    const nuevo = planDe(p, d.nombre)
+    const nuevo = planDe(p, d.nombre, anteriores.at(-1)?.texto ?? '')
     setPaso(0)
     setPlan(nuevo)
     setPensando(true)

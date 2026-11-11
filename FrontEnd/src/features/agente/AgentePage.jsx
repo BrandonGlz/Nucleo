@@ -548,7 +548,8 @@ export function AgentePage() {
       if (r.ir) setTimeout(() => navegarA(r.ir), 900)
       return
     }
-    const nuevo = planDe(pregunta, nombreAgente)
+    const previa = (base ?? mensajes).filter((m) => m.de === 'yo' && m.texto !== pregunta).at(-1)?.texto ?? ''
+    const nuevo = planDe(pregunta, nombreAgente, previa)
     setPlan(nuevo)
     ag.preguntar(pregunta, base, nuevo.ms)
   }

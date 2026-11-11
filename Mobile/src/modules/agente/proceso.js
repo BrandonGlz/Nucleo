@@ -23,30 +23,77 @@ export const esReporte = (pregunta) => {
 }
 
 const VARIABLES = [
-  [/(temperatura|calor|frio|°c|grados)/, 'temperatura'],
-  [/(humedad|humedo|seco)/, 'humedad'],
-  [/(aire|co2|calidad|ppm|ventila)/, 'calidad del aire'],
+  [/(temperatura|calor|frio|°c|grados|calient|fresco|helad|templad)/, 'temperatura'],
+  [/(humedad|humedo|seco|bochorno|vapor|condensa)/, 'humedad'],
+  [/(aire|co2|calidad|ppm|ventila|olor|viciado|encerrado)/, 'calidad del aire'],
 ]
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-export function planDe(pregunta, dispositivo = 'el dispositivo') {
-  const t = normalizar(pregunta)
-  if (COMPARATIVA.test(t)) {
-    return {
-      ms: 1600,
-      pasos: ['Entendiendo qué comparar', 'Reuniendo las lecturas de ambos lados', 'Calculando diferencias', 'Armando la comparativa'],
-    }
-  }
-  if (GRAFICA.test(t)) {
-    return {
-      ms: 1200,
-      pasos: ['Entendiendo qué gráfica necesitas', `Reuniendo las lecturas de ${dispositivo}`, 'Dibujando la gráfica'],
-    }
-  }
+const variableDe = (t) => VARIABLES.find(([re]) => re.test(t))?.[1] ?? ''
+
+// El periodo que nombra la pregunta, como lo dirá el paso («de ayer», «de octubre»); '' si no nombra.
+function periodoDe(t) {
+  if (/\bhoy\b/.test(t)) return 'de hoy'
+  if (/\bayer\b/.test(t)) return 'de ayer'
+  if (/semana pasada/.test(t)) return 'de la semana pasada'
+  if (/(esta semana|semanal)/.test(t)) return 'de esta semana'
+  if (/mes pasado/.test(t)) return 'del mes pasado'
+  if (/(este mes|mensual)/.test(t)) return 'de este mes'
+  const dias = t.match(/ultimos? (\d+) dias/)
+  if (dias) return `de los últimos ${dias[1]} días`
+  const mes = MESES.find((m) => new RegExp(`\\b${m}\\b`).test(t))
+  return mes ? `de ${mes}` : ''
+}
+
+function datoDe(t) {
+  if (/(maxim|mas alt|pico|que tan alto|hasta donde (llego|subio)|lo mas que)/.test(t)) return 'la máxima'
+  if (/(minim|mas baj|que tan bajo|lo menos que)/.test(t)) return 'la mínima'
+  if (/(promedio|media)/.test(t)) return 'el promedio'
+  return ''
+}
+
+// Área nombrada («del área de ventas»), para decir que se busca.
+function lugarDe(t) {
+  const m = t.match(/\b(?:area|zona|sala|departamento|sucursal)s?\s+(?:de\s+|del\s+)?([a-z0-9ñ]+)/)
+  const nombre = m?.[1]
+  return nombre && !['la', 'el', 'mi', 'su', 'esta', 'este', 'toda', 'completa', 'tengo', 'hay'].includes(nombre) ? nombre : ''
+}
+
+const alAzar = (t) => t.split(/\s+/).some((w) => w.length >= 7 && (/[^aeiou\s\d]{5,}/.test(w) || (w.match(/[aeiou]/g)?.length ?? 0) / w.length < 0.25))
+const CORTA = /^(si|sip|claro|dale|va|exacto|correcto|eso|no|nop|no gracias|no era eso|si por favor|asi es)[\s!.,]*$/
+const SEGUIMIENTO = /^(y|e|pero|entonces|tambien)\b/
+
+// `anterior`: la pregunta previa del usuario, para dar continuidad («¿y ayer?», «sí la tengo»).
+export function planDe(pregunta, dispositivo = 'el dispositivo', anterior = '') {
+  const t = normalizar(pregunta).replace(/[¿?¡!]/g, '').trim()
+  const a = normalizar(anterior)
+  const plan = (pasos) => ({ ms: 500 + pasos.length * 350, pasos })
+  const sigue = Boolean(a) && (SEGUIMIENTO.test(t) || t.split(/\s+/).length <= 4)
+  const variable = variableDe(t) || (sigue ? variableDe(a) : '')
+  const periodo = periodoDe(t)
+  const de = variable ? ` de ${variable}` : ''
+  const lugar = lugarDe(t)
+
+  if (alAzar(t)) return plan(['Leyendo tu mensaje', 'Separando lo que no se entiende', 'Preparando la respuesta'])
+  if (CORTA.test(t)) return plan(['Retomando la conversación', 'Preparando la respuesta'])
+  if (/(\bmanana\b|proxim|va a (subir|bajar|estar)|pronostic)/.test(t))
+    return plan(['Revisando la fecha que pides', `Revisando qué lecturas hay de ${dispositivo}`])
+  if (lugar) return plan([`Buscando el área «${lugar}» en tu organización`, 'Revisando las áreas que puedes consultar', 'Preparando la respuesta'])
+  if (a && lugarDe(a) && !variableDe(t))
+    return plan(['Retomando tu mensaje anterior', `Revisando de nuevo si existe el área «${lugarDe(a)}»`, 'Revisando las áreas que puedes consultar'])
+  if (/(que|cuales|mis) (areas|zonas|departamentos)|areas (hay|tengo)/.test(t))
+    return plan(['Buscando las áreas que puedes consultar', 'Agrupando sus dispositivos'])
+  if (COMPARATIVA.test(t))
+    return plan([`Entendiendo qué comparar${de}`, `Reuniendo las lecturas ${periodo || 'de esta semana'} y del periodo anterior`, 'Calculando diferencias', 'Armando la comparativa'])
+  if (GRAFICA.test(t))
+    return plan([`Reuniendo las lecturas de ${variable || 'todas las variables'} ${periodo || 'de los últimos 7 días'}`, 'Dibujando la gráfica'])
   if (REPORTE.test(t) || (VERBOS.test(t) && PERIODO.test(t))) {
+    if (/(que|cuales|ultimos?|hay) reportes|reportes (generados|hay|anteriores)/.test(t))
+      return plan([`Buscando los reportes del área de ${dispositivo}`, 'Ordenándolos por fecha'])
     return {
       ms: 3000,
       pasos: [
-        'Entendiendo qué periodo necesitas',
+        `Entendiendo el periodo: ${periodo.replace(/^del? /, '') || 'esta semana'}`,
         `Reuniendo las lecturas del área de ${dispositivo}`,
         'Calculando promedios, mínimos y máximos',
         'Revisando las alertas del periodo',
@@ -55,41 +102,37 @@ export function planDe(pregunta, dispositivo = 'el dispositivo') {
       ],
     }
   }
-  if (/(conect|linea|bateria|senal|wifi|reporta)/.test(t)) {
-    return {
-      ms: 1200,
-      pasos: [`Revisando la última conexión de ${dispositivo}`, 'Verificando batería y señal', 'Preparando la respuesta'],
-    }
-  }
-  if (/(alerta|alarma|umbral|limite|rango)/.test(t)) {
-    return {
-      ms: 2000,
-      pasos: [
-        'Entendiendo la pregunta',
-        `Buscando las alertas de ${dispositivo} de los últimos 7 días`,
-        'Agrupando por variable y nivel',
-        'Comparando con los umbrales',
-        'Redactando la respuesta',
-      ],
-    }
-  }
-  const variable = VARIABLES.find(([re]) => re.test(t))?.[1]
+  if (/(falla|no funciona|no sirve|descompuest|no marca|no mide|mide mal|marca mal|no actualiza)/.test(t))
+    return plan([`Revisando el estado de ${dispositivo}`, 'Verificando su última conexión', 'Revisando el estado de cada sensor'])
+  if (/(conect|linea|bateria|senal|wifi|prendid|encendid|apagad|vivo)/.test(t))
+    return plan([`Revisando la última conexión de ${dispositivo}`, 'Verificando batería y señal'])
+  if (/(que|cuales|cuantos) sensores|sensores (tiene|hay)|(primer|segundo|tercer)o? sensor|sensor \d/.test(t))
+    return plan([`Buscando los sensores de ${dispositivo}`, 'Revisando su estado y calibración', 'Leyendo su última medición'])
+  if (/(umbral|limite|rango (permitido|normal|configurado))/.test(t))
+    return plan([`Buscando los umbrales${de} de ${dispositivo}`, 'Revisando advertencia y peligro'])
+  if (/(alerta|alarma|aviso)/.test(t))
+    return plan([`Buscando las alertas de ${dispositivo} ${periodo || 'de los últimos 7 días'}`, 'Agrupando por variable y nivel', 'Revisando cuáles siguen pendientes'])
+  if (/(ultima|ultimo|actual|ahorita|en este momento) (medicion|lectura|registro|dato)/.test(t))
+    return plan([`Buscando la última medición${de || ' de los sensores'}`, 'Comparando con los umbrales'])
+  if (variable && !t.includes('?') && /^(aqui |aca |ahorita |siento que |creo que )*(hace|se siente|siento|esta|huele|hay|anda)\b/.test(t))
+    return plan(['Entendiendo lo que notas', `Leyendo la última medición de ${variable}`, 'Comparando con los umbrales'])
+  if (variable && /(por ?que|a que se debe|es grave|es malo|es peligroso|preocup)/.test(t))
+    return plan([`Revisando las lecturas de ${variable} ${periodo || 'de los últimos 7 días'}`, 'Comparando con los umbrales', 'Revisando si hubo alertas'])
   if (variable) {
-    return {
-      ms: 1800,
-      pasos: [
-        'Entendiendo la pregunta',
-        `Leyendo las lecturas de ${variable} de ${dispositivo}`,
-        'Buscando picos y tendencias',
-        'Comparando con los umbrales',
-        'Redactando la respuesta',
-      ],
-    }
+    const dato = datoDe(t)
+    return plan([
+      sigue ? 'Retomando tu pregunta anterior' : `Entendiendo qué necesitas de ${variable}`,
+      dato
+        ? `Buscando ${dato} de ${variable} ${periodo || 'de los últimos 7 días'}`
+        : `Leyendo las lecturas de ${variable} ${periodo || 'de los últimos 7 días'}`,
+      dato ? 'Ubicando cuándo ocurrió' : 'Buscando picos y horarios',
+      'Comparando con los umbrales',
+    ])
   }
-  return {
-    ms: 1500,
-    pasos: ['Entendiendo la pregunta', `Consultando las lecturas de ${dispositivo}`, 'Comparando con los umbrales', 'Redactando la respuesta'],
-  }
+  if (/(medida|medicion|lectura|ambiente|condiciones|como esta|como anda|que tal)/.test(t))
+    return plan([`Leyendo temperatura, humedad y aire de ${dispositivo} ${periodo || 'de los últimos 7 días'}`, 'Calculando promedios y rangos'])
+  if (sigue && periodo) return plan(['Retomando tu pregunta anterior', `Buscando las lecturas ${periodo}`])
+  return plan(['Leyendo tu mensaje', `Revisando qué puedo consultar de ${dispositivo}`, 'Preparando la respuesta'])
 }
 
 // Preguntas para seguir la conversación, según el tema de la última pregunta. Todas tienen respuesta
