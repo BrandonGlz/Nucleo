@@ -1,3 +1,7 @@
+import hmac
+import time
+
+from django.conf import settings
 from django.http import HttpResponse
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -6,8 +10,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.reportes import agente, graficas, ia, pdf, servicios
-from apps.reportes.models import ProgramacionReporte, Reporte
+from apps.dispositivos.models import Dispositivo
+from apps.reportes import agente, aprendizaje, graficas, ia, pdf, puente, servicios
+from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte
 from apps.reportes.serializers import (
     ProgramacionReporteSerializer,
     ReporteSerializer,
@@ -121,15 +126,132 @@ class AgenteView(APIView):
         )
         if dispositivo is None:
             raise NotFound("El dispositivo no existe o no está a su alcance.")
-        pregunta = agente.con_contexto(
-            entrada.validated_data["pregunta"], entrada.validated_data.get("anterior", "")
+        original = entrada.validated_data["pregunta"]
+        pregunta = agente.con_contexto(original, entrada.validated_data.get("anterior", ""))
+        # El ESP32 del dispositivo es el puente de su agente: sin él, el agente no responde.
+        if not puente.activo(dispositivo):
+            return Response(
+                {
+                    "detail": f"Nico AI no está disponible: {dispositivo.nombre} no está activo.",
+                    "inactivo": True,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        inicio = time.monotonic()
+        r, via, extra = self._resolver(request.user, dispositivo, pregunta)
+        registro = aprendizaje.registrar(
+            request.user,
+            dispositivo,
+            original,
+            via,
+            r.get("texto", ""),
+            tema=agente._tema(pregunta) or "",
+            milisegundos=round((time.monotonic() - inicio) * 1000),
+            **extra,
         )
+        return Response({**r, "registro": registro.num, "via": via})
+
+    def _resolver(self, usuario, dispositivo, pregunta):
+        """Respuesta, cómo se resolvió y datos para el registro. En orden: comparativa, gráfica,
+        reporte, respuesta aprendida, IA (solo para explicar, opinar o recomendar) y
+        predefinida."""
+        Via = PreguntaAgente.Via
         # Comparativas y gráficas sueltas van antes que el reporte: «solo la gráfica del reporte»
         # o «compara el reporte de esta semana» no generan un reporte completo.
         if graficas.pide_comparativa(pregunta):
-            return Response(graficas.comparativa(request.user, dispositivo, pregunta))
+            return graficas.comparativa(usuario, dispositivo, pregunta), Via.PREDEFINIDA, {}
         if graficas.pide_grafica(pregunta):
-            return Response(graficas.grafica(request.user, dispositivo, pregunta))
+            return graficas.grafica(usuario, dispositivo, pregunta), Via.PREDEFINIDA, {}
         if agente.pide_reporte(pregunta):
-            return Response(agente.generar_reporte(request.user, dispositivo, pregunta))
-        return Response(agente.responder(dispositivo, pregunta))
+            return agente.generar_reporte(usuario, dispositivo, pregunta), Via.PREDEFINIDA, {}
+        tema = agente._tema(pregunta)
+        r = agente.responder(dispositivo, pregunta)
+        if tema is None:
+            return r, Via.NO_ENTENDIDA, {}
+        if not puente.pide_ia(pregunta):
+            return r, Via.PREDEFINIDA, {}
+        datos = agente.datos_de(dispositivo, pregunta)
+        aprendida, texto = aprendizaje.buscar(dispositivo, pregunta, tema, datos)
+        if texto:
+            return {**r, "texto": texto}, Via.BANCO, {"datos": datos, "aprendida": aprendida}
+        if puente.habilitado():
+            texto = puente.redactar(dispositivo, pregunta, f"{r['texto']} Cifras: {datos}")
+            if texto:
+                return {**r, "texto": texto}, Via.IA, {"datos": datos}
+        return r, Via.PREDEFINIDA, {"datos": datos}
+
+
+class CalificarAgenteSerializer(serializers.Serializer):
+    registro = serializers.IntegerField()
+    voto = serializers.ChoiceField(choices=["si", "no"], allow_null=True)
+
+
+class CalificarAgenteView(APIView):
+    """👍/👎 de una respuesta de Nico AI. Un 👍 a una respuesta de la IA la guarda en el banco."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        entrada = CalificarAgenteSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        registro = (
+            PreguntaAgente.objects.select_related("dispositivo__area", "aprendida")
+            .filter(pk=entrada.validated_data["registro"], usuario=request.user)
+            .first()
+        )
+        if registro is None:
+            raise NotFound("Esa respuesta no existe.")
+        valor = {"si": 1, "no": -1, None: None}[entrada.validated_data["voto"]]
+        aprendida = aprendizaje.calificar(registro, valor)
+        return Response({"aprendida": aprendida})
+
+
+class EstadoAgenteView(APIView):
+    """Qué agentes están activos (su ESP32 está consultando). Sin puente, todos lo están."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        visibles = dispositivos_visibles(request.user).select_related("area")
+        return Response(
+            {
+                "puente": puente.habilitado(),
+                "activos": [d.num for d in visibles if puente.activo(d)],
+            }
+        )
+
+
+class _PuenteBase(APIView):
+    """Lo usa solo el ESP32 puente, con la clave ``X-Puente-Clave`` (no hay sesión)."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def _dispositivo(self, request, codigo):
+        clave = request.headers.get("X-Puente-Clave", "")
+        if not puente.habilitado() or not hmac.compare_digest(clave, settings.IA_PUENTE_CLAVE):
+            raise PermissionDenied("Clave de puente inválida.")
+        if not codigo or not Dispositivo.objects.filter(codigo_mqtt=codigo).exists():
+            raise NotFound("Dispositivo desconocido.")
+        return codigo
+
+
+class PuenteTomarView(_PuenteBase):
+    def get(self, request):
+        codigo = self._dispositivo(request, request.query_params.get("dispositivo", ""))
+        trabajo = puente.tomar(codigo)
+        if trabajo is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(trabajo)
+
+
+class PuenteEntregarView(_PuenteBase):
+    def post(self, request):
+        codigo = self._dispositivo(request, request.data.get("dispositivo", ""))
+        puente.entregar(
+            codigo,
+            str(request.data.get("id", "")),
+            request.data.get("texto"),
+            request.data.get("error"),
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)

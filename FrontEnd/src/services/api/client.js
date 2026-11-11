@@ -5,10 +5,12 @@ export const API_BASE_URL = (
 ).replace(/\/+$/, '')
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  // `datos`: cuerpo JSON del error, si lo hay (p. ej. {detail, inactivo} de Nico AI).
+  constructor(message, status, datos = null) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.datos = datos
   }
 }
 
@@ -34,10 +36,13 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new ApiError(
-      `La API respondió con el estado ${response.status}.`,
-      response.status,
-    )
+    let datos = null
+    try {
+      datos = await response.json()
+    } catch {
+      // Sin cuerpo JSON.
+    }
+    throw new ApiError(`La API respondió con el estado ${response.status}.`, response.status, datos)
   }
 
   if (response.status === 204) {

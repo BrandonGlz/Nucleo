@@ -182,6 +182,39 @@ def _variable(dispositivo, codigo, desde):
     }
 
 
+def datos_de(dispositivo, pregunta):
+    """Cifras con nombre del tema de la pregunta (últimos 7 días), redondeadas como se muestran.
+
+    Son los datos que recibe la IA y los que rellenan las respuestas aprendidas.
+    """
+    tema = _tema(pregunta)
+    desde = timezone.now() - PERIODO
+    datos = {}
+    if tema in ORDEN_VARIABLES:
+        sensores = list(dispositivo.sensores.values_list("num", flat=True))
+        lecturas = Lectura.objects.filter(
+            sensor_num__in=sensores, variable_codigo=tema, estabilizada=True, fecha_hora__gte=desde
+        )
+        resumen = lecturas.aggregate(
+            promedio=Avg("valor"), minimo=Min("valor"), maximo=Max("valor")
+        )
+        ultima = lecturas.order_by("-fecha_hora").values_list("valor", flat=True).first()
+        umbral = dispositivo.umbrales.filter(variable_id=tema, activo=True).first()
+        dec = 0 if tema == "AIRE" else 1
+        for clave, valor in (("actual", ultima), *resumen.items()):
+            if valor is not None:
+                datos[clave] = round(float(valor), dec)
+        if umbral is not None:
+            datos["limite_min"] = float(umbral.advertencia_min)
+            datos["limite_max"] = float(umbral.advertencia_max)
+            datos["lecturas_sobre_max"] = lecturas.filter(valor__gt=umbral.advertencia_max).count()
+    if tema in (*ORDEN_VARIABLES, "ALERTAS", "GENERICA"):
+        datos["alertas_7_dias"] = Alerta.objects.filter(
+            umbral__dispositivo=dispositivo, fecha_hora__gte=desde
+        ).count()
+    return datos
+
+
 def con_contexto(pregunta, anterior):
     """Completa un seguimiento corto con la pregunta anterior de la conversación.
 

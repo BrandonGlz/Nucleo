@@ -23,6 +23,7 @@ import { DashboardReporte } from '../reportes/DashboardReporte'
 import { descargarPdf } from '../reportes/pdf'
 import { asignarFormato, useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
+import * as agenteApi from '../../services/agente'
 import { esReporte, planDe, respuestaRapida, siguientes } from './proceso'
 import { aplicar, interpretar, plantillas } from './edicion'
 import { Archivos, Comparativa, Edicion, ElegirPlantilla, GraficaChat } from './Piezas'
@@ -390,6 +391,13 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             >
               <ThumbsDown size={16} />
             </button>
+            {m.via === 'IA' && <span className="ui-ia-via">Redactada con IA</span>}
+            {m.via === 'BANCO' && <span className="ui-ia-via">Aprendida de tus reacciones</span>}
+            {ultima && (
+              <span className="ui-ia-nota">
+                {m.voto ? '¡Gracias! Nico AI mejora con tus reacciones.' : 'La mejora de Nico AI se basa en tus reacciones.'}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -398,7 +406,7 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
 }
 
 // Caja para escribir: crece con el texto, Enter envía y Shift+Enter hace un salto de línea.
-function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, enfocar, alcance }) {
+function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, enfocar, alcance, aviso }) {
   const area = useRef(null)
   useLayoutEffect(() => {
     const el = area.current
@@ -421,7 +429,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
         rows={1}
         value={valor}
         disabled={deshabilitado}
-        placeholder="Pregunta sobre tus sensores, alertas o lecturas…"
+        placeholder={aviso ?? 'Pregunta sobre tus sensores, alertas o lecturas…'}
         aria-label="Pregunta para Nico AI"
         onChange={(e) => cambiar(e.target.value)}
         onKeyDown={(e) => {
@@ -608,7 +616,8 @@ export function AgentePage() {
       pensando={pensando}
       enfocar={actual}
       alcance={`Sensores de ${nombreAgente}`}
-      deshabilitado={!dispositivoAgente}
+      deshabilitado={!dispositivoAgente || !ag.agenteActivo}
+      aviso={dispositivoAgente && !ag.agenteActivo ? `Nico AI no disponible: ${nombreAgente} no está activo (su ESP32 no está conectado)` : undefined}
     />
   )
 
@@ -704,9 +713,17 @@ export function AgentePage() {
                         <Marca />
                         <div className="ui-ia-cuerpo ui-ia-error">
                           <strong>
-                            {m.caido ? 'Nico AI no está disponible por ahora' : 'No se pudo obtener la respuesta'}
+                            {m.inactivo
+                              ? `Nico AI no está disponible: ${nombreAgente} no está activo`
+                              : m.caido
+                                ? 'Nico AI no está disponible por ahora'
+                                : 'No se pudo obtener la respuesta'}
                           </strong>
-                          <span className="ui-muted">El monitoreo y las alertas siguen funcionando.</span>
+                          <span className="ui-muted">
+                            {m.inactivo
+                              ? 'Su ESP32 no está conectado (sin corriente o sin WiFi). El monitoreo y las alertas siguen funcionando.'
+                              : 'El monitoreo y las alertas siguen funcionando.'}
+                          </span>
                           {i === mensajes.length - 1 && (
                             <Button
                               variant="secondary"
@@ -727,7 +744,10 @@ export function AgentePage() {
                         ultima={i === mensajes.length - 1 && !pensando}
                         animar={m.clave === animada}
                         regenerar={regenerar}
-                        calificar={(voto) => ag.editar(actual, (ms) => ms.map((x, j) => (j === i ? { ...x, voto } : x)))}
+                        calificar={(voto) => {
+                          ag.editar(actual, (ms) => ms.map((x, j) => (j === i ? { ...x, voto } : x)))
+                          if (m.registro) agenteApi.calificar(m.registro, voto).catch(() => {})
+                        }}
                         visualizar={setVisor}
                         visorAbierto={visor?.num}
                         alTerminar={() => setTerminada(m.clave)}

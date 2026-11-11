@@ -1,7 +1,15 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import AgenteView, ProgramacionReporteViewSet, ReporteViewSet
+from .views import (
+    AgenteView,
+    CalificarAgenteView,
+    EstadoAgenteView,
+    ProgramacionReporteViewSet,
+    PuenteEntregarView,
+    PuenteTomarView,
+    ReporteViewSet,
+)
 
 router = DefaultRouter()
 router.register("reportes", ReporteViewSet, basename="reporte")
@@ -11,5 +19,9 @@ router.register(
 
 urlpatterns = [
     path("agente/", AgenteView.as_view(), name="agente"),
+    path("agente/calificar/", CalificarAgenteView.as_view(), name="agente-calificar"),
+    path("agente/estado/", EstadoAgenteView.as_view(), name="agente-estado"),
+    path("puente/tomar/", PuenteTomarView.as_view(), name="puente-tomar"),
+    path("puente/entregar/", PuenteEntregarView.as_view(), name="puente-entregar"),
     path("", include(router.urls)),
 ]

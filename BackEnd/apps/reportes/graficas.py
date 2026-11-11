@@ -75,15 +75,17 @@ def _nombre(cifras, codigo):
     return re.sub(r" \(.*\)$", "", info.get("nombre", codigo)).lower()
 
 
-PALABRAS_AREA = (" area", "todos los", "toda la", "todo el", "general")
+PALABRAS_AREA = (" area", "todos los dispositivos", "toda la zona", "todo el almacen")
 
 
 def _alcance(usuario, dispositivo, texto=""):
     """(área, dispositivo) para las cifras. El agente es del dispositivo, así que por defecto
     se usa solo ese dispositivo; el área completa, si se pide («del área», «todos los…») y el
     rol la puede ver (el operador solo ve su dispositivo)."""
-    if usuario.rol_id in (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA) and any(
-        p in texto for p in PALABRAS_AREA
+    if (
+        usuario.rol_id in (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA)
+        and any(p in texto for p in PALABRAS_AREA)
+        and " dispositivo " not in texto
     ):
         return dispositivo.area, None
     return dispositivo.area, dispositivo
@@ -105,8 +107,10 @@ DIAS_LARGOS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", 
 def _ultimo_dia_registrado(usuario, dispositivo, texto):
     """Día (local) de la lectura más reciente del alcance: ``(inicio, fin, descripcion)``."""
     area, propio = _alcance(usuario, dispositivo, texto)
-    sensores = Sensor.objects.filter(dispositivo=propio) if propio else Sensor.objects.filter(
-        dispositivo__area=area
+    sensores = (
+        Sensor.objects.filter(dispositivo=propio)
+        if propio
+        else Sensor.objects.filter(dispositivo__area=area)
     )
     ultima = (
         Lectura.objects.filter(sensor_num__in=list(sensores.values_list("num", flat=True)))
@@ -144,14 +148,22 @@ def grafica(usuario, dispositivo, pregunta):
     elif any(p in texto for p in ("cifras", "indicadores", "kpi")):
         elemento, variable = "cifras", None
         titulo = f"Cifras clave de {donde}, {descripcion}."
+    elif _variable_de(texto) is None:
+        # Sin variable («gráfica general del dispositivo»): todas las variables, una por gráfica.
+        elemento, variable = "general", None
+        partes = [
+            f"{_nombre(cifras, c)} promedió {agente._fmt(v['promedio'], v['unidad'])} "
+            f"({agente._fmt(v['minimo'], v['unidad'])} a {agente._fmt(v['maximo'], v['unidad'])})"
+            for c in agente.ORDEN_VARIABLES
+            if (v := cifras["variables"].get(c))
+        ]
+        titulo = f"Resumen de {donde}, {descripcion}: " + "; ".join(partes) + "."
+        titulo = titulo[0].upper() + titulo[1:]
     else:
         variable = _variable_de(texto)
         if variable not in cifras["variables"]:
-            if variable:
-                sin = f"{donde} no tiene lecturas de {NOMBRES[variable]} en {descripcion}."
-                return {"texto": sin}
-            por_alertas = cifras["alertas"]["por_variable"]
-            variable = max(cifras["variables"], key=lambda c: por_alertas.get(c, 0))
+            sin = f"{donde} no tiene lecturas de {NOMBRES[variable]} en {descripcion}."
+            return {"texto": sin}
         elemento = "serie"
         info = cifras["variables"][variable]
         titulo = (

@@ -101,8 +101,26 @@ export function AgenteProvider({ children }) {
   },[conOrganizacion])
 
   // Si no hay agente elegido (o ya no existe), se usa el del primer dispositivo.
+  // Estado del puente: con él, solo los dispositivos con su ESP32 conectado tienen agente.
+  const [puente, setPuente] = useState({ puente: false, activos: [] })
+  useEffect(() => {
+    if (!conOrganizacion) return undefined
+    let vivo = true
+    const leer = () =>
+      agenteApi
+        .estado()
+        .then((r) => vivo && setPuente(r))
+        .catch(() => {})
+    leer()
+    const t = setInterval(leer, 15000)
+    return () => {
+      vivo = false
+      clearInterval(t)
+    }
+  }, [conOrganizacion])
   const agenteValido = dispositivos.some((d) => d.num === agente) ? agente : (dispositivos[0]?.num ?? null)
   const dispositivoAgente = dispositivos.find((d) => d.num === agenteValido) ?? null
+  const agenteActivo = !puente.puente || puente.activos.includes(agenteValido)
 
   const cambiar = useCallback((fn) => {
     setConversaciones((lista) => {
@@ -155,7 +173,8 @@ export function AgenteProvider({ children }) {
       } catch (e) {
         await pausa
         if (mio !== turno.current) return
-        editar(id, (ms) => [...ms, { de: 'error', caido: e.status === 503, pregunta }])
+        editar(id, (ms) => [...ms, { de: 'error', caido: e.status === 503, inactivo: Boolean(e.datos?.inactivo), pregunta }])
+        if (e.datos?.inactivo) setPuente((p) => ({ ...p, activos: p.activos.filter((n) => n !== delAgente) }))
       }
       setEstado('listo')
     },
@@ -256,6 +275,7 @@ export function AgenteProvider({ children }) {
       preguntar,
       responderLocal,
       precargar,
+      agenteActivo,
       detener,
       nueva,
       abrir,
@@ -263,7 +283,7 @@ export function AgenteProvider({ children }) {
       editar,
       setAgente,
     }
-  }, [conversaciones, actual, estado, animada, dispositivos, agenteValido, dispositivoAgente, preguntar, responderLocal, precargar, detener, nueva, abrir, borrar, editar, setAgente])
+  }, [conversaciones, actual, estado, animada, dispositivos, agenteValido, dispositivoAgente, preguntar, responderLocal, precargar, agenteActivo, detener, nueva, abrir, borrar, editar, setAgente])
 
   return <AgenteContext.Provider value={valor}>{children}</AgenteContext.Provider>
 }

@@ -134,3 +134,94 @@ class ProgramacionReporte(models.Model):
 
     def __str__(self):
         return f"Programación {self.num} · {self.get_frecuencia_display()}"
+
+
+class RespuestaAprendida(models.Model):
+    """Respuesta de la IA que un usuario calificó con 👍, guardada como plantilla.
+
+    Las cifras de ``plantilla`` son espacios (``{actual}``, ``{promedio}``…) que se rellenan con
+    las lecturas del momento, así que la siguiente vez que alguien de la organización hace la
+    misma pregunta se responde al instante y sin IA. Un 👎 sobre ella la desactiva.
+    """
+
+    num = models.AutoField(primary_key=True)
+    organizacion = models.ForeignKey(
+        "organizaciones.Organizacion",
+        on_delete=models.CASCADE,
+        db_column="organizacion_num",
+        related_name="respuestas_aprendidas",
+    )
+    pregunta = models.CharField(max_length=500)
+    pregunta_normalizada = models.CharField(max_length=500)
+    tema = models.CharField(max_length=12, blank=True)
+    plantilla = models.TextField()
+    votos_si = models.PositiveIntegerField(default=1)
+    votos_no = models.PositiveIntegerField(default=0)
+    activa = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(db_default=Now(), editable=False)
+
+    class Meta:
+        db_table = "respuesta_aprendida"
+        verbose_name = "respuesta aprendida"
+        verbose_name_plural = "respuestas aprendidas"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organizacion", "pregunta_normalizada", "tema"],
+                name="uq_respuesta_aprendida",
+            )
+        ]
+
+    def __str__(self):
+        return self.pregunta
+
+
+class PreguntaAgente(models.Model):
+    """Registro de cada pregunta a Nico AI: cómo se resolvió y la reacción del usuario."""
+
+    class Via(models.TextChoices):
+        PREDEFINIDA = "PREDEFINIDA", "Respuesta predefinida"
+        BANCO = "BANCO", "Respuesta aprendida"
+        IA = "IA", "Redactada por la IA"
+        NO_ENTENDIDA = "NO_ENTENDIDA", "No entendida"
+
+    num = models.BigAutoField(primary_key=True)
+    usuario = models.ForeignKey(
+        "usuarios.Usuario",
+        on_delete=models.CASCADE,
+        db_column="usuario_num",
+        related_name="preguntas_agente",
+    )
+    dispositivo = models.ForeignKey(
+        "dispositivos.Dispositivo",
+        on_delete=models.CASCADE,
+        db_column="dispositivo_num",
+        related_name="preguntas_agente",
+    )
+    pregunta = models.CharField(max_length=1000)
+    pregunta_normalizada = models.CharField(max_length=1000)
+    tema = models.CharField(max_length=12, blank=True)
+    via = models.CharField(max_length=12, choices=Via.choices)
+    respuesta = models.TextField()
+    # Cifras con que se armó la respuesta: sirven para convertirla en plantilla.
+    datos = models.JSONField(default=dict, blank=True)
+    aprendida = models.ForeignKey(
+        RespuestaAprendida,
+        on_delete=models.SET_NULL,
+        db_column="aprendida_num",
+        related_name="usos",
+        null=True,
+        blank=True,
+    )
+    calificacion = models.SmallIntegerField(null=True, blank=True)  # 1 = 👍, -1 = 👎
+    milisegundos = models.PositiveIntegerField(default=0)
+    fecha = models.DateTimeField(db_default=Now(), editable=False)
+
+    class Meta:
+        db_table = "pregunta_agente"
+        ordering = ["-fecha"]
+        verbose_name = "pregunta a Nico AI"
+        verbose_name_plural = "preguntas a Nico AI"
+        indexes = [models.Index(fields=["via", "fecha"], name="ix_pregunta_agente_via")]
+
+    def __str__(self):
+        return self.pregunta

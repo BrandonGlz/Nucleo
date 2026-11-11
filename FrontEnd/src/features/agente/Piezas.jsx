@@ -13,13 +13,17 @@ const VACIA = { orden: [], ocultos: [], opciones: {}, personalizadas: [] }
 const mayuscula = (t) => t.charAt(0).toUpperCase() + t.slice(1)
 const fmt = (v, unidad) =>
   v == null ? '—' : `${Number(v).toFixed(unidad === 'ppm' || !unidad ? 0 : 1)}${unidad ? ` ${unidad}` : ''}`
-const NOMBRES = { serie: 'Gráfica del periodo', alertas: 'Alertas por variable', cifras: 'Cifras clave' }
+const NOMBRES = { serie: 'Gráfica del periodo', alertas: 'Alertas por variable', cifras: 'Cifras clave', general: 'Resumen del dispositivo' }
 
 // Un solo elemento de reporte (la misma tarjeta del PDF) con las cifras del periodo pedido.
 export function GraficaChat({ g }) {
+  const general = g.elemento === 'general'
+  const elemento = general ? 'serie' : g.elemento
   const r = { cifras: cifrasHoja(g.cifras, { area: g.donde, variable: g.variable }), contenido: '' }
-  const w = tarjeta(VACIA, g.elemento)
-  const op = { ...opcionesDe(VACIA, g.elemento), ancho: '12', ...(g.elemento === 'serie' && { grafica: 'linea' }) }
+  const w = tarjeta(VACIA, elemento)
+  const op = { ...opcionesDe(VACIA, elemento), ancho: '12', ...(elemento === 'serie' && { grafica: 'linea' }) }
+  // Gráfica general: una serie por cada variable que tiene lecturas.
+  const variables = general ? ['TEMP', 'HUM', 'AIRE'].filter((v) => g.cifras?.variables?.[v]) : []
   return (
     <figure className="ui-ia-pieza">
       <figcaption className="ui-ia-pieza__cabeza">
@@ -31,7 +35,13 @@ export function GraficaChat({ g }) {
           {g.donde} · {periodo(g.periodo_inicio, g.periodo_fin)}
         </span>
       </figcaption>
-      <div className="ui-dash ui-ia-pieza__cuerpo">{w && <Widget w={w} r={r} op={op} />}</div>
+      <div className={`ui-dash ui-ia-pieza__cuerpo${general ? ' ui-ia-pieza__general' : ''}`}>
+        {general
+          ? variables.map((v) => (
+              <Widget key={v} w={w} r={{ cifras: cifrasHoja(g.cifras, { area: g.donde, variable: v }), contenido: '' }} op={op} />
+            ))
+          : w && <Widget w={w} r={r} op={op} />}
+      </div>
     </figure>
   )
 }

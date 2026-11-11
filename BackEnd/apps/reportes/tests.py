@@ -12,8 +12,8 @@ from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.mediciones.models import Lectura
-from apps.reportes import agente, ia, servicios
-from apps.reportes.models import ProgramacionReporte, Reporte
+from apps.reportes import agente, aprendizaje, ia, puente, servicios
+from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte, RespuestaAprendida
 from common.testing import Escenario, PruebaBase, cliente_de
 
 
@@ -487,6 +487,111 @@ class AgenteTests(PruebaBase):
         self.assertEqual(r.status_code, 200, r.content)
         self.e.operador.refresh_from_db()
         self.assertTrue(self.e.operador.acceso_agente)
+
+
+class NicoAprendeTests(PruebaBase):
+    """Puente del ESP32, IA, registro de preguntas y banco que aprende de las reacciones."""
+
+    def setUp(self):
+        AgenteTests.setUp(self)  # mismo escenario, sin volver a correr las pruebas de AgenteTests
+        puente._cola = None
+        self.addCleanup(setattr, puente, "_cola", None)
+        self.cliente = cliente_de(self.e.analista)
+
+    def _pedir(self, pregunta, estado=200):
+        r = self.cliente.post(
+            "/api/v1/agente/", {**self.pregunta, "pregunta": pregunta}, format="json"
+        )
+        self.assertEqual(r.status_code, estado, r.content)
+        return r.json()
+
+    def _esp(self, responder):
+        """Un ESP32 simulado que toma una petición y devuelve ``responder(trabajo)``."""
+        import threading
+
+        def correr():
+            trabajo = puente.tomar(self.e.dispositivo.codigo_mqtt, espera=5)
+            if trabajo:
+                puente.entregar(self.e.dispositivo.codigo_mqtt, trabajo["id"], responder(trabajo))
+
+        hilo = threading.Thread(target=correr)
+        hilo.start()
+        return hilo
+
+    def test_sin_puente_registra_y_responde_predefinida(self):
+        cuerpo = self._pedir("¿Hubo picos de temperatura?")
+        self.assertEqual(cuerpo["via"], "PREDEFINIDA")
+        registro = PreguntaAgente.objects.get(pk=cuerpo["registro"])
+        self.assertEqual((registro.tema, registro.usuario), ("TEMP", self.e.analista))
+        self.assertEqual(self._pedir("¿quién ganó el partido?")["via"], "NO_ENTENDIDA")
+
+    @override_settings(IA_PUENTE_CLAVE="k")
+    def test_esp_inactivo_deshabilita_el_agente(self):
+        cuerpo = self._pedir("¿Hubo picos de temperatura?", 503)
+        self.assertTrue(cuerpo["inactivo"])
+        estado = self.cliente.get("/api/v1/agente/estado/").json()
+        self.assertEqual(estado, {"puente": True, "activos": []})
+
+    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_ia_por_el_esp_y_banco_con_reacciones(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        hilo = self._esp(lambda t: "Ahora está en 23 °C y el máximo fue 26.4 °C; no es grave.")
+        cuerpo = self._pedir("¿es grave la temperatura?")
+        hilo.join()
+        self.assertEqual(cuerpo["via"], "IA")
+        self.assertIn("no es grave", cuerpo["texto"])
+        # 👍: se guarda como plantilla con las cifras como espacios.
+        r = self.cliente.post(
+            "/api/v1/agente/calificar/",
+            {"registro": cuerpo["registro"], "voto": "si"},
+            format="json",
+        )
+        self.assertTrue(r.json()["aprendida"])
+        aprendida = RespuestaAprendida.objects.get()
+        self.assertEqual(
+            aprendida.plantilla,
+            "Ahora está en {actual} °C y el máximo fue {maximo} °C; no es grave.",
+        )
+        # La misma pregunta sale del banco, sin IA y con la lectura nueva.
+        Lectura.objects.create(
+            sensor_num=self.e.dht22.pk,
+            variable_codigo="TEMP",
+            valor=24.5,
+            fecha_hora=timezone.now(),
+        )
+        otra = self._pedir("Oye, ¿es grave la temperatura")
+        self.assertEqual(otra["via"], "BANCO")
+        self.assertIn("Ahora está en 24.5 °C", otra["texto"])
+        # 👎 la saca del banco.
+        self.cliente.post(
+            "/api/v1/agente/calificar/", {"registro": otra["registro"], "voto": "no"}, format="json"
+        )
+        aprendida.refresh_from_db()
+        self.assertFalse(aprendida.activa)
+
+    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=1)
+    def test_ia_tarda_responde_predefinida(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        cuerpo = self._pedir("¿es grave la temperatura?")
+        self.assertEqual(cuerpo["via"], "PREDEFINIDA")
+
+    def test_cifra_inventada_no_entra_al_banco(self):
+        self.assertIsNone(aprendizaje.a_plantilla("Subirá a 31 °C.", {"actual": 23.0}))
+        self.assertEqual(aprendizaje.rellenar("{actual} °C", {"actual": 22.5}), "22.5 °C")
+
+    @override_settings(IA_PUENTE_CLAVE="k")
+    def test_puente_pide_clave(self):
+        r = self.client.get(
+            "/api/v1/puente/tomar/",
+            {"dispositivo": self.e.dispositivo.codigo_mqtt},
+            HTTP_X_PUENTE_CLAVE="mala",
+        )
+        self.assertEqual(r.status_code, 403)
+
+    def test_grafica_general_del_dispositivo(self):
+        cuerpo = self._pedir("dame una grafica general del dispositivo")
+        self.assertEqual(cuerpo["grafica"]["elemento"], "general")
+        self.assertEqual(cuerpo["grafica"]["donde"], self.e.dispositivo.nombre)
 
 
 class RedaccionLocalTests(PruebaBase):

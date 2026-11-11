@@ -198,6 +198,11 @@ NUCLEO_PUSH_HABILITADO = env.bool("NUCLEO_PUSH_HABILITADO", default=False)
 IA_PROVEEDOR = env("IA_PROVEEDOR", default="")
 IA_API_KEY = env("IA_API_KEY", default="")
 IA_MODELO = env("IA_MODELO", default="")
+# Nico AI con IA local (Ollama) a través del ESP32 de cada dispositivo (apps/reportes/puente.py).
+# Sin clave el puente está apagado y el agente responde solo con respuestas predefinidas.
+IA_PUENTE_CLAVE = env("IA_PUENTE_CLAVE", default="")
+IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen2.5:0.5b")
+IA_ESPERA_SEGUNDOS = env.float("IA_ESPERA_SEGUNDOS", default=8)
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])

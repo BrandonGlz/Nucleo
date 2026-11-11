@@ -4526,3 +4526,39 @@ button.ui-menuitem:not(:disabled):hover svg {
     animation: none;
   }
 }
+.ui-ia-pieza__general {
+  display: grid;
+  gap: 22px;
+}
+/* Nico AI: nota de reacciones y cómo se resolvió la respuesta */
+.ui-ia-via {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-soft);
+  color: var(--accent-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ui-ia-nota {
+  margin-left: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  animation: ui-ia-paso var(--duration-slow) var(--ease-standard) backwards;
+}
+@media (max-width: 560px) {
+  .ui-ia-nota {
+    flex-basis: 100%;
+    margin: 4px 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ia-nota {
+    animation: none;
+  }
+}
+.ui-ia-acciones {
+  align-items: center;
+  flex-wrap: wrap;
+}
