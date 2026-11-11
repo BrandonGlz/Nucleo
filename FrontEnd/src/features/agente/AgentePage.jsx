@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Button, Icon, Skeleton, TrendChart } from '../../design-system/componentes/index.js'
 import { Desplegable } from '../../components/Desplegable'
+import { useCierre } from '../../hooks/useSalida'
 import { Pantalla } from '../../components/Pantalla'
 import { useAgente } from '../../context/AgenteContext'
 import { useSesion } from '../../context/SesionContext'
@@ -155,7 +156,9 @@ function AdjuntoReporte({ resumen, visualizar, abierto }) {
 
 // Visor lateral del reporte, como el de un documento adjunto: hojas A4 con zoom, descarga,
 // pantalla completa y cierre (también con Escape).
-function VisorReporte({ resumen, cerrar, ampliado, ampliar }) {
+function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
+  // Al cerrar, el visor primero se desliza hacia la derecha y luego se quita.
+  const [saliendo, cerrar] = useCierre(quitar, 280)
   const [r, setR] = useState(null)
   const [error, setError] = useState(false)
   const [zoom, setZoom] = useState(null)
@@ -180,7 +183,7 @@ function VisorReporte({ resumen, cerrar, ampliado, ampliar }) {
   const areas = r ? [{ num: r.area, nombre: resumen.titulo?.split(' · ')[0] ?? 'Todas las áreas' }] : []
   const actual = zoom ?? ajuste
   return (
-    <aside ref={caja} className={`ui-ia-visor${ampliado ? ' is-ampliado' : ''}`} aria-label="Vista del reporte">
+    <aside ref={caja} className={`ui-ia-visor${ampliado ? ' is-ampliado' : ''}${saliendo ? ' is-saliendo' : ''}`} aria-label="Vista del reporte">
       <header className="ui-ia-visor__barra">
         <span className="ui-ia-visor__titulo">
           <strong>{nombreReporte(resumen)}</strong>
@@ -428,6 +431,25 @@ export function AgentePage() {
     setAmpliado(false)
   }, [])
   const hilo = useRef(null)
+  // Al abrir o cerrar el visor (o el panel) la columna del chat cambia de lugar: en vez de saltar,
+  // se desliza desde donde estaba hasta su nueva posición (técnica FLIP).
+  const columna = useRef(null)
+  const posAntes = useRef(null)
+  const disposicion = `${visor?.num ?? ''}|${panel}`
+  const dispAntes = useRef(disposicion)
+  useLayoutEffect(() => {
+    const el = columna.current
+    const x = el?.getBoundingClientRect().left ?? null
+    const antes = posAntes.current
+    const cambio = dispAntes.current !== disposicion
+    posAntes.current = x
+    dispAntes.current = disposicion
+    if (!cambio || x == null || antes == null || Math.abs(antes - x) < 2 || sinMovimiento()) return
+    el.animate([{ transform: `translateX(${antes - x}px)` }, { transform: 'none' }], {
+      duration: 460,
+      easing: 'cubic-bezier(0.2, 0, 0, 1)',
+    })
+  })
 
   const mensajes = conv?.mensajes ?? []
   const enHilo = mensajes.length > 0 || pensando
@@ -565,7 +587,7 @@ export function AgentePage() {
           ) : (
             <>
               <div className="ui-ia-hilo nc-scroll" ref={hilo}>
-                <div className="ui-ia-columna">
+                <div ref={columna} className="ui-ia-columna">
                   {mensajes.map((m, i) =>
                     m.de === 'yo' ? (
                       <div key={i} className="ui-ia-mio">
