@@ -364,6 +364,17 @@ class AgenteTests(PruebaBase):
         )
         self.assertNotIn("grafica", r.json())
 
+    def test_ultimo_dia_registrado_y_por_dispositivo(self):
+        cuerpo = self._preguntar(
+            self.e.analista, "dame la temperatura del ultimo dia registrado en una grafica"
+        )
+        grafica = cuerpo["grafica"]
+        self.assertIn("último día registrado", grafica["descripcion"])
+        self.assertEqual(grafica["donde"], self.e.dispositivo.nombre)
+        self.assertEqual(grafica["cifras"]["intervalo_serie"], "hora")
+        area = self._preguntar(self.e.analista, "gráfica de temperatura de toda el área")
+        self.assertEqual(area["grafica"]["donde"], self.e.dispositivo.area.nombre)
+
     def test_grafica_de_alertas(self):
         cuerpo = self._preguntar(self.e.supervisor, "Gráfica de alertas del reporte")
         self.assertEqual(cuerpo["grafica"]["elemento"], "alertas")

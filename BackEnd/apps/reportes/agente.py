@@ -288,6 +288,8 @@ def periodo_de(pregunta, ahora=None):
             fin = inicio.replace(month=numero + 1)
         return inicio, min(fin, ahora), f"{MESES[numero - 1]} de {anio}"
 
+    if re.search(r"ultimas?\s+24\s*h|ultimo dia|ultimas? horas", texto):
+        return ahora - timedelta(days=1), ahora, "las últimas 24 horas"
     dias = re.search(r"ultim[oa]s?\s+(\d{1,3})\s+dias", texto)
     if dias:
         n = max(1, min(int(dias.group(1)), 366))

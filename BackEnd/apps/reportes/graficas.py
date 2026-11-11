@@ -13,7 +13,8 @@ from django.db.models import Count
 from django.utils import timezone
 
 from apps.alertas.models import Alerta
-from apps.dispositivos.models import Dispositivo
+from apps.dispositivos.models import Dispositivo, Sensor
+from apps.mediciones.models import Lectura
 from common import roles
 
 from . import agente, servicios
@@ -74,31 +75,67 @@ def _nombre(cifras, codigo):
     return re.sub(r" \(.*\)$", "", info.get("nombre", codigo)).lower()
 
 
-def _alcance(usuario, dispositivo):
-    """(área, dispositivo) para las cifras según el rol: el operador solo ve su dispositivo."""
-    if usuario.rol_id in (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA):
+PALABRAS_AREA = (" area", "todos los", "toda la", "todo el", "general")
+
+
+def _alcance(usuario, dispositivo, texto=""):
+    """(área, dispositivo) para las cifras. El agente es del dispositivo, así que por defecto
+    se usa solo ese dispositivo; el área completa, si se pide («del área», «todos los…») y el
+    rol la puede ver (el operador solo ve su dispositivo)."""
+    if usuario.rol_id in (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA) and any(
+        p in texto for p in PALABRAS_AREA
+    ):
         return dispositivo.area, None
     return dispositivo.area, dispositivo
 
 
-def _cifras(usuario, dispositivo, inicio, fin):
-    area, propio = _alcance(usuario, dispositivo)
+def _cifras(usuario, dispositivo, inicio, fin, texto=""):
+    area, propio = _alcance(usuario, dispositivo, texto)
     return servicios.calcular_cifras(area.organizacion, area, inicio, fin, dispositivo=propio)
 
 
-def _donde(usuario, dispositivo):
-    area, propio = _alcance(usuario, dispositivo)
+def _donde(usuario, dispositivo, texto=""):
+    area, propio = _alcance(usuario, dispositivo, texto)
     return propio.nombre if propio else area.nombre
+
+
+DIAS_LARGOS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+
+def _ultimo_dia_registrado(usuario, dispositivo, texto):
+    """Día (local) de la lectura más reciente del alcance: ``(inicio, fin, descripcion)``."""
+    area, propio = _alcance(usuario, dispositivo, texto)
+    sensores = Sensor.objects.filter(dispositivo=propio) if propio else Sensor.objects.filter(
+        dispositivo__area=area
+    )
+    ultima = (
+        Lectura.objects.filter(sensor_num__in=list(sensores.values_list("num", flat=True)))
+        .order_by("-fecha_hora")
+        .values_list("fecha_hora", flat=True)
+        .first()
+    )
+    if ultima is None:
+        return None
+    ultima = timezone.localtime(ultima)
+    inicio = ultima.replace(hour=0, minute=0, second=0, microsecond=0)
+    dia = f"{DIAS_LARGOS[inicio.weekday()]} {inicio.day} de {agente.MESES[inicio.month - 1]}"
+    return inicio, inicio + timedelta(days=1), f"el último día registrado ({dia})"
 
 
 def grafica(usuario, dispositivo, pregunta):
     """Una sola gráfica (serie de una variable, alertas o cifras clave) del periodo pedido."""
     texto = _texto(pregunta)
     inicio, fin, descripcion = agente.periodo_de(pregunta)
+    # «el último día registrado / con datos / con lecturas»: el día de la lectura más reciente.
+    if re.search(r"(dia|fecha) (registrad|con (datos|lecturas))|ultim[oa] registr", texto):
+        ultimo = _ultimo_dia_registrado(usuario, dispositivo, texto)
+        if ultimo is None:
+            return {"texto": f"{_donde(usuario, dispositivo, texto)} todavía no tiene lecturas."}
+        inicio, fin, descripcion = ultimo
     if inicio >= fin:
         return {"texto": f"Ese periodo ({descripcion}) todavía no tiene datos."}
-    cifras = _cifras(usuario, dispositivo, inicio, fin)
-    donde = _donde(usuario, dispositivo)
+    cifras = _cifras(usuario, dispositivo, inicio, fin, texto)
+    donde = _donde(usuario, dispositivo, texto)
     if not cifras["variables"]:
         return {"texto": f"{donde} no tiene lecturas de {descripcion}, así que no hay gráfica."}
     if "alerta" in texto:
@@ -170,9 +207,9 @@ def comparativa(usuario, dispositivo, pregunta):
     if any(p in texto for p in PALABRAS_DISPOSITIVOS):
         return _entre_dispositivos(usuario, dispositivo, pregunta)
     (ai, af), (bi, bf), (na, nb) = _periodos(pregunta)
-    a = _cifras(usuario, dispositivo, ai, af)
-    b = _cifras(usuario, dispositivo, bi, bf)
-    donde = _donde(usuario, dispositivo)
+    a = _cifras(usuario, dispositivo, ai, af, texto)
+    b = _cifras(usuario, dispositivo, bi, bf, texto)
+    donde = _donde(usuario, dispositivo, texto)
     elegida = _variable_de(texto)
     codigos = [c for c in agente.ORDEN_VARIABLES if c in a["variables"] or c in b["variables"]]
     if elegida:
