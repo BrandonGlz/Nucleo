@@ -318,7 +318,19 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
 # herramientas (JSON forzado con «format»). Con eso se arma la pregunta canónica que las
 # reglas sí entienden y la respuesta sale de las funciones de siempre: cifras exactas y una
 # sola pasada corta de IA (~20 tokens de salida).
-HERRAMIENTAS = ("variable", "alertas", "conexion", "grafica", "comparativa", "reporte", "ninguna")
+# Las del catálogo de ``herramientas.CATALOGO`` que la IA puede elegir.
+HERRAMIENTAS = (
+    "variable",
+    "alertas",
+    "conexion",
+    "grafica",
+    "comparativa",
+    "reporte",
+    "umbrales",
+    "reportes_generados",
+    "sensores",
+    "ninguna",
+)
 VARIABLES_IA = ("temperatura", "humedad", "calidad del aire", "ninguna")
 PERIODOS_IA = (
     "ahora",
@@ -348,8 +360,10 @@ CLASIFICAR = (
     "Clasifica la petición sobre un dispositivo de monitoreo ambiental. Herramientas: variable "
     "(cómo está o estuvo la temperatura, humedad o calidad del aire), alertas, conexion "
     "(batería, señal, si está en línea), grafica (ver cómo ha ido una variable), comparativa "
-    "(comparar dos periodos), reporte (documento PDF), ninguna (no es sobre el ambiente ni los "
-    "sensores). Calor o frío es temperatura; aire, CO2 u olor es calidad del aire. «Estos días» "
+    "(comparar dos periodos), reporte (generar un documento PDF), umbrales (límites "
+    "configurados), reportes_generados (reportes que ya existen), sensores (qué sensores "
+    "tiene), ninguna (no es sobre el ambiente ni los sensores). Calor o frío es temperatura; "
+    "aire, CO2 u olor es calidad del aire. «Estos días» "
     "es los ultimos 7 dias. Dato: maximo (lo más alto, el pico), minimo (lo más bajo), "
     "promedio, o general. Ejemplos (herramienta, variable, periodo, dato):\n"
     "¿qué tal anda el ambiente? → variable, ninguna, ahora, general\n"
@@ -383,7 +397,7 @@ def _canonica(h, variable, periodo, dato="general"):
     de_var = "" if variable == "ninguna" else f" de {variable}"
     de_periodo = "" if periodo == "ahora" else f" de {periodo}".replace(" de el ", " del ")
     return {
-        # Sin variable: las reglas responden con la que tuvo más alertas en el periodo.
+        # Sin variable: las reglas responden con el resumen de las tres variables.
         "variable": (
             f"¿cómo están las lecturas{de_periodo}?"
             if variable == "ninguna"
@@ -396,6 +410,9 @@ def _canonica(h, variable, periodo, dato="general"):
         "grafica": f"gráfica{de_var}{de_periodo}",
         "comparativa": f"compara{de_var} {de_periodo.strip() or 'de esta semana'}",
         "reporte": f"reporte{de_periodo or ' de esta semana'}",
+        "umbrales": f"¿cuáles son los umbrales{de_var}?",
+        "reportes_generados": "¿qué reportes hay?",
+        "sensores": "¿qué sensores tiene?",
     }.get(h)
 
 
@@ -410,6 +427,9 @@ PISTAS = {
     r"como fue|historial",
     "comparativa": r"compar|contra|\bvs\b|diferencia|antes|cambi[oa]",
     "reporte": r"reporte|informe|pdf|documento",
+    "umbrales": r"umbral|limite|rango|permitid|configur|aceptable",
+    "reportes_generados": r"reportes|informes|generad|anterior",
+    "sensores": r"sensor|instalad|modelo|calibr",
 }
 
 

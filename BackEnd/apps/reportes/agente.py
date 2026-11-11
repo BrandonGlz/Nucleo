@@ -543,9 +543,11 @@ OTRO_DISPOSITIVO = re.compile(r"\b(nc-\d{3,5})\b|\bnucleo\s+([a-z]-?\d{1,3})\b")
 
 
 def _parecido(a, b):
-    return (
-        a == b or a.startswith(b) or b.startswith(a) or SequenceMatcher(None, a, b).ratio() >= 0.8
-    )
+    if a == b:
+        return True
+    if min(len(a), len(b)) < 3:  # «a», «de»: no sirven para comparar nombres
+        return False
+    return a.startswith(b) or b.startswith(a) or SequenceMatcher(None, a, b).ratio() >= 0.8
 
 
 def fuera_de_alcance(dispositivo, pregunta):
@@ -626,6 +628,18 @@ def resumen_general(dispositivo, desde, hasta, descripcion, pide=None):
         "texto": f"{_En(descripcion)}, {dispositivo.nombre}: {lista}. Pregúntame por una "
         "variable para ver su detalle, picos y gráfica."
     }
+
+
+# Cortesía sin petición («gracias», «hola», «ok»): se responde corto y sin consultar nada.
+CORTESIA = re.compile(
+    r"^(muchas |mil )?(gracias|grax|ok|okay|vale|perfecto|excelente|genial|listo|entendido|"
+    r"de acuerdo|hola|buenas|buenos dias|buenas tardes|buenas noches|adios|bye|hasta luego)"
+    r"( (gracias|nico|nico ai))?[\s!.?]*$"
+)
+
+
+def es_cortesia(pregunta):
+    return bool(CORTESIA.match(_normalizar(pregunta).strip(" ¡¿")))
 
 
 def es_comentario(pregunta):
@@ -715,6 +729,17 @@ def responder(dispositivo, pregunta):
         return por_sensor
     tema = _tema(pregunta)
     desde, hasta, descripcion = periodo_de(pregunta)
+    if tema is None and es_cortesia(pregunta):
+        saludo = re.match(r"(hola|buen|buenas)", _normalizar(pregunta).strip(" ¡¿"))
+        return {
+            "texto": (
+                f"¡Hola! Soy Nico AI, el agente de {dispositivo.nombre}. "
+                if saludo
+                else "¡Con gusto! "
+            )
+            + "Pregúntame por la temperatura, la humedad, la calidad del aire, sus alertas, "
+            "sus sensores o pídeme una gráfica o un reporte."
+        }
     if tema is None and es_comentario(pregunta):
         return {
             "texto": "Entendido, gracias por avisar. Dale 👎 a la respuesta que no te sirvió para "

@@ -261,6 +261,50 @@ el tema de la pregunta (temperatura, humedad, aire, alertas o conexión) y arma 
 las lecturas de los últimos 7 días, el umbral y las alertas; no inventa cifras. Un
 operador lo usa solo si tiene `acceso_agente` y sobre su dispositivo.
 
+Cada pregunta sigue el mismo camino, en `apps/reportes/`:
+
+1. **Entender** (`agente.sin_sentido`, `agente.fuera_de_alcance`). El texto tecleado al
+   azar se ignora (si queda una petición) o se responde «No entendí». Si se pide otra área u
+   otro dispositivo, se explica que cada agente solo ve su dispositivo; si el área no existe
+   en la organización, se dice. Los saludos y comentarios se contestan sin consultar datos ni
+   usar la IA.
+2. **Interpretar** (`interprete.interpretar`). La pregunta, con la anterior como contexto
+   cuando es un seguimiento, se convierte en una `Peticion`: intención, variables, periodo
+   nombrado y dato pedido (máximo, mínimo o promedio). La petición se guarda en
+   `PreguntaAgente.datos["peticion"]`.
+3. **Consultar** con una herramienta del catálogo (`herramientas.CATALOGO`). Son de solo
+   lectura y cada una indica el requisito del SRS (3.2.12) que atiende: `variable`,
+   `ultima`, `resumen` (las tres variables), `alertas`, `conexion` (con el aviso de
+   calentamiento de 20 min del sensor de aire), `sensores`, `umbrales`, `reportes`
+   (generados), `grafica`, `comparativa` y `reporte` (genera uno). Si se pide un cambio
+   («cambia el umbral»), se responde que el agente no modifica umbrales, usuarios ni
+   dispositivos. Cuando las reglas no reconocen la pregunta, la IA local (`puente.enrutar`)
+   solo puede elegir una herramienta de este catálogo que tenga pistas en la pregunta.
+4. **Verificar** (`interprete.verificar`). La respuesta se compara con la petición: que no
+   hable de otra variable, que traiga la última medición, la gráfica, el periodo o el dato
+   pedidos. Si no cumple, se resuelve otra vez con la pregunta canónica de la petición; si
+   tampoco cumple, se pide aclaración en vez de dar un dato equivocado. Los problemas quedan
+   en `datos["verificacion"]`.
+
+Agregar una consulta nueva es agregarla al catálogo con su descripción, su requisito y sus
+pistas, enseñarle la intención al intérprete y agregar sus casos al banco.
+
+### Banco de casos
+
+`apps/reportes/casos_agente.py` guarda preguntas reales, incluidas las que fallaron con
+usuarios, con la intención esperada y las frases que la respuesta debe tener o no tener.
+`CasosAgenteTests` los corre en cada `manage.py test`. Contra los datos reales de un
+dispositivo:
+
+```bash
+.venv/bin/python manage.py evaluar_agente --dispositivo NC-0501           # aciertos por caso
+.venv/bin/python manage.py evaluar_agente --dispositivo NC-0501 --fallas  # y las 👎 / no entendidas
+```
+
+El comando corre dentro de una transacción que se revierte (no deja registros ni votos) y
+con la IA apagada, para medir solo las reglas y las herramientas. Las preguntas que lista
+`--fallas` se convierten en casos nuevos con lo que se esperaba.
+
 ## API
 
 Prefijo `/api/v1/`; el contrato completo está en `Context/api/contrato-api.md`.
@@ -275,7 +319,7 @@ cd BackEnd
 .venv/bin/ruff check .
 ```
 
-Las pruebas (134) usan dos bases temporales, `test_nucleo_db` y `test_nucleo_iot`, que
+Las pruebas (183) usan dos bases temporales, `test_nucleo_db` y `test_nucleo_iot`, que
 Django crea y elimina; el usuario de la base debe poder crear bases (en desarrollo, el
 superusuario del contenedor). Las clases heredan de `common.testing.PruebaBase`; las del
 canal en vivo, de `PruebaTransaccional`, porque Channels cierra conexiones y necesita

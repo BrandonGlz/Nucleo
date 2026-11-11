@@ -905,3 +905,32 @@ class RedaccionLocalTests(PruebaBase):
         with override_settings(IA_PROVEEDOR="local"):
             texto = ia.redactar(cifras)
         self.assertIn("29.0 °C", texto)
+
+
+class CasosAgenteTests(PruebaBase):
+    """El banco de casos de ``casos_agente.py``: cada cambio al agente debe seguir cumpliéndolo."""
+
+    def test_banco_de_casos(self):
+        from apps.reportes.evaluacion import evaluar
+
+        e = Escenario()
+        ahora = timezone.now()
+        for i, (codigo, sensor, valor) in enumerate(
+            (("TEMP", e.dht22, 22), ("HUM", e.dht22, 50), ("AIRE", e.ccs811, 600))
+        ):
+            Lectura.objects.create(
+                sensor_num=sensor.pk,
+                variable_codigo=codigo,
+                valor=valor,
+                fecha_hora=ahora - timedelta(minutes=5 - i),
+            )
+        e.dht22.funcion = "Temperatura y humedad relativa"
+        e.dht22.save()
+        e.ccs811.funcion = "Calidad del aire (eCO2)"
+        e.ccs811.save()
+        fallas = [
+            f"{r.caso['pregunta']!r}: {'; '.join(r.fallas)} → {r.respuesta[:140]}"
+            for r in evaluar(e.admin, e.dispositivo)
+            if not r.ok
+        ]
+        self.assertEqual(fallas, [], "\n" + "\n".join(fallas))

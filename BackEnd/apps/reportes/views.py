@@ -13,7 +13,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.dispositivos.models import Dispositivo
-from apps.reportes import agente, aprendizaje, graficas, ia, pdf, puente, servicios
+from apps.reportes import (
+    agente,
+    aprendizaje,
+    graficas,
+    herramientas,
+    ia,
+    interprete,
+    pdf,
+    puente,
+    servicios,
+)
 from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte
 from apps.reportes.serializers import (
     ProgramacionReporteSerializer,
@@ -174,7 +184,7 @@ class AgenteView(APIView):
             )
             r, via, extra = {"texto": texto}, PreguntaAgente.Via.NO_ENTENDIDA, {}
         else:
-            r, via, extra = self._resolver(request.user, dispositivo, pregunta)
+            r, via, extra = self._verificado(request.user, dispositivo, pregunta)
         if pregunta != original:
             # Dependió de la pregunta anterior (seguimiento o corrección): no entra al banco.
             extra["datos"] = {**extra.get("datos", {}), "contexto": True}
@@ -235,11 +245,42 @@ class AgenteView(APIView):
         )
         return {"texto": texto}, Via.REPETIDA, {"datos": {"repeticion": len(iguales) + 1}}
 
-    def _resolver(self, usuario, dispositivo, pregunta, ruteada=False):
-        """Respuesta, cómo se resolvió y datos para el registro. En orden: comparativa, gráfica,
-        reporte, respuesta aprendida, IA (solo para explicar, opinar o recomendar) y
-        predefinida."""
+    def _verificado(self, usuario, dispositivo, pregunta):
+        """Resuelve y verifica la respuesta contra la petición interpretada. Si no cumple
+        (otra variable, otro periodo, sin la gráfica o la medición pedidas), se resuelve de
+        nuevo con la pregunta canónica; si tampoco cumple, se pide aclaración en vez de dar un
+        dato que no se pidió."""
         Via = PreguntaAgente.Via
+        peticion = interprete.interpretar(pregunta)
+        r, via, extra = self._resolver(usuario, dispositivo, pregunta)
+        datos = {**extra.get("datos", {}), "peticion": peticion.como_dict()}
+        problemas = [] if via == Via.NO_ENTENDIDA else interprete.verificar(peticion, r)
+        if problemas:
+            r2, via2, extra2 = self._resolver(
+                usuario, dispositivo, peticion.canonica(), ruteada=True
+            )
+            if not interprete.verificar(peticion, r2):
+                r, via, extra = r2, via2, extra2
+                datos = {**extra2.get("datos", {}), "peticion": peticion.como_dict()}
+            else:
+                r, via, extra = interprete.aclarar(peticion, problemas), Via.NO_ENTENDIDA, {}
+            datos["verificacion"] = problemas
+        return r, via, {**extra, "datos": datos}
+
+    def _resolver(self, usuario, dispositivo, pregunta, ruteada=False):
+        """Respuesta, cómo se resolvió y datos para el registro. En orden: consultas del
+        catálogo (umbrales, reportes generados, estado), comparativa, gráfica, reporte,
+        respuesta aprendida, IA (solo para explicar, opinar o recomendar) y predefinida."""
+        Via = PreguntaAgente.Via
+        intencion = interprete.interpretar(pregunta).intencion
+        if intencion == "umbrales":
+            variables = [t] if (t := agente._tema(pregunta)) in agente.ORDEN_VARIABLES else []
+            r = herramientas.umbrales(dispositivo, variables, pregunta)
+            return r, Via.PREDEFINIDA, {"datos": {"contexto": True}}
+        if intencion == "reportes":
+            return herramientas.reportes(dispositivo), Via.PREDEFINIDA, {}
+        if intencion == "conexion":
+            return herramientas.conexion(dispositivo), Via.PREDEFINIDA, {}
         # Comparativas y gráficas sueltas van antes que el reporte: «solo la gráfica del reporte»
         # o «compara el reporte de esta semana» no generan un reporte completo.
         if graficas.pide_comparativa(pregunta):
@@ -273,6 +314,9 @@ class AgenteView(APIView):
         herramienta y se responde con la pregunta canónica. Sin eso, «no entendida»."""
         Via = PreguntaAgente.Via
         no_entendida = agente.responder(dispositivo, pregunta)
+        if agente.es_cortesia(pregunta) or agente.es_comentario(pregunta):
+            # Saludos, agradecimientos y comentarios no se mandan a la IA.
+            return no_entendida, Via.PREDEFINIDA, {"datos": {"contexto": True}}
         if ruteada:
             return no_entendida, Via.NO_ENTENDIDA, {}
         aprendida = aprendizaje.ruta_aprendida(dispositivo, pregunta)
