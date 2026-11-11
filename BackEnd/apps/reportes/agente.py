@@ -24,7 +24,20 @@ from common import roles
 DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 PERIODO = timedelta(days=7)
 TEMAS = [
-    ("CONEXION", ("conex", "bateri", "senal", "linea", "desconect", "apag")),
+    (
+        "CONEXION",
+        (
+            "conex",
+            "conect",
+            "bateri",
+            "senal",
+            "linea",
+            "apag",
+            "sigue vivo",
+            "prendid",
+            "encendid",
+        ),
+    ),
     ("ALERTAS", ("alerta", "aviso", "incidente")),
     ("TEMP", ("temperatura", "calor", "frio", "grados")),
     ("HUM", ("humedad", "humed")),

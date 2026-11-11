@@ -265,10 +265,11 @@ def comparativa(usuario, dispositivo, pregunta):
                 f"{_cambio(va.get('promedio'), vb.get('promedio'), unidad)}"
             )
     total_a, total_b = a["alertas"]["total"], b["alertas"]["total"]
+    n_alertas = "alerta" if total_a == 1 else "alertas"
     alertas = (
-        f"Hubo {total_a} alertas contra {total_b}."
+        f"Hubo {total_a} {n_alertas} contra {total_b}."
         if total_a != total_b
-        else f"Hubo {total_a} alertas en ambos tramos."
+        else f"Hubo {total_a} {n_alertas} en cada tramo."
     )
     return {
         "texto": f"{donde}: {na} contra {nb}. " + ". ".join(frases) + ". " + alertas,

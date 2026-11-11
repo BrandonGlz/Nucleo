@@ -35,7 +35,13 @@ SISTEMA = (
     "Eres Nico AI, el asistente del dispositivo de monitoreo ambiental {nombre}. Responde "
     "siempre y únicamente en español de México, aunque te escriban en otro idioma, en máximo "
     "dos frases claras, usando solo los datos que se te dan. No inventes cifras. Si los datos "
-    "no alcanzan para responder, dilo. Nunca hagas pronósticos ni hables del futuro."
+    "no alcanzan para responder, dilo. Nunca hagas pronósticos ni hables del futuro. Nunca "
+    "inventes causas: si preguntan por qué, di solo lo que muestran los datos (si subió, bajó "
+    "o salió del rango) y aclara que las lecturas no indican la causa."
+)
+# El modelo pequeño tiende a inventar explicaciones: si afirma una causa, se descarta.
+CAUSA_INVENTADA = re.compile(
+    r"\b(debido a|se debe|a causa|causad|por culpa|provocad|ocasionad|gracias a)", re.I
 )
 # Lo que la plantilla no resuelve y sí necesita redactar: explicar, opinar, recomendar o
 # reformular. Lo demás se responde sin IA.
@@ -250,6 +256,8 @@ def _limpiar(texto, permitidos):
     texto = " ".join(frases[:2])[:320].strip()
     if not agente.es_espanol(texto):  # el modelo respondió en otro idioma
         return None
+    if CAUSA_INVENTADA.search(texto):
+        return None
     for n in NUMERO.findall(texto):
         if round(float(n.replace(",", ".")), 1) not in permitidos:
             return None
@@ -351,11 +359,15 @@ def del_dominio(pregunta):
 
 def _canonica(h, variable, periodo):
     """Pregunta en las palabras que entienden las reglas."""
-    nombre = "temperatura" if variable == "ninguna" else variable
     de_var = "" if variable == "ninguna" else f" de {variable}"
     de_periodo = "" if periodo == "ahora" else f" de {periodo}"
     return {
-        "variable": f"¿cómo está la {nombre}{de_periodo}?",
+        # Sin variable: las reglas responden con la que tuvo más alertas en el periodo.
+        "variable": (
+            f"¿cómo están las lecturas{de_periodo}?"
+            if variable == "ninguna"
+            else f"¿cómo está la {variable}{de_periodo}?"
+        ),
         "alertas": f"alertas{de_periodo}",
         "conexion": "estado de conexión",
         "grafica": f"gráfica{de_var}{de_periodo}",
