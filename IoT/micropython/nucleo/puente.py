@@ -60,7 +60,7 @@ class Puente:
                 continue
             print("Wi-Fi: conectando a", ssid)
             self.wlan.connect(ssid, clave)
-            for _ in range(40):
+            for _ in range(80):
                 if self.wlan.isconnected():
                     print("Wi-Fi: conectado", self.wlan.ifconfig()[0])
                     return True
