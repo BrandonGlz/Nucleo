@@ -244,7 +244,7 @@ function Alertas({ variables, op }) {
 }
 
 // Gráfica genérica para las tarjetas nuevas: `puntos` son [{ label, value }] con su unidad.
-function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto }) {
+export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto }) {
   if (!puntos.length) return <p className="ui-muted">Elige al menos un dato.</p>
   const max = Math.max(...puntos.map((x) => x.value)) || 1
   const f = (x) => Number(x).toFixed(dec)
@@ -427,7 +427,7 @@ function contenido(w, r, op) {
   }
 }
 
-function Widget({ w, r, op }) {
+export function Widget({ w, r, op }) {
   const { titulo, cuerpo } = contenido(w, r, op)
   return (
     <section className="ui-dash__widget" data-ancho={op.ancho ?? w.ancho} style={op.alto ? { minHeight: op.alto } : undefined}>

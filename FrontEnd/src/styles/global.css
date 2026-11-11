@@ -4211,3 +4211,318 @@ button.ui-menuitem:not(:disabled):hover svg {
     display: none;
   }
 }
+
+/* Nico AI: gráfica suelta, comparativa, elegir plantilla, edición y archivos de la conversación */
+.ui-ia-pieza {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.ui-ia-pieza__cabeza {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.ui-ia-pieza__cabeza .ui-muted {
+  margin-left: auto;
+  font-size: 12px;
+}
+.ui-ia-pieza__icono {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-secondary);
+}
+.ui-ia-pieza__cuerpo {
+  padding: 14px 16px 16px;
+}
+.ui-ia-pieza__cuerpo .ui-dash__widget {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ui-ia-comparativa {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.ui-ia-comparativa th,
+.ui-ia-comparativa td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+.ui-ia-comparativa tr:last-child th,
+.ui-ia-comparativa tr:last-child td {
+  border-bottom: 0;
+}
+.ui-ia-comparativa th:first-child {
+  text-align: left;
+}
+.ui-ia-comparativa thead th {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ui-ia-comparativa tbody tr {
+  animation: ui-ia-paso var(--duration-slow) var(--ease-standard) backwards;
+}
+.ui-ia-comparativa tbody tr:nth-child(2) {
+  animation-delay: 60ms;
+}
+.ui-ia-comparativa tbody tr:nth-child(3) {
+  animation-delay: 120ms;
+}
+.ui-ia-comparativa tbody tr:nth-child(n + 4) {
+  animation-delay: 180ms;
+}
+.ui-ia-cambio {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ui-ia-cambio.is-sube {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+.ui-ia-cambio.is-baja {
+  background: var(--accent-soft);
+  color: var(--accent-secondary);
+}
+.ui-ia-comparativa__dispositivos {
+  display: grid;
+  gap: 18px;
+}
+.ui-ia-comparativa__dispositivos h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.ui-ia-plantillas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.ui-ia-plantillas button {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: ui-sube var(--duration-slow) var(--ease-standard) backwards;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+.ui-ia-plantillas button:nth-child(2) {
+  animation-delay: 70ms;
+}
+.ui-ia-plantillas button:nth-child(n + 3) {
+  animation-delay: 140ms;
+}
+.ui-ia-plantillas button:hover:not(:disabled) {
+  border-color: var(--accent-secondary);
+  background: var(--accent-soft);
+  transform: translateY(-2px);
+}
+.ui-ia-plantillas button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.ui-ia-plantillas__nombre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ui-ia-plantillas__nombre svg {
+  color: var(--accent-secondary);
+}
+.ui-ia-plantillas__marca {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.ui-ia-plantillas__elementos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.ui-ia-plantillas__elementos span {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.ui-ia-edicion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ui-ia-edicion__lista {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  list-style: none;
+}
+.ui-ia-edicion__lista li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
+  animation: ui-ia-paso var(--duration-slow) var(--ease-standard) backwards;
+}
+.ui-ia-edicion__lista li svg {
+  color: var(--accent-secondary);
+}
+.ui-ia-edicion__lista li .ui-muted {
+  margin-left: auto;
+  font-size: 12px;
+}
+.ui-ia-edicion__lista li.is-oculto strong,
+.ui-ia-edicion__lista li.is-oculto svg {
+  color: var(--text-muted);
+}
+.ui-ia-archivos {
+  position: relative;
+}
+.ui-ia-archivos__boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+.ui-ia-archivos__boton:hover:not(:disabled),
+.ui-ia-archivos__boton[aria-expanded='true'] {
+  border-color: var(--accent-secondary);
+  color: var(--text-primary);
+}
+.ui-ia-archivos__boton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.ui-ia-archivos__cuenta {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-size: 11px;
+  animation: ui-ia-pop 420ms var(--ease-emphasized);
+}
+.ui-ia-archivos__lista {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: min(380px, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  transform-origin: top right;
+  animation: ui-aparece-menu var(--duration-base) var(--ease-standard);
+}
+.ui-ia-archivos__lista.is-saliendo {
+  animation: ui-sale-menu var(--duration-base) var(--ease-standard) forwards;
+}
+.ui-ia-archivos__lista > .ui-eyebrow {
+  padding: 0 6px 6px;
+}
+.ui-ia-archivos__fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  animation: ui-ia-paso var(--duration-slow) var(--ease-standard) backwards;
+}
+.ui-ia-archivos__fila:hover {
+  background: var(--surface-muted);
+}
+.ui-ia-archivos__texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+.ui-ia-archivos__texto strong,
+.ui-ia-archivos__texto .ui-muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-ia-archivos__texto .ui-muted {
+  font-size: 12px;
+}
+@media (max-width: 560px) {
+  .ui-ia-archivos__boton span:not(.ui-ia-archivos__cuenta) {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ia-comparativa tbody tr,
+  .ui-ia-plantillas button,
+  .ui-ia-edicion__lista li,
+  .ui-ia-archivos__cuenta,
+  .ui-ia-archivos__lista,
+  .ui-ia-archivos__fila {
+    animation: none;
+  }
+}

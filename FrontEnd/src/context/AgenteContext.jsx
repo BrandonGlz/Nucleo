@@ -76,7 +76,9 @@ export function AgenteProvider({ children }) {
 
   const preguntar = useCallback(
     // `minimo`: milisegundos que se muestra el proceso aunque la respuesta llegue antes.
-    async (pregunta, base, minimo = 0) => {
+    // `mostrar`: texto de la burbuja del usuario si es distinto de lo que se envía (p. ej. al
+    // elegir plantilla); `extra`: datos que se guardan en la respuesta (la plantilla elegida).
+    async (pregunta, base, minimo = 0, { mostrar, extra } = {}) => {
       if (!pregunta.trim() || estado === 'pensando' || !agenteValido) return
       let id = actual
       if (!id) {
@@ -86,7 +88,7 @@ export function AgenteProvider({ children }) {
         setActual(id)
       }
       const delAgente = conversaciones.find((c) => c.id === id)?.agente ?? agenteValido
-      editar(id, (ms) => [...(base ?? ms), ...(base ? [] : [{ de: 'yo', texto: pregunta }])])
+      editar(id, (ms) => [...(base ?? ms), ...(base && !mostrar ? [] : [{ de: 'yo', texto: mostrar ?? pregunta }])])
       setEstado('pensando')
       const mio = ++turno.current
       const pausa = new Promise((listo) => setTimeout(listo, minimo))
@@ -96,7 +98,7 @@ export function AgenteProvider({ children }) {
         if (mio !== turno.current) return
         const clave = nuevoId('r')
         setAnimada(clave)
-        editar(id, (ms) => [...ms, { de: 'agente', hora: hora(new Date().toISOString()), ...r, clave }])
+        editar(id, (ms) => [...ms, { de: 'agente', hora: hora(new Date().toISOString()), ...r, ...extra, clave }])
       } catch (e) {
         await pausa
         if (mio !== turno.current) return
@@ -105,6 +107,29 @@ export function AgenteProvider({ children }) {
       setEstado('listo')
     },
     [actual, agenteValido, cambiar, conversaciones, editar, estado],
+  )
+
+  // Respuestas que se arman en el navegador sin ir al servidor (ediciones de plantilla, elegir
+  // plantilla): se agregan al instante a la conversación, con la misma animación de escritura.
+  const responderLocal = useCallback(
+    (pregunta, respuesta) => {
+      if (!agenteValido) return
+      let id = actual
+      if (!id) {
+        id = nuevoId('c')
+        const conv = { id, titulo: pregunta.slice(0, 60), creada: new Date().toISOString(), agente: agenteValido, mensajes: [] }
+        cambiar((lista) => [conv, ...lista])
+        setActual(id)
+      }
+      const clave = nuevoId('r')
+      setAnimada(clave)
+      editar(id, (ms) => [
+        ...ms,
+        { de: 'yo', texto: pregunta },
+        { de: 'agente', hora: hora(new Date().toISOString()), ...respuesta, clave },
+      ])
+    },
+    [actual, agenteValido, cambiar, editar],
   )
 
   const nueva = useCallback(() => {
@@ -160,6 +185,7 @@ export function AgenteProvider({ children }) {
       dispositivoAgente,
       nombreAgente: (num) => dispositivos.find((d) => d.num === num)?.nombre ?? 'Nico AI',
       preguntar,
+      responderLocal,
       detener,
       nueva,
       abrir,
@@ -167,7 +193,7 @@ export function AgenteProvider({ children }) {
       editar,
       setAgente,
     }
-  }, [conversaciones, actual, estado, animada, dispositivos, agenteValido, dispositivoAgente, preguntar, detener, nueva, abrir, borrar, editar, setAgente])
+  }, [conversaciones, actual, estado, animada, dispositivos, agenteValido, dispositivoAgente, preguntar, responderLocal, detener, nueva, abrir, borrar, editar, setAgente])
 
   return <AgenteContext.Provider value={valor}>{children}</AgenteContext.Provider>
 }

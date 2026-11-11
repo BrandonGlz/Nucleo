@@ -11,6 +11,15 @@ const normalizar = (t) =>
 const REPORTE = /\b(reporte|informe|resumen|repote|reprote)s?\b/
 const VERBOS = /\b(genera|generar|generame|hazme|haz|crea|crear|creame|dame|manda|mandame)\b/
 const PERIODO = /(semana|semanal|mes|mensual|hoy|ayer|dias|quincena)/
+// Igual que en el backend (apps/reportes/graficas.py): van antes que el reporte completo.
+const GRAFICA = /(grafica|grafico|graficame|chart|diagrama)/
+const COMPARATIVA = /(compara|comparativ|comparacion|cooperativa|versus|\bvs\b|\bcontra\b|diferencia entre)/
+export const esGrafica = (pregunta) => GRAFICA.test(normalizar(pregunta))
+export const esComparativa = (pregunta) => COMPARATIVA.test(normalizar(pregunta))
+export const esReporte = (pregunta) => {
+  const t = normalizar(pregunta)
+  return !GRAFICA.test(t) && !COMPARATIVA.test(t) && (REPORTE.test(t) || (VERBOS.test(t) && PERIODO.test(t)))
+}
 
 const VARIABLES = [
   [/(temperatura|calor|frio|°c|grados)/, 'temperatura'],
@@ -20,6 +29,18 @@ const VARIABLES = [
 
 export function planDe(pregunta, dispositivo = 'el dispositivo') {
   const t = normalizar(pregunta)
+  if (COMPARATIVA.test(t)) {
+    return {
+      ms: 1600,
+      pasos: ['Entendiendo qué comparar', 'Reuniendo las lecturas de ambos lados', 'Calculando diferencias', 'Armando la comparativa'],
+    }
+  }
+  if (GRAFICA.test(t)) {
+    return {
+      ms: 1200,
+      pasos: ['Entendiendo qué gráfica necesitas', `Reuniendo las lecturas de ${dispositivo}`, 'Dibujando la gráfica'],
+    }
+  }
   if (REPORTE.test(t) || (VERBOS.test(t) && PERIODO.test(t))) {
     return {
       ms: 3000,
@@ -81,6 +102,11 @@ const SEGUIR = {
   CONEXION: { icono: 'signal', texto: 'Estado de conexión' },
   REPORTE: { icono: 'file-text', texto: 'Reporte de esta semana' },
   REPORTE_MES: { icono: 'file-text', texto: 'Reporte del mes pasado' },
+  GRAFICA_HUM: { icono: 'droplets', texto: 'Gráfica de humedad' },
+  GRAFICA_ALERTAS: { icono: 'bell', texto: 'Gráfica de alertas' },
+  COMPARA_SEMANA: { icono: 'activity', texto: 'Compara con la semana pasada' },
+  COMPARA_DISP: { icono: 'cpu', texto: 'Compara los dispositivos' },
+  ELEMENTOS: { icono: 'layout-grid', texto: '¿Qué elementos tiene la plantilla?' },
 }
 const DESPUES = {
   TEMP: ['HUM', 'ALERTAS', 'REPORTE'],
@@ -89,12 +115,17 @@ const DESPUES = {
   ALERTAS: ['PICOS', 'CONEXION', 'REPORTE'],
   PICOS: ['ALERTAS', 'HUM', 'REPORTE'],
   CONEXION: ['ALERTAS', 'TEMP', 'AIRE'],
-  REPORTE: ['REPORTE_MES', 'ALERTAS', 'PICOS'],
+  REPORTE: ['ELEMENTOS', 'GRAFICA_ALERTAS', 'COMPARA_SEMANA'],
+  GRAFICA: ['COMPARA_SEMANA', 'GRAFICA_ALERTAS', 'REPORTE'],
+  COMPARATIVA: ['COMPARA_DISP', 'GRAFICA_HUM', 'REPORTE'],
+  EDICION: ['ELEMENTOS', 'GRAFICA_ALERTAS', 'COMPARA_SEMANA'],
   OTRO: ['TEMP', 'HUM', 'ALERTAS'],
 }
 
 export function temaDe(pregunta) {
   const t = normalizar(pregunta)
+  if (COMPARATIVA.test(t)) return 'COMPARATIVA'
+  if (GRAFICA.test(t)) return 'GRAFICA'
   if (REPORTE.test(t) || (VERBOS.test(t) && PERIODO.test(t))) return 'REPORTE'
   if (/(conex|bateri|senal|linea|desconect|apag)/.test(t)) return 'CONEXION'
   if (/(alerta|aviso|incidente)/.test(t)) return 'ALERTAS'
@@ -106,11 +137,38 @@ export function temaDe(pregunta) {
 }
 
 // `hechas`: preguntas ya hechas en la conversación (no se vuelven a sugerir).
-export function siguientes(pregunta, { reporte = false, hechas = [] } = {}) {
+export function siguientes(pregunta, { reporte = false, hechas = [], tema } = {}) {
   const ya = new Set(hechas.map(normalizar))
-  return DESPUES[temaDe(pregunta)]
-    .filter((c) => reporte || !c.startsWith('REPORTE'))
+  return (DESPUES[tema ?? temaDe(pregunta)] ?? DESPUES.OTRO)
+    .filter((c) => reporte || !['REPORTE', 'REPORTE_MES', 'ELEMENTOS', 'COMPARA_DISP'].includes(c))
     .map((c) => SEGUIR[c])
     .filter((s) => !ya.has(normalizar(s.texto)))
     .slice(0, 3)
+}
+
+// Respuestas que no necesitan servidor ni IA: saludos, agradecimientos, ayuda y llevar a otra
+// sección. Devuelve { texto, ir? } o null.
+const SECCIONES = [
+  [/(historico|historial|mediciones)/, '/mediciones', 'Histórico'],
+  [/alertas/, '/alertas', 'Alertas'],
+  [/reportes/, '/reportes', 'Reportes'],
+  [/dispositivos/, '/dispositivos', 'Dispositivos'],
+  [/umbrales/, '/umbrales', 'Umbrales'],
+  [/(panel|inicio)/, '/panel', 'Panel'],
+]
+export function respuestaRapida(pregunta, { nombre = 'equipo', dispositivo = 'tu dispositivo' } = {}) {
+  const t = normalizar(pregunta).trim()
+  if (/^(hola|buen(os|as)? (dias|tardes|noches)|que tal|hey|saludos)( nico)?$/.test(t))
+    return { texto: `Hola, ${nombre}. Pregúntame por la temperatura, la humedad, el aire, las alertas o la conexión de ${dispositivo}; también genero reportes, gráficas y comparativas.` }
+  if (/^(gracias|muchas gracias|ok|okay|vale|perfecto|excelente|listo|genial)( nico)?$/.test(t))
+    return { texto: 'Con gusto. Si necesitas algo más de tus sensores, aquí estoy.' }
+  if (/(que puedes hacer|en que me ayudas|como te uso|ayuda|que sabes hacer)/.test(t))
+    return {
+      texto: `Puedo responder al instante sobre ${dispositivo}: temperatura, humedad, calidad del aire, alertas y conexión. También genero reportes con tus plantillas (y los edito: «quita las alertas», «humedad en barras»), muestro una sola gráfica («gráfica de humedad del mes») y comparo periodos o dispositivos («compara con la semana pasada»).`,
+    }
+  if (/^(llevame|ir|abre|abrir|ve|vamos) (a |al |a la |a los )?/.test(t)) {
+    const destino = SECCIONES.find(([re]) => re.test(t))
+    if (destino) return { texto: `Te llevo a ${destino[2]}.`, ir: destino[1] }
+  }
+  return null
 }

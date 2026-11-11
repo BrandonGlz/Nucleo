@@ -258,12 +258,29 @@ function leer() {
     return { formatos: [{ id: ESTANDAR, nombre: 'Estándar', conf: BASE }], porReporte: {} }
   }
 }
+// Sin almacenamiento los formatos duran lo que dure la página: se guardan también en memoria.
+let enMemoria = null
+const EVENTO = 'nucleo:formatos'
 function guardar(estado) {
+  enMemoria = estado
   try {
     localStorage.setItem(CLAVE, JSON.stringify(estado))
   } catch {
-    // Sin almacenamiento los formatos duran lo que dure la página.
+    // Sin almacenamiento queda solo la copia en memoria.
   }
+  // Avisa a las demás vistas (Reportes, visor y chat de Nico AI) para que se actualicen.
+  window.dispatchEvent(new Event(EVENTO))
+}
+
+// Formatos y asignaciones fuera de React: los usa Nico AI para elegir y editar plantillas.
+export const leerFormatos = () => enMemoria ?? leer()
+export const guardarFormatos = (estado) => guardar(estado)
+export const formatoDeReporte = (estado, num) =>
+  estado.formatos.find((f) => f.id === estado.porReporte[num]) ?? estado.formatos[0]
+export function asignarFormato(num, id) {
+  const estado = leerFormatos()
+  if (estado.porReporte[num] === id || !estado.formatos.some((f) => f.id === id)) return
+  guardar({ ...estado, porReporte: { ...estado.porReporte, [num]: id } })
 }
 
 // Mueve `id` antes o después de `destino` dentro del orden.
@@ -279,7 +296,20 @@ function reordenar(orden, id, destino, despues) {
 // Se trabaja sobre un borrador: «Guardar» lo aplica y «Cancelar» o Escape lo descartan.
 // `reporte` es el número del reporte en pantalla; la personalización edita su formato.
 export function useEdicion(reporte) {
-  const [estado, setEstado] = useState(leer)
+  const [estado, setEstado] = useState(leerFormatos)
+  // Cambios hechos desde otra vista (o en otra pestaña) se reflejan aquí.
+  useEffect(() => {
+    const releer = (e) => {
+      if (e.type === 'storage') enMemoria = null // lo cambió otra pestaña: se lee del almacenamiento
+      setEstado(leerFormatos())
+    }
+    window.addEventListener(EVENTO, releer)
+    window.addEventListener('storage', releer)
+    return () => {
+      window.removeEventListener(EVENTO, releer)
+      window.removeEventListener('storage', releer)
+    }
+  }, [])
   const [borrador, setBorrador] = useState(null)
   // «formato»: se edita el formato del reporte en pantalla; «nuevo»: se crea uno desde el modal.
   const [modo, setModo] = useState('formato')

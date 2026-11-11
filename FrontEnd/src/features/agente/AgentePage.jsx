@@ -21,9 +21,11 @@ import { useAgente } from '../../context/AgenteContext'
 import { useSesion } from '../../context/SesionContext'
 import { DashboardReporte } from '../reportes/DashboardReporte'
 import { descargarPdf } from '../reportes/pdf'
-import { useEdicion } from '../reportes/personalizacion'
+import { asignarFormato, useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
-import { planDe, siguientes } from './proceso'
+import { esReporte, planDe, respuestaRapida, siguientes } from './proceso'
+import { aplicar, interpretar, plantillas } from './edicion'
+import { Archivos, Comparativa, Edicion, ElegirPlantilla, GraficaChat } from './Piezas'
 import { periodo } from '../../utils/formato'
 
 const SUGERENCIAS = [
@@ -271,7 +273,7 @@ function Hallazgos({ m }) {
   )
 }
 
-function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto, alTerminar }) {
+function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto, alTerminar, elegirPlantilla, deshacer }) {
   const navegar = useNavigate()
   const [completa, setCompleta] = useState(!animar)
   const [copiado, setCopiado] = useState(false)
@@ -309,6 +311,31 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
                 </Button>
               </div>
             )}
+          </div>
+        )}
+        {completa && m.grafica && (
+          <div className="ui-ia-aparece">
+            <GraficaChat g={m.grafica} />
+          </div>
+        )}
+        {completa && m.comparativa && (
+          <div className="ui-ia-aparece">
+            <Comparativa c={m.comparativa} />
+          </div>
+        )}
+        {completa && m.plantillas && (
+          <div className="ui-ia-aparece">
+            <ElegirPlantilla p={m.plantillas} activa={ultima} elegir={elegirPlantilla} />
+          </div>
+        )}
+        {completa && m.edicion && (
+          <div className="ui-ia-aparece">
+            <Edicion
+              e={m.edicion}
+              reporte={m.reporteEditado}
+              visualizar={visualizar}
+              deshacer={ultima && m.edicion.previo ? deshacer : null}
+            />
           </div>
         )}
         {completa && m.picos && (
@@ -424,6 +451,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
 
 export function AgentePage() {
   const { usuario } = useSesion()
+  const navegarA = useNavigate()
   const ag = useAgente()
   const { conversaciones, actual, conv, pensando, animada, dispositivos, dispositivoAgente } = ag
   const [texto, setTexto] = useState('')
@@ -480,13 +508,53 @@ export function AgentePage() {
 
   // Plan de lo que Nico AI muestra mientras responde; fija también el tiempo mínimo (1 a 3 s).
   const [plan, setPlan] = useState(() => planDe('', nombreAgente))
+  // Reportes generados en la conversación (sin repetir), del más reciente al más antiguo.
+  const reportes = [...new Map(mensajes.filter((m) => m.reporte?.num).map((m) => [m.reporte.num, m.reporte])).values()].reverse()
+  const puedeReporte = ROLES_REPORTE.includes(usuario?.rol)
+  // Lo que se resuelve en el navegador, sin servidor ni IA: saludos y ayuda, ir a otra sección,
+  // editar la plantilla del reporte de la conversación y elegir plantilla antes de generar.
+  const local = (pregunta) => {
+    const rapida = respuestaRapida(pregunta, { nombre: usuario?.nombre?.split(' ')[0], dispositivo: nombreAgente })
+    if (rapida) return rapida
+    const reporte = visor ?? reportes[0]
+    const orden = reporte && puedeReporte ? interpretar(pregunta, reporte.num) : null
+    if (orden) {
+      const ultimaEdicion = mensajes.findLast((m) => m.edicion?.num === reporte.num && m.edicion.previo)?.edicion
+      const r = aplicar(orden, reporte.num, ultimaEdicion)
+      return { ...r, reporteEditado: reporte }
+    }
+    if (puedeReporte && esReporte(pregunta)) {
+      const opciones = plantillas()
+      if (opciones.length > 1)
+        return { texto: '¿Con qué plantilla genero el reporte? Estos son los elementos de cada una.', plantillas: { pregunta, opciones } }
+    }
+    return null
+  }
   const preguntar = (pregunta, base) => {
     if (!pregunta.trim() || pensando) return
     setTexto('')
+    const r = base ? null : local(pregunta)
+    if (r) {
+      ag.responderLocal(pregunta, r)
+      if (r.ir) setTimeout(() => navegarA(r.ir), 900)
+      return
+    }
     const nuevo = planDe(pregunta, nombreAgente)
     setPlan(nuevo)
     ag.preguntar(pregunta, base, nuevo.ms)
   }
+  const elegirPlantilla = (pregunta, opcion) => {
+    if (pensando) return
+    const nuevo = planDe(pregunta, nombreAgente)
+    setPlan(nuevo)
+    ag.preguntar(pregunta, mensajes, nuevo.ms, { mostrar: `Con la plantilla «${opcion.nombre}»`, extra: { formato: opcion.id } })
+  }
+  // El reporte generado con una plantilla elegida queda asignado a ella.
+  const delHilo = conv?.mensajes
+  useEffect(() => {
+    for (const m of delHilo ?? []) if (m.reporte?.num && m.formato) asignarFormato(m.reporte.num, m.formato)
+  }, [delHilo])
+  const descargarReporte = (r) => reportesApi.descargarArchivo(r.num, nombreReporte(r)).catch(() => {})
   const detener = ag.detener
   const nueva = () => {
     ag.nueva()
@@ -512,12 +580,15 @@ export function AgentePage() {
   }
   const ultimo = mensajes.at(-1)
   const listo = ultimo?.de === 'agente' && !pensando && (ultimo.clave !== animada || terminada === ultimo.clave)
-  const sugerencias = listo
-    ? siguientes(mensajes.findLast((x) => x.de === 'yo')?.texto ?? '', {
-        reporte: ROLES_REPORTE.includes(usuario?.rol),
-        hechas: mensajes.filter((x) => x.de === 'yo').map((x) => x.texto),
-      })
-    : []
+  // Mientras se elige plantilla no se sugiere nada; tras una edición, se sugieren más ediciones.
+  const sugerencias =
+    listo && !ultimo.plantillas
+      ? siguientes(mensajes.findLast((x) => x.de === 'yo')?.texto ?? '', {
+          reporte: puedeReporte,
+          hechas: mensajes.filter((x) => x.de === 'yo').map((x) => x.texto),
+          tema: ultimo.edicion ? 'EDICION' : ultimo.reporte ? 'REPORTE' : undefined,
+        })
+      : []
 
   const compositor = (
     <Compositor
@@ -576,6 +647,7 @@ export function AgentePage() {
               <PanelLeft size={18} />
             </button>
             <span className="ui-ia-barra__titulo">{conv?.titulo ?? 'Nueva conversación'}</span>
+            <Archivos reportes={reportes} visualizar={setVisor} descargar={descargarReporte} />
             <div className="ui-ia-agente">
               <span className="ui-ia-estado__punto" aria-hidden />
               <Desplegable
@@ -650,6 +722,8 @@ export function AgentePage() {
                         visualizar={setVisor}
                         visorAbierto={visor?.num}
                         alTerminar={() => setTerminada(m.clave)}
+                        elegirPlantilla={elegirPlantilla}
+                        deshacer={() => preguntar('Deshaz el último cambio')}
                       />
                     ),
                   )}

@@ -24,7 +24,7 @@ def _numero(valor):
     return None if valor is None else float(Decimal(valor).quantize(Decimal("0.01")))
 
 
-def calcular_cifras(organizacion, area, inicio, fin):
+def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None):
     """Promedios, máximos, mínimos, picos y alertas del periodo.
 
     Las lecturas se consultan en TimescaleDB y las alertas en PostgreSQL; la IA no calcula
@@ -40,6 +40,9 @@ def calcular_cifras(organizacion, area, inicio, fin):
     if area is not None:
         sensores = sensores.filter(dispositivo__area=area)
         alertas = alertas.filter(umbral__dispositivo__area=area)
+    if dispositivo is not None:  # gráficas que pide un operador: solo su dispositivo
+        sensores = sensores.filter(dispositivo=dispositivo)
+        alertas = alertas.filter(umbral__dispositivo=dispositivo)
     dispositivo_de = dict(sensores.values_list("num", "dispositivo__codigo_mqtt"))
     catalogo = {v.codigo: v for v in VariableAmbiental.objects.all()}
 

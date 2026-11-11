@@ -290,6 +290,9 @@ export async function preguntarAgente(pregunta, dispositivo) {
     throw new ApiError('La API respondió con el estado 503.', 503)
   }
   const d = db.dispositivos.find((x) => x.num === Number(dispositivo)) ?? db.dispositivos[4]
+  const t = pregunta.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  if (/(compara|comparativ|cooperativa|versus|contra)/.test(t)) return comparativaSimulada(d, t)
+  if (/(grafica|grafico|diagrama)/.test(t)) return graficaSimulada(d, t)
   const fuera = !/humedad|temperatura|aire|sensor|alerta|dispositivo|reporte|pico|área|area|bater|conex/i.test(pregunta)
   if (fuera) return { texto: `Solo puedo responder sobre ${d.nombre} y sus sensores.` }
   const variable = /temperatura/i.test(pregunta) ? 'TEMP' : /aire/i.test(pregunta) ? 'AIRE' : 'HUM'
@@ -313,3 +316,77 @@ export async function preguntarAgente(pregunta, dispositivo) {
   }
 }
 const UNIDAD_VAR = { TEMP: '°C', HUM: '%HR', AIRE: 'ppm' }
+
+// Cifras con la misma forma que las de la API (servicios.calcular_cifras) para las gráficas
+// sueltas y comparativas de Nico AI.
+function cifrasSimuladas(dias, desfase = 0) {
+  const base = { TEMP: [24.5, '°C', 'Temperatura'], HUM: [55, '%HR', 'Humedad relativa'], AIRE: [540, 'ppm', 'Calidad del aire (eCO2)'] }
+  const hoy = new Date()
+  const variables = {}
+  const series = {}
+  for (const [v, [b, unidad, nombre]] of Object.entries(base)) {
+    const paso = v === 'AIRE' ? 40 : 1.2
+    series[v] = Array.from({ length: dias }, (_, i) => {
+      const f = new Date(hoy)
+      f.setDate(hoy.getDate() - (dias - 1 - i))
+      const p = b + desfase * paso + Math.sin(i * 1.3) * paso * 2
+      return { t: f.toISOString(), promedio: +p.toFixed(1), minimo: +(p - paso).toFixed(1), maximo: +(p + paso * 2).toFixed(1) }
+    })
+    const ps = series[v].map((x) => x.promedio)
+    variables[v] = {
+      nombre, unidad, muestras: dias * 2880,
+      promedio: +(ps.reduce((a, x) => a + x, 0) / dias).toFixed(1),
+      minimo: Math.min(...series[v].map((x) => x.minimo)),
+      maximo: Math.max(...series[v].map((x) => x.maximo)),
+    }
+  }
+  return {
+    variables, series, intervalo_serie: 'dia',
+    dispositivos: { 'NUC-A01': {}, 'NUC-A02': {} },
+    alertas: { total: 3 + desfase, por_variable: { HUM: 2 + desfase, TEMP: 1, AIRE: 0 }, por_nivel: {}, por_estado: {} },
+  }
+}
+
+function graficaSimulada(d, t) {
+  const mes = /mes/.test(t)
+  const dias = mes ? 30 : 7
+  const descripcion = mes ? 'este mes' : 'los últimos 7 días'
+  const cifras = cifrasSimuladas(dias)
+  const elemento = /alerta/.test(t) ? 'alertas' : /cifras|indicadores/.test(t) ? 'cifras' : 'serie'
+  const variable = /temperatura/.test(t) ? 'TEMP' : /aire/.test(t) ? 'AIRE' : 'HUM'
+  const fin = new Date()
+  const inicio = new Date(fin.getTime() - dias * 86400000)
+  const info = cifras.variables[variable]
+  return {
+    texto: elemento === 'serie'
+      ? `La ${info.nombre.toLowerCase()} de ${d.nombre}, ${descripcion}: promedió ${info.promedio} ${info.unidad}, con mínimo de ${info.minimo} y máximo de ${info.maximo} ${info.unidad}.`
+      : `${elemento === 'alertas' ? 'Alertas por variable' : 'Cifras clave'} de ${d.nombre}, ${descripcion}.`,
+    grafica: { elemento, variable, donde: d.nombre, descripcion, periodo_inicio: inicio.toISOString(), periodo_fin: fin.toISOString(), cifras },
+  }
+}
+
+function comparativaSimulada(d, t) {
+  if (/dispositivos|equipos/.test(t))
+    return {
+      texto: `Dispositivos del área, los últimos 7 días: ${d.nombre} tuvo la humedad más alta (57.2 %HR).`,
+      comparativa: {
+        tipo: 'dispositivos', donde: 'Almacén', descripcion: 'los últimos 7 días',
+        filas: [
+          { variable: 'TEMP', nombre: 'temperatura', unidad: '°C', puntos: [[d.nombre, 25.1], ['Núcleo A-02', 24.3], ['Núcleo A-03', 23.8]] },
+          { variable: 'HUM', nombre: 'humedad relativa', unidad: '%HR', puntos: [[d.nombre, 57.2], ['Núcleo A-03', 54.9], ['Núcleo A-02', 52.4]] },
+        ],
+        alertas: [[d.nombre, 3], ['Núcleo A-02', 1], ['Núcleo A-03', 0]],
+      },
+    }
+  const a = cifrasSimuladas(7, 1).variables
+  const b = cifrasSimuladas(7, 0).variables
+  const fila = (v, nombre) => ({ variable: v, nombre, unidad: a[v].unidad, a: { promedio: a[v].promedio }, b: { promedio: b[v].promedio } })
+  return {
+    texto: `${d.nombre}: esta semana contra el mismo tramo de la semana pasada. La humedad relativa promedió ${a.HUM.promedio} %HR, ${(a.HUM.promedio - b.HUM.promedio).toFixed(1)} %HR más que antes. Hubo 4 alertas contra 3.`,
+    comparativa: {
+      tipo: 'periodos', donde: d.nombre, columnas: ['esta semana', 'el mismo tramo de la semana pasada'],
+      filas: [fila('TEMP', 'temperatura'), fila('HUM', 'humedad relativa'), fila('AIRE', 'calidad del aire')],
+      alertas: [4, 3],
+    },
+  }
+}

@@ -326,6 +326,53 @@ class AgenteTests(PruebaBase):
             cliente.post("/api/v1/agente/", self.pregunta, format="json").status_code, 200
         )
 
+    def _preguntar(self, usuario, pregunta):
+        r = cliente_de(usuario).post(
+            "/api/v1/agente/", {**self.pregunta, "pregunta": pregunta}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def test_grafica_suelta_sin_generar_reporte(self):
+        cuerpo = self._preguntar(
+            self.e.analista, "Muéstrame solo la gráfica de temperatura de los últimos 2 días"
+        )
+        grafica = cuerpo["grafica"]
+        self.assertEqual((grafica["elemento"], grafica["variable"]), ("serie", "TEMP"))
+        self.assertEqual(grafica["cifras"]["variables"]["TEMP"]["maximo"], 26.4)
+        self.assertIn("máximo de 26.4 °C", cuerpo["texto"])
+        self.assertFalse(Reporte.objects.exists())
+
+    def test_grafica_de_alertas(self):
+        cuerpo = self._preguntar(self.e.supervisor, "Gráfica de alertas del reporte")
+        self.assertEqual(cuerpo["grafica"]["elemento"], "alertas")
+        self.assertFalse(Reporte.objects.exists())
+
+    def test_comparativa_de_periodos(self):
+        for frase in ("Compara la temperatura con la semana anterior", "Haz una cooperativa"):
+            cuerpo = self._preguntar(self.e.analista, frase)
+            comparativa = cuerpo["comparativa"]
+            self.assertEqual(comparativa["tipo"], "periodos")
+            fila = comparativa["filas"][0]
+            self.assertEqual(
+                (fila["variable"], fila["a"]["maximo"], fila["b"]["maximo"]), ("TEMP", 26.4, None)
+            )
+            self.assertIn("promedió", cuerpo["texto"])
+        self.assertFalse(Reporte.objects.exists())
+
+    def test_comparativa_entre_dispositivos_pide_dos(self):
+        cuerpo = self._preguntar(self.e.supervisor, "Compara los dispositivos del área")
+        self.assertNotIn("comparativa", cuerpo)
+        self.assertIn("al menos dos dispositivos", cuerpo["texto"])
+
+    def test_operador_ve_graficas_solo_de_su_dispositivo(self):
+        self.e.operador.acceso_agente = True
+        self.e.operador.save(update_fields=["acceso_agente"])
+        cuerpo = self._preguntar(self.e.operador, "Gráfica de temperatura")
+        self.assertEqual(cuerpo["grafica"]["donde"], self.e.dispositivo.nombre)
+        cuerpo = self._preguntar(self.e.operador, "Compara los dispositivos")
+        self.assertIn("no otros dispositivos", cuerpo["texto"])
+
     @override_settings(IA_PROVEEDOR="local")
     def test_genera_un_reporte_del_area_cuando_se_le_pide(self):
         r = cliente_de(self.e.supervisor).post(

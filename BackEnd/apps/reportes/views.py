@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.reportes import agente, ia, pdf, servicios
+from apps.reportes import agente, graficas, ia, pdf, servicios
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.reportes.serializers import (
     ProgramacionReporteSerializer,
@@ -120,6 +120,12 @@ class AgenteView(APIView):
         if dispositivo is None:
             raise NotFound("El dispositivo no existe o no está a su alcance.")
         pregunta = entrada.validated_data["pregunta"]
+        # Comparativas y gráficas sueltas van antes que el reporte: «solo la gráfica del reporte»
+        # o «compara el reporte de esta semana» no generan un reporte completo.
+        if graficas.pide_comparativa(pregunta):
+            return Response(graficas.comparativa(request.user, dispositivo, pregunta))
+        if graficas.pide_grafica(pregunta):
+            return Response(graficas.grafica(request.user, dispositivo, pregunta))
         if agente.pide_reporte(pregunta):
             return Response(agente.generar_reporte(request.user, dispositivo, pregunta))
         return Response(agente.responder(dispositivo, pregunta))
