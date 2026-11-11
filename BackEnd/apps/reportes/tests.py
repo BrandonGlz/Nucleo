@@ -699,9 +699,16 @@ class NicoAprendeTests(PruebaBase):
         hilo = self._esp(
             lambda t: '{"herramienta": "ninguna", "variable": "ninguna", "periodo": "ahora"}'
         )
-        cuerpo = self._pedir("¿quién ganó el partido?")
+        cuerpo = self._pedir("¿qué opinas del clima político?")
         hilo.join()
         self.assertEqual(cuerpo["via"], "NO_ENTENDIDA")
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
+    def test_fuera_del_dominio_no_gasta_tokens(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        cuerpo = self._pedir("¿quién ganó el partido?")
+        self.assertEqual(cuerpo["via"], "NO_ENTENDIDA")
+        self.assertEqual(puente.cola().pendientes(self.e.dispositivo.codigo_mqtt), 0)
 
     def test_cifra_inventada_no_entra_al_banco(self):
         self.assertIsNone(aprendizaje.a_plantilla("Subirá a 31 °C.", {"actual": 23.0}))

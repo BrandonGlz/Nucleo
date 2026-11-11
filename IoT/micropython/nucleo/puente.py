@@ -45,6 +45,7 @@ class Puente:
             self.raiz = f.read()
         self.led = machine.Pin(getattr(secrets, "LED_PIN", 2), machine.Pin.OUT)
         self.atendidas = 0
+        self.sock = self.crudo = None
 
     # ── Red ──────────────────────────────────────────────────────────────────────────
     def conectar(self):
@@ -79,36 +80,107 @@ class Puente:
         return False
 
     # ── HTTPS ────────────────────────────────────────────────────────────────────────
-    def pedir(self, metodo, ruta, cuerpo=None, espera=15):
-        """HTTP/1.0 sobre TLS verificado: (estado, cuerpo en bytes)."""
-        datos = json.dumps(cuerpo).encode() if cuerpo is not None else b""
+    # Una sola conexión TLS que se reutiliza (HTTP/1.1 keep-alive): el handshake cuesta ~2 s en
+    # el ESP32, así que tomar → IA → entregar no paga uno por petición.
+    def _abrir(self, espera):
         direccion = socket.getaddrinfo(self.host, 443, 0, socket.SOCK_STREAM)[0][-1]
-        s = socket.socket()
-        s.settimeout(espera)
+        crudo = socket.socket()
+        crudo.settimeout(espera)
         try:
-            s.connect(direccion)
+            crudo.connect(direccion)
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             ctx.verify_mode = ssl.CERT_REQUIRED
             ctx.load_verify_locations(cadata=self.raiz)
-            s = ctx.wrap_socket(s, server_hostname=self.host)
-            cabeza = (
-                "%s %s HTTP/1.0\r\nHost: %s\r\nX-Puente-Clave: %s\r\nUser-Agent: nucleo-puente\r\n"
-                "Content-Type: application/json\r\nContent-Length: %d\r\n\r\n"
-                % (metodo, ruta, self.host, self.clave, len(datos))
-            )
-            s.write(cabeza.encode() + datos)
+            self.sock = ctx.wrap_socket(crudo, server_hostname=self.host)
+            self.crudo = crudo
+        except Exception:
+            crudo.close()
+            raise
+
+    def _cerrar(self):
+        if self.sock is not None:
+            try:
+                self.sock.close()
+            except OSError:
+                pass
+        self.sock = self.crudo = None
+
+    def _leer(self, n):
+        partes, falta = [], n
+        while falta > 0:
+            trozo = self.sock.read(min(falta, 2048))
+            if not trozo:
+                raise OSError("conexión cerrada a media respuesta")
+            partes.append(trozo)
+            falta -= len(trozo)
+        return b"".join(partes)
+
+    def _intercambio(self, metodo, ruta, datos, espera):
+        self.crudo.settimeout(espera)
+        cabeza = (
+            "%s %s HTTP/1.1\r\nHost: %s\r\nX-Puente-Clave: %s\r\nUser-Agent: nucleo-puente\r\n"
+            "Content-Type: application/json\r\nContent-Length: %d\r\nConnection: keep-alive\r\n\r\n"
+            % (metodo, ruta, self.host, self.clave, len(datos))
+        )
+        self.sock.write(cabeza.encode() + datos)
+        linea = self.sock.readline()
+        if not linea:
+            raise OSError("el servidor cerró la conexión")
+        estado = int(linea.split()[1])
+        largo, trozos, cerrar = None, False, False
+        while True:
+            h = self.sock.readline()
+            if not h or h == b"\r\n":
+                break
+            clave, _, valor = h.decode().partition(":")
+            clave, valor = clave.strip().lower(), valor.strip().lower()
+            if clave == "content-length":
+                largo = int(valor)
+            elif clave == "transfer-encoding" and "chunked" in valor:
+                trozos = True
+            elif clave == "connection" and valor == "close":
+                cerrar = True
+        if trozos:
             partes = []
             while True:
-                trozo = s.read(2048)
+                tam = int(self.sock.readline().split(b";")[0].strip(), 16)
+                if tam == 0:
+                    self.sock.readline()
+                    break
+                partes.append(self._leer(tam))
+                self.sock.readline()
+            cuerpo = b"".join(partes)
+        elif largo is not None:
+            cuerpo = self._leer(largo)
+        elif estado in (204, 304):
+            cuerpo = b""
+        else:  # sin largo: el cuerpo termina cuando el servidor cierra
+            partes = []
+            while True:
+                trozo = self.sock.read(2048)
                 if not trozo:
                     break
                 partes.append(trozo)
-        finally:
-            s.close()
-        respuesta = b"".join(partes)
-        fin = respuesta.find(b"\r\n\r\n")
-        estado = int(respuesta[9:12]) if respuesta[:5] == b"HTTP/" else 0
-        return estado, respuesta[fin + 4 :] if fin >= 0 else b""
+            cuerpo, cerrar = b"".join(partes), True
+        if cerrar:
+            self._cerrar()
+        return estado, cuerpo
+
+    def pedir(self, metodo, ruta, cuerpo=None, espera=15):
+        """Petición HTTPS verificada: (estado, cuerpo en bytes). Si la conexión guardada ya
+        no sirve (el servidor la cerró por inactividad), abre otra y reintenta una vez."""
+        datos = json.dumps(cuerpo).encode() if cuerpo is not None else b""
+        for intento in (0, 1):
+            nueva = self.sock is None
+            try:
+                if nueva:
+                    self._abrir(espera)
+                return self._intercambio(metodo, ruta, datos, espera)
+            except (OSError, ValueError, IndexError):
+                self._cerrar()
+                if nueva or intento:
+                    raise
+        return 0, b""
 
     # ── Ciclo ────────────────────────────────────────────────────────────────────────
     def atender(self, trabajo):

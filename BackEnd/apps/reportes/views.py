@@ -203,7 +203,7 @@ class AgenteView(APIView):
         if aprendida is not None:
             r, _, _ = self._resolver(usuario, dispositivo, aprendida.plantilla, ruteada=True)
             return r, Via.BANCO, {"aprendida": aprendida, "datos": {"ruta": aprendida.plantilla}}
-        if not puente.con_puente(dispositivo):
+        if not puente.con_puente(dispositivo) or not puente.del_dominio(pregunta):
             return no_entendida, Via.NO_ENTENDIDA, {}
         canonica, tokens = puente.enrutar(dispositivo, pregunta)
         if not canonica or agente.pide_futuro(canonica):

@@ -18,6 +18,7 @@ import json
 import re
 import threading
 import time
+import unicodedata
 import uuid
 from collections import defaultdict, deque
 
@@ -319,9 +320,33 @@ ESQUEMA = {
 CLASIFICAR = (
     "Clasifica la petición sobre un dispositivo de monitoreo ambiental. Herramientas: variable "
     "(cómo está o estuvo la temperatura, humedad o calidad del aire), alertas, conexion "
-    "(batería, señal, si está en línea), grafica, comparativa (comparar periodos), reporte, "
-    "ninguna (no es sobre el ambiente ni los sensores). Responde solo el JSON."
+    "(batería, señal, si está en línea), grafica (ver cómo ha ido una variable), comparativa "
+    "(comparar dos periodos), reporte (documento PDF), ninguna (no es sobre el ambiente ni los "
+    "sensores). Calor o frío es temperatura; aire, CO2 u olor es calidad del aire. «Estos días» "
+    "es los ultimos 7 dias. Ejemplos:\n"
+    "¿qué tal anda el ambiente? → variable, temperatura, ahora\n"
+    "¿cómo ha ido el calor estos días? → grafica, temperatura, los ultimos 7 dias\n"
+    "¿ha sonado algo raro hoy? → alertas, ninguna, hoy\n"
+    "¿sigue vivo el aparato? → conexion, ninguna, ahora\n"
+    "¿quién ganó el partido? → ninguna, ninguna, ahora\n"
+    "Responde solo el JSON."
 )
+
+# Palabras del dominio: si la pregunta no tiene ninguna, no vale la pena preguntarle a la IA
+# (se contesta «no entendida» al instante y sin tokens).
+DOMINIO = re.compile(
+    r"temperatur|calor|frio|caliente|grados|humed|seco|aire|co2|eco2|olor|ambiente|clima|"
+    r"sensor|lectura|medici|valor|nivel|alerta|alarma|aviso|umbral|limite|rango|bateria|"
+    r"senal|wifi|conex|linea|apagad|encendid|vivo|funciona|aparato|equipo|dispositivo|"
+    r"reporte|informe|pdf|grafic|tendencia|compar|historial|promedio|maximo|minimo|"
+    r"bodega|almacen|area|zona|sala|cuarto|hoy|ayer|semana|mes|dia|hora|raro|normal|bien|mal"
+)
+
+
+def del_dominio(pregunta):
+    texto = unicodedata.normalize("NFKD", pregunta.lower())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return bool(DOMINIO.search(texto))
 
 
 def _canonica(h, variable, periodo):

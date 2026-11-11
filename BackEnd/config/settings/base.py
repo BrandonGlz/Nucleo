@@ -205,7 +205,7 @@ IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen2.5:0.5b")
 # Dispositivos con ESP32 físico como puente (codigo_mqtt). Los demás son simulados: su agente
 # siempre está disponible y responde con lo predefinido y lo aprendido, sin IA.
 IA_PUENTE_DISPOSITIVOS = env.list("IA_PUENTE_DISPOSITIVOS", default=[])
-IA_ESPERA_SEGUNDOS = env.float("IA_ESPERA_SEGUNDOS", default=8)
+IA_ESPERA_SEGUNDOS = env.float("IA_ESPERA_SEGUNDOS", default=20)
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
