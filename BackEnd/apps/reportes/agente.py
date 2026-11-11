@@ -10,6 +10,7 @@ import re
 import unicodedata
 from collections import Counter
 from datetime import timedelta
+from difflib import SequenceMatcher
 
 from django.db.models import Avg, Count, Max, Min
 from django.db.models.functions import TruncDay
@@ -186,7 +187,10 @@ def responder(dispositivo, pregunta):
     tema = _tema(pregunta)
     desde = timezone.now() - PERIODO
     if tema is None:
-        return {"texto": f"Solo puedo responder sobre {dispositivo.nombre} y sus sensores."}
+        return {
+            "texto": f"Solo puedo responder sobre {dispositivo.nombre} y sus sensores. "
+            "Para un reporte, pídelo así: «reporte de esta semana» o «reporte de octubre»."
+        }
     if tema == "CONEXION":
         return _conexion(dispositivo)
     if tema == "ALERTAS":
@@ -204,7 +208,21 @@ def responder(dispositivo, pregunta):
 
 
 # ── Reportes pedidos al agente (SRS 3.2.12) ─────────────────────────────────────────────
-PALABRAS_REPORTE = ("reporte", "informe")
+PALABRAS_REPORTE = ("reporte", "informe", "resumen")
+VERBOS_REPORTE = (
+    "genera",
+    "generar",
+    "generame",
+    "hazme",
+    "haz",
+    "crea",
+    "crear",
+    "creame",
+    "dame",
+    "manda",
+    "mandame",
+)
+PALABRAS_PERIODO = ("semana", "semanal", "mes", "mensual", "hoy", "ayer", "dias", "quincena")
 MESES = (
     "enero",
     "febrero",
@@ -222,8 +240,20 @@ MESES = (
 
 
 def pide_reporte(pregunta):
+    """True si la petición es un reporte: «reporte», «informe» o «resumen» (también con errores de
+    dedo, como «repote»), o un verbo de crear con un periodo («genera el de la semana»)."""
     texto = _normalizar(pregunta)
-    return any(p in texto for p in PALABRAS_REPORTE)
+    if any(p in texto for p in PALABRAS_REPORTE):
+        return True
+    palabras = re.findall(r"[a-z]+", texto)
+    if any(
+        SequenceMatcher(None, w, p).ratio() >= 0.8
+        for w in palabras
+        for p in PALABRAS_REPORTE
+        if len(w) >= 5
+    ):
+        return True
+    return any(v in palabras for v in VERBOS_REPORTE) and any(p in texto for p in PALABRAS_PERIODO)
 
 
 def periodo_de(pregunta, ahora=None):
@@ -260,8 +290,10 @@ def periodo_de(pregunta, ahora=None):
     if "mes pasado" in texto:
         anterior = hoy.replace(day=1) - timedelta(days=1)
         return mes(anterior.year, anterior.month)
-    if "este mes" in texto:
+    if "este mes" in texto or "mensual" in texto:
         return mes(hoy.year, hoy.month)
+    if "quincena" in texto:
+        return ahora - timedelta(days=15), ahora, "los últimos 15 días"
     for i, nombre in enumerate(MESES, start=1):
         if nombre in texto:
             anio = re.search(r"\b(20\d{2})\b", texto)

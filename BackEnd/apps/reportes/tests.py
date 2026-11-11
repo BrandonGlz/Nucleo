@@ -291,7 +291,7 @@ class AgenteTests(PruebaBase):
                 sensor_num=self.e.dht22.pk,
                 variable_codigo="TEMP",
                 valor=valor,
-                fecha_hora=ahora - timedelta(hours=5 - i),
+                fecha_hora=ahora - timedelta(minutes=5 - i),
             )
         self.pregunta = {
             "pregunta": "¿Hubo picos de temperatura?",
@@ -378,6 +378,21 @@ class AgenteTests(PruebaBase):
         self.assertEqual(fin - inicio, timedelta(days=3))
         _, _, texto = agente.periodo_de("un reporte", ahora)
         self.assertEqual(texto, "los últimos 7 días")
+        _, _, texto = agente.periodo_de("reporte mensual", ahora)
+        self.assertEqual(texto, "noviembre de 2026")
+
+    def test_reconoce_peticiones_de_reporte(self):
+        for pregunta in (
+            "reporte de la semana",
+            "Informe semanal",
+            "resumen de esta semana",
+            "repote de la semana",
+            "genera el de la semana pasada",
+            "hazme uno del mes pasado",
+        ):
+            self.assertTrue(agente.pide_reporte(pregunta), pregunta)
+        for pregunta in ("¿cuál fue la temperatura máxima?", "¿está conectado?", "dame la humedad"):
+            self.assertFalse(agente.pide_reporte(pregunta), pregunta)
 
     def test_dispositivo_de_otra_organizacion_no_existe(self):
         otra = Escenario("b")
