@@ -3,6 +3,7 @@ import { Avatar, Icon, Logo } from '../design-system/componentes/index.js'
 import { AgenteProvider } from '../context/AgenteContext'
 import { AvisosProvider, useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
+import { useLatido } from '../hooks/useLatido'
 import { modulos, puedeVer } from '../features'
 import { limiteAlerta, nombreCompleto, ROL, tituloAlerta, valorAlerta } from '../utils/convertir'
 import { haceCuanto, hora } from '../utils/formato'
@@ -86,6 +87,7 @@ function MenuLateral() {
 
 // Marco de las pantallas con sesión: menú lateral y columna de contenido que llena la ventana.
 export function MainLayout() {
+  useLatido()
   return (
     <AvisosProvider>
       <AgenteProvider>

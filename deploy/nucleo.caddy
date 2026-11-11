@@ -11,6 +11,12 @@ http://:8081 {
 		format json
 	}
 
+	# Latido de las páginas con sesión abierta (cada minuto): solo queda en la bitácora para contar conectados
+	handle /latido {
+		header Cache-Control no-store
+		respond 204
+	}
+
 	# API, canal en vivo (WebSocket) y admin de Django (daphne)
 	@django path /api/* /ws/* /admin/*
 	handle @django {
