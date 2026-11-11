@@ -23,6 +23,18 @@ function useSigue(destino, duracion = MOV.base) {
   return v
 }
 
+// Entrada de un bloque o fila: aparece y sube un poco, escalonado por `indice` (como ui-sube en la web).
+export function Aparece({ indice = 0, style, children }) {
+  const animar = useAnimaciones()
+  const [p] = useState(() => new Animated.Value(animar ? 0 : 1))
+  useEffect(() => {
+    if (!animar) return
+    Animated.timing(p, { toValue: 1, duration: MOV.lento, delay: Math.min(indice, 8) * 45, easing: MOV.curva, useNativeDriver: true }).start()
+  }, [animar, indice, p])
+  const sube = p.interpolate({ inputRange: [0, 1], outputRange: [14, 0] })
+  return <Animated.View style={[style, { opacity: p, transform: [{ translateY: sube }] }]}>{children}</Animated.View>
+}
+
 // Tonos de nc-tone--*: fondo y color de texto.
 export function tono(c, t) {
   return {

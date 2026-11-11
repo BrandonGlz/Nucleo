@@ -4,8 +4,8 @@ export { T } from './Texto'
 export { Icon } from './Icon'
 export { Logo, LogoMark } from './Logo'
 export {
-  ActivityFeed, Avatar, Badge, Battery, Button, Card, Chip, IconButton, IconCircle, Input,
-  LEVEL, Skeleton, STATUS, StatusBadge, Tabs, Toggle, tono,
+  ActivityFeed, Aparece, Avatar, Badge, Battery, Button, Card, Chip, IconButton, IconCircle, Input,
+  LEVEL, MOV, Skeleton, STATUS, StatusBadge, Tabs, Toggle, tono,
 } from './Basicos'
 export { Sparkline, TrendChart } from './Graficas'
 export { TabBar } from './TabBar'

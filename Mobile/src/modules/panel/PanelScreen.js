@@ -3,11 +3,11 @@ import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { BarraRango } from '../../components/BarraRango'
 import { SelectorDispositivo } from '../../components/SelectorDispositivo'
 import { Pantalla } from '../../components/Pantalla'
-import { Avatar, Battery, Icon, IconButton, Skeleton, Sparkline, T } from '../../components/ui'
+import { Avatar, Battery, Icon, Skeleton, Sparkline, T } from '../../components/ui'
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
-import { lecturaDe, pendientesDe, umbralDe, useOperador } from '../../hooks/useOperador'
+import { lecturaDe, umbralDe, useOperador } from '../../hooks/useOperador'
 import { ESTADO_FORZADO } from '../../services/mock/handlers'
 import { USAR_MOCKS } from '../../services/config'
 import * as lecturasApi from '../../services/lecturas'
@@ -72,12 +72,11 @@ function FilaEquipo({ punto, icono, children, bateria }) {
   )
 }
 
-function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
+function ZonaPanel({ usuario, op, estado, sinConexion }) {
   const { c } = useTema()
   const d = op?.dispositivo
   const l = lecturaDe(op, 'TEMP')
   const u = umbralDe(op, 'TEMP')
-  const pendientes = pendientesDe(op).length
   const cabeza = (
     <View style={s.fila12}>
       <Avatar name={`${usuario.nombre} ${usuario.primer_apellido}`} size={40} />
@@ -89,9 +88,6 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAlertas }) {
           Hola, {usuario.nombre}
         </T>
       </View>
-      {usuario.organizacion ? (
-        <IconButton icon="bell" label="Alertas" badge={pendientes || undefined} size="lg" inverse onPress={onAlertas} />
-      ) : null}
     </View>
   )
   if (estado === 'error' || !d) {
@@ -284,7 +280,7 @@ export function PanelScreen({ navigation }) {
 
   return (
     <Pantalla
-      zona={<ZonaPanel usuario={usuario} op={op} estado={estado} sinConexion={sinConexion} onAlertas={() => navigation.navigate('Alertas')} />}
+      zona={<ZonaPanel usuario={usuario} op={op} estado={estado} sinConexion={sinConexion} />}
       recargando={false}
       onRecargar={reintentar}
       compacta

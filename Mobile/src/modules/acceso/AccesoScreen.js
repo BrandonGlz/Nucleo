@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSesion } from '../../context/SesionContext'
@@ -61,6 +61,16 @@ export function AccesoScreen() {
   const [errores, setErrores] = useState({})
   const [enviando, setEnviando] = useState(false)
   const [errorApi, setErrorApi] = useState(null)
+  // Con el teclado abierto la hoja sube sobre él (igual que en Nico AI) y se recorre hasta los campos.
+  const scroll = useRef(null)
+  const hojaY = useRef(0)
+  const camposY = useRef(0)
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () =>
+      scroll.current?.scrollTo({ y: Math.max(0, hojaY.current + camposY.current - 24), animated: true }),
+    )
+    return () => sub.remove()
+  }, [])
 
   const entrar = async (demo) => {
     const co = demo ?? correo.trim()
@@ -85,9 +95,9 @@ export function AccesoScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: marca.tinta }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: marca.tinta }} behavior="padding">
       <StatusBar style="light" />
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" bounces={false}>
+      <ScrollView ref={scroll} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" bounces={false}>
         <View style={[s.arriba, { paddingTop: inset.top + 48 }]}>
           <View style={s.anillo} />
           <View style={{ position: 'absolute', right: -70, top: inset.top + 84 }}>
@@ -95,7 +105,10 @@ export function AccesoScreen() {
           </View>
           <Logo size={40} inverse />
         </View>
-        <View style={[s.hoja, { backgroundColor: c.surface, paddingBottom: inset.bottom + 44 }]}>
+        <View
+          style={[s.hoja, { backgroundColor: c.surface, paddingBottom: inset.bottom + 44 }]}
+          onLayout={(e) => (hojaY.current = e.nativeEvent.layout.y)}
+        >
           <View style={{ gap: 8 }}>
             <T peso={700} size={30} lh={36} style={{ letterSpacing: -0.75 }}>
               Inicia sesión
@@ -105,7 +118,7 @@ export function AccesoScreen() {
             </T>
           </View>
           {errorApi && <Alerta tono="danger" titulo={errorApi} />}
-          <View style={{ gap: 16 }}>
+          <View style={{ gap: 16 }} onLayout={(e) => (camposY.current = e.nativeEvent.layout.y)}>
             <Input
               label="Correo"
               icon="mail"

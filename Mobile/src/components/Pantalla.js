@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { Children, useEffect, useState } from 'react'
+import { useIsFocused } from '@react-navigation/native'
 import { Animated, Easing, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -41,14 +42,28 @@ function Deco({ tipo }) {
 export function Pantalla({ zona, deco = 'anillos', pestanas = true, compacta, recargando, onRecargar, children }) {
   const { c } = useTema()
   const inset = useSafeAreaInsets()
-  // Al abrir la pantalla la zona oscura aparece y la hoja clara sube desde abajo.
+  // Cada vez que se entra a la pantalla (también al volver a una pestaña) la zona oscura aparece, la
+  // hoja clara sube y su contenido entra escalonado, como los módulos de la web.
   const animar = useAnimaciones()
+  const enfocada = useIsFocused()
   const [p] = useState(() => new Animated.Value(animar ? 0 : 1))
   useEffect(() => {
-    Animated.timing(p, { toValue: 1, duration: 420, easing: Easing.bezier(0.2, 0, 0, 1), useNativeDriver: true }).start()
-  }, [p])
-  const subeHoja = { opacity: p, transform: [{ translateY: p.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }
-  const apareceZona = { opacity: p, transform: [{ translateY: p.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }] }
+    if (!enfocada) return
+    if (!animar) {
+      p.setValue(1)
+      return
+    }
+    p.setValue(0)
+    Animated.timing(p, { toValue: 1, duration: 560, easing: Easing.bezier(0.2, 0, 0, 1), useNativeDriver: true }).start()
+  }, [enfocada, animar, p])
+  const tramo = (desde, hasta, de, a) => p.interpolate({ inputRange: [0, desde, hasta, 1], outputRange: [de, de, a, a] })
+  const subeHoja = { opacity: tramo(0, 0.6, 0, 1), transform: [{ translateY: tramo(0, 0.6, 40, 0) }] }
+  const apareceZona = { opacity: tramo(0, 0.5, 0, 1), transform: [{ translateY: tramo(0, 0.5, -8, 0) }] }
+  // Escalón de cada bloque de la hoja: empieza un poco después del anterior.
+  const bloque = (i) => {
+    const desde = Math.min(0.12 + i * 0.07, 0.5)
+    return { opacity: tramo(desde, desde + 0.4, 0, 1), transform: [{ translateY: tramo(desde, desde + 0.4, 16, 0) }] }
+  }
   return (
     <View style={{ flex: 1, backgroundColor: marca.tinta }}>
       <StatusBar style="light" />
@@ -74,7 +89,11 @@ export function Pantalla({ zona, deco = 'anillos', pestanas = true, compacta, re
             compacta && { paddingTop: 16, gap: 12 },
           ]}
         >
-          {children}
+          {Children.toArray(children).map((hijo, i) => (
+            <Animated.View key={hijo.key ?? i} style={[{ gap: compacta ? 12 : 14 }, bloque(i)]}>
+              {hijo}
+            </Animated.View>
+          ))}
         </Animated.View>
       </ScrollView>
     </View>

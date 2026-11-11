@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ReporteChat } from '../../components/ReporteChat'
 import { SelectorDispositivo } from '../../components/SelectorDispositivo'
-import { Icon, T } from '../../components/ui'
+import { Aparece, Icon, T } from '../../components/ui'
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
 import { useOperador } from '../../hooks/useOperador'
@@ -112,13 +112,13 @@ export function AgenteScreen() {
           ) : (
             lista.map((m, i) =>
               m.de === 'yo' ? (
-                <View key={i} style={[s.mio, { backgroundColor: c.surfaceMuted }]}>
+                <Aparece key={i} style={[s.mio, { backgroundColor: c.surfaceMuted }]}>
                   <T size={14} lh={21}>
                     {m.texto}
                   </T>
-                </View>
+                </Aparece>
               ) : (
-                <View key={i} style={[s.suyo, m.reporte && s.conReporte, { backgroundColor: c.surface, borderColor: m.de === 'error' ? c.danger : c.border }]}>
+                <Aparece key={i} style={[s.suyo, m.reporte && s.conReporte, { backgroundColor: c.surface, borderColor: m.de === 'error' ? c.danger : c.border }]}>
                   <T size={14} lh={21} color={m.de === 'error' ? c.danger : undefined}>
                     {m.texto}
                   </T>
@@ -128,17 +128,17 @@ export function AgenteScreen() {
                       {`Nico AI · ${d?.nombre} · ${m.hora}`}
                     </T>
                   )}
-                </View>
+                </Aparece>
               ),
             )
           )}
           {pensando && (
-            <View style={[s.suyo, s.fila12, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Aparece style={[s.suyo, s.fila12, { backgroundColor: c.surface, borderColor: c.border }]}>
               <ActivityIndicator size="small" color={c.textSecondary} />
               <T size={13} color={c.textMuted}>
                 Consultando las lecturas…
               </T>
-            </View>
+            </Aparece>
           )}
         </ScrollView>
         <View style={[s.compositor, { backgroundColor: c.surface, borderColor: c.border, marginBottom: teclado ? 10 : 104 + inset.bottom }]}>

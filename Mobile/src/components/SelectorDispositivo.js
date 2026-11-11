@@ -20,8 +20,9 @@ export function HojaDispositivos({ visible, dispositivos, valor, titulo = 'Elige
     if (!montada) return
     Animated.timing(p, {
       toValue: visible ? 1 : 0,
-      duration: animar ? (visible ? 320 : 220) : 0,
-      easing: Easing.bezier(0.2, 0, 0, 1),
+      // Entra frenando al final; sale acelerando poco a poco para que el cierre se vea, no que se corte.
+      duration: animar ? (visible ? 320 : 280) : 0,
+      easing: visible ? Easing.bezier(0.2, 0, 0, 1) : Easing.bezier(0.4, 0, 1, 1),
       useNativeDriver: true,
     }).start(({ finished }) => finished && !visible && setMontada(false))
   }, [visible, montada, animar, p])

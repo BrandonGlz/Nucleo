@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
-import { Badge, Chip, Icon, IconCircle, Skeleton, StatusBadge, T } from '../../components/ui'
+import { Aparece, Badge, Chip, Icon, IconCircle, Skeleton, StatusBadge, T } from '../../components/ui'
 import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { pendientesDe, useOperador } from '../../hooks/useOperador'
@@ -136,8 +136,10 @@ export function AlertasScreen({ navigation }) {
           ) : (
             <>
               <View style={{ gap: 10 }}>
-                {visibles.map((a) => (
-                  <TarjetaAlerta key={a.num} a={a} onPress={() => navigation.navigate('DetalleAlerta', { num: a.num })} />
+                {visibles.map((a, i) => (
+                  <Aparece key={`${filtro}-${a.num}`} indice={i}>
+                    <TarjetaAlerta a={a} onPress={() => navigation.navigate('DetalleAlerta', { num: a.num })} />
+                  </Aparece>
                 ))}
                 {!visibles.length && (
                   <T size={14} color={c.textMuted} style={{ textAlign: 'center', paddingVertical: 24 }}>
