@@ -22,6 +22,7 @@ import { DashboardReporte } from '../reportes/DashboardReporte'
 import { descargarPdf } from '../reportes/pdf'
 import { useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
+import { planDe } from './proceso'
 import { periodo } from '../../utils/formato'
 
 const SUGERENCIAS = [
@@ -34,7 +35,6 @@ const SUGERENCIAS = [
 const SUGERENCIA_REPORTE = { icono: 'file-text', titulo: 'Reporte del mes', texto: 'Genera el reporte de este mes' }
 const ROLES_REPORTE = ['ADMIN', 'SUPER', 'ANALISTA']
 // Pasos que se muestran mientras el agente prepara la respuesta.
-const PASOS = ['Entendiendo la pregunta', 'Consultando las lecturas', 'Comparando con los umbrales', 'Redactando la respuesta']
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
 const sinMovimiento = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -67,19 +67,27 @@ function TextoEscrito({ texto, animar, listo }) {
   )
 }
 
-function Pensando() {
+// Mientras prepara la respuesta: los pasos que sigue según la pregunta (planDe), uno tras otro en el
+// tiempo mínimo del plan, con una barra de avance. El último paso gira hasta que llega la respuesta.
+function Pensando({ plan }) {
+  const { pasos, ms } = plan
   const [paso, setPaso] = useState(0)
   useEffect(() => {
-    const t = setInterval(() => setPaso((p) => Math.min(p + 1, PASOS.length - 1)), 650)
+    const t = setInterval(() => setPaso((p) => Math.min(p + 1, pasos.length - 1)), Math.max(260, ms / pasos.length))
     return () => clearInterval(t)
-  }, [])
+  }, [pasos.length, ms])
   return (
-    <div className="ui-ia-mensaje" aria-live="polite">
+    <div className="ui-ia-mensaje ui-ia-mensaje--pensando" aria-live="polite">
       <Marca pensando />
       <div className="ui-ia-cuerpo">
-        <span className="ui-ia-brillo">{PASOS[paso]}…</span>
+        <span key={paso} className="ui-ia-brillo ui-ia-brillo--cambia">
+          {pasos[paso]}…
+        </span>
+        <div className="ui-ia-progreso" aria-hidden>
+          <span style={{ '--ia-duracion': `${ms}ms` }} />
+        </div>
         <ol className="ui-ia-pasos">
-          {PASOS.slice(0, paso + 1).map((p, i) => (
+          {pasos.slice(0, paso + 1).map((p, i) => (
             <li key={p} className={i < paso ? 'is-hecho' : ''}>
               {i < paso ? <Check size={13} /> : <span className="ui-ia-punto" />} {p}
             </li>
@@ -437,10 +445,14 @@ export function AgentePage() {
     }
   }, [actual, enHilo])
 
+  // Plan de lo que Nico AI muestra mientras responde; fija también el tiempo mínimo (1 a 3 s).
+  const [plan, setPlan] = useState(() => planDe('', nombreAgente))
   const preguntar = (pregunta, base) => {
     if (!pregunta.trim() || pensando) return
     setTexto('')
-    ag.preguntar(pregunta, base)
+    const nuevo = planDe(pregunta, nombreAgente)
+    setPlan(nuevo)
+    ag.preguntar(pregunta, base, nuevo.ms)
   }
   const detener = ag.detener
   const nueva = () => {
@@ -586,7 +598,7 @@ export function AgentePage() {
                       />
                     ),
                   )}
-                  {pensando && <Pensando />}
+                  {pensando && <Pensando plan={plan} />}
                 </div>
               </div>
               <div className="ui-ia-pie">{compositor}</div>

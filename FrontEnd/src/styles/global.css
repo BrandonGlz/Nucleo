@@ -3808,3 +3808,84 @@ button.ui-menuitem:not(:disabled):hover svg {
     transition: none;
   }
 }
+
+/* Nico AI mientras prepara la respuesta: entra el bloque, cada paso aparece deslizándose, el paso
+   terminado marca su ✓ con un pequeño rebote y la barra avanza durante el tiempo mínimo del plan. */
+@keyframes ui-ia-paso {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+@keyframes ui-ia-check {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.25);
+  }
+}
+@keyframes ui-ia-cambia {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes ui-ia-avance {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+@keyframes ui-ia-espera {
+  50% {
+    opacity: 0.55;
+  }
+}
+.ui-ia-mensaje--pensando {
+  animation: ui-sube var(--duration-slow) var(--ease-standard);
+}
+.ui-ia-brillo--cambia {
+  animation:
+    nc-shimmer 1.6s linear infinite,
+    ui-ia-cambia var(--duration-base) var(--ease-standard);
+}
+.ui-ia-progreso {
+  width: min(280px, 100%);
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+.ui-ia-progreso > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-secondary), var(--accent));
+  transform-origin: left center;
+  /* Avanza hasta 92 % en el tiempo mínimo y luego late suave mientras termina la IA */
+  animation:
+    ui-ia-avance var(--ia-duracion, 1500ms) var(--ease-standard) forwards,
+    ui-ia-espera 1.2s ease-in-out var(--ia-duracion, 1500ms) infinite;
+}
+.ui-ia-pasos li {
+  animation: ui-ia-paso var(--duration-slow) var(--ease-standard) backwards;
+}
+.ui-ia-pasos li.is-hecho svg {
+  animation: ui-ia-check var(--duration-slow) var(--ease-emphasized);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ia-mensaje--pensando,
+  .ui-ia-brillo--cambia,
+  .ui-ia-progreso > span,
+  .ui-ia-pasos li,
+  .ui-ia-pasos li.is-hecho svg {
+    animation: none;
+  }
+  .ui-ia-progreso > span {
+    transform: scaleX(0.92);
+  }
+}

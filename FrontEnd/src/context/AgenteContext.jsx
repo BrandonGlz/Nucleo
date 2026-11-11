@@ -75,7 +75,8 @@ export function AgenteProvider({ children }) {
   }, [])
 
   const preguntar = useCallback(
-    async (pregunta, base) => {
+    // `minimo`: milisegundos que se muestra el proceso aunque la respuesta llegue antes.
+    async (pregunta, base, minimo = 0) => {
       if (!pregunta.trim() || estado === 'pensando' || !agenteValido) return
       let id = actual
       if (!id) {
@@ -88,13 +89,16 @@ export function AgenteProvider({ children }) {
       editar(id, (ms) => [...(base ?? ms), ...(base ? [] : [{ de: 'yo', texto: pregunta }])])
       setEstado('pensando')
       const mio = ++turno.current
+      const pausa = new Promise((listo) => setTimeout(listo, minimo))
       try {
         const r = await agenteApi.preguntar(pregunta, delAgente)
+        await pausa
         if (mio !== turno.current) return
         const clave = nuevoId('r')
         setAnimada(clave)
         editar(id, (ms) => [...ms, { de: 'agente', hora: hora(new Date().toISOString()), ...r, clave }])
       } catch (e) {
+        await pausa
         if (mio !== turno.current) return
         editar(id, (ms) => [...ms, { de: 'error', caido: e.status === 503, pregunta }])
       }
