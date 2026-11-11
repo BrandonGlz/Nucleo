@@ -39,13 +39,38 @@ TEMAS = [
         ),
     ),
     ("ALERTAS", ("alerta", "aviso", "incidente")),
-    ("TEMP", ("temperatura", "calor", "frio", "grados")),
-    ("HUM", ("humedad", "humed")),
-    ("AIRE", ("aire", "co2", "eco2", "calidad", "ppm", "ventila")),
+    ("TEMP", ("temperatura", "calor", "frio", "grados", "calient", "fresco", "helad", "templad")),
+    ("HUM", ("humedad", "humed", "bochorno", "seco", "reseco", "vapor", "condensa")),
+    (
+        "AIRE",
+        (
+            "aire",
+            "co2",
+            "eco2",
+            "calidad",
+            "ppm",
+            "ventila",
+            "olor",
+            "viciado",
+            "encerrado",
+            "respira",
+        ),
+    ),
 ]
 # Palabras que indican una pregunta sobre lecturas sin nombrar la variable: se usa la
 # variable con más alertas del periodo.
-GENERICAS = ("pico", "lectura", "sensor", "medicion", "valor", "dispositivo", "umbral", "rango")
+GENERICAS = (
+    "pico",
+    "lectura",
+    "sensor",
+    "medicion",
+    "valor",
+    "dispositivo",
+    "umbral",
+    "rango",
+    "ambiente",
+    "condiciones",
+)
 
 
 def _normalizar(texto):

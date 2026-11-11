@@ -428,4 +428,10 @@ def enrutar(dispositivo, pregunta, espera=None):
         or dato not in DATOS_IA
     ):
         return None, _tokens(r)
+    # Periodo y dato pedido los sacan mejor las reglas de la pregunta original: si los
+    # encuentran, la IA solo aporta la herramienta y la variable.
+    nombra_periodo = agente.periodo_de(pregunta)[2] != agente.periodo_de("")[2]
+    if nombra_periodo or agente._dato_pedido(pregunta):
+        canonica = _canonica(h, v, "ahora", dato).replace(" de esta semana", "")
+        return f"{canonica} · {pregunta}", _tokens(r)
     return _canonica(h, v, p, dato), _tokens(r)

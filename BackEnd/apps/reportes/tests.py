@@ -678,7 +678,7 @@ class NicoAprendeTests(PruebaBase):
             return '{"herramienta": "variable", "variable": "temperatura", "periodo": "ahora"}'
 
         hilo = self._esp(clasificar)
-        cuerpo = self._pedir("¿qué tal anda el ambiente en la bodega?")
+        cuerpo = self._pedir("¿cómo anda la cosa en la bodega?")
         hilo.join()
         self.assertEqual(cuerpo["via"], "ENRUTADA")
         self.assertIn("26.4 °C", cuerpo["texto"])  # cifras de la función de siempre
@@ -689,7 +689,7 @@ class NicoAprendeTests(PruebaBase):
             "/api/v1/agente/calificar/", {"registro": registro.num, "voto": "si"}, format="json"
         )
         # Con el 👍 la ruta queda aprendida: ya no se pregunta a la IA.
-        otra = self._pedir("¿Qué tal anda el ambiente en la bodega?")
+        otra = self._pedir("¿Cómo anda la cosa en la bodega?")
         self.assertEqual(otra["via"], "BANCO")
         self.assertIn("26.4 °C", otra["texto"])
 
@@ -712,7 +712,7 @@ class NicoAprendeTests(PruebaBase):
                 '"periodo": "los ultimos 7 dias", "dato": "maximo"}'
             )
         )
-        cuerpo = self._pedir("¿hasta dónde llegó el bochorno en la bodega?")
+        cuerpo = self._pedir("¿hasta dónde llegó la cosa en la bodega?")
         hilo.join()
         self.assertEqual(cuerpo["via"], "ENRUTADA")
         registro = PreguntaAgente.objects.get(pk=cuerpo["registro"])
