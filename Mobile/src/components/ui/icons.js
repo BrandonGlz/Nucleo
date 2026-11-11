@@ -53,6 +53,10 @@ import {
   Users,
   WifiOff,
   Wind,
+  LayoutGrid,
+  RotateCcw,
+  ThumbsDown,
+  ThumbsUp,
   Wrench,
   X,
 } from 'lucide-react-native'
@@ -110,6 +114,10 @@ const ICONS = {
   'users': Users,
   'wifi-off': WifiOff,
   'wind': Wind,
+  'layout-grid': LayoutGrid,
+  'rotate-ccw': RotateCcw,
+  'thumbs-down': ThumbsDown,
+  'thumbs-up': ThumbsUp,
   'wrench': Wrench,
   'x': X,
 }
