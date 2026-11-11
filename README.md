@@ -453,38 +453,58 @@ el operador con `acceso_agente`, cada uno solo sobre los dispositivos de su orga
 **Cómo responde una pregunta**
 
 ```mermaid
-flowchart TB
-    U["Web o app<br/>POST /api/v1/agente/"] --> V{"1 · Entender<br/>¿repetida, texto al azar,<br/>otra área u otro dispositivo?"}
-    V -->|sí| AV["Aviso corto<br/>sin consultar datos"]
-    V -->|no| I["2 · Interpretar<br/>intención · variables ·<br/>periodo · dato pedido"]
-    I --> RG{"¿Las reglas la<br/>reconocen?"}
-    RG -->|sí| H
-    RG -->|no| BA{"¿Ruta aprendida<br/>con 👍?"}
-    BA -->|sí| H
-    BA -->|"no · solo NC-0501"| EN["Ollama elige una<br/>herramienta del catálogo"]
-    EN --> H
-    subgraph CAT["3 · Catálogo de herramientas · solo lectura"]
-        direction LR
-        H["variable · última medición · resumen<br/>alertas · conexión · sensores · umbrales<br/>reportes generados · gráfica · comparativa · reporte PDF"]
+sequenceDiagram
+    autonumber
+    participant C as Web React / App Expo
+    participant K as Caddy :8081
+    participant D as Daphne :8001<br/>DRF AgenteView
+    participant P as PostgreSQL<br/>nucleo_db
+    participant T as TimescaleDB<br/>nucleo_iot
+    participant R as Redis
+    participant E as ESP32 NC-0501<br/>MicroPython
+    participant O as Ollama :11434<br/>qwen2.5:0.5b
+
+    loop cada ~20 s mientras está encendido
+        E->>K: GET /api/v1/puente/tomar/?dispositivo=NC-0501<br/>X-Puente-Clave · HTTPS keep-alive
+        K->>D: proxy
+        D->>R: SET puente:visto:NC-0501 EX 30<br/>BLPOP puente:cola:NC-0501 (espera)
     end
-    H -->|consultas| DB[("PostgreSQL<br/>TimescaleDB")]
-    H --> VE{"4 · Verificar<br/>¿cumple la petición?"}
-    VE -->|no| RE["Reintenta con la<br/>pregunta canónica<br/>o pide aclaración"]
-    VE -->|sí| RD["Texto con cifras<br/>(Ollama solo lo redacta)"]
-    RD --> RESP["Respuesta · gráfica · tabla<br/>👍 / 👎"]
-    RE --> RESP
-    AV --> RESP
-    RESP -->|registro| LOG[("PreguntaAgente<br/>tokens · vía · calificación")]
-    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
-    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
-    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
-    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
-    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
-    class U,RESP cliente
-    class V,I,RG,BA,VE,RE,AV,H backend
-    class DB,LOG datos
-    class EN,RD externo
-    style CAT fill:transparent,stroke:#fb923c,stroke-dasharray:5 5
+
+    C->>K: POST /api/v1/agente/<br/>Authorization: Token …<br/>{pregunta, dispositivo, anterior?}
+    K->>D: proxy /api
+    D->>P: PermisoPorRol + dispositivos_visibles<br/>(rol, organización, área)
+    D->>P: últimas preguntas (repetida) · Area (fuera de alcance)
+    Note over D: sin_sentido · con_contexto<br/>interprete.interpretar → Peticion
+    alt reglas o ruta aprendida (RespuestaAprendida)
+        D->>D: herramientas.CATALOGO
+    else no la reconocen y NC-0501 está activo
+        D->>R: RPUSH puente:cola:NC-0501<br/>{id, ruta: /api/chat, cuerpo con format JSON schema}
+        R-->>D: el BLPOP del ESP recibe el trabajo
+        D-->>E: 200 trabajo
+        E->>K: POST /puente-ia/api/chat
+        K->>O: proxy (solo con X-Puente-Clave)
+        O-->>E: {herramienta, variable, periodo, dato}<br/>prompt_eval_count · eval_count
+        E->>D: POST /api/v1/puente/entregar/ {id, texto, tokens}
+        D->>R: RPUSH puente:resp:id EX 60
+        R-->>D: BLPOP puente:resp:id (máx. 20 s)
+        Note over D: pregunta canónica → herramienta
+    end
+    D->>P: Umbral · Alerta · Sensor · Reporte
+    D->>T: Lectura (AVG, MIN, MAX, TruncDay)
+    Note over D: interprete.verificar(peticion, respuesta)<br/>si falla: canónica o aclaración
+    opt redactar (solo NC-0501)
+        D->>R: trabajo de redacción (texto base + cifras)
+        R-->>E: vía tomar / entregar, igual que arriba
+        E->>O: /api/chat temperature 0
+        O-->>E: texto
+        E->>D: entregar · _limpiar descarta cifras,<br/>fechas o causas inventadas
+    end
+    D->>P: INSERT pregunta_agente<br/>(vía, datos.peticion, tokens, ms)
+    D-->>K: 200 {texto, picos?, serie?, grafica?,<br/>comparativa?, reporte?, registro, via}
+    K-->>C: JSON
+    C->>K: POST /api/v1/agente/calificar/ {registro, 👍/👎}
+    K->>D: proxy
+    D->>P: calificacion · 2 👍 → RespuestaAprendida
 ```
 
 1. **Entender.** Una petición repetida se reenvía la segunda vez y se omite a partir de la
@@ -504,23 +524,9 @@ flowchart TB
 
 **IA local por el ESP32.** El modelo es `qwen2.5:0.5b` en Ollama (contenedor
 `nucleo_ollama`). Solo lo usa el dispositivo físico **Núcleo A-01 (NC-0501)**; los demás son
-simulados y responden con las reglas y el catálogo, sin IA.
-
-```mermaid
-sequenceDiagram
-    participant B as Backend
-    participant Q as Redis (cola)
-    participant E as ESP32 NC-0501
-    participant O as Ollama
-    B->>Q: pone el trabajo (enrutar o redactar)
-    E->>B: GET /api/v1/puente/tomar/ (espera hasta 20 s)
-    B-->>E: trabajo
-    E->>O: POST /puente-ia/ con X-Puente-Clave
-    O-->>E: texto y tokens
-    E->>B: POST /api/v1/puente/entregar/
-    B->>Q: respuesta
-    Note over B: si no llega a tiempo, responde<br/>solo con las reglas
-```
+simulados y responden con las reglas y el catálogo, sin IA. El backend no llama a Ollama
+directamente: deja el trabajo en Redis y el ESP lo toma, lo envía a Ollama y devuelve la
+respuesta; si no llega en 20 s, responde solo con las reglas.
 
 El ESP mantiene la conexión HTTPS abierta (keep-alive), así que cada petición tarda ~70 ms
 después de la primera. Si el ESP está apagado, el agente de A-01 lo indica, y el resto del
