@@ -4058,8 +4058,11 @@ button.ui-menuitem:not(:disabled):hover svg {
    En pantallas angostas se desplaza de lado en vez de crecer hacia arriba. */
 .ui-ia-seguir {
   max-width: 760px;
-  margin: 0 auto 10px;
+  /* El relleno deja espacio para que el botón suba al pasar el mouse sin que se corte el borde */
+  margin: -4px auto 6px;
+  padding: 4px 2px;
   display: flex;
+  justify-content: safe center;
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -4085,6 +4088,8 @@ button.ui-menuitem:not(:disabled):hover svg {
   animation: ui-ia-cambia var(--duration-slow) var(--ease-standard) backwards;
   transition:
     border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
     color var(--duration-fast) var(--ease-standard),
     transform var(--duration-fast) var(--ease-standard);
 }
@@ -4092,9 +4097,12 @@ button.ui-menuitem:not(:disabled):hover svg {
   flex: none;
   color: var(--accent-secondary);
 }
-.ui-ia-seguir button:hover {
+.ui-ia-seguir button:hover,
+.ui-ia-seguir button:focus-visible {
   border-color: var(--accent-secondary);
+  background: var(--accent-soft);
   color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
 .ui-ia-seguir button:active {
