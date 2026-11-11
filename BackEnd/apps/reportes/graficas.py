@@ -104,8 +104,9 @@ def _donde(usuario, dispositivo, texto=""):
 DIAS_LARGOS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 
 
-def _ultimo_dia_registrado(usuario, dispositivo, texto):
-    """Día (local) de la lectura más reciente del alcance: ``(inicio, fin, descripcion)``."""
+def _ultimo_registrado(usuario, dispositivo, texto):
+    """Periodo que termina en la lectura más reciente del alcance: el día, la semana o el mes
+    («el último mes registrado») de esa lectura. ``(inicio, fin, descripcion)`` o ``None``."""
     area, propio = _alcance(usuario, dispositivo, texto)
     sensores = (
         Sensor.objects.filter(dispositivo=propio)
@@ -121,9 +122,19 @@ def _ultimo_dia_registrado(usuario, dispositivo, texto):
     if ultima is None:
         return None
     ultima = timezone.localtime(ultima)
-    inicio = ultima.replace(hour=0, minute=0, second=0, microsecond=0)
-    dia = f"{DIAS_LARGOS[inicio.weekday()]} {inicio.day} de {agente.MESES[inicio.month - 1]}"
-    return inicio, inicio + timedelta(days=1), f"el último día registrado ({dia})"
+    dia = ultima.replace(hour=0, minute=0, second=0, microsecond=0)
+    if " mes" in texto:
+        inicio = dia.replace(day=1)
+        fin = (inicio + timedelta(days=32)).replace(day=1)
+        return (
+            inicio,
+            fin,
+            f"el último mes registrado ({agente.MESES[inicio.month - 1]} de {inicio.year})",
+        )
+    if "semana" in texto:
+        return ultima - timedelta(days=7), ultima, "la última semana registrada"
+    nombre = f"{DIAS_LARGOS[dia.weekday()]} {dia.day} de {agente.MESES[dia.month - 1]}"
+    return dia, dia + timedelta(days=1), f"el último día registrado ({nombre})"
 
 
 def grafica(usuario, dispositivo, pregunta):
@@ -131,8 +142,10 @@ def grafica(usuario, dispositivo, pregunta):
     texto = _texto(pregunta)
     inicio, fin, descripcion = agente.periodo_de(pregunta)
     # «el último día registrado / con datos / con lecturas»: el día de la lectura más reciente.
-    if re.search(r"(dia|fecha) (registrad|con (datos|lecturas))|ultim[oa] registr", texto):
-        ultimo = _ultimo_dia_registrado(usuario, dispositivo, texto)
+    if re.search(
+        r"(dia|fecha|semana|mes) (registrad|con (datos|lecturas))|ultim[oa] registr", texto
+    ):
+        ultimo = _ultimo_registrado(usuario, dispositivo, texto)
         if ultimo is None:
             return {"texto": f"{_donde(usuario, dispositivo, texto)} todavía no tiene lecturas."}
         inicio, fin, descripcion = ultimo

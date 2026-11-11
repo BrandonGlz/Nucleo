@@ -375,6 +375,22 @@ class AgenteTests(PruebaBase):
         area = self._preguntar(self.e.analista, "gráfica de temperatura de toda el área")
         self.assertEqual(area["grafica"]["donde"], self.e.dispositivo.area.nombre)
 
+    def test_ultimo_mes_registrado_y_periodos_relativos(self):
+        cuerpo = self._preguntar(
+            self.e.analista, "dame una grafica de la temperatura del ultimo mes registrado"
+        )
+        self.assertIn("último mes registrado", cuerpo["grafica"]["descripcion"])
+        hoy = timezone.localtime()
+        self.assertEqual(
+            timezone.localtime(
+                timezone.datetime.fromisoformat(cuerpo["grafica"]["periodo_inicio"])
+            ).day,
+            1,
+        )
+        for frase, dias in (("último mes", 30), ("últimas 2 semanas", 14), ("último año", 365)):
+            inicio, fin, _ = agente.periodo_de(f"temperatura del {frase}", ahora=hoy)
+            self.assertEqual((fin - inicio).days, dias, frase)
+
     def test_grafica_de_alertas(self):
         cuerpo = self._preguntar(self.e.supervisor, "Gráfica de alertas del reporte")
         self.assertEqual(cuerpo["grafica"]["elemento"], "alertas")

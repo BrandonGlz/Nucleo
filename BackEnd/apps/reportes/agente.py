@@ -321,12 +321,36 @@ def periodo_de(pregunta, ahora=None):
             fin = inicio.replace(month=numero + 1)
         return inicio, min(fin, ahora), f"{MESES[numero - 1]} de {anio}"
 
-    if re.search(r"ultimas?\s+24\s*h|ultimo dia|ultimas? horas", texto):
-        return ahora - timedelta(days=1), ahora, "las últimas 24 horas"
-    dias = re.search(r"ultim[oa]s?\s+(\d{1,3})\s+dias", texto)
-    if dias:
-        n = max(1, min(int(dias.group(1)), 366))
-        return ahora - timedelta(days=n), ahora, f"los últimos {n} días"
+    horas = re.search(r"ultimas?\s+(\d{1,3})\s*(h|horas)\b", texto)
+    if horas:
+        n = max(1, min(int(horas.group(1)), 72))
+        return ahora - timedelta(hours=n), ahora, f"las últimas {n} horas"
+    # «últimos 3 días», «últimas 2 semanas», «últimos 6 meses», «último año»
+    tramo = re.search(r"ultim[oa]s?\s+(\d{1,3})?\s*(dias?|semanas?|meses|mes|anos?)\b", texto)
+    if tramo:
+        n = int(tramo.group(1) or 1)
+        unidad = tramo.group(2)
+        dias = {"d": 1, "s": 7, "m": 30, "a": 365}[unidad[0]] * n
+        dias = max(1, min(dias, 366))
+        nombre = {
+            "d": ("día", "días"),
+            "s": ("semana", "semanas"),
+            "m": ("mes", "meses"),
+            "a": ("año", "años"),
+        }[unidad[0]]
+        if n == 1:
+            texto_periodo = f"{'la última' if unidad[0] == 's' else 'el último'} {nombre[0]}"
+        else:
+            texto_periodo = (
+                f"{'las últimas' if unidad[0] == 's' else 'los últimos'} {n} {nombre[1]}"
+            )
+        if unidad[0] == "d" and n == 1:
+            texto_periodo = "las últimas 24 horas"
+        return ahora - timedelta(days=dias), ahora, texto_periodo
+    if "este ano" in texto or "anual" in texto:
+        return hoy.replace(month=1, day=1), ahora, f"lo que va de {hoy.year}"
+    if "trimestre" in texto:
+        return ahora - timedelta(days=90), ahora, "los últimos 3 meses"
     if "ayer" in texto:
         return hoy - timedelta(days=1), hoy, "ayer"
     if "hoy" in texto:
