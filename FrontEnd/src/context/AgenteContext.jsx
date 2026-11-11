@@ -56,17 +56,18 @@ const enVuelo = new Map()
 // Mismas palabras de tema que el agente del backend (agente.TEMAS).
 const TEMA = /(conex|bateri|senal|linea|desconect|apag|alerta|aviso|incidente|temperatura|calor|frio|grados|humed|aire|co2|calidad|ppm|ventila)/
 const sinTema = (t) => !TEMA.test(t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
-function consultar(pregunta, agente, anterior = '') {
+function consultar(pregunta, agente, anterior = '', { precarga = false, sinCache = false } = {}) {
   // Un seguimiento depende de la pregunta anterior: entra a la caché junto con ella.
   const llave = anterior ? `${anterior} ${pregunta}` : pregunta
-  const hit = deCache(agente, llave)
+  // Una petición repetida va al servidor: él lleva la cuenta y responde «repetiste…» u «omito…».
+  const hit = sinCache ? null : deCache(agente, llave)
   if (hit) return Promise.resolve({ r: hit, cache: true })
   const k = claveDe(agente, llave)
   if (!enVuelo.has(k)) {
     enVuelo.set(
       k,
       agenteApi
-        .preguntar(pregunta, agente, anterior)
+        .preguntar(pregunta, agente, anterior, precarga)
         .then((r) => {
           guardarCache(agente, llave, r)
           return { r, cache: false }
@@ -154,17 +155,21 @@ export function AgenteProvider({ children }) {
       }
       const delAgente = conversaciones.find((c) => c.id === id)?.agente ?? agenteValido
       const previos = base ?? conversaciones.find((c) => c.id === id)?.mensajes ?? []
-      // Solo un seguimiento sin tema propio («¿y el dashboard?») se apoya en la pregunta anterior.
+      // Sin tema propio («¿y el dashboard?», «te pedí la última medición») va con la pregunta
+      // anterior; el servidor decide si la usa (seguimiento o corrección) o no (comentario).
       const ultimaMia = previos.filter((m) => m.de === 'yo' && m.texto !== pregunta).at(-1)?.texto ?? ''
-      const anterior = sinTema(pregunta) && !sinTema(ultimaMia) ? ultimaMia : ''
+      const anterior = sinTema(pregunta) ? ultimaMia : ''
+      const igual = (t) => t.trim().toLowerCase().replace(/[¿?¡!.,]/g, '')
+      const ultimaPropia = previos.filter((m) => m.de === 'yo').at(-1)?.texto ?? ''
+      const repetida = Boolean(ultimaPropia) && igual(ultimaPropia) === igual(pregunta)
       editar(id, (ms) => [...(base ?? ms), ...(base && !mostrar ? [] : [{ de: 'yo', texto: mostrar ?? pregunta }])])
       setEstado('pensando')
       const mio = ++turno.current
       // De caché, el proceso se muestra solo 1 s como máximo.
-      const yaEsta = Boolean(deCache(delAgente, pregunta)) && !anterior
+      const yaEsta = Boolean(deCache(delAgente, pregunta)) && !anterior && !repetida
       const pausa = new Promise((listo) => setTimeout(listo, yaEsta ? Math.min(minimo, 1000) : minimo))
       try {
-        const { r } = await consultar(pregunta, delAgente, anterior)
+        const { r } = await consultar(pregunta, delAgente, anterior, { sinCache: repetida })
         await pausa
         if (mio !== turno.current) return
         const clave = nuevoId('r')
@@ -211,7 +216,7 @@ export function AgenteProvider({ children }) {
       for (const p of preguntas) {
         if (/\b(reporte|informe)/i.test(p) || deCache(agenteValido, p)) continue
         try {
-          await consultar(p, agenteValido)
+          await consultar(p, agenteValido, '', { precarga: true })
         } catch {
           // Si falla, se pedirá de nuevo al tocarla.
         }

@@ -10,6 +10,7 @@ Todo vive en PostgreSQL (disco): no aumenta la memoria que usa la IA.
 
 import re
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import F
 
@@ -99,45 +100,97 @@ def registrar(usuario, dispositivo, pregunta, via, respuesta, tema="", datos=Non
     )
 
 
+# Solo se aprende de preguntas que se entienden solas y son concretas: ni seguimientos que
+# dependen de la pregunta anterior, ni correcciones o comentarios, ni frases muy cortas o largas.
+MIN_PALABRAS, MAX_PALABRAS = 3, 25
+
+
+def apta(registro):
+    """True si la pregunta del registro sirve para el banco."""
+    if registro.datos.get("contexto"):
+        return False
+    pregunta = registro.pregunta
+    if agente.es_comentario(pregunta) or agente.CORRIGE.search(agente._normalizar(pregunta)):
+        return False
+    return MIN_PALABRAS <= len(registro.pregunta_normalizada.split()) <= MAX_PALABRAS
+
+
+def _candidata(registro):
+    """Lo que se aprendería de este registro: ``(plantilla, tema)`` o ``(None, None)``."""
+    if registro.via == PreguntaAgente.Via.ENRUTADA:
+        # Se aprende la ruta: la próxima vez esta pregunta va directo a esa herramienta.
+        return registro.datos.get("ruta"), "RUTA"
+    if registro.via == PreguntaAgente.Via.IA:
+        return a_plantilla(registro.respuesta, registro.datos), registro.tema
+    return None, None
+
+
 def calificar(registro, valor):
-    """Guarda la reacción (1, -1 o ``None``) y aprende de ella. Devuelve si quedó en el banco."""
+    """Guarda la reacción (1, -1 o ``None``) y aprende de ella. Devuelve si la respuesta quedó
+    activa en el banco.
+
+    - 👍 a una respuesta de la IA o interpretada por ella, en una pregunta apta, deja una
+      candidata en espera; se activa cuando junta ``IA_VOTOS_PARA_APRENDER`` 👍 de ocasiones
+      distintas con la misma plantilla o ruta. Si un 👍 llega con otra respuesta, la candidata
+      se reemplaza y vuelve a empezar.
+    - 👎 a cualquier respuesta de esa pregunta (del banco o de la IA) desactiva lo aprendido.
+    """
     anterior = registro.calificacion
     registro.calificacion = valor
     registro.save(update_fields=["calificacion"])
     if valor == anterior:
         return False
+    organizacion = registro.dispositivo.area.organizacion_id
     aprendida = registro.aprendida
+    if aprendida is not None and registro.via != PreguntaAgente.Via.BANCO:
+        # Este registro ya votó por la candidata: quitar y volver a poner el 👍 no cuenta doble.
+        if valor == -1:
+            RespuestaAprendida.objects.filter(pk=aprendida.pk).update(
+                votos_no=F("votos_no") + 1, activa=False, votos_si=0
+            )
+        return False
     if aprendida is not None:  # respuesta que ya salió del banco
         if valor == 1:
             RespuestaAprendida.objects.filter(pk=aprendida.pk).update(votos_si=F("votos_si") + 1)
         elif valor == -1:
             RespuestaAprendida.objects.filter(pk=aprendida.pk).update(
-                votos_no=F("votos_no") + 1, activa=False
+                votos_no=F("votos_no") + 1, activa=False, votos_si=0
             )
         return False
-    if valor != 1 or registro.via not in (PreguntaAgente.Via.IA, PreguntaAgente.Via.ENRUTADA):
+    plantilla, tema = _candidata(registro)
+    if valor == -1 and tema is not None:
+        RespuestaAprendida.objects.filter(
+            organizacion_id=organizacion,
+            pregunta_normalizada=registro.pregunta_normalizada[:500],
+            tema=tema,
+        ).update(votos_no=F("votos_no") + 1, activa=False, votos_si=0)
         return False
-    if registro.via == PreguntaAgente.Via.ENRUTADA:
-        # Se aprende la ruta: la próxima vez esta pregunta va directo a esa herramienta.
-        plantilla, tema = registro.datos.get("ruta"), "RUTA"
-    else:
-        plantilla, tema = a_plantilla(registro.respuesta, registro.datos), registro.tema
-    if not plantilla:
+    if valor != 1 or not plantilla or not apta(registro):
         return False
+    necesarios = max(1, settings.IA_VOTOS_PARA_APRENDER)
     try:
         with transaction.atomic():
-            nueva, creada = RespuestaAprendida.objects.get_or_create(
-                organizacion_id=registro.dispositivo.area.organizacion_id,
+            nueva, creada = RespuestaAprendida.objects.select_for_update().get_or_create(
+                organizacion_id=organizacion,
                 pregunta_normalizada=registro.pregunta_normalizada[:500],
                 tema=tema,
-                defaults={"pregunta": registro.pregunta[:500], "plantilla": plantilla},
+                defaults={
+                    "pregunta": registro.pregunta[:500],
+                    "plantilla": plantilla,
+                    "votos_si": 1,
+                    "activa": necesarios <= 1,
+                },
             )
-            if not creada and not nueva.activa:
-                # Una respuesta nueva con 👍 sustituye a la que había sido rechazada.
-                nueva.plantilla, nueva.activa, nueva.votos_si = plantilla, True, 1
-                nueva.save(update_fields=["plantilla", "activa", "votos_si"])
+            if not creada:
+                if nueva.plantilla != plantilla:
+                    # Otra respuesta aprobada: la candidata cambia y la cuenta vuelve a empezar.
+                    nueva.plantilla, nueva.votos_si = plantilla, 1
+                else:
+                    nueva.votos_si += 1
+                nueva.activa = nueva.votos_si >= necesarios
+                nueva.save(update_fields=["plantilla", "votos_si", "activa"])
     except IntegrityError:
         return False
     registro.aprendida = nueva
     registro.save(update_fields=["aprendida"])
-    return True
+    return nueva.activa

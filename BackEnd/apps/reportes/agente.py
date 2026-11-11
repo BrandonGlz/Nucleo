@@ -418,24 +418,116 @@ def pide_futuro(pregunta, ahora=None):
     return False
 
 
+# «te pedí la última medición», «me refería al aire», «no de los últimos 7 días»: el usuario
+# corrige la respuesta anterior; la corrección se completa con el tema de la pregunta anterior.
+CORRIGE = re.compile(
+    r"\b(te pedi|te dije|yo pedi|lo que pedi|me referia|quise decir|quiero decir|mas bien)\b|"
+    r"\bno (de|del|en|es|era|sobre|para|la|el|los|las) "
+)
+# «no de los últimos 7 días»: lo negado no se pide (se quita antes de interpretar).
+NEGADO = re.compile(r",?\s*\bno (?:de|del|en|es|era|sobre|para|la|el|los|las) [^,.;!?]*", re.I)
+# Comentarios sobre las respuestas («solo dame eso cuando te lo pida», «te equivocaste»).
+COMENTARIO = re.compile(
+    r"\b(solo dame|cuando te lo pid|no te pedi|eso no (es|era)|te equivocaste|no es lo que|"
+    r"no me sirve|esta mal|estas mal|no entendiste|no era eso|no te entend|deja de|no hagas)"
+)
+# Palabras de la pregunta anterior que dan su tema e intención a una corrección.
+ARRASTRE = re.compile(
+    r"^(temperatura|calor|frio|grados|humedad|bochorno|aire|co2|eco2|calidad|olor|alertas?|"
+    r"bateria|senal|conexion|grafic[ao]s?|dashboard|tablero|compara\w*|maxim[oa]|minim[oa]|"
+    r"promedio|reporte|informe)$"
+)
+
+
+def es_comentario(pregunta):
+    return bool(COMENTARIO.search(_normalizar(pregunta)))
+
+
 def con_contexto(pregunta, anterior):
-    """Completa un seguimiento corto con la pregunta anterior de la conversación.
+    """Completa un seguimiento o una corrección con la pregunta anterior de la conversación.
 
     «¿y el dashboard?» o «¿y el mes pasado?» no nombran variable ni tema: se responden sobre
-    lo que se preguntó antes («dame un dashboard de la temperatura»). Si la pregunta ya tiene
-    tema propio («¿y la humedad?»), va sola.
+    lo que se preguntó antes («dame un dashboard de la temperatura»). Una corrección («te pedí
+    la última medición, no los últimos 7 días») toma de la anterior solo el tema y la intención
+    (variable, gráfica, máxima…) y su propio periodo. Si la pregunta ya tiene tema, va sola.
     """
-    if not anterior or _tema(pregunta) is not None or len(pregunta.split()) > 8:
-        return pregunta
+    limpia = NEGADO.sub("", pregunta).strip() or pregunta
+    if not anterior or es_comentario(limpia):
+        return limpia
+    tema = _tema(limpia)
+    corrige = bool(CORRIGE.search(_normalizar(pregunta)))
+    if tema not in (None, "GENERICA") or (not corrige and len(limpia.split()) > 8):
+        return limpia
+    if _tema(anterior) in (None, "GENERICA") and tema == "GENERICA":
+        return limpia
     if _tema(anterior) is None:
-        return pregunta
-    return f"{anterior} {pregunta}"
+        return limpia
+    nombra_periodo = periodo_de(limpia)[2] != periodo_de("")[2] or pide_ultima(limpia)
+    if corrige or nombra_periodo:
+        claves = [w for w in re.findall(r"[a-z0-9]+", _normalizar(anterior)) if ARRASTRE.match(w)]
+        return f"{' '.join(claves)} {limpia}"
+    return f"{anterior} {limpia}"
+
+
+# «la última medición», «la lectura más reciente», «el valor actual».
+ULTIMA = re.compile(
+    r"\bultim[oa]s? (medicion|medida|lectura|dato|registro|valor|muestra)|"
+    r"\b(medicion|lectura|valor|dato) (actual|mas reciente)|\bmas reciente\b"
+)
+
+
+def pide_ultima(pregunta):
+    return bool(ULTIMA.search(_normalizar(pregunta)))
+
+
+def ultima_medicion(dispositivo, codigos):
+    """Texto con la última lectura de cada variable pedida (y si está en rango) o ``None``."""
+    sensores = list(dispositivo.sensores.values_list("num", flat=True))
+    partes, cuando = [], None
+    for codigo in codigos:
+        lectura = (
+            Lectura.objects.filter(
+                sensor_num__in=sensores, variable_codigo=codigo, estabilizada=True
+            )
+            .order_by("-fecha_hora")
+            .first()
+        )
+        if lectura is None:
+            continue
+        variable = VariableAmbiental.objects.get(pk=codigo)
+        umbral = dispositivo.umbrales.filter(variable_id=codigo, activo=True).first()
+        estado = ""
+        if umbral is not None:
+            bajo, alto = float(umbral.advertencia_min), float(umbral.advertencia_max)
+            dentro = bajo <= float(lectura.valor) <= alto
+            estado = (
+                f", dentro del rango ({bajo:g}–{alto:g} {variable.unidad})"
+                if dentro
+                else f", FUERA del rango ({bajo:g}–{alto:g} {variable.unidad})"
+            )
+        partes.append(f"{variable.nombre.lower()} {_fmt(lectura.valor, variable.unidad)}{estado}")
+        cuando = max(cuando, lectura.fecha_hora) if cuando else lectura.fecha_hora
+    if not partes:
+        return None
+    if len(partes) == 1:
+        return f"La última medición de {dispositivo.nombre} fue del {_cuando(cuando)}: {partes[0]}."
+    return (
+        f"La última medición de {dispositivo.nombre} fue del {_cuando(cuando)}: "
+        + "; ".join(partes[:-1])
+        + f" y {partes[-1]}."
+    )
 
 
 def responder(dispositivo, pregunta):
     """Respuesta del agente del dispositivo: ``{"texto", "picos"?, "serie"?, ...}``."""
     tema = _tema(pregunta)
     desde, hasta, descripcion = periodo_de(pregunta)
+    if tema is None and es_comentario(pregunta):
+        return {
+            "texto": "Entendido, gracias por avisar. Dale 👎 a la respuesta que no te sirvió para "
+            "que no se repita, y pídeme justo lo que necesitas, por ejemplo: «la última medición "
+            "del aire», «la temperatura de ayer» o «gráfica de la humedad de esta semana»."
+        }
     if tema is None:
         return {
             "texto": f"Solo puedo responder sobre {dispositivo.nombre} y sus sensores. "
@@ -445,6 +537,17 @@ def responder(dispositivo, pregunta):
         return _conexion(dispositivo)
     if tema == "ALERTAS":
         return _alertas(dispositivo, desde, hasta, descripcion)
+    if pide_ultima(pregunta) and tema in (*ORDEN_VARIABLES, "GENERICA"):
+        codigos = ORDEN_VARIABLES if tema == "GENERICA" else (tema,)
+        texto = ultima_medicion(dispositivo, codigos)
+        if texto is None:
+            de = (
+                ""
+                if tema == "GENERICA"
+                else f" de {VariableAmbiental.objects.get(pk=tema).nombre.lower()}"
+            )
+            texto = f"{dispositivo.nombre} todavía no tiene lecturas{de}."
+        return {"texto": texto}
     if tema == "GENERICA":
         conteo = (
             Alerta.objects.filter(umbral__dispositivo=dispositivo, fecha_hora__gte=desde)

@@ -137,12 +137,19 @@ def _ultimo_registrado(usuario, dispositivo, texto):
     return dia, dia + timedelta(days=1), f"el último día registrado ({nombre})"
 
 
+def propio_de(usuario, dispositivo, texto):
+    """True si la gráfica es del dispositivo (no de toda el área)."""
+    return _alcance(usuario, dispositivo, texto)[1] is not None
+
+
 def grafica(usuario, dispositivo, pregunta):
     """Una sola gráfica (serie de una variable, alertas o cifras clave) del periodo pedido."""
     texto = _texto(pregunta)
     inicio, fin, descripcion = agente.periodo_de(pregunta)
     # «el último día registrado / con datos / con lecturas»: el día de la lectura más reciente.
-    if re.search(
+    # «la última medición»: el día de esa lectura, y el texto empieza por la lectura misma.
+    ultima = agente.pide_ultima(pregunta)
+    if ultima or re.search(
         r"(dia|fecha|semana|mes) (registrad|con (datos|lecturas))|ultim[oa] registr", texto
     ):
         ultimo = _ultimo_registrado(usuario, dispositivo, texto)
@@ -185,6 +192,11 @@ def grafica(usuario, dispositivo, pregunta):
             f"{agente._fmt(info['minimo'], info['unidad'])} y máximo de "
             f"{agente._fmt(info['maximo'], info['unidad'])}."
         )
+    if ultima and propio_de(usuario, dispositivo, texto):
+        codigos = (variable,) if variable else agente.ORDEN_VARIABLES
+        lectura = agente.ultima_medicion(dispositivo, codigos)
+        if lectura:
+            titulo = f"{lectura} La gráfica muestra ese día completo. {titulo}"
     return {
         "texto": titulo,
         "grafica": {

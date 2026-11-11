@@ -183,6 +183,7 @@ class PreguntaAgente(models.Model):
         BANCO = "BANCO", "Respuesta aprendida"
         IA = "IA", "Redactada por la IA"
         ENRUTADA = "ENRUTADA", "Interpretada por la IA"
+        REPETIDA = "REPETIDA", "Petición repetida"
         NO_ENTENDIDA = "NO_ENTENDIDA", "No entendida"
 
     num = models.BigAutoField(primary_key=True)

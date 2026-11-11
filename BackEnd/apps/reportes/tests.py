@@ -559,7 +559,12 @@ class NicoAprendeTests(PruebaBase):
         estado = self.cliente.get("/api/v1/agente/estado/").json()
         self.assertEqual(estado["activos"], [self.e.dispositivo.pk])
 
-    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    @override_settings(
+        IA_VOTOS_PARA_APRENDER=1,
+        IA_PUENTE_DISPOSITIVOS=["NUC-A"],
+        IA_PUENTE_CLAVE="k",
+        IA_ESPERA_SEGUNDOS=5,
+    )
     def test_ia_por_el_esp_y_banco_con_reacciones(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         hilo = self._esp(lambda t: "Ahora está en 23 °C y el máximo fue 26.4 °C; no es grave.")
@@ -586,6 +591,7 @@ class NicoAprendeTests(PruebaBase):
             valor=24.5,
             fecha_hora=timezone.now(),
         )
+        self._pedir("¿hay alertas?")  # corta la racha: si no, sería una petición repetida
         otra = self._pedir("Oye, ¿es grave la temperatura")
         self.assertEqual(otra["via"], "BANCO")
         self.assertIn("Ahora está en 24.5 °C", otra["texto"])
@@ -595,6 +601,104 @@ class NicoAprendeTests(PruebaBase):
         )
         aprendida.refresh_from_db()
         self.assertFalse(aprendida.activa)
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_banco_pide_dos_confirmaciones_y_preguntas_concretas(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        ruta = '{"herramienta": "variable", "variable": "temperatura", "periodo": "ahora"}'
+
+        def votar(pregunta, anterior=""):
+            hilo = self._esp(lambda t: ruta)
+            r = self.cliente.post(
+                "/api/v1/agente/",
+                {**self.pregunta, "pregunta": pregunta, "anterior": anterior},
+                format="json",
+            ).json()
+            hilo.join()
+            voto = self.cliente.post(
+                "/api/v1/agente/calificar/",
+                {"registro": r["registro"], "voto": "si"},
+                format="json",
+            ).json()
+            return r, voto
+
+        # Un 👍 deja la ruta en espera; quitarlo y ponerlo de nuevo no cuenta doble.
+        r, voto = votar("¿cómo anda la cosa en la bodega?")
+        self.assertEqual(r["via"], "ENRUTADA")
+        self.assertFalse(voto["aprendida"])
+        for v in (None, "si"):
+            self.cliente.post(
+                "/api/v1/agente/calificar/", {"registro": r["registro"], "voto": v}, format="json"
+            )
+        self.assertFalse(RespuestaAprendida.objects.get().activa)
+        # Un segundo 👍, en otra ocasión y con la misma ruta, la activa.
+        self._pedir("¿hay alertas?")
+        _, voto = votar("¿Cómo anda la cosa en la bodega?")
+        self.assertTrue(voto["aprendida"])
+        self._pedir("¿hay alertas?")
+        self.assertEqual(self._pedir("¿cómo anda la cosa en la bodega?")["via"], "BANCO")
+        # Frases cortas no se aprenden.
+        _, voto = votar("¿y la cosa?")
+        self.assertEqual(RespuestaAprendida.objects.count(), 1)
+
+    def test_peticion_repetida(self):
+        primera = self._pedir("¿cómo está la temperatura?")
+        self.assertNotEqual(primera["via"], "REPETIDA")
+        # Una precarga de sugerencias no cuenta como repetición.
+        self.cliente.post(
+            "/api/v1/agente/",
+            {**self.pregunta, "pregunta": "¿cómo está la temperatura?", "precarga": True},
+            format="json",
+        )
+        segunda = self._pedir("¿Cómo está la temperatura")
+        self.assertEqual(segunda["via"], "REPETIDA")
+        self.assertTrue(segunda["texto"].startswith("Repetiste la misma petición"))
+        self.assertIn(primera["texto"], segunda["texto"])
+        tercera = self._pedir("¿cómo está la temperatura?")
+        self.assertEqual(tercera["via"], "REPETIDA")
+        self.assertTrue(tercera["texto"].startswith("Omito esta petición"))
+        # Otra pregunta corta la racha.
+        self._pedir("¿hay alertas?")
+        self.assertNotEqual(self._pedir("¿cómo está la temperatura?")["via"], "REPETIDA")
+
+    def test_grafica_repetida_vuelve_con_la_grafica(self):
+        self._pedir("gráfica de la temperatura")
+        r = self._pedir("gráfica de la temperatura")
+        self.assertEqual(r["via"], "REPETIDA")
+        self.assertIn("grafica", r)
+
+    def test_ultima_medicion_correccion_y_comentarios(self):
+        r = self._pedir("¿cuál fue la última medición del aire?")
+        self.assertIn("todavía no tiene lecturas de calidad del aire", r["texto"])
+        r = self._pedir("¿cuál fue la última medición de la temperatura?")
+        self.assertIn("La última medición de", r["texto"])
+        self.assertNotIn("promedió", r["texto"])
+        r = self._pedir("dame la última medición")
+        self.assertIn("temperatura", r["texto"])
+        # Corrección: toma la variable de la pregunta anterior y su propio periodo, sin lo negado.
+        r = self.cliente.post(
+            "/api/v1/agente/",
+            {
+                **self.pregunta,
+                "pregunta": "te pedí de la última medición, no de los últimos 7 días",
+                "anterior": "¿cómo estuvo la temperatura?",
+            },
+            format="json",
+        ).json()
+        self.assertIn("La última medición de", r["texto"])
+        self.assertIn("temperatura", r["texto"])
+        self.assertTrue(PreguntaAgente.objects.get(pk=r["registro"]).datos["contexto"])
+        # Un comentario sobre la respuesta no se vuelve a responder con datos.
+        r = self.cliente.post(
+            "/api/v1/agente/",
+            {
+                **self.pregunta,
+                "pregunta": "pues solo dame eso cuando te lo pida",
+                "anterior": "te pedí de la última medición",
+            },
+            format="json",
+        ).json()
+        self.assertIn("Entendido", r["texto"])
 
     @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=1)
     def test_ia_tarda_responde_predefinida(self):
@@ -668,7 +772,12 @@ class NicoAprendeTests(PruebaBase):
         alertas = self._pedir("¿Hubo alertas hoy?")["texto"]
         self.assertIn("no tuvo alertas hoy", alertas)
 
-    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    @override_settings(
+        IA_VOTOS_PARA_APRENDER=1,
+        IA_PUENTE_DISPOSITIVOS=["NUC-A"],
+        IA_PUENTE_CLAVE="k",
+        IA_ESPERA_SEGUNDOS=5,
+    )
     def test_ia_elige_la_herramienta_y_aprende_la_ruta(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         vistos = []
@@ -689,6 +798,7 @@ class NicoAprendeTests(PruebaBase):
             "/api/v1/agente/calificar/", {"registro": registro.num, "voto": "si"}, format="json"
         )
         # Con el 👍 la ruta queda aprendida: ya no se pregunta a la IA.
+        self._pedir("¿hay alertas?")  # corta la racha: si no, sería una petición repetida
         otra = self._pedir("¿Cómo anda la cosa en la bodega?")
         self.assertEqual(otra["via"], "BANCO")
         self.assertIn("26.4 °C", otra["texto"])

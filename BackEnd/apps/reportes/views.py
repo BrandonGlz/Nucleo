@@ -1,8 +1,10 @@
 import hmac
 import time
+from datetime import timedelta
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
@@ -102,6 +104,8 @@ class PreguntaAgenteSerializer(serializers.Serializer):
     dispositivo = serializers.IntegerField()
     # Pregunta anterior de la conversación, para seguimientos como «¿y la gráfica?».
     anterior = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    # La web precarga las sugerencias: no son peticiones del usuario ni cuentan como repetidas.
+    precarga = serializers.BooleanField(required=False, default=False)
 
 
 class AgenteView(APIView):
@@ -138,7 +142,11 @@ class AgenteView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         inicio = time.monotonic()
-        if not agente.es_espanol(original):
+        precarga = entrada.validated_data.get("precarga", False)
+        repetida = None if precarga else self._repetida(request.user, dispositivo, original)
+        if repetida is not None:
+            r, via, extra = repetida
+        elif not agente.es_espanol(original):
             # Solo español: otra lengua no se procesa ni pasa por la IA.
             r, via, extra = {"texto": agente.SOLO_ESPANOL}, PreguntaAgente.Via.NO_ENTENDIDA, {}
         elif agente.pide_futuro(original):
@@ -150,6 +158,11 @@ class AgenteView(APIView):
             r, via, extra = {"texto": texto}, PreguntaAgente.Via.NO_ENTENDIDA, {}
         else:
             r, via, extra = self._resolver(request.user, dispositivo, pregunta)
+        if pregunta != original:
+            # Dependió de la pregunta anterior (seguimiento o corrección): no entra al banco.
+            extra["datos"] = {**extra.get("datos", {}), "contexto": True}
+        if precarga:
+            extra["datos"] = {**extra.get("datos", {}), "precarga": True}
         registro = aprendizaje.registrar(
             request.user,
             dispositivo,
@@ -161,6 +174,47 @@ class AgenteView(APIView):
             **extra,
         )
         return Response({**r, "registro": registro.num, "via": via})
+
+    # Repetir la misma petición seguida no cambia la respuesta: la 2.ª devuelve lo ya enviado
+    # (sin IA ni consultas nuevas) y desde la 3.ª se omite, para no gastar tokens ni memoria.
+    VENTANA_REPETIDA = timedelta(minutes=15)
+
+    def _repetida(self, usuario, dispositivo, pregunta):
+        normalizada = aprendizaje.normalizar(pregunta)
+        recientes = PreguntaAgente.objects.filter(
+            usuario=usuario,
+            dispositivo=dispositivo,
+            fecha__gte=timezone.now() - self.VENTANA_REPETIDA,
+        ).order_by("-fecha", "-num")[:5]
+        iguales = []
+        for registro in recientes:  # solo cuentan las seguidas: otra pregunta corta la racha
+            if registro.datos.get("precarga"):
+                continue
+            if registro.pregunta_normalizada != normalizada:
+                break
+            iguales.append(registro)
+        if not iguales:
+            return None
+        Via = PreguntaAgente.Via
+        if len(iguales) == 1:
+            previo = iguales[0]
+            r = {"texto": previo.respuesta}
+            # La gráfica o comparativa se vuelve a armar con las reglas (sin IA ni tokens).
+            if graficas.pide_comparativa(pregunta):
+                r = graficas.comparativa(usuario, dispositivo, pregunta)
+            elif graficas.pide_grafica(pregunta):
+                r = graficas.grafica(usuario, dispositivo, pregunta)
+            r["texto"] = (
+                "Repetiste la misma petición; te envío lo mismo que te respondí hace un "
+                f"momento:\n\n{previo.respuesta}"
+            )
+            return r, Via.REPETIDA, {"datos": {"repeticion": 2}}
+        texto = (
+            f"Omito esta petición: es la {len(iguales) + 1}.ª vez seguida que la haces y la "
+            "respuesta no va a cambiar; repetirla solo consumiría recursos sin un fin. Si "
+            "necesitas algo distinto, cambia la variable, el periodo o lo que quieres ver."
+        )
+        return {"texto": texto}, Via.REPETIDA, {"datos": {"repeticion": len(iguales) + 1}}
 
     def _resolver(self, usuario, dispositivo, pregunta, ruteada=False):
         """Respuesta, cómo se resolvió y datos para el registro. En orden: comparativa, gráfica,

@@ -206,6 +206,9 @@ IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen2.5:0.5b")
 # siempre está disponible y responde con lo predefinido y lo aprendido, sin IA.
 IA_PUENTE_DISPOSITIVOS = env.list("IA_PUENTE_DISPOSITIVOS", default=[])
 IA_ESPERA_SEGUNDOS = env.float("IA_ESPERA_SEGUNDOS", default=20)
+# 👍 que necesita una misma pregunta (en ocasiones distintas y con la misma respuesta o ruta)
+# para entrar al banco de Nico AI. Con 1 basta un 👍; con 2 se evita aprender de un acierto suelto.
+IA_VOTOS_PARA_APRENDER = env.int("IA_VOTOS_PARA_APRENDER", default=2)
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
