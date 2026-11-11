@@ -137,35 +137,22 @@ en los `package-lock.json` de web y móvil.
 
 ## Carpetas
 
-```mermaid
-flowchart LR
-    R(["Nucleo/"]) --> BE["BackEnd/<br/>Django, API, pruebas"]
-    R --> FE["FrontEnd/<br/>Web React + Vite"]
-    R --> MO["Mobile/<br/>App Expo + React Native"]
-    R --> IO["IoT/<br/>MicroPython para ESP32"]
-    R --> MQ["Mosquitto/<br/>broker, certificados y dispositivos"]
-    R --> DB["Database/<br/>scripts .sql de práctica<br/>y crear-roles.sh"]
-    R --> DP["deploy/<br/>instalación, despliegue,<br/>respaldos y APK"]
-    R --> CX["Context/<br/>documentación técnica"]
-    R --> DO["Docs/<br/>SRS, modelo, planificación"]
-    R --> RA["Raíz<br/>docker-compose.yml · .env.example<br/>.gitignore · README.md"]
-    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
-    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
-    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
-    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
-    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
-    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
-    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
-    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
-    classDef raiz fill:#111827,stroke:#4ade80,color:#fff,stroke-width:3px
-    class R raiz
-    class BE backend
-    class FE web
-    class MO cliente
-    class IO,MQ iot
-    class DB datos
-    class DP red
-    class CX,DO,RA doc
+```text
+Nucleo/
+├── BackEnd/               Django, API compartida, pruebas y README
+├── FrontEnd/              Web React + Vite y README
+├── Mobile/                App Expo + React Native y README
+├── IoT/                   MicroPython para ESP32, bibliotecas y README
+├── Mosquitto/             Configuración del broker MQTT y scripts de certificados y dispositivos
+├── Database/              Scripts .sql de práctica: Web-Mobile (PostgreSQL) e IoT (TimescaleDB),
+│                          y crear-roles.sh (opcional)
+├── deploy/                Instalación, despliegue, respaldos y APK del servidor
+├── Context/               Documentación técnica completa para el equipo y la IA
+├── Docs/                  SRS, modelo relacional, planificación y análisis
+├── docker-compose.yml     PostgreSQL, TimescaleDB, Redis y Mosquitto en Docker
+├── .env.example           Plantilla de configuración, sin secretos
+├── .gitignore             Archivos que Git debe ignorar
+└── README.md              Este documento
 ```
 
 Consulta [BackEnd](BackEnd/README.md), [Web](FrontEnd/README.md),
@@ -334,49 +321,14 @@ evidencias que se agreguen.
 
 **Ramas**
 
-```mermaid
-%%{init: {'theme': 'base', 'gitGraph': {'mainBranchName': 'main', 'showCommitLabel': true}, 'themeVariables': {
-  'git0': '#15803d', 'git1': '#1d4ed8', 'git2': '#c2410c', 'git3': '#0e7490', 'git4': '#6d28d9', 'git5': '#0f766e', 'git6': '#a21caf',
-  'gitBranchLabel0': '#ffffff', 'gitBranchLabel1': '#ffffff', 'gitBranchLabel2': '#ffffff', 'gitBranchLabel3': '#ffffff',
-  'gitBranchLabel4': '#ffffff', 'gitBranchLabel5': '#ffffff', 'gitBranchLabel6': '#ffffff',
-  'tagLabelBackground': '#facc15', 'tagLabelColor': '#111827', 'tagLabelBorder': '#a16207'}}}%%
-gitGraph
-    commit id: "inicio" tag: "etapa-1"
-    branch dev
-    commit id: "integración"
-    branch backend
-    commit id: "API"
-    checkout dev
-    branch frontend
-    commit id: "pantallas"
-    checkout dev
-    branch mobile
-    commit id: "app"
-    checkout dev
-    branch iot
-    commit id: "firmware"
-    checkout backend
-    branch fix-tarea
-    commit id: "rama corta"
-    checkout backend
-    merge fix-tarea
-    checkout dev
-    merge backend id: "PR backend"
-    merge frontend id: "PR web"
-    merge mobile id: "PR app"
-    merge iot id: "PR iot"
-    checkout main
-    merge dev tag: "etapa-2"
+```text
+main       Solo entregas estables, con un tag por etapa
+dev        Integración; siempre debe funcionar
+backend    Trabajo del backend (BackEnd/)
+frontend   Trabajo de la web (FrontEnd/)
+mobile     Trabajo de la app móvil (Mobile/)
+iot        Trabajo del firmware y del broker (IoT/ y Mosquitto/)
 ```
-
-| Rama | Para qué |
-|---|---|
-| `main` | Solo entregas estables, con un tag por etapa |
-| `dev` | Integración; siempre debe funcionar |
-| `backend` | Trabajo del backend (`BackEnd/`) |
-| `frontend` | Trabajo de la web (`FrontEnd/`) |
-| `mobile` | Trabajo de la app móvil (`Mobile/`) |
-| `iot` | Trabajo del firmware y del broker (`IoT/` y `Mosquitto/`) |
 
 - Cada área trabaja solo en su rama: así dos áreas no editan los mismos archivos a la vez.
 - La documentación (`Context/`, `Docs/`, READMEs) y `Database/` no tienen rama propia: viajan
