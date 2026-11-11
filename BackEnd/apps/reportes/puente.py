@@ -345,6 +345,19 @@ def _palabras(texto):
     return [w for w in re.findall(r"[a-zñ]+", agente._normalizar(texto)) if len(w) >= 5]
 
 
+def _relaciones(texto, hechos, entidades):
+    """Cada frase de la IA solo junta lugares o dispositivos que los hechos ya juntan en una
+    misma frase («Moldeo» con «Núcleo A-01» no, si los hechos no los relacionan)."""
+    frases_hechos = [agente._normalizar(f) for f in re.split(r"(?<=[.;!?])\s+", hechos)]
+    for frase in re.split(r"(?<=[.;!?])\s+", agente._normalizar(texto)):
+        presentes = [e for e in entidades if e and e in frase]
+        for i, a in enumerate(presentes):
+            for b in presentes[i + 1 :]:
+                if not any(a in f and b in f for f in frases_hechos):
+                    return False
+    return True
+
+
 def _fiel(texto, hechos, mensaje="", contexto=""):
     """La respuesta de la IA solo dice lo que dicen los hechos: cada palabra con contenido
     viene de los hechos, del mensaje del usuario o de las palabras de enlace, retoma lo
@@ -397,7 +410,15 @@ def conversar(dispositivo, mensaje, hechos, historial=(), espera=None):
     permitidos |= {float(n) for n in range(0, 25)}
     texto = _limpiar(r["texto"], permitidos, hechos)
     contexto = " ".join(f"{p} {r}" for p, r in historial)
-    if texto and not _fiel(texto, hechos, mensaje, contexto):
+    from apps.organizaciones.models import Area
+
+    entidades = [agente._normalizar(dispositivo.nombre)] + [
+        agente._normalizar(a.nombre)
+        for a in Area.objects.filter(organizacion_id=dispositivo.area.organizacion_id)
+    ]
+    if texto and not (
+        _fiel(texto, hechos, mensaje, contexto) and _relaciones(texto, hechos, entidades)
+    ):
         texto = None
     return texto, _tokens(r)
 

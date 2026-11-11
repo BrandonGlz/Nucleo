@@ -648,6 +648,40 @@ def lugar_pedido(dispositivo, pregunta):
     return None
 
 
+# «El de este área», «aquí», «mi área»: el área del propio dispositivo.
+PROPIA = re.compile(
+    r"\b(est[ea] area|esta zona|esta sala|mi area|nuestra area|aqui|aca|este lugar|"
+    r"(el|la|lo) de (este|esta|aqui|aca)|de este|de esta)\b"
+)
+
+
+def refiere_propia(dispositivo, pregunta):
+    """La pregunta habla del área del propio dispositivo (por referencia o por su nombre)."""
+    texto = _normalizar(pregunta)
+    propia = [
+        w for w in re.findall(r"[a-z0-9ñ]+", _normalizar(dispositivo.area.nombre)) if len(w) >= 4
+    ]
+    return bool(PROPIA.search(texto)) or any(re.search(rf"\b{w}\b", texto) for w in propia)
+
+
+def sin_lugar(dispositivo, pregunta):
+    """La pregunta sin el área ajena que nombraba, para responderla con este dispositivo."""
+    texto = _normalizar(pregunta)
+    texto = re.sub(
+        r"\b(en|de|del|para)?\s*(el |la )?(area|zona|sala|departamento|sucursal)s?\s+"
+        r"(de\s+|del\s+)?[a-z0-9ñ]+",
+        " ",
+        texto,
+    )
+    otras = Area.objects.filter(organizacion_id=dispositivo.area.organizacion_id).exclude(
+        pk=dispositivo.area_id
+    )
+    for a in otras:
+        nombre = re.escape(_normalizar(a.nombre))
+        texto = re.sub(rf"\b(en|de|del|para)?\s*(el |la )?{nombre}\b", " ", texto)
+    return re.sub(r"\s+", " ", texto).strip()
+
+
 def insiste_fuera(dispositivo, pregunta, anterior, usuario=None):
     """Respuesta a «sí la tengo» / «pero sí existe» después de un área o dispositivo ajeno:
     no se junta con la pregunta anterior (daría los datos de este dispositivo)."""

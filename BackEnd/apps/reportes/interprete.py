@@ -52,6 +52,10 @@ class Peticion:
         }.get(self.intencion, DATOS.get(self.dato, "cómo está"))
         de = f" de {' y '.join(NOMBRES[v] for v in self.variables)}" if self.variables else ""
         cuando = f" de {self.periodo}" if self.periodo else ""
+        if self.intencion in ("variable", "por_que", "gravedad") and not self.dato:
+            verbo = "estuvo" if self.periodo else "está"
+            var = " y ".join(NOMBRES[v] for v in self.variables)
+            return f"cómo {verbo} la {var}{' ' + self.periodo if self.periodo else ''}"
         return f"{que}{de}{cuando}"
 
     def canonica(self):

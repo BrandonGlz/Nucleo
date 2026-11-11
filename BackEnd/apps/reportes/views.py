@@ -174,8 +174,19 @@ class AgenteView(APIView):
             raras = []
         anterior = entrada.validated_data.get("anterior", "")
         propuesta = self._propuesta(request.user, dispositivo)
-        fuera = agente.fuera_de_alcance(dispositivo, original, request.user)
-        if not fuera and anterior and agente.lugar_pedido(dispositivo, anterior):
+        retomada = None
+        if (
+            agente._tema(original) is None
+            and agente.refiere_propia(dispositivo, original)
+            and not agente.lugar_pedido(dispositivo, original)
+        ):
+            # «Dame el de este área» / «lo del almacén»: la última petición concreta de la
+            # conversación, sin el área ajena, respondida con este dispositivo.
+            retomada = self._ultima_concreta(request.user, dispositivo)
+            if retomada:
+                pregunta = agente.sin_lugar(dispositivo, retomada)
+        fuera = None if retomada else agente.fuera_de_alcance(dispositivo, original, request.user)
+        if not retomada and not fuera and anterior and agente.lugar_pedido(dispositivo, anterior):
             # La anterior era de otra área o dispositivo: no se junta con ella (respondería con
             # los datos de este dispositivo). «Sí la tengo» recibe una explicación.
             pregunta = original
@@ -233,6 +244,13 @@ class AgenteView(APIView):
         if aviso:
             r = {**r, "texto": aviso + r.get("texto", "")}
         pasos = self._pasos(dispositivo, original, anterior, via, extra, fuera, aviso, repetida)
+        if retomada:
+            pasos[:0] = [
+                f"Entendí que te refieres al área {dispositivo.area.nombre} "
+                f"de {dispositivo.nombre}",
+                f"Retomé tu pregunta «{retomada}» para esta área",
+            ]
+            pasos = [p for p in pasos if p != "Lo relacioné con tu mensaje anterior"]
         return Response({**r, "registro": registro.num, "via": via, "pasos": pasos})
 
     def _pasos(self, dispositivo, original, anterior, via, extra, fuera, aviso, repetida):
@@ -327,6 +345,18 @@ class AgenteView(APIView):
             return r, via, {**extra, **suma}
         datos = {**extra.get("datos", {}), "contexto": True, "hechos": r["texto"]}
         return {**r, "texto": texto}, Via.IA, {**extra, **suma, "datos": datos}
+
+    def _ultima_concreta(self, usuario, dispositivo):
+        """La última pregunta reciente con tema (variable, alertas, conexión…) del usuario."""
+        recientes = PreguntaAgente.objects.filter(
+            usuario=usuario,
+            dispositivo=dispositivo,
+            fecha__gte=timezone.now() - self.VENTANA_REPETIDA,
+        ).order_by("-fecha", "-num")[:6]
+        for p in recientes:
+            if not (p.datos or {}).get("precarga") and agente._tema(p.pregunta) is not None:
+                return p.pregunta
+        return None
 
     def _propuesta(self, usuario, dispositivo):
         """Lo que el agente ofreció en su última respuesta («¿Quieres …?»), si sigue vigente."""

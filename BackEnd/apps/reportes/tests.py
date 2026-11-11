@@ -751,6 +751,45 @@ class NicoAprendeTests(PruebaBase):
         self.assertIn("Para Moldeo, abre el agente", r["texto"])
         self.assertIn("Encontré el área Moldeo", r["pasos"])
 
+    def test_el_de_este_area_retoma_la_peticion(self):
+        self.e.otra_area.nombre = "Moldeo"
+        self.e.otra_area.save()
+        self.e.area.nombre = "Almacén"
+        self.e.area.save()
+        q = "¿Cómo estuvo la temperatura en Moldeo esta semana?"
+        self.assertIn("Para Moldeo", self._pedir(q)["texto"])
+        for seguimiento in (
+            "bueno, entonces dame el de este area",
+            "te dije que me dieras el de este area, eres el agente del almacen, debiste darme "
+            "lo del almacen",
+        ):
+            r = self.cliente.post(
+                "/api/v1/agente/",
+                {**self.pregunta, "pregunta": seguimiento, "anterior": q},
+                format="json",
+            ).json()
+            self.assertIn("temperatura", r["texto"].lower())
+            self.assertIn("esta semana", r["texto"])
+            self.assertNotIn("Moldeo", r["texto"])
+            self.assertIn("Entendí que te refieres al área Almacén de Nodo a", r["pasos"])
+
+    def test_ia_no_relaciona_lo_que_los_hechos_no_relacionan(self):
+        hechos = (
+            "Este agente es de Núcleo A-01 y solo ve sus sensores, que están en el área "
+            "Almacén. Para Moldeo, abre el agente de uno de los dispositivos de esa área."
+        )
+        entidades = ["nucleo a-01", "almacen", "moldeo"]
+        self.assertFalse(
+            puente._relaciones(
+                "El área Moldeo de Núcleo A-01 tiene un agente de Moldeo.", hechos, entidades
+            )
+        )
+        self.assertTrue(
+            puente._relaciones(
+                "Este agente solo ve Núcleo A-01, en el área Almacén.", hechos, entidades
+            )
+        )
+
     def test_ofrece_la_ultima_medicion_si_no_hay_del_periodo(self):
         Lectura.objects.filter(sensor_num=self.e.dht22.pk).delete()
         Lectura.objects.create(
