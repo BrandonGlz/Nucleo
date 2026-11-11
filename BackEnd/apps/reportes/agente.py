@@ -73,6 +73,11 @@ GENERICAS = (
 )
 
 
+def _n(cantidad, singular, plural=None):
+    """«1 alerta», «3 alertas»."""
+    return f"{cantidad} {singular if cantidad == 1 else plural or singular + 's'}"
+
+
 def _normalizar(texto):
     sin_acentos = unicodedata.normalize("NFD", texto.lower())
     return "".join(c for c in sin_acentos if unicodedata.category(c) != "Mn")
@@ -187,7 +192,8 @@ def _alertas(dispositivo, desde, hasta=None, descripcion="los últimos 7 días")
     pendientes = alertas.filter(estado=Alerta.Estado.PENDIENTE).count()
     peligro = alertas.filter(nivel=Alerta.Nivel.PELIGRO).count()
     texto = (
-        f"{dispositivo.nombre} tuvo {total} alertas {_en(descripcion)} ({peligro} de peligro). "
+        f"{dispositivo.nombre} tuvo {_n(total, 'alerta')} {_en(descripcion)} "
+        f"({peligro} de peligro). "
         f"La mayoría fue de {principal.lower()} ({por_variable[principal]})."
     )
     texto += (
@@ -272,8 +278,9 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
     franja = _franja([timezone.localtime(p.fecha_hora).hour for p in picos])
     return {
         "texto": (
-            f"Hubo {sobre} lecturas sobre el máximo de {nombre} ({float(limite):g} {unidad}) "
-            f"{_en(descripcion)} en {dispositivo.nombre}, en {len(dias_vistos)} días distintos; "
+            f"Hubo {_n(sobre, 'lectura')} sobre el máximo de {nombre} ({float(limite):g} {unidad}) "
+            f"{_en(descripcion)} en {dispositivo.nombre}, "
+            f"en {_n(len(dias_vistos), 'día', 'días distintos')}; "
             f"la mayoría {franja}. La más alta fue de {_fmt(picos[0].valor, unidad)} el "
             f"{_cuando(picos[0].fecha_hora)}. {base}"
         ),
