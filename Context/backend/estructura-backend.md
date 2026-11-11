@@ -286,6 +286,20 @@ Cada pregunta sigue el mismo camino, en `apps/reportes/`:
    tampoco cumple, se pide aclaración en vez de dar un dato equivocado. Los problemas quedan
    en `datos["verificacion"]`.
 
+**Conversación.** No todo mensaje es una petición:
+
+- «Sí» o «no» responden a lo que el agente propuso en su mensaje anterior (`datos["propuesta"]`
+  del último registro): «sí» lo ejecuta y «no» pide que lo diga con sus palabras.
+- Si la pregunta anterior era de otra área o de otro dispositivo, no se junta con la nueva:
+  «sí la tengo» recibe una explicación con las áreas que el usuario puede consultar.
+- Una observación («aquí hace mucho calor») se contrasta con la última medición, y un reporte
+  de falla («el sensor está fallando») recibe el estado del dispositivo y de sus sensores.
+- Si la pregunta es del tema pero no se sabe qué pide, el agente lo dice y ofrece opciones
+  concretas (`datos["duda"]`); `evaluar_agente --fallas` las lista para crear casos.
+- En el dispositivo con puente, en esos casos la IA responde de forma natural
+  (`puente.conversar`) con los hechos que armaron las reglas y los dos últimos mensajes. Pasa
+  por `_limpiar`: si inventa cifras, fechas o causas, se usa el texto de las reglas.
+
 Agregar una consulta nueva es agregarla al catálogo con su descripción, su requisito y sus
 pistas, enseñarle la intención al intérprete y agregar sus casos al banco.
 
@@ -319,7 +333,7 @@ cd BackEnd
 .venv/bin/ruff check .
 ```
 
-Las pruebas (183) usan dos bases temporales, `test_nucleo_db` y `test_nucleo_iot`, que
+Las pruebas (186) usan dos bases temporales, `test_nucleo_db` y `test_nucleo_iot`, que
 Django crea y elimina; el usuario de la base debe poder crear bases (en desarrollo, el
 superusuario del contenedor). Las clases heredan de `common.testing.PruebaBase`; las del
 canal en vivo, de `PruebaTransaccional`, porque Channels cierra conexiones y necesita

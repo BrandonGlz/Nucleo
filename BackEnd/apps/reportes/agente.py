@@ -512,6 +512,20 @@ def sensores(dispositivo, pregunta):
 
 
 NO_LUGAR = {
+    "tengo",
+    "hay",
+    "tiene",
+    "tienes",
+    "existen",
+    "existe",
+    "puedo",
+    "son",
+    "registradas",
+    "disponibles",
+    "tenemos",
+    "con",
+    "sin",
+    "estan",
     "de",
     "del",
     "la",
@@ -550,9 +564,55 @@ def _parecido(a, b):
     return a.startswith(b) or b.startswith(a) or SequenceMatcher(None, a, b).ratio() >= 0.8
 
 
-def fuera_de_alcance(dispositivo, pregunta):
-    """Texto si la pregunta es sobre otra área u otro dispositivo (o un área que no existe);
-    ``None`` si es sobre este dispositivo. Cada agente solo ve su dispositivo."""
+def areas_visibles(usuario):
+    """Áreas con dispositivos que el usuario puede ver, con sus dispositivos."""
+    from common.scoping import dispositivos_visibles
+
+    areas = {}
+    for d in (
+        dispositivos_visibles(usuario).select_related("area").order_by("area__nombre", "nombre")
+    ):
+        areas.setdefault(d.area.nombre, []).append(d.nombre)
+    return areas
+
+
+def _lista_areas(usuario, con_dispositivos=False):
+    areas = areas_visibles(usuario) if usuario is not None else {}
+    if not areas:
+        return ""
+    if not con_dispositivos:
+        return "Las áreas que puedes consultar son: " + ", ".join(areas) + "."
+    return (
+        "Las áreas que puedes consultar son: "
+        + "; ".join(f"{a} ({', '.join(ds)})" for a, ds in areas.items())
+        + "."
+    )
+
+
+# Observación sobre el ambiente, no pregunta: «aquí hace mucho calor», «huele raro».
+OBSERVA = re.compile(
+    r"^(aqui |aca |ahorita |ahora |hoy |siento que |creo que |como que )*(hace|se siente|siento|"
+    r"esta|huele|hay|anda|se nota|me estoy)\b"
+)
+# El usuario reporta una falla del equipo: estado del dispositivo y de sus sensores.
+FALLA = re.compile(
+    r"\b(falla|fallando|no funciona|no sirve|descompuest|no marca|no mide|no lee|marca mal|"
+    r"mide mal|se trabo|se congelo|no actualiza|no se actualiza|no manda|no envia|averiad)"
+)
+
+
+def es_observacion(pregunta):
+    texto = _normalizar(pregunta).strip(" ¡!.")
+    return "?" not in pregunta and bool(OBSERVA.match(texto))
+
+
+def reporta_falla(pregunta):
+    return bool(FALLA.search(_normalizar(pregunta)))
+
+
+def lugar_pedido(dispositivo, pregunta):
+    """Área o dispositivo ajeno que nombra la pregunta: ``(tipo, nombre, otra_area)`` con tipo
+    ``"no_existe"``, ``"otra_area"`` o ``"otro_dispositivo"``; ``None`` si es sobre este."""
     texto = _normalizar(pregunta)
     propia = dispositivo.area
     for nombre in LUGAR.findall(texto):
@@ -565,16 +625,7 @@ def fuera_de_alcance(dispositivo, pregunta):
             for a in Area.objects.filter(organizacion_id=propia.organizacion_id)
             if any(_parecido(nombre, w) for w in re.findall(r"[a-z0-9ñ]+", _normalizar(a.nombre)))
         ]
-        if otras:
-            return (
-                f"Este agente es de {dispositivo.nombre} y solo ve sus sensores, que están en el "
-                f"área {propia.nombre}. Para {otras[0].nombre}, abre el agente de uno de los "
-                "dispositivos de esa área."
-            )
-        return (
-            f"No hay un área llamada «{nombre}» en tu organización. {dispositivo.nombre} está en "
-            f"el área {propia.nombre}; pregúntame por sus sensores."
-        )
+        return ("otra_area", nombre, otras[0]) if otras else ("no_existe", nombre, None)
     m = OTRO_DISPOSITIVO.search(texto)
     if m:
         pedido = m.group(1) or m.group(2).replace("-", "")
@@ -583,11 +634,62 @@ def fuera_de_alcance(dispositivo, pregunta):
             _normalizar(dispositivo.nombre).replace("-", ""),
         }
         if not any(pedido.replace("-", "") in p.replace("-", "") for p in propio):
-            return (
-                f"Este agente solo responde sobre {dispositivo.nombre}. Para otro dispositivo, "
-                "elige su agente en el selector de Nico AI."
-            )
+            return ("otro_dispositivo", pedido, None)
     return None
+
+
+def insiste_fuera(dispositivo, pregunta, anterior, usuario=None):
+    """Respuesta a «sí la tengo» / «pero sí existe» después de un área o dispositivo ajeno:
+    no se junta con la pregunta anterior (daría los datos de este dispositivo)."""
+    lugar = lugar_pedido(dispositivo, anterior) if anterior else None
+    if lugar is None or _tema(pregunta) is not None or lugar_pedido(dispositivo, pregunta):
+        return None
+    tipo, nombre, otra = lugar
+    areas = _lista_areas(usuario)
+    if tipo == "no_existe":
+        return (
+            f"Revisé de nuevo y no hay un área «{nombre}» registrada en tu organización, así que "
+            f"no tengo lecturas suyas. {areas} Si el área existe, un administrador debe darla de "
+            "alta en Empresa y áreas y asignarle un dispositivo; después podrás consultarla con "
+            "el agente de ese dispositivo."
+        ).replace("  ", " ")
+    if tipo == "otra_area":
+        return (
+            f"Sí, el área {otra.nombre} existe, pero este agente es de {dispositivo.nombre} "
+            f"({dispositivo.area.nombre}) y solo ve sus sensores. Elige en el selector de Nico AI "
+            f"el agente de un dispositivo de {otra.nombre}. {areas}"
+        ).strip()
+    return (
+        f"Este agente solo ve {dispositivo.nombre}. Para otro dispositivo, elige su agente en el "
+        f"selector de Nico AI. {areas}"
+    ).strip()
+
+
+def fuera_de_alcance(dispositivo, pregunta, usuario=None):
+    """Texto si la pregunta es sobre otra área u otro dispositivo (o un área que no existe);
+    ``None`` si es sobre este dispositivo. Cada agente solo ve su dispositivo."""
+    from .herramientas import pide_areas
+
+    lugar = None if pide_areas(pregunta) else lugar_pedido(dispositivo, pregunta)
+    if lugar is None:
+        return None
+    tipo, nombre, otra = lugar
+    propia = dispositivo.area
+    if tipo == "otra_area":
+        return (
+            f"Este agente es de {dispositivo.nombre} y solo ve sus sensores, que están en el "
+            f"área {propia.nombre}. Para {otra.nombre}, abre el agente de uno de los "
+            "dispositivos de esa área."
+        )
+    if tipo == "no_existe":
+        return (
+            f"No hay un área llamada «{nombre}» en tu organización. {dispositivo.nombre} está en "
+            f"el área {propia.nombre}. {_lista_areas(usuario)}"
+        ).strip()
+    return (
+        f"Este agente solo responde sobre {dispositivo.nombre}. Para otro dispositivo, "
+        "elige su agente en el selector de Nico AI."
+    )
 
 
 def resumen_general(dispositivo, desde, hasta, descripcion, pide=None):
@@ -636,6 +738,41 @@ CORTESIA = re.compile(
     r"de acuerdo|hola|buenas|buenos dias|buenas tardes|buenas noches|adios|bye|hasta luego)"
     r"( (gracias|nico|nico ai))?[\s!.?]*$"
 )
+
+
+# Respuestas cortas a lo que dijo el agente: «sí», «claro», «no», «no era eso».
+AFIRMA = re.compile(
+    r"^(si|sip|claro|dale|va|ok si|si por favor|por favor|exacto|eso|eso mero|correcto|"
+    r"afirmativo|asi es|andale|sale|si claro|claro que si|si eso|eso quiero|esa)[\s!.,]*$"
+)
+NIEGA = re.compile(
+    r"^(no|nop|nel|no gracias|para nada|negativo|no era eso|no es eso|eso no|no quiero eso|"
+    r"nada|ninguno|ninguna|asi esta bien|ya no|no necesito nada)[\s!.,]*$"
+)
+
+
+def _corta(pregunta):
+    return _normalizar(pregunta).strip(" ¡¿!?.,")
+
+
+def es_afirmacion(pregunta):
+    return bool(AFIRMA.match(_corta(pregunta)))
+
+
+def es_negacion(pregunta):
+    return bool(NIEGA.match(_corta(pregunta)))
+
+
+def duda(dispositivo, pregunta):
+    """Mensaje directo cuando la pregunta es del tema pero no se sabe qué pide: se dice la
+    duda y se ofrecen opciones concretas (y queda registrada para mejorar las herramientas)."""
+    return {
+        "texto": f"No estoy seguro de qué necesitas con «{pregunta[:60]}». ¿Te refieres a la "
+        f"última medición de {dispositivo.nombre}, a cómo estuvo una variable (temperatura, "
+        "humedad o calidad del aire), a sus alertas, a sus sensores o a una gráfica? Dímelo y "
+        "lo reviso.",
+        "duda": True,
+    }
 
 
 def es_cortesia(pregunta):
@@ -729,6 +866,13 @@ def responder(dispositivo, pregunta):
         return por_sensor
     tema = _tema(pregunta)
     desde, hasta, descripcion = periodo_de(pregunta)
+    if tema is None and es_afirmacion(pregunta):
+        return {
+            "texto": f"Perfecto. ¿Qué más quieres saber de {dispositivo.nombre}? Puedo darte su "
+            "última medición, cómo estuvo una variable, sus alertas, sus sensores o una gráfica."
+        }
+    if tema is None and es_negacion(pregunta):
+        return {"texto": f"Va. Si después necesitas algo de {dispositivo.nombre}, aquí estoy."}
     if tema is None and es_cortesia(pregunta):
         saludo = re.match(r"(hola|buen|buenas)", _normalizar(pregunta).strip(" ¡¿"))
         return {

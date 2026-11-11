@@ -153,7 +153,17 @@ class AgenteView(APIView):
             )
         inicio = time.monotonic()
         precarga = entrada.validated_data.get("precarga", False)
-        repetida = None if precarga else self._repetida(request.user, dispositivo, original)
+        conversacion = (
+            agente.es_afirmacion(original)
+            or agente.es_negacion(original)
+            or agente.es_cortesia(original)
+        )
+        # «sí», «no» o «gracias» repetidos son conversación normal, no peticiones repetidas.
+        repetida = (
+            None
+            if precarga or conversacion
+            else self._repetida(request.user, dispositivo, original)
+        )
         raras, limpio = agente.sin_sentido(original)
         aviso = ""
         if raras and puente.del_dominio(limpio) and len(limpio.split()) >= 2:
@@ -162,7 +172,15 @@ class AgenteView(APIView):
             original = limpio
             pregunta = agente.con_contexto(limpio, entrada.validated_data.get("anterior", ""))
             raras = []
-        fuera = agente.fuera_de_alcance(dispositivo, original)
+        anterior = entrada.validated_data.get("anterior", "")
+        propuesta = self._propuesta(request.user, dispositivo)
+        fuera = agente.fuera_de_alcance(dispositivo, original, request.user)
+        if not fuera and anterior and agente.lugar_pedido(dispositivo, anterior):
+            # La anterior era de otra área o dispositivo: no se junta con ella (respondería con
+            # los datos de este dispositivo). «Sí la tengo» recibe una explicación.
+            pregunta = original
+            if not agente.es_cortesia(original):
+                fuera = agente.insiste_fuera(dispositivo, original, anterior, request.user)
         if repetida is not None:
             r, via, extra = repetida
         elif raras:
@@ -176,6 +194,16 @@ class AgenteView(APIView):
         elif not agente.es_espanol(original):
             # Solo español: otra lengua no se procesa ni pasa por la IA.
             r, via, extra = {"texto": agente.SOLO_ESPANOL}, PreguntaAgente.Via.NO_ENTENDIDA, {}
+        elif propuesta and agente.es_afirmacion(original):
+            # «Sí» a lo que el agente propuso en su respuesta anterior: se hace eso.
+            r, via, extra = self._verificado(request.user, dispositivo, propuesta)
+            pregunta = propuesta
+        elif propuesta and agente.es_negacion(original):
+            texto = (
+                "Entendido, no era eso. Dímelo con tus palabras, por ejemplo: «la temperatura "
+                "de ayer», «la última medición del aire» o «gráfica de la humedad»."
+            )
+            r, via, extra = {"texto": texto}, PreguntaAgente.Via.PREDEFINIDA, {}
         elif agente.pide_futuro(original):
             # Del futuro no hay lecturas: no se responde ni se pronostica.
             texto = (
@@ -190,6 +218,8 @@ class AgenteView(APIView):
             extra["datos"] = {**extra.get("datos", {}), "contexto": True}
         if precarga:
             extra["datos"] = {**extra.get("datos", {}), "precarga": True}
+        elif repetida is None and not raras:
+            r, via, extra = self._conversar(dispositivo, original, fuera, r, via, extra)
         registro = aprendizaje.registrar(
             request.user,
             dispositivo,
@@ -207,6 +237,52 @@ class AgenteView(APIView):
     # Repetir la misma petición seguida no cambia la respuesta: la 2.ª devuelve lo ya enviado
     # (sin IA ni consultas nuevas) y desde la 3.ª se omite, para no gastar tokens ni memoria.
     VENTANA_REPETIDA = timedelta(minutes=15)
+
+    def _conversar(self, dispositivo, mensaje, fuera, r, via, extra):
+        """En la conversación (insistir, comentar, reportar algo, una duda) la IA responde de
+        forma natural con los hechos que ya armaron las reglas y las herramientas. Solo en el
+        dispositivo con puente y si el ESP está activo; si no llega o inventa algo, queda el
+        texto de las reglas."""
+        Via = PreguntaAgente.Via
+        conversacion = (
+            bool(fuera)
+            or agente.es_comentario(mensaje)
+            or agente.es_observacion(mensaje)
+            or agente.reporta_falla(mensaje)
+            or (extra.get("datos") or {}).get("duda")
+        )
+        if (
+            not conversacion
+            or "grafica" in r
+            or "comparativa" in r
+            or "reporte" in r
+            or not puente.con_puente(dispositivo)
+            or not puente.activo(dispositivo)
+        ):
+            return r, via, extra
+        historial = [
+            (p.pregunta, p.respuesta)
+            for p in PreguntaAgente.objects.filter(
+                usuario=self.request.user, dispositivo=dispositivo
+            ).order_by("-num")[:2]
+        ][::-1]
+        texto, tokens = puente.conversar(dispositivo, mensaje, r["texto"], historial)
+        suma = {k: extra.get(k, 0) + tokens.get(k, 0) for k in ("tokens_entrada", "tokens_salida")}
+        if not texto:
+            return r, via, {**extra, **suma}
+        datos = {**extra.get("datos", {}), "contexto": True, "hechos": r["texto"]}
+        return {**r, "texto": texto}, Via.IA, {**extra, **suma, "datos": datos}
+
+    def _propuesta(self, usuario, dispositivo):
+        """Lo que el agente ofreció en su última respuesta («¿Quieres …?»), si sigue vigente."""
+        recientes = PreguntaAgente.objects.filter(
+            usuario=usuario,
+            dispositivo=dispositivo,
+            fecha__gte=timezone.now() - self.VENTANA_REPETIDA,
+        ).order_by("-fecha", "-num")[:5]
+        # En Python: exclude() en JSON descarta también los registros sin la clave.
+        ultimo = next((p for p in recientes if not (p.datos or {}).get("precarga")), None)
+        return (ultimo.datos or {}).get("propuesta") if ultimo else None
 
     def _repetida(self, usuario, dispositivo, pregunta):
         normalizada = aprendizaje.normalizar(pregunta)
@@ -264,6 +340,7 @@ class AgenteView(APIView):
                 datos = {**extra2.get("datos", {}), "peticion": peticion.como_dict()}
             else:
                 r, via, extra = interprete.aclarar(peticion, problemas), Via.NO_ENTENDIDA, {}
+                datos["propuesta"] = peticion.canonica()
             datos["verificacion"] = problemas
         return r, via, {**extra, "datos": datos}
 
@@ -277,10 +354,22 @@ class AgenteView(APIView):
             variables = [t] if (t := agente._tema(pregunta)) in agente.ORDEN_VARIABLES else []
             r = herramientas.umbrales(dispositivo, variables, pregunta)
             return r, Via.PREDEFINIDA, {"datos": {"contexto": True}}
+        if intencion == "areas":
+            return (
+                herramientas.areas(usuario, dispositivo),
+                Via.PREDEFINIDA,
+                {"datos": {"contexto": True}},
+            )
         if intencion == "reportes":
             return herramientas.reportes(dispositivo), Via.PREDEFINIDA, {}
         if intencion == "conexion":
-            return herramientas.conexion(dispositivo), Via.PREDEFINIDA, {}
+            return herramientas.conexion(dispositivo, pregunta), Via.PREDEFINIDA, {}
+        if intencion == "ultima" and agente.es_observacion(pregunta):
+            # «Aquí hace mucho calor»: se contrasta con lo que marcan los sensores ahora.
+            texto = agente.ultima_medicion(dispositivo, [agente._tema(pregunta)])
+            if texto:
+                r = {"texto": "Lo reviso con los sensores. " + texto}
+                return r, Via.PREDEFINIDA, {"datos": {"contexto": True}}
         # Comparativas y gráficas sueltas van antes que el reporte: «solo la gráfica del reporte»
         # o «compara el reporte de esta semana» no generan un reporte completo.
         if graficas.pide_comparativa(pregunta):
@@ -314,7 +403,12 @@ class AgenteView(APIView):
         herramienta y se responde con la pregunta canónica. Sin eso, «no entendida»."""
         Via = PreguntaAgente.Via
         no_entendida = agente.responder(dispositivo, pregunta)
-        if agente.es_cortesia(pregunta) or agente.es_comentario(pregunta):
+        if (
+            agente.es_cortesia(pregunta)
+            or agente.es_comentario(pregunta)
+            or agente.es_afirmacion(pregunta)
+            or agente.es_negacion(pregunta)
+        ):
             # Saludos, agradecimientos y comentarios no se mandan a la IA.
             return no_entendida, Via.PREDEFINIDA, {"datos": {"contexto": True}}
         if ruteada:
@@ -323,11 +417,20 @@ class AgenteView(APIView):
         if aprendida is not None:
             r, _, _ = self._resolver(usuario, dispositivo, aprendida.plantilla, ruteada=True)
             return r, Via.BANCO, {"aprendida": aprendida, "datos": {"ruta": aprendida.plantilla}}
-        if not puente.con_puente(dispositivo) or not puente.del_dominio(pregunta):
+        if not puente.del_dominio(pregunta):
             return no_entendida, Via.NO_ENTENDIDA, {}
+        if not puente.con_puente(dispositivo):
+            return agente.duda(dispositivo, pregunta), Via.NO_ENTENDIDA, {"datos": {"duda": True}}
         canonica, tokens = puente.enrutar(dispositivo, pregunta)
         if not canonica or agente.pide_futuro(canonica):
-            return no_entendida, Via.NO_ENTENDIDA, tokens
+            return (
+                agente.duda(dispositivo, pregunta),
+                Via.NO_ENTENDIDA,
+                {
+                    "datos": {"duda": True},
+                    **tokens,
+                },
+            )
         r, _, _ = self._resolver(usuario, dispositivo, canonica, ruteada=True)
         return r, Via.ENRUTADA, {"datos": {"ruta": canonica}, **tokens}
 

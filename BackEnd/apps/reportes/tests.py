@@ -559,6 +559,41 @@ class NicoAprendeTests(PruebaBase):
         estado = self.cliente.get("/api/v1/agente/estado/").json()
         self.assertEqual(estado["activos"], [self.e.dispositivo.pk])
 
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_ia_conversa_cuando_el_usuario_insiste(self):
+        codigo = self.e.dispositivo.codigo_mqtt
+        anterior = "como esta la temperatura del departamento de ventas"
+        puente.cola().visto(codigo)
+        vistos = []
+
+        def responder(trabajo):
+            vistos.append(trabajo["cuerpo"]["messages"][-1]["content"])
+            return "Entiendo, pero no encuentro un área de ventas registrada; ¿quieres ver Área a?"
+
+        hilo = self._esp(responder)
+        r = self.cliente.post(
+            "/api/v1/agente/",
+            {**self.pregunta, "pregunta": "si si tengo uno", "anterior": anterior},
+            format="json",
+        ).json()
+        hilo.join()
+        self.assertEqual(r["via"], "IA")
+        self.assertIn("no encuentro un área de ventas", r["texto"])
+        self.assertIn("Hechos verificados: Revisé de nuevo", vistos[0])
+        registro = PreguntaAgente.objects.get(pk=r["registro"])
+        self.assertEqual(registro.tokens_salida, 18)
+        # Si la IA inventa una cifra, se queda el texto de las reglas.
+        puente.cola().visto(codigo)
+        hilo = self._esp(lambda t: "Ventas marca 31 °C ahora mismo.")
+        r = self.cliente.post(
+            "/api/v1/agente/",
+            {**self.pregunta, "pregunta": "pero si existe", "anterior": anterior},
+            format="json",
+        ).json()
+        hilo.join()
+        self.assertNotEqual(r["via"], "IA")
+        self.assertIn("Revisé de nuevo", r["texto"])
+
     @override_settings(
         IA_VOTOS_PARA_APRENDER=1,
         IA_PUENTE_DISPOSITIVOS=["NUC-A"],
@@ -656,6 +691,39 @@ class NicoAprendeTests(PruebaBase):
         )
         self.assertIn("alertas", puente.herramientas_posibles("¿sonó algo raro?"))
         self.assertNotIn("reporte", puente.herramientas_posibles("¿cómo anda la cosa?"))
+
+    def test_conversacion_si_a_lo_que_propuso(self):
+        from apps.reportes.models import PreguntaAgente
+
+        r = self._pedir("¿cómo está la humedad?")
+        registro = PreguntaAgente.objects.get(pk=r["registro"])
+        registro.datos = {**registro.datos, "propuesta": "última medición de temperatura"}
+        registro.save()
+        r = self._pedir("sí")
+        self.assertIn("última medición", r["texto"])
+        self.assertIn("temperatura", r["texto"])
+        r = self._pedir("sí")  # ya no hay propuesta pendiente: conversación normal
+        self.assertIn("Qué más quieres saber", r["texto"])
+        registro = PreguntaAgente.objects.order_by("-num").first()
+        registro.datos = {**registro.datos, "propuesta": "gráfica de humedad"}
+        registro.save()
+        r = self._pedir("no era eso")
+        self.assertIn("no era eso", r["texto"])
+
+    def test_insiste_en_un_area_que_no_existe(self):
+        r = self._pedir("como esta la temperatura del departamento de ventas")
+        self.assertIn("No hay un área llamada «ventas»", r["texto"])
+        r = self.cliente.post(
+            "/api/v1/agente/",
+            {
+                **self.pregunta,
+                "pregunta": "si si tengo uno",
+                "anterior": "como esta la temperatura del departamento de ventas",
+            },
+            format="json",
+        ).json()
+        self.assertIn("Revisé de nuevo", r["texto"])
+        self.assertNotIn("promedió", r["texto"])
 
     def test_entiende_antes_de_responder(self):
         r = self._pedir("anskjndiaidsbajswdbjBK")

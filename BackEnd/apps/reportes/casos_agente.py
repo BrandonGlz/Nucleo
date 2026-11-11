@@ -82,6 +82,25 @@ CASOS = [
         "intencion": "no_entendida",
         "contiene": ["solo responde sobre"],
     },
+    # «Sí la tengo» tras un área que no existe (falló: se juntó con la anterior y dio la
+    # temperatura de A-01).
+    {
+        "pregunta": "si si tengo uno",
+        "anterior": "como esta la temperatura del departamento de ventas",
+        "contiene": ["revise de nuevo", "ventas", "empresa y areas"],
+        "no_contiene": ["promedio", "se mantuvo"],
+    },
+    {
+        "pregunta": "como esta la temperatura del departamento de ventas",
+        "contiene": ["no hay un area llamada «ventas»", "las areas que puedes consultar"],
+    },
+    {
+        "pregunta": "¿y la humedad?",
+        "anterior": "como esta la temperatura del departamento de ventas",
+        "variables": ["HUM"],
+        "no_contiene": ["ventas"],
+    },
+    {"pregunta": "¿qué áreas tengo?", "intencion": "areas", "contiene": ["esta en el area"]},
     # ── Catálogo del SRS ────────────────────────────────────────────────────────────────
     {"pregunta": "¿qué sensores tiene?", "intencion": "sensores", "contiene": ["dht22"]},
     {"pregunta": "el segundo sensor", "intencion": "sensores", "contiene": ["ccs811"]},
@@ -110,6 +129,19 @@ CASOS = [
     },
     # ── Conversación ────────────────────────────────────────────────────────────────────
     {"pregunta": "gracias", "intencion": "comentario", "contiene": ["con gusto"]},
+    {"pregunta": "sí", "intencion": "comentario", "contiene": ["que mas quieres saber"]},
+    {"pregunta": "no gracias", "intencion": "comentario", "contiene": ["aqui estoy"]},
+    {
+        "pregunta": "aquí hace mucho calor",
+        "intencion": "ultima",
+        "variables": ["TEMP"],
+        "contiene": ["lo reviso", "ultima medicion"],
+    },
+    {
+        "pregunta": "el sensor está fallando",
+        "intencion": "conexion",
+        "contiene": ["reviso el equipo", "sensores"],
+    },
     {"pregunta": "hola", "intencion": "comentario", "contiene": ["soy nico ai"]},
     {"pregunta": "pues solo dame eso cuando te lo pida", "intencion": "comentario"},
     {

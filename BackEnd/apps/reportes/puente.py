@@ -313,6 +313,51 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
     return _limpiar(r["texto"], permitidos, base), _tokens(r)
 
 
+CONVERSAR = (
+    "Responde como Nico AI, conversando de forma natural y amable, en máximo dos frases. Usa "
+    "solo los hechos verificados; no agregues cifras, fechas, áreas ni causas que no estén en "
+    "ellos. Si el usuario insiste en algo que los hechos contradicen, explícale con calma lo que "
+    "muestran los datos. Si no estás seguro de qué quiere, dilo y hazle una pregunta concreta."
+)
+
+
+def conversar(dispositivo, mensaje, hechos, historial=(), espera=None):
+    """Respuesta conversacional de la IA (insistencias, comentarios, observaciones, dudas)
+    a partir de ``hechos``: el texto que ya armaron las reglas y las herramientas. Pasa por
+    ``_limpiar``: si inventa cifras, fechas o causas, se usa el texto de las reglas.
+    Devuelve ``(texto | None, tokens)``."""
+    codigo = dispositivo.codigo_mqtt
+    if cola().pendientes(codigo) >= MAX_EN_COLA:
+        return None, {}
+    espera = espera or settings.IA_ESPERA_SEGUNDOS
+    charla = "\n".join(f"Usuario: {p}\nNico AI: {r}" for p, r in historial)
+    trabajo = {
+        "id": uuid.uuid4().hex,
+        "ruta": "/api/chat",
+        "vence": time.time() + espera,
+        "cuerpo": _cuerpo(
+            dispositivo,
+            [
+                {"role": "system", "content": SISTEMA.format(nombre=dispositivo.nombre)},
+                {
+                    "role": "user",
+                    "content": (f"Conversación reciente:\n{charla}\n" if charla else "")
+                    + f"Hechos verificados: {hechos}\nMensaje del usuario: {mensaje}\n{CONVERSAR}",
+                },
+            ],
+            90,
+        ),
+    }
+    cola().poner(codigo, trabajo)
+    r = cola().esperar(trabajo["id"], espera)
+    if not r or r.get("error") or not (r.get("texto") or "").strip():
+        return None, _tokens(r or {})
+    base = hechos + " " + " ".join(r for _, r in historial)
+    permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(base)}
+    permitidos |= {float(n) for n in range(0, 25)}
+    return _limpiar(r["texto"], permitidos, base), _tokens(r)
+
+
 # ── Herramientas: la IA solo elige cuál usar ────────────────────────────────────────────
 # Cuando las reglas no entienden la pregunta, el modelo la clasifica en una de estas
 # herramientas (JSON forzado con «format»). Con eso se arma la pregunta canónica que las
@@ -329,6 +374,7 @@ HERRAMIENTAS = (
     "umbrales",
     "reportes_generados",
     "sensores",
+    "areas",
     "ninguna",
 )
 VARIABLES_IA = ("temperatura", "humedad", "calidad del aire", "ninguna")
@@ -362,7 +408,8 @@ CLASIFICAR = (
     "(batería, señal, si está en línea), grafica (ver cómo ha ido una variable), comparativa "
     "(comparar dos periodos), reporte (generar un documento PDF), umbrales (límites "
     "configurados), reportes_generados (reportes que ya existen), sensores (qué sensores "
-    "tiene), ninguna (no es sobre el ambiente ni los sensores). Calor o frío es temperatura; "
+    "tiene), areas (qué áreas hay), ninguna (no es sobre el ambiente ni los sensores). "
+    "Calor o frío es temperatura; "
     "aire, CO2 u olor es calidad del aire. «Estos días» "
     "es los ultimos 7 dias. Dato: maximo (lo más alto, el pico), minimo (lo más bajo), "
     "promedio, o general. Ejemplos (herramienta, variable, periodo, dato):\n"
@@ -413,6 +460,7 @@ def _canonica(h, variable, periodo, dato="general"):
         "umbrales": f"¿cuáles son los umbrales{de_var}?",
         "reportes_generados": "¿qué reportes hay?",
         "sensores": "¿qué sensores tiene?",
+        "areas": "¿qué áreas tengo?",
     }.get(h)
 
 
@@ -430,6 +478,7 @@ PISTAS = {
     "umbrales": r"umbral|limite|rango|permitid|configur|aceptable",
     "reportes_generados": r"reportes|informes|generad|anterior",
     "sensores": r"sensor|instalad|modelo|calibr",
+    "areas": r"area|zona|departamento|sucursal|bodega|donde",
 }
 
 

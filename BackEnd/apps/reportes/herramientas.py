@@ -87,6 +87,12 @@ CATALOGO = {
             "¿qué reportes hay?",
         ),
         Herramienta(
+            "areas",
+            "Áreas de la organización que el usuario puede consultar y sus dispositivos.",
+            "3.2.12: el agente solo consulta la organización y el área del usuario.",
+            "¿qué áreas tengo?",
+        ),
+        Herramienta(
             "grafica",
             "Gráfica de una variable, de las alertas o de todas las variables en un periodo.",
             "3.2.12: ver curvas, picos y tendencias sin construir gráficas.",
@@ -123,7 +129,28 @@ MODIFICAR = re.compile(
     r"configura|configurar|establece|borra|borrar|elimina|eliminar|desactiva|activa|apaga|"
     r"reinicia|edita|editar|actualiza|actualizar)\b"
 )
+AREAS = re.compile(
+    r"\b(que|cuales|cuantas|mis|lista de|todas las) (areas|zonas|departamentos|sucursales)\b|"
+    r"\b(areas|departamentos) (hay|tengo|existen|registrad)|\ben que area\b|\bdonde esta\b"
+)
 NOMBRE_VARIABLE = {"TEMP": "temperatura", "HUM": "humedad relativa", "AIRE": "calidad del aire"}
+
+
+def pide_areas(pregunta):
+    return bool(AREAS.search(agente._normalizar(pregunta)))
+
+
+def areas(usuario, dispositivo):
+    """Áreas que el usuario puede consultar, con sus dispositivos."""
+    lista = agente.areas_visibles(usuario)
+    if not lista:
+        return {"texto": "No tienes áreas con dispositivos asignados."}
+    return {
+        "texto": f"{dispositivo.nombre} está en el área {dispositivo.area.nombre}. "
+        + agente._lista_areas(usuario, con_dispositivos=True)
+        + " Para consultar otra área, elige en el selector de Nico AI el agente de uno de sus "
+        "dispositivos."
+    }
 
 
 def pide_umbrales(pregunta):
@@ -198,9 +225,23 @@ def reportes(dispositivo, limite=5):
     }
 
 
-def conexion(dispositivo):
-    """Estado del dispositivo, con el aviso de calentamiento del sensor de aire (SRS)."""
+def conexion(dispositivo, pregunta=""):
+    """Estado del dispositivo, con el aviso de calentamiento del sensor de aire (SRS). Si el
+    usuario reporta una falla, también el estado de cada sensor."""
     r = agente._conexion(dispositivo)
+    if agente.reporta_falla(pregunta):
+        estados = [
+            f"{s.modelo} {s.estado_sensor.nombre.lower()}"
+            for s in dispositivo.sensores.select_related("estado_sensor").order_by("num")
+        ]
+        r["texto"] = (
+            "Reviso el equipo. "
+            + r["texto"]
+            + (" Sensores: " + ", ".join(estados) + "." if estados else "")
+            + " Si notas algo raro en sus lecturas, avisa a un supervisor para que lo revise; "
+            "yo no puedo cambiar su configuración."
+        )
+    return r
     if dispositivo.estado_dispositivo_id == "CALENT" or (
         dispositivo.ultimo_arranque
         and timezone.now() - dispositivo.ultimo_arranque < timedelta(minutes=20)

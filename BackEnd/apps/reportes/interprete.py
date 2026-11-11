@@ -104,8 +104,15 @@ def interpretar(pregunta, anterior=""):
         dato=agente._dato_pedido(texto),
         contexto=contexto,
     )
-    if agente.es_comentario(pregunta) or agente.es_cortesia(pregunta):
+    if (
+        agente.es_comentario(pregunta)
+        or agente.es_cortesia(pregunta)
+        or agente.es_afirmacion(pregunta)
+        or agente.es_negacion(pregunta)
+    ):
         peticion.intencion = "comentario"
+    elif herramientas.pide_areas(pregunta):
+        peticion.intencion = "areas"
     elif herramientas.pide_reportes(texto):
         peticion.intencion = "reportes"
     elif herramientas.pide_umbrales(texto):
@@ -118,6 +125,10 @@ def interpretar(pregunta, anterior=""):
         peticion.intencion = "grafica"
     elif agente.pide_reporte(texto):
         peticion.intencion = "reporte"
+    elif agente.reporta_falla(texto):
+        peticion.intencion = "conexion"
+    elif variables and agente.es_observacion(pregunta):
+        peticion.intencion = "ultima"
     elif tema == "CONEXION":
         peticion.intencion = "conexion"
     elif tema == "ALERTAS":
@@ -151,6 +162,7 @@ def verificar(peticion, respuesta):
         "sensores",
         "conexion",
         "umbrales",
+        "areas",
     ):
         return problemas
     # Error típico: responder de otra variable («pedí el aire y habló de la humedad»). Si la
@@ -180,6 +192,7 @@ def verificar(peticion, respuesta):
 
 
 def aclarar(peticion, problemas):
+    """Pregunta de vuelta. Si el usuario responde «sí», se hace ``propuesta`` (ver la vista)."""
     return {
         "texto": "No estoy seguro de haberte entendido bien, así que prefiero no darte un dato "
         f"equivocado. ¿Quieres {peticion.describir()}? Puedes pedirlo así: "
