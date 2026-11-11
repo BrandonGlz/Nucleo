@@ -5,6 +5,12 @@ http://:8081 {
 	bind 127.0.0.1
 	encode zstd gzip
 
+	# Bitácora de accesos en el journal de caddy (journalctl -u caddy), en JSON con la IP real del visitante
+	log {
+		output stderr
+		format json
+	}
+
 	# API, canal en vivo (WebSocket) y admin de Django (daphne)
 	@django path /api/* /ws/* /admin/*
 	handle @django {
