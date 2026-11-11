@@ -29,7 +29,7 @@ con los sensores, así que por ahora las lecturas vienen del simulador.
   - Inicio con el dispositivo en vivo (selector si hay varios), Detalle de variable,
     Alertas y su detalle, Nico AI y Perfil.
   - Canal en vivo con la app abierta y notificaciones push con la app cerrada; las de
-    peligro suenan y vibran. Modo de bajo consumo y preferencias guardadas en el teléfono.
+    peligro suenan y vibran. Opción para reducir animaciones y preferencias guardadas en el teléfono.
   - Se instala con el APK de https://nucleo.tailb3f7d8.ts.net/app/nucleo.apk.
 - **IoT**
   - Firmware de MicroPython (`boot.py`, `main.py` y el paquete `nucleo/`) con DHT22,
@@ -49,6 +49,35 @@ con los sensores, así que por ahora las lecturas vienen del simulador.
 
 ## Cómo funciona
 
+```mermaid
+flowchart LR
+    E["ESP32<br/>DHT22 · CCS811<br/>OLED · LED · buzzer"] -->|"1 · MQTT con TLS"| M["Mosquitto<br/>:8883"]
+    M -->|"2 · recibe y valida"| B["Backend Django<br/>escuchar_mqtt"]
+    B -->|guarda la lectura| T[("TimescaleDB<br/>lecturas")]
+    B -->|"3 · fuera de umbral"| A[("PostgreSQL<br/>alerta")]
+    B -->|correo al supervisor| G["Gmail SMTP"]
+    B -->|"4 · evento"| R[("Redis")]
+    R -->|WebSocket /ws/panel/| W["Web React"]
+    R -->|WebSocket /ws/panel/| P["App Android"]
+    B -->|push con la app cerrada| X["Expo · Firebase"] --> P
+    W -->|"5 · API con token<br/>según rol y organización"| B
+    P --> B
+    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
+    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
+    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
+    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
+    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
+    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
+    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
+    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
+    class E,M iot
+    class B backend
+    class T,A,R datos
+    class G,X externo
+    class W web
+    class P cliente
+```
+
 1. El ESP32 lee el DHT22 y el CCS811, muestra los datos en la pantalla OLED, enciende
    el LED RGB y el buzzer según los umbrales y publica las mediciones por MQTT con TLS.
 2. El backend las recibe del broker, las valida y las guarda en TimescaleDB.
@@ -66,15 +95,41 @@ formato que el firmware.
 
 ## Stack
 
-```text
-Stack
-├── Backend          Python 3.12.15 · Django 5.2.18 · Django REST Framework 3.18.3 · Channels 4.3
-├── Base de datos    PostgreSQL 17.11 · TimescaleDB 2.31.0 · Redis 7
-├── Broker MQTT      Eclipse Mosquitto 2 con TLS
-├── Web              React 19.3.1 · Vite 8.3.5 · React Router 7 · npm 11.16.0
-├── App móvil        Expo 58.0.23 · React Native 0.88.1 · React Navigation 7 · npm 11.16.0
-├── IoT              Python 3.12 · MicroPython 1.29.0 para ESP32 · Pymakr 2.22.5
-└── Contenedores     Docker Engine 29.9.2 · Compose 5.6.1
+```mermaid
+flowchart LR
+    subgraph CL["Clientes"]
+        direction TB
+        W["Web<br/>React 19.3.1 · Vite 8.3.5<br/>React Router 7 · npm 11.16.0"]
+        A["App móvil<br/>Expo 58.0.23 · React Native 0.88.1<br/>React Navigation 7 · npm 11.16.0"]
+    end
+    subgraph SV["Servidor"]
+        direction TB
+        B["Backend<br/>Python 3.12.15 · Django 5.2.18<br/>DRF 3.18.3 · Channels 4.3"]
+        D[("Base de datos<br/>PostgreSQL 17.11 · TimescaleDB 2.31.0<br/>Redis 7")]
+        M["Broker MQTT<br/>Eclipse Mosquitto 2 con TLS"]
+    end
+    I["IoT<br/>Python 3.12 · MicroPython 1.29.0 para ESP32<br/>Pymakr 2.22.5"]
+    K["Contenedores<br/>Docker Engine 29.9.2 · Compose 5.6.1"]
+    I --> M --> B
+    CL --> B
+    B --> D
+    K -.->|corre| D & M
+    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
+    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
+    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
+    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
+    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
+    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
+    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
+    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
+    class W web
+    class A cliente
+    class B backend
+    class D datos
+    class M,I iot
+    class K red
+    style CL fill:transparent,stroke:#64748b,stroke-dasharray:5 5
+    style SV fill:transparent,stroke:#64748b,stroke-dasharray:5 5
 ```
 
 Las versiones exactas están fijadas en los `requirements.txt` de backend e IoT y
@@ -82,22 +137,35 @@ en los `package-lock.json` de web y móvil.
 
 ## Carpetas
 
-```text
-Nucleo/
-├── BackEnd/               Django, API compartida, pruebas y README
-├── FrontEnd/              Web React + Vite y README
-├── Mobile/                App Expo + React Native y README
-├── IoT/                   MicroPython para ESP32, bibliotecas y README
-├── Mosquitto/             Configuración del broker MQTT y scripts de certificados y dispositivos
-├── Database/              Scripts .sql de práctica: Web-Mobile (PostgreSQL) e IoT (TimescaleDB),
-│                          y crear-roles.sh (opcional)
-├── deploy/                Instalación, despliegue, respaldos y APK del servidor
-├── Context/               Documentación técnica completa para el equipo y la IA
-├── Docs/                  SRS, modelo relacional, planificación y análisis
-├── docker-compose.yml     PostgreSQL, TimescaleDB, Redis y Mosquitto en Docker
-├── .env.example           Plantilla de configuración, sin secretos
-├── .gitignore             Archivos que Git debe ignorar
-└── README.md              Este documento
+```mermaid
+flowchart LR
+    R(["Nucleo/"]) --> BE["BackEnd/<br/>Django, API, pruebas"]
+    R --> FE["FrontEnd/<br/>Web React + Vite"]
+    R --> MO["Mobile/<br/>App Expo + React Native"]
+    R --> IO["IoT/<br/>MicroPython para ESP32"]
+    R --> MQ["Mosquitto/<br/>broker, certificados y dispositivos"]
+    R --> DB["Database/<br/>scripts .sql de práctica<br/>y crear-roles.sh"]
+    R --> DP["deploy/<br/>instalación, despliegue,<br/>respaldos y APK"]
+    R --> CX["Context/<br/>documentación técnica"]
+    R --> DO["Docs/<br/>SRS, modelo, planificación"]
+    R --> RA["Raíz<br/>docker-compose.yml · .env.example<br/>.gitignore · README.md"]
+    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
+    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
+    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
+    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
+    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
+    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
+    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
+    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
+    classDef raiz fill:#111827,stroke:#4ade80,color:#fff,stroke-width:3px
+    class R raiz
+    class BE backend
+    class FE web
+    class MO cliente
+    class IO,MQ iot
+    class DB datos
+    class DP red
+    class CX,DO,RA doc
 ```
 
 Consulta [BackEnd](BackEnd/README.md), [Web](FrontEnd/README.md),
@@ -215,15 +283,35 @@ Para ver la API:
 
 ## Servicios
 
-```text
-Servicios
-├── Backend                127.0.0.1:8000     API y canal en vivo (WebSocket) de Django
-├── Web                    localhost:5173     Web de Vite
-├── PostgreSQL 17          127.0.0.1:55432    Base de Django en Docker
-├── TimescaleDB 2.31       127.0.0.1:55433    Telemetría de IoT en Docker
-├── Redis 7                127.0.0.1:56379    Canal en vivo en Docker
-├── Mosquitto 2            127.0.0.1:8883     Broker MQTT con TLS en Docker
-└── PostgreSQL 18 nativo   127.0.0.1:5432     Ajeno a Núcleo; no se toca
+```mermaid
+flowchart LR
+    N["Navegador"] -->|localhost:5173| V["Web de Vite"]
+    V -->|"/api y /ws"| B["Backend<br/>127.0.0.1:8000<br/>API y WebSocket"]
+    subgraph DK["Docker · solo 127.0.0.1"]
+        PG[("PostgreSQL 17<br/>:55432")]
+        TS[("TimescaleDB 2.31<br/>:55433")]
+        RD[("Redis 7<br/>:56379")]
+        MQ["Mosquitto 2<br/>:8883 TLS"]
+    end
+    B --> PG & TS & RD
+    MQ --> B
+    X[("PostgreSQL 18 nativo<br/>:5432 · ajeno a Núcleo")]
+    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
+    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
+    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
+    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
+    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
+    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
+    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
+    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
+    classDef ajeno fill:#374151,stroke:#9ca3af,color:#e5e7eb,stroke-dasharray:4 4
+    class N cliente
+    class V web
+    class B backend
+    class PG,TS,RD datos
+    class MQ iot
+    class X ajeno
+    style DK fill:transparent,stroke:#64748b,stroke-dasharray:5 5
 ```
 
 ## Documentación
@@ -246,14 +334,49 @@ evidencias que se agreguen.
 
 **Ramas**
 
-```text
-main       Solo entregas estables, con un tag por etapa
-dev        Integración; siempre debe funcionar
-backend    Trabajo del backend (BackEnd/)
-frontend   Trabajo de la web (FrontEnd/)
-mobile     Trabajo de la app móvil (Mobile/)
-iot        Trabajo del firmware y del broker (IoT/ y Mosquitto/)
+```mermaid
+%%{init: {'theme': 'base', 'gitGraph': {'mainBranchName': 'main', 'showCommitLabel': true}, 'themeVariables': {
+  'git0': '#15803d', 'git1': '#1d4ed8', 'git2': '#c2410c', 'git3': '#0e7490', 'git4': '#6d28d9', 'git5': '#0f766e', 'git6': '#a21caf',
+  'gitBranchLabel0': '#ffffff', 'gitBranchLabel1': '#ffffff', 'gitBranchLabel2': '#ffffff', 'gitBranchLabel3': '#ffffff',
+  'gitBranchLabel4': '#ffffff', 'gitBranchLabel5': '#ffffff', 'gitBranchLabel6': '#ffffff',
+  'tagLabelBackground': '#facc15', 'tagLabelColor': '#111827', 'tagLabelBorder': '#a16207'}}}%%
+gitGraph
+    commit id: "inicio" tag: "etapa-1"
+    branch dev
+    commit id: "integración"
+    branch backend
+    commit id: "API"
+    checkout dev
+    branch frontend
+    commit id: "pantallas"
+    checkout dev
+    branch mobile
+    commit id: "app"
+    checkout dev
+    branch iot
+    commit id: "firmware"
+    checkout backend
+    branch fix-tarea
+    commit id: "rama corta"
+    checkout backend
+    merge fix-tarea
+    checkout dev
+    merge backend id: "PR backend"
+    merge frontend id: "PR web"
+    merge mobile id: "PR app"
+    merge iot id: "PR iot"
+    checkout main
+    merge dev tag: "etapa-2"
 ```
+
+| Rama | Para qué |
+|---|---|
+| `main` | Solo entregas estables, con un tag por etapa |
+| `dev` | Integración; siempre debe funcionar |
+| `backend` | Trabajo del backend (`BackEnd/`) |
+| `frontend` | Trabajo de la web (`FrontEnd/`) |
+| `mobile` | Trabajo de la app móvil (`Mobile/`) |
+| `iot` | Trabajo del firmware y del broker (`IoT/` y `Mosquitto/`) |
 
 - Cada área trabaja solo en su rama: así dos áreas no editan los mismos archivos a la vez.
 - La documentación (`Context/`, `Docs/`, READMEs) y `Database/` no tienen rama propia: viajan
@@ -322,26 +445,48 @@ La app Android se descarga en **https://nucleo.tailb3f7d8.ts.net/app/nucleo.apk*
 
 ```mermaid
 flowchart LR
-    U["Navegador o app<br/>(cualquier red)"] -->|HTTPS| TS["Tailscale Funnel<br/>máquina «nucleo»"]
+    U["Navegador o app<br/>cualquier red"] -->|HTTPS| TS["Tailscale Funnel<br/>máquina «nucleo»"]
     TS --> C["Caddy :8081<br/>127.0.0.1"]
     C --> W["Web compilada<br/>FrontEnd/dist"]
     C --> ST["Archivos /static"]
     C --> APK["APK en /app/nucleo.apk"]
-    C -->|"/api, /ws, /admin"| D["Daphne :8001<br/>nucleo-daphne"]
-    subgraph DK["Docker · solo 127.0.0.1"]
-        PG[("PostgreSQL")]
-        TDB[("TimescaleDB")]
-        R[("Redis")]
-        M["Mosquitto TLS"]
+    C -->|"/api, /ws, /admin"| D
+    subgraph SY["Servicios de systemd"]
+        direction TB
+        D["nucleo-daphne<br/>Daphne :8001"]
+        MQ["nucleo-mqtt"]
+        SC["nucleo-sin-conexion"]
+        RP["nucleo-reportes.timer<br/>cada 15 min"]
     end
-    D --> PG
-    D --> TDB
-    D <--> R
-    E["ESP32"] -->|"MQTT/TLS :8883"| M
-    M --> MQ["nucleo-mqtt"]
-    MQ --> TDB
-    MQ --> PG
-    MQ --> R
+    subgraph DK["Docker · solo 127.0.0.1"]
+        direction TB
+        M["Mosquitto TLS<br/>:8883"]
+        subgraph BD["Bases de datos"]
+            PG[("PostgreSQL")]
+            TDB[("TimescaleDB")]
+            R[("Redis")]
+        end
+    end
+    E["ESP32"] -->|MQTT/TLS| M
+    M -->|lecturas| MQ
+    SY <==>|"consultas, lecturas,<br/>alertas y eventos"| BD
+    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
+    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
+    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
+    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
+    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
+    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
+    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
+    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
+    class U cliente
+    class TS,C red
+    class W,ST,APK web
+    class D,MQ,SC,RP backend
+    class PG,TDB,R datos
+    class M,E iot
+    style SY fill:transparent,stroke:#fb923c,stroke-dasharray:5 5
+    style DK fill:transparent,stroke:#64748b,stroke-dasharray:5 5
+    style BD fill:transparent,stroke:#facc15,stroke-dasharray:3 3
 ```
 
 - **Publicación:** el contenedor `nucleo_tailscale` es una máquina de Tailscale propia
