@@ -155,8 +155,14 @@ def cola():
     return _cola
 
 
+def con_puente(dispositivo):
+    """El dispositivo tiene ESP32 físico: su agente depende de él y puede usar la IA."""
+    return habilitado() and dispositivo.codigo_mqtt in settings.IA_PUENTE_DISPOSITIVOS
+
+
 def activo(dispositivo):
-    return not habilitado() or cola().activo(dispositivo.codigo_mqtt)
+    """Un dispositivo simulado siempre está activo; uno físico, si su ESP está consultando."""
+    return not con_puente(dispositivo) or cola().activo(dispositivo.codigo_mqtt)
 
 
 def tomar(codigo, espera=ESPERA_TOMAR):
@@ -219,7 +225,7 @@ def _cuerpo(dispositivo, mensajes, num_predict, formato=None):
 
 def calentar(dispositivo):
     """Carga el modelo antes de la primera pregunta (al abrir el chat), una vez cada 4 min."""
-    if not habilitado() or not cola().una_vez("calentar", CALENTAR_CADA):
+    if not con_puente(dispositivo) or not cola().una_vez("calentar", CALENTAR_CADA):
         return
     if cola().pendientes(dispositivo.codigo_mqtt):
         return

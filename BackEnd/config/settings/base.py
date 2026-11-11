@@ -202,6 +202,9 @@ IA_MODELO = env("IA_MODELO", default="")
 # Sin clave el puente está apagado y el agente responde solo con respuestas predefinidas.
 IA_PUENTE_CLAVE = env("IA_PUENTE_CLAVE", default="")
 IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen2.5:0.5b")
+# Dispositivos con ESP32 físico como puente (codigo_mqtt). Los demás son simulados: su agente
+# siempre está disponible y responde con lo predefinido y lo aprendido, sin IA.
+IA_PUENTE_DISPOSITIVOS = env.list("IA_PUENTE_DISPOSITIVOS", default=[])
 IA_ESPERA_SEGUNDOS = env.float("IA_ESPERA_SEGUNDOS", default=8)
 
 CORS_ALLOW_ALL_ORIGINS = False

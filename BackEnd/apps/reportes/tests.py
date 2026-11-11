@@ -543,14 +543,23 @@ class NicoAprendeTests(PruebaBase):
         self.assertEqual((registro.tema, registro.usuario), ("TEMP", self.e.analista))
         self.assertEqual(self._pedir("¿quién ganó el partido?")["via"], "NO_ENTENDIDA")
 
-    @override_settings(IA_PUENTE_CLAVE="k")
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
     def test_esp_inactivo_deshabilita_el_agente(self):
         cuerpo = self._pedir("¿Hubo picos de temperatura?", 503)
         self.assertTrue(cuerpo["inactivo"])
         estado = self.cliente.get("/api/v1/agente/estado/").json()
-        self.assertEqual(estado, {"puente": True, "activos": []})
+        self.assertEqual(
+            estado, {"puente": True, "activos": [], "fisicos": [self.e.dispositivo.pk]}
+        )
 
-    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["OTRO"], IA_PUENTE_CLAVE="k")
+    def test_dispositivo_simulado_siempre_activo_y_sin_ia(self):
+        cuerpo = self._pedir("¿es grave la temperatura?")
+        self.assertEqual(cuerpo["via"], "PREDEFINIDA")
+        estado = self.cliente.get("/api/v1/agente/estado/").json()
+        self.assertEqual(estado["activos"], [self.e.dispositivo.pk])
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
     def test_ia_por_el_esp_y_banco_con_reacciones(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         hilo = self._esp(lambda t: "Ahora está en 23 °C y el máximo fue 26.4 °C; no es grave.")
@@ -587,13 +596,13 @@ class NicoAprendeTests(PruebaBase):
         aprendida.refresh_from_db()
         self.assertFalse(aprendida.activa)
 
-    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=1)
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=1)
     def test_ia_tarda_responde_predefinida(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         cuerpo = self._pedir("¿es grave la temperatura?")
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
 
-    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
     def test_ia_que_inventa_cifras_usa_la_predefinida(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         hilo = self._esp(lambda t: "Mañana subirá a 31.7 °C. Es grave.")
@@ -618,7 +627,7 @@ class NicoAprendeTests(PruebaBase):
         self.assertTrue(agente.es_espanol("¿Cuál fue la máxima de CO2 la semana pasada?"))
         self.assertTrue(agente.es_espanol("gráfica de alertas por sensor"))
 
-    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
     def test_ia_que_responde_en_ingles_usa_la_predefinida(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         hilo = self._esp(lambda t: "It is not serious, the temperature is fine now.")
@@ -659,7 +668,7 @@ class NicoAprendeTests(PruebaBase):
         alertas = self._pedir("¿Hubo alertas hoy?")["texto"]
         self.assertIn("no tuvo alertas hoy", alertas)
 
-    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
     def test_ia_elige_la_herramienta_y_aprende_la_ruta(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         vistos = []
@@ -684,7 +693,7 @@ class NicoAprendeTests(PruebaBase):
         self.assertEqual(otra["via"], "BANCO")
         self.assertIn("26.4 °C", otra["texto"])
 
-    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
     def test_ia_dice_ninguna_herramienta(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         hilo = self._esp(
@@ -698,7 +707,7 @@ class NicoAprendeTests(PruebaBase):
         self.assertIsNone(aprendizaje.a_plantilla("Subirá a 31 °C.", {"actual": 23.0}))
         self.assertEqual(aprendizaje.rellenar("{actual} °C", {"actual": 22.5}), "22.5 °C")
 
-    @override_settings(IA_PUENTE_CLAVE="k")
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
     def test_puente_pide_clave(self):
         r = self.client.get(
             "/api/v1/puente/tomar/",

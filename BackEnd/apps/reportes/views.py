@@ -185,7 +185,7 @@ class AgenteView(APIView):
         aprendida, texto = aprendizaje.buscar(dispositivo, pregunta, tema, datos)
         if texto:
             return {**r, "texto": texto}, Via.BANCO, {"datos": datos, "aprendida": aprendida}
-        if puente.habilitado():
+        if puente.con_puente(dispositivo):
             texto, tokens = puente.redactar(dispositivo, pregunta, r["texto"], datos)
             if texto:
                 return {**r, "texto": texto}, Via.IA, {"datos": datos, **tokens}
@@ -203,7 +203,7 @@ class AgenteView(APIView):
         if aprendida is not None:
             r, _, _ = self._resolver(usuario, dispositivo, aprendida.plantilla, ruteada=True)
             return r, Via.BANCO, {"aprendida": aprendida, "datos": {"ruta": aprendida.plantilla}}
-        if not puente.habilitado():
+        if not puente.con_puente(dispositivo):
             return no_entendida, Via.NO_ENTENDIDA, {}
         canonica, tokens = puente.enrutar(dispositivo, pregunta)
         if not canonica or agente.pide_futuro(canonica):
@@ -246,12 +246,15 @@ class EstadoAgenteView(APIView):
         visibles = list(dispositivos_visibles(request.user).select_related("area"))
         activos = [d for d in visibles if puente.activo(d)]
         # Al abrir el chat se calienta el modelo para que la primera pregunta no espere la carga.
-        if puente.habilitado() and activos:
-            puente.calentar(activos[0])
+        for d in activos:
+            if puente.con_puente(d):
+                puente.calentar(d)
+                break
         return Response(
             {
                 "puente": puente.habilitado(),
                 "activos": [d.num for d in activos],
+                "fisicos": [d.num for d in visibles if puente.con_puente(d)],
             }
         )
 
