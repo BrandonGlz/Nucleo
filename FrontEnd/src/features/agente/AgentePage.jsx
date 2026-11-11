@@ -590,6 +590,15 @@ export function AgentePage() {
         })
       : []
 
+  // Las sugerencias visibles se piden de antemano: al tocarlas, la respuesta ya está lista.
+  const textosSugeridos = sugerencias.map((x) => x.texto).join('|')
+  const precargar = ag.precargar
+  useEffect(() => {
+    if (!textosSugeridos) return undefined
+    const t = setTimeout(() => precargar(textosSugeridos.split('|')), 600)
+    return () => clearTimeout(t)
+  }, [textosSugeridos, precargar])
+
   const compositor = (
     <Compositor
       valor={texto}

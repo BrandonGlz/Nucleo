@@ -30,6 +30,48 @@ function escribir(clave, valor) {
 
 // Conversaciones con el agente IA. Hay un agente por dispositivo (cada ESP32) y cada conversación
 // guarda el suyo. Vive en el marco de la app para que la respuesta llegue aunque se cambie de pantalla.
+// Caché de respuestas (5 min) por dispositivo y pregunta: repetir una pregunta o tocar una
+// sugerencia ya precargada responde sin volver al servidor. Los reportes no se guardan (cada
+// uno genera un archivo nuevo) ni los errores.
+const VIGENCIA = 5 * 60 * 1000
+const cache = new Map()
+const claveDe = (agente, pregunta) =>
+  `${agente}|${pregunta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9ñ ]/g, ' ').replace(/\s+/g, ' ').trim()}`
+function deCache(agente, pregunta) {
+  const e = cache.get(claveDe(agente, pregunta))
+  if (!e) return null
+  if (Date.now() - e.t > VIGENCIA) {
+    cache.delete(claveDe(agente, pregunta))
+    return null
+  }
+  return e.r
+}
+function guardarCache(agente, pregunta, r) {
+  if (r?.reporte || /\b(reporte|informe)/i.test(pregunta)) return
+  cache.set(claveDe(agente, pregunta), { r, t: Date.now() })
+  if (cache.size > 80) cache.delete(cache.keys().next().value)
+}
+// La misma pregunta en vuelo se pide una sola vez (precarga y clic al mismo tiempo).
+const enVuelo = new Map()
+function consultar(pregunta, agente) {
+  const hit = deCache(agente, pregunta)
+  if (hit) return Promise.resolve({ r: hit, cache: true })
+  const k = claveDe(agente, pregunta)
+  if (!enVuelo.has(k)) {
+    enVuelo.set(
+      k,
+      agenteApi
+        .preguntar(pregunta, agente)
+        .then((r) => {
+          guardarCache(agente, pregunta, r)
+          return { r, cache: false }
+        })
+        .finally(() => enVuelo.delete(k)),
+    )
+  }
+  return enVuelo.get(k)
+}
+
 export function AgenteProvider({ children }) {
   const [conversaciones, setConversaciones] = useState(() => leer(CLAVE, []))
   const [actual, setActual] = useState(null)
@@ -91,9 +133,11 @@ export function AgenteProvider({ children }) {
       editar(id, (ms) => [...(base ?? ms), ...(base && !mostrar ? [] : [{ de: 'yo', texto: mostrar ?? pregunta }])])
       setEstado('pensando')
       const mio = ++turno.current
-      const pausa = new Promise((listo) => setTimeout(listo, minimo))
+      // De caché, el proceso se muestra solo 1 s como máximo.
+      const yaEsta = Boolean(deCache(delAgente, pregunta))
+      const pausa = new Promise((listo) => setTimeout(listo, yaEsta ? Math.min(minimo, 1000) : minimo))
       try {
-        const r = await agenteApi.preguntar(pregunta, delAgente)
+        const { r } = await consultar(pregunta, delAgente)
         await pausa
         if (mio !== turno.current) return
         const clave = nuevoId('r')
@@ -130,6 +174,22 @@ export function AgenteProvider({ children }) {
       ])
     },
     [actual, agenteValido, cambiar, editar],
+  )
+
+  // Precarga en segundo plano las preguntas sugeridas (sin reportes), de una en una.
+  const precargar = useCallback(
+    async (preguntas) => {
+      if (!agenteValido) return
+      for (const p of preguntas) {
+        if (/\b(reporte|informe)/i.test(p) || deCache(agenteValido, p)) continue
+        try {
+          await consultar(p, agenteValido)
+        } catch {
+          // Si falla, se pedirá de nuevo al tocarla.
+        }
+      }
+    },
+    [agenteValido],
   )
 
   const nueva = useCallback(() => {
@@ -186,6 +246,7 @@ export function AgenteProvider({ children }) {
       nombreAgente: (num) => dispositivos.find((d) => d.num === num)?.nombre ?? 'Nico AI',
       preguntar,
       responderLocal,
+      precargar,
       detener,
       nueva,
       abrir,
@@ -193,7 +254,7 @@ export function AgenteProvider({ children }) {
       editar,
       setAgente,
     }
-  }, [conversaciones, actual, estado, animada, dispositivos, agenteValido, dispositivoAgente, preguntar, responderLocal, detener, nueva, abrir, borrar, editar, setAgente])
+  }, [conversaciones, actual, estado, animada, dispositivos, agenteValido, dispositivoAgente, preguntar, responderLocal, precargar, detener, nueva, abrir, borrar, editar, setAgente])
 
   return <AgenteContext.Provider value={valor}>{children}</AgenteContext.Provider>
 }
