@@ -230,6 +230,11 @@ export function AgenteScreen() {
                         </Pressable>
                       ))}
                       {m.via === 'IA' && <T size={11} peso={600} color={c.accent} style={[s.via, { backgroundColor: c.accentSoft }]}>Redactada con IA</T>}
+                      {m.via === 'ENRUTADA' && (
+                        <T size={11} peso={600} color={c.accent} style={[s.via, { backgroundColor: c.accentSoft }]}>
+                          Interpretada con IA
+                        </T>
+                      )}
                       {m.via === 'BANCO' && (
                         <T size={11} peso={600} color={c.accent} style={[s.via, { backgroundColor: c.accentSoft }]}>
                           Aprendida de tus reacciones

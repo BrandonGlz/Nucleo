@@ -182,6 +182,7 @@ class PreguntaAgente(models.Model):
         PREDEFINIDA = "PREDEFINIDA", "Respuesta predefinida"
         BANCO = "BANCO", "Respuesta aprendida"
         IA = "IA", "Redactada por la IA"
+        ENRUTADA = "ENRUTADA", "Interpretada por la IA"
         NO_ENTENDIDA = "NO_ENTENDIDA", "No entendida"
 
     num = models.BigAutoField(primary_key=True)
@@ -214,6 +215,9 @@ class PreguntaAgente(models.Model):
     )
     calificacion = models.SmallIntegerField(null=True, blank=True)  # 1 = 👍, -1 = 👎
     milisegundos = models.PositiveIntegerField(default=0)
+    # Tokens de la IA local (Ollama) que usó la respuesta: entrada (prompt) y salida.
+    tokens_entrada = models.PositiveIntegerField(default=0)
+    tokens_salida = models.PositiveIntegerField(default=0)
     fecha = models.DateTimeField(db_default=Now(), editable=False)
 
     class Meta:

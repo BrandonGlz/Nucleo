@@ -528,7 +528,9 @@ class NicoAprendeTests(PruebaBase):
         def correr():
             trabajo = puente.tomar(self.e.dispositivo.codigo_mqtt, espera=5)
             if trabajo:
-                puente.entregar(self.e.dispositivo.codigo_mqtt, trabajo["id"], responder(trabajo))
+                puente.entregar(
+                    self.e.dispositivo.codigo_mqtt, trabajo["id"], responder(trabajo), None, 120, 18
+                )
 
         hilo = threading.Thread(target=correr)
         hilo.start()
@@ -656,6 +658,41 @@ class NicoAprendeTests(PruebaBase):
         self.assertNotIn("Ahora marca", texto)
         alertas = self._pedir("¿Hubo alertas hoy?")["texto"]
         self.assertIn("no tuvo alertas hoy", alertas)
+
+    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_ia_elige_la_herramienta_y_aprende_la_ruta(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        vistos = []
+
+        def clasificar(trabajo):
+            vistos.append(trabajo["cuerpo"])
+            return '{"herramienta": "variable", "variable": "temperatura", "periodo": "ahora"}'
+
+        hilo = self._esp(clasificar)
+        cuerpo = self._pedir("¿qué tal anda el ambiente en la bodega?")
+        hilo.join()
+        self.assertEqual(cuerpo["via"], "ENRUTADA")
+        self.assertIn("26.4 °C", cuerpo["texto"])  # cifras de la función de siempre
+        self.assertIn("format", vistos[0])
+        registro = PreguntaAgente.objects.get(pk=cuerpo["registro"])
+        self.assertEqual((registro.tokens_entrada, registro.tokens_salida), (120, 18))
+        self.cliente.post(
+            "/api/v1/agente/calificar/", {"registro": registro.num, "voto": "si"}, format="json"
+        )
+        # Con el 👍 la ruta queda aprendida: ya no se pregunta a la IA.
+        otra = self._pedir("¿Qué tal anda el ambiente en la bodega?")
+        self.assertEqual(otra["via"], "BANCO")
+        self.assertIn("26.4 °C", otra["texto"])
+
+    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_ia_dice_ninguna_herramienta(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        hilo = self._esp(
+            lambda t: '{"herramienta": "ninguna", "variable": "ninguna", "periodo": "ahora"}'
+        )
+        cuerpo = self._pedir("¿quién ganó el partido?")
+        hilo.join()
+        self.assertEqual(cuerpo["via"], "NO_ENTENDIDA")
 
     def test_cifra_inventada_no_entra_al_banco(self):
         self.assertIsNone(aprendizaje.a_plantilla("Subirá a 31 °C.", {"actual": 23.0}))

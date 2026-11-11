@@ -162,7 +162,7 @@ class AgenteView(APIView):
         )
         return Response({**r, "registro": registro.num, "via": via})
 
-    def _resolver(self, usuario, dispositivo, pregunta):
+    def _resolver(self, usuario, dispositivo, pregunta, ruteada=False):
         """Respuesta, cómo se resolvió y datos para el registro. En orden: comparativa, gráfica,
         reporte, respuesta aprendida, IA (solo para explicar, opinar o recomendar) y
         predefinida."""
@@ -176,9 +176,9 @@ class AgenteView(APIView):
         if agente.pide_reporte(pregunta):
             return agente.generar_reporte(usuario, dispositivo, pregunta), Via.PREDEFINIDA, {}
         tema = agente._tema(pregunta)
-        r = agente.responder(dispositivo, pregunta)
         if tema is None:
-            return r, Via.NO_ENTENDIDA, {}
+            return self._sin_tema(usuario, dispositivo, pregunta, ruteada)
+        r = agente.responder(dispositivo, pregunta)
         if not puente.pide_ia(pregunta):
             return r, Via.PREDEFINIDA, {}
         datos = agente.datos_de(dispositivo, pregunta)
@@ -186,10 +186,30 @@ class AgenteView(APIView):
         if texto:
             return {**r, "texto": texto}, Via.BANCO, {"datos": datos, "aprendida": aprendida}
         if puente.habilitado():
-            texto = puente.redactar(dispositivo, pregunta, r["texto"], datos)
+            texto, tokens = puente.redactar(dispositivo, pregunta, r["texto"], datos)
             if texto:
-                return {**r, "texto": texto}, Via.IA, {"datos": datos}
+                return {**r, "texto": texto}, Via.IA, {"datos": datos, **tokens}
+            return r, Via.PREDEFINIDA, {"datos": datos, **tokens}
         return r, Via.PREDEFINIDA, {"datos": datos}
+
+    def _sin_tema(self, usuario, dispositivo, pregunta, ruteada):
+        """Las reglas no entendieron: una ruta aprendida (👍 anterior) o la IA elige la
+        herramienta y se responde con la pregunta canónica. Sin eso, «no entendida»."""
+        Via = PreguntaAgente.Via
+        no_entendida = agente.responder(dispositivo, pregunta)
+        if ruteada:
+            return no_entendida, Via.NO_ENTENDIDA, {}
+        aprendida = aprendizaje.ruta_aprendida(dispositivo, pregunta)
+        if aprendida is not None:
+            r, _, _ = self._resolver(usuario, dispositivo, aprendida.plantilla, ruteada=True)
+            return r, Via.BANCO, {"aprendida": aprendida, "datos": {"ruta": aprendida.plantilla}}
+        if not puente.habilitado():
+            return no_entendida, Via.NO_ENTENDIDA, {}
+        canonica, tokens = puente.enrutar(dispositivo, pregunta)
+        if not canonica or agente.pide_futuro(canonica):
+            return no_entendida, Via.NO_ENTENDIDA, tokens
+        r, _, _ = self._resolver(usuario, dispositivo, canonica, ruteada=True)
+        return r, Via.ENRUTADA, {"datos": {"ruta": canonica}, **tokens}
 
 
 class CalificarAgenteSerializer(serializers.Serializer):
@@ -268,5 +288,7 @@ class PuenteEntregarView(_PuenteBase):
             str(request.data.get("id", "")),
             request.data.get("texto"),
             request.data.get("error"),
+            request.data.get("tokens_entrada", 0),
+            request.data.get("tokens_salida", 0),
         )
         return Response(status=status.HTTP_204_NO_CONTENT)

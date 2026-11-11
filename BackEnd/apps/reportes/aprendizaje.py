@@ -75,6 +75,16 @@ def buscar(dispositivo, pregunta, tema, datos):
     return (aprendida, texto) if texto else (None, None)
 
 
+def ruta_aprendida(dispositivo, pregunta):
+    """Herramienta (pregunta canónica) que la IA eligió antes para esta pregunta y recibió 👍."""
+    return RespuestaAprendida.objects.filter(
+        organizacion_id=dispositivo.area.organizacion_id,
+        pregunta_normalizada=normalizar(pregunta),
+        tema="RUTA",
+        activa=True,
+    ).first()
+
+
 def registrar(usuario, dispositivo, pregunta, via, respuesta, tema="", datos=None, **extra):
     return PreguntaAgente.objects.create(
         usuario=usuario,
@@ -105,17 +115,21 @@ def calificar(registro, valor):
                 votos_no=F("votos_no") + 1, activa=False
             )
         return False
-    if valor != 1 or registro.via != PreguntaAgente.Via.IA:
+    if valor != 1 or registro.via not in (PreguntaAgente.Via.IA, PreguntaAgente.Via.ENRUTADA):
         return False
-    plantilla = a_plantilla(registro.respuesta, registro.datos)
-    if plantilla is None:
+    if registro.via == PreguntaAgente.Via.ENRUTADA:
+        # Se aprende la ruta: la próxima vez esta pregunta va directo a esa herramienta.
+        plantilla, tema = registro.datos.get("ruta"), "RUTA"
+    else:
+        plantilla, tema = a_plantilla(registro.respuesta, registro.datos), registro.tema
+    if not plantilla:
         return False
     try:
         with transaction.atomic():
             nueva, creada = RespuestaAprendida.objects.get_or_create(
                 organizacion_id=registro.dispositivo.area.organizacion_id,
                 pregunta_normalizada=registro.pregunta_normalizada[:500],
-                tema=registro.tema,
+                tema=tema,
                 defaults={"pregunta": registro.pregunta[:500], "plantilla": plantilla},
             )
             if not creada and not nueva.activa:

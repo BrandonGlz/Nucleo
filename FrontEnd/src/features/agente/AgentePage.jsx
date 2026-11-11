@@ -393,6 +393,7 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             </button>
             {m.via === 'IA' && <span className="ui-ia-via">Redactada con IA</span>}
             {m.via === 'BANCO' && <span className="ui-ia-via">Aprendida de tus reacciones</span>}
+            {m.via === 'ENRUTADA' && <span className="ui-ia-via">Interpretada con IA</span>}
             {ultima && (
               <span className="ui-ia-nota">
                 {m.voto ? '¡Gracias! Nico AI mejora con tus reacciones.' : 'La mejora de Nico AI se basa en tus reacciones.'}

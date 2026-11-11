@@ -11,3 +11,12 @@ CODIGO_MQTT = "NUC-001"
 # Debe coincidir con un nombre o IP incluido en el certificado del servidor.
 MQTT_HOST = "192.168.1.10"
 MQTT_PASSWORD = "contraseña-del-dispositivo"  # la imprime Mosquitto/dispositivo.sh
+
+# ── Puente de Nico AI (opcional) ─────────────────────────────────────────────────────
+# MODO = "puente" hace que este ESP lleve las peticiones del agente de su dispositivo
+# (CODIGO_MQTT) a la IA local del servidor. Sin el ESP conectado, ese agente no responde.
+# MODO = "puente"
+# PUENTE_HOST = "nucleo.<tailnet>.ts.net"
+# PUENTE_CLAVE = "la IA_PUENTE_CLAVE de BackEnd/.env del servidor"
+# Redes conocidas, en orden de preferencia (además de WIFI_SSID):
+# REDES = [("oficina", "contraseña"), ("celular", "contraseña")]

@@ -175,13 +175,28 @@ def tomar(codigo, espera=ESPERA_TOMAR):
     return None
 
 
-def entregar(codigo, id_, texto=None, error=None):
+def entregar(codigo, id_, texto=None, error=None, tokens_entrada=0, tokens_salida=0):
     cola().visto(codigo)
-    cola().entregar(id_, {"texto": texto, "error": error})
+    cola().entregar(
+        id_,
+        {
+            "texto": texto,
+            "error": error,
+            "tokens_entrada": int(tokens_entrada or 0),
+            "tokens_salida": int(tokens_salida or 0),
+        },
+    )
 
 
-def _cuerpo(dispositivo, mensajes, num_predict):
+def _tokens(r):
     return {
+        "tokens_entrada": r.get("tokens_entrada", 0),
+        "tokens_salida": r.get("tokens_salida", 0),
+    }
+
+
+def _cuerpo(dispositivo, mensajes, num_predict, formato=None):
+    cuerpo = {
         "model": settings.IA_MODELO_LOCAL,
         "stream": False,
         "keep_alive": "10m",
@@ -196,6 +211,10 @@ def _cuerpo(dispositivo, mensajes, num_predict):
         },
         "messages": mensajes,
     }
+    if formato:
+        cuerpo["format"] = formato  # salida estructurada: Ollama solo puede devolver ese JSON
+        cuerpo["options"]["temperature"] = 0
+    return cuerpo
 
 
 def calentar(dispositivo):
@@ -233,10 +252,11 @@ def _limpiar(texto, permitidos):
 def redactar(dispositivo, pregunta, base, datos, espera=None):
     """Pide a la IA, por el ESP del dispositivo, una respuesta corta a partir del texto
     predefinido (``base``) y de las cifras (``datos``). Devuelve el texto o ``None`` si no llegó
-    a tiempo, la cola está llena o inventó cifras: entonces se usa la respuesta predefinida."""
+    a tiempo, la cola está llena o inventó cifras: entonces se usa la respuesta predefinida.
+    Devuelve ``(texto | None, tokens)``."""
     codigo = dispositivo.codigo_mqtt
     if cola().pendientes(codigo) >= MAX_EN_COLA:
-        return None
+        return None, {}
     espera = espera or settings.IA_ESPERA_SEGUNDOS
     cifras = "; ".join(f"{k}={v}" for k, v in datos.items())
     trabajo = {
@@ -257,8 +277,88 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
     cola().poner(codigo, trabajo)
     r = cola().esperar(trabajo["id"], espera)
     if not r or r.get("error") or not (r.get("texto") or "").strip():
-        return None
+        return None, _tokens(r or {})
     permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(base)}
     permitidos |= {round(float(v), 1) for v in datos.values() if isinstance(v, int | float)}
     permitidos |= {float(n) for n in range(0, 25)}  # «2 frases», «7 días», horas del día…
-    return _limpiar(r["texto"], permitidos)
+    return _limpiar(r["texto"], permitidos), _tokens(r)
+
+
+# ── Herramientas: la IA solo elige cuál usar ────────────────────────────────────────────
+# Cuando las reglas no entienden la pregunta, el modelo la clasifica en una de estas
+# herramientas (JSON forzado con «format»). Con eso se arma la pregunta canónica que las
+# reglas sí entienden y la respuesta sale de las funciones de siempre: cifras exactas y una
+# sola pasada corta de IA (~20 tokens de salida).
+HERRAMIENTAS = ("variable", "alertas", "conexion", "grafica", "comparativa", "reporte", "ninguna")
+VARIABLES_IA = ("temperatura", "humedad", "calidad del aire", "ninguna")
+PERIODOS_IA = (
+    "ahora",
+    "hoy",
+    "ayer",
+    "esta semana",
+    "la semana pasada",
+    "este mes",
+    "el mes pasado",
+    "los ultimos 7 dias",
+)
+ESQUEMA = {
+    "type": "object",
+    "properties": {
+        "herramienta": {"type": "string", "enum": list(HERRAMIENTAS)},
+        "variable": {"type": "string", "enum": list(VARIABLES_IA)},
+        "periodo": {"type": "string", "enum": list(PERIODOS_IA)},
+    },
+    "required": ["herramienta", "variable", "periodo"],
+}
+CLASIFICAR = (
+    "Clasifica la petición sobre un dispositivo de monitoreo ambiental. Herramientas: variable "
+    "(cómo está o estuvo la temperatura, humedad o calidad del aire), alertas, conexion "
+    "(batería, señal, si está en línea), grafica, comparativa (comparar periodos), reporte, "
+    "ninguna (no es sobre el ambiente ni los sensores). Responde solo el JSON."
+)
+
+
+def _canonica(h, variable, periodo):
+    """Pregunta en las palabras que entienden las reglas."""
+    nombre = "temperatura" if variable == "ninguna" else variable
+    de_var = "" if variable == "ninguna" else f" de {variable}"
+    de_periodo = "" if periodo == "ahora" else f" de {periodo}"
+    return {
+        "variable": f"¿cómo está la {nombre}{de_periodo}?",
+        "alertas": f"alertas{de_periodo}",
+        "conexion": "estado de conexión",
+        "grafica": f"gráfica{de_var}{de_periodo}",
+        "comparativa": f"compara{de_var} de {'esta semana' if periodo == 'ahora' else periodo}",
+        "reporte": f"reporte{de_periodo or ' de esta semana'}",
+    }.get(h)
+
+
+def enrutar(dispositivo, pregunta, espera=None):
+    """Pregunta canónica elegida por la IA (o ``None``) y los tokens usados."""
+    codigo = dispositivo.codigo_mqtt
+    if cola().pendientes(codigo) >= MAX_EN_COLA:
+        return None, {}
+    espera = espera or settings.IA_ESPERA_SEGUNDOS
+    trabajo = {
+        "id": uuid.uuid4().hex,
+        "ruta": "/api/chat",
+        "vence": time.time() + espera,
+        "cuerpo": _cuerpo(
+            dispositivo,
+            [{"role": "system", "content": CLASIFICAR}, {"role": "user", "content": pregunta}],
+            40,
+            formato=ESQUEMA,
+        ),
+    }
+    cola().poner(codigo, trabajo)
+    r = cola().esperar(trabajo["id"], espera)
+    if not r or r.get("error"):
+        return None, _tokens(r or {})
+    try:
+        elegido = json.loads(r.get("texto") or "")
+        h, v, p = elegido["herramienta"], elegido["variable"], elegido["periodo"]
+    except (ValueError, KeyError, TypeError):
+        return None, _tokens(r)
+    if h not in HERRAMIENTAS or v not in VARIABLES_IA or p not in PERIODOS_IA:
+        return None, _tokens(r)
+    return _canonica(h, v, p), _tokens(r)
