@@ -50,6 +50,7 @@ class Peticion:
             "reporte": "un reporte",
             "detalle_alerta": "el detalle de la alerta",
             "pendientes": "lo pendiente de tu alcance",
+            "estado": "cómo está el dispositivo ahora",
             "programaciones": "los reportes programados",
             "programar": "programar un reporte",
             "editar_programacion": "cambiar una programación",
@@ -140,6 +141,8 @@ def interpretar(pregunta, anterior=""):
         peticion.intencion = "comentario"
     elif herramientas.pide_areas(pregunta):
         peticion.intencion = "areas"
+    elif herramientas.pide_estado(pregunta) and not variables:
+        peticion.intencion = "estado"
     elif herramientas.pide_programaciones(pregunta):
         peticion.intencion = "programaciones"
     elif herramientas.pide_detalle_alerta(pregunta):
@@ -201,6 +204,7 @@ def verificar(peticion, respuesta):
         "pendientes",
         "detalle_alerta",
         "programaciones",
+        "estado",
         "programar",
         "editar_programacion",
         "cancelar_programacion",
@@ -249,6 +253,7 @@ HECHO = {
     "comparativa": "Comparé {var} entre los periodos",
     "reporte": "Calculé las cifras del periodo con el servicio de Reportes",
     "detalle_alerta": "Busqué la alerta, su lectura, su umbral y quién la atendió",
+    "estado": "Revisé su conexión y la última medición de cada variable",
     "pendientes": "Revisé las alertas pendientes y los dispositivos de tu alcance",
     "programaciones": "Consulté los reportes programados",
     "programar": "Validé la frecuencia y los destinatarios de la programación",
@@ -257,7 +262,7 @@ HECHO = {
     "enviar": "Busqué el reporte y validé a los destinatarios de tu organización",
     "banco": "Respondí con el texto fijo del banco de memoria",
     "modificar": "Revisé que es un cambio: se hace en la plataforma, no desde el chat",
-    "comentario": "Tomé en cuenta tu comentario",
+    "comentario": "Respondí tu mensaje sin consultar datos",
 }
 
 
@@ -266,6 +271,8 @@ def paso_de(peticion):
     pasos = []
     if peticion.contexto:
         pasos.append("Lo relacioné con tu mensaje anterior")
+    if peticion.intencion == "comentario" and agente.pregunta_bienestar(peticion.texto):
+        return ["Respondí tu saludo y te dije qué puedo revisar"]
     if peticion.intencion not in ("no_entendida", "comentario"):
         pasos.append(f"Entendí que pides {peticion.describir()}")
     plantilla = HECHO.get(peticion.intencion)

@@ -463,7 +463,9 @@ def sin_sentido(texto):
 # «¿qué sensores tiene?», «el primer sensor», «sensor 2».
 SENSORES = re.compile(
     r"\b(que|cuales|cuantos) sensores|\bsensores (tiene|hay|instalados)|\blista de sensores|"
-    r"\b(primer|segundo|tercer|cuarto)o? sensor|\bsensor (\d)\b|\bsensor (uno|dos|tres)\b"
+    r"\b(primer|segundo|tercer|cuarto)o? sensor|\bsensor (\d)\b|\bsensor (uno|dos|tres)\b|"
+    r"\bcomo (estan|esta|van|funcionan) (los |sus |el |mis )?sensor(es)?\b|"
+    r"\bestado de (los |sus |mis )?sensores\b"
 )
 ORDINALES = {"primer": 1, "segundo": 2, "tercer": 3, "cuarto": 4, "uno": 1, "dos": 2, "tres": 3}
 
@@ -823,8 +825,22 @@ def duda(dispositivo, pregunta):
     }
 
 
+# Preguntar por el agente mismo («¿cómo estás?», «¿y tú estás bien?»), con o sin saludo.
+BIENESTAR = re.compile(
+    r"\b(como estas|como te va|como te sientes|como te encuentras|como has estado|como andas|"
+    r"estas bien|que tal estas|todo bien contigo|y tu que tal|y tu como estas)\b|^(y tu|y a ti)$"
+)
+SALUDO = re.compile(r"^(hola|hey|que onda|saludos|buen(os|as)( dias| tardes| noches)?|que tal)\b")
+
+
+def pregunta_bienestar(pregunta):
+    texto = _normalizar(pregunta).strip(" ¡¿!?.")
+    return bool(BIENESTAR.search(texto)) and len(texto.split()) <= 8 and _tema(pregunta) is None
+
+
 def es_cortesia(pregunta):
-    return bool(CORTESIA.match(_normalizar(pregunta).strip(" ¡¿")))
+    texto = _normalizar(pregunta).strip(" ¡¿")
+    return bool(CORTESIA.match(texto)) or pregunta_bienestar(pregunta)
 
 
 def es_comentario(pregunta):
@@ -840,7 +856,7 @@ def con_contexto(pregunta, anterior):
     (variable, gráfica, máxima…) y su propio periodo. Si la pregunta ya tiene tema, va sola.
     """
     limpia = NEGADO.sub("", pregunta).strip() or pregunta
-    if not anterior or es_comentario(limpia):
+    if not anterior or es_comentario(limpia) or pregunta_bienestar(limpia):
         return limpia
     tema = _tema(limpia)
     corrige = bool(CORRIGE.search(_normalizar(pregunta)))
@@ -927,6 +943,15 @@ def responder(dispositivo, pregunta):
         }
     if tema is None and es_negacion(pregunta):
         return {"texto": f"Va. Si después necesitas algo de {dispositivo.nombre}, aquí estoy."}
+    if tema is None and pregunta_bienestar(pregunta):
+        saludo = SALUDO.match(_normalizar(pregunta).strip(" ¡¿"))
+        return {
+            "texto": ("¡Hola! " if saludo else "")
+            + "Muy bien, gracias por preguntar. "
+            + (f"Soy Nico AI, el agente de {dispositivo.nombre}. " if saludo else "")
+            + f"¿Qué revisamos de {dispositivo.nombre}? Puedo decirte cómo está ahora, su "
+            "temperatura, humedad o calidad del aire, sus alertas o su conexión."
+        }
     if tema is None and es_cortesia(pregunta):
         saludo = re.match(r"(hola|buen|buenas)", _normalizar(pregunta).strip(" ¡¿"))
         return {
@@ -946,8 +971,9 @@ def responder(dispositivo, pregunta):
         }
     if tema is None:
         return {
-            "texto": f"Solo puedo responder sobre {dispositivo.nombre} y sus sensores. "
-            "Para un reporte, pídelo así: «reporte de esta semana» o «reporte de octubre»."
+            "texto": f"Solo puedo responder sobre {dispositivo.nombre} y sus sensores: cómo está "
+            "ahora, su temperatura, humedad o calidad del aire, sus alertas, su conexión o un "
+            "reporte. ¿Qué quieres revisar?"
         }
     if tema == "CONEXION":
         return _conexion(dispositivo)

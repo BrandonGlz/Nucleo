@@ -212,7 +212,7 @@ IA_MODELO = env("IA_MODELO", default="")
 # Nico AI con IA local (Ollama) a través del ESP32 de cada dispositivo (apps/reportes/puente.py).
 # Sin clave el puente está apagado y el agente responde solo con respuestas predefinidas.
 IA_PUENTE_CLAVE = env("IA_PUENTE_CLAVE", default="")
-IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen2.5:0.5b")
+IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen2.5:1.5b")
 # Dispositivos con ESP32 físico como puente (codigo_mqtt). Los demás son simulados: su agente
 # siempre está disponible y responde con lo predefinido y lo aprendido, sin IA.
 IA_PUENTE_DISPOSITIVOS = env.list("IA_PUENTE_DISPOSITIVOS", default=[])

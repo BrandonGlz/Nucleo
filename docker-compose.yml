@@ -78,8 +78,9 @@ services:
       retries: 12
       start_period: 5s
 
-  # IA local de Nico AI (solo en el servidor: docker compose --profile ia up -d ollama). Un modelo
-  # chico (qwen2.5:0.5b) cargado ocupa ~1 GB; el tope es 3 GB. Lo usa el ESP32 puente de cada
+  # IA local de Nico AI (solo en el servidor: docker compose --profile ia up -d ollama). El modelo
+  # (qwen2.5:1.5b) cargado ocupa ~1.3 GB; el tope es 3 GB. Un solo modelo cargado para todo el
+  # servidor, dos peticiones en paralelo y caché KV en q8_0 para que quepan con menos memoria. Lo usa el ESP32 puente de cada
   # dispositivo a través de Caddy (/puente-ia/, con su clave); ver apps/reportes/puente.py.
   ollama:
     image: ollama/ollama:0.40.16
@@ -92,7 +93,9 @@ services:
       OLLAMA_MAX_LOADED_MODELS: 1
       OLLAMA_MAX_QUEUE: 8
       OLLAMA_CONTEXT_LENGTH: 1024
-      OLLAMA_KEEP_ALIVE: 10m
+      OLLAMA_KEEP_ALIVE: 30m
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: q8_0
     ports:
       - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     volumes:

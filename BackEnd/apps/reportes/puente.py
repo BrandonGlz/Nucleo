@@ -29,7 +29,7 @@ from . import agente
 ACTIVO_SEGUNDOS = 30  # sin consultar en este tiempo, el agente del dispositivo está inactivo
 ESPERA_TOMAR = 20  # espera larga del ESP
 MAX_EN_COLA = 2  # con más peticiones esperando, se responde con la predefinida sin esperar
-CALENTAR_CADA = 240  # segundos: el modelo sigue cargado (keep_alive 10 min) mientras haya uso
+CALENTAR_CADA = 600  # segundos: el modelo sigue cargado (keep_alive 30 min) mientras haya uso
 NUMERO = re.compile(r"\d+(?:[.,]\d+)?")
 SISTEMA = (
     "Eres Nico AI, el asistente del dispositivo de monitoreo ambiental {nombre}. Responde "
@@ -223,8 +223,9 @@ def _cuerpo(dispositivo, mensajes, num_predict, formato=None):
     cuerpo = {
         "model": settings.IA_MODELO_LOCAL,
         "stream": False,
-        "keep_alive": "10m",
-        # Contexto corto y pocas palabras: en la CPU del servidor, 0.5b responde en 2-5 s.
+        "keep_alive": "30m",
+        # Contexto corto y pocas palabras: en la CPU del servidor, 1.5b responde en 4-6 s (dos
+        # a la vez, ~13 s).
         # 3 hilos de 4 para que la API y MQTT sigan atendiendo mientras la IA trabaja.
         "options": {
             "num_predict": num_predict,
@@ -239,6 +240,37 @@ def _cuerpo(dispositivo, mensajes, num_predict, formato=None):
         cuerpo["format"] = formato  # salida estructurada: Ollama solo puede devolver ese JSON
         cuerpo["options"]["temperature"] = 0
     return cuerpo
+
+
+# Respuestas de la IA ya redactadas: la misma petición (mismo modelo, instrucciones, hechos y
+# mensaje) en los siguientes 15 min se contesta sin volver a ocupar el modelo. Con el modelo
+# compartido entre plataformas, esto evita repetir trabajo cuando varios preguntan lo mismo.
+CACHE_IA_SEGUNDOS = 15 * 60
+
+
+def _ejecutar(codigo, trabajo, espera):
+    """Manda el trabajo al ESP y espera su respuesta, o la toma de la caché si ya se hizo."""
+    import hashlib
+
+    from django.core.cache import cache
+
+    cuerpo = trabajo["cuerpo"]
+    clave = (
+        "nico-ia:"
+        + hashlib.sha256(
+            json.dumps(
+                [cuerpo["model"], cuerpo["messages"], cuerpo.get("format")], sort_keys=True
+            ).encode()
+        ).hexdigest()
+    )
+    guardada = cache.get(clave)
+    if guardada is not None:
+        return {**guardada, "tokens_entrada": 0, "tokens_salida": 0, "en_cache": True}
+    cola().poner(codigo, trabajo)
+    r = cola().esperar(trabajo["id"], espera)
+    if r and not r.get("error") and (r.get("texto") or "").strip():
+        cache.set(clave, r, CACHE_IA_SEGUNDOS)
+    return r
 
 
 def calentar(dispositivo):
@@ -306,11 +338,10 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
                     "No agregues cifras, fechas ni causas que no estén en el texto base.",
                 },
             ],
-            90,
+            70,  # dos frases cortas: menos tokens, menos espera con el modelo 1.5b
         ),
     }
-    cola().poner(codigo, trabajo)
-    r = cola().esperar(trabajo["id"], espera)
+    r = _ejecutar(codigo, trabajo, espera)
     if not r or r.get("error") or not (r.get("texto") or "").strip():
         return None, _tokens(r or {})
     permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(base)}
@@ -405,11 +436,10 @@ def conversar(dispositivo, mensaje, hechos, historial=(), espera=None):
                     + f"Hechos: {hechos}\nUsuario: {mensaje}\nRespuesta:",
                 },
             ],
-            90,
+            70,  # dos frases cortas: menos tokens, menos espera con el modelo 1.5b
         ),
     }
-    cola().poner(codigo, trabajo)
-    r = cola().esperar(trabajo["id"], espera)
+    r = _ejecutar(codigo, trabajo, espera)
     if not r or r.get("error") or not (r.get("texto") or "").strip():
         return None, _tokens(r or {})
     permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(hechos)}
@@ -579,8 +609,7 @@ def enrutar(dispositivo, pregunta, espera=None):
             formato=esquema,
         ),
     }
-    cola().poner(codigo, trabajo)
-    r = cola().esperar(trabajo["id"], espera)
+    r = _ejecutar(codigo, trabajo, espera)
     if not r or r.get("error"):
         return None, _tokens(r or {})
     try:

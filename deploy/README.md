@@ -100,7 +100,7 @@ de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
 Nico AI responde primero con respuestas predefinidas y con las que aprendió de los 👍 de los
 usuarios (tabla `respuesta_aprendida`). Solo cuando se le pide explicar, opinar o recomendar
 («¿es grave?», «¿por qué subió?», «¿qué recomiendas?») redacta con un modelo local chico
-(`qwen2.5:0.5b`, ~1 GB de RAM cargado, tope 3 GB) que corre en el contenedor `nucleo_ollama`.
+(`qwen2.5:1.5b`, ~1.3 GB de RAM cargado, tope 3 GB; 4-6 s por respuesta, ~13 s con dos a la vez) que corre en el contenedor `nucleo_ollama`.
 
 El ESP32 de cada dispositivo es el puente de su agente: consulta `GET /api/v1/puente/tomar/`
 (espera larga), lleva la petición a Ollama por `https://nucleo.<tailnet>.ts.net/puente-ia/` y
@@ -121,6 +121,10 @@ dispositivo se deshabilita en la web y en la app.
 - Mantenimiento manual mientras se estabiliza el servidor:
   `cd BackEnd && .venv/bin/python manage.py agente_mantenimiento on` (`off` lo regresa; sin
   argumento muestra el nivel y la memoria libre). El monitoreo y las alertas siguen funcionando.
+- Un solo modelo cargado (`OLLAMA_MAX_LOADED_MODELS=1`) que puede compartir otra plataforma del
+  servidor si usa el mismo `IA_MODELO_LOCAL`: dos peticiones en paralelo, cola de 8 y se queda
+  cargado 30 min. Las respuestas redactadas se guardan 15 min: la misma petición no vuelve a
+  ocupar el modelo.
 - Preguntas y reacciones: tablas `pregunta_agente` (cómo se resolvió cada una) y
   `respuesta_aprendida` (banco), visibles en el admin de Django.
 

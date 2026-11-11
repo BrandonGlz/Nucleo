@@ -24,6 +24,7 @@ from apps.reportes import (
     pdf,
     puente,
     servicios,
+    social,
 )
 from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte
 from apps.reportes.serializers import (
@@ -271,6 +272,17 @@ class AgenteView(APIView):
                 "de ayer», «la última medición del aire» o «gráfica de la humedad»."
             )
             r, via, extra = {"texto": texto}, PreguntaAgente.Via.PREDEFINIDA, {}
+        elif (charla := social.responder(dispositivo, original)) is not None:
+            # Conversación o algo fuera de la burbuja del agente: texto fijo que regresa al tema.
+            cat = charla.pop("social")
+            datos = {"fijo": True, "social": cat}
+            if charla.get("propuesta"):
+                datos["propuesta"] = charla.pop("propuesta")
+            # Lo que pide algo ajeno (cultura general, otro idioma) cuenta como no entendido.
+            ajena = cat in ("general", "idioma")
+            via = PreguntaAgente.Via.NO_ENTENDIDA if ajena else PreguntaAgente.Via.PREDEFINIDA
+            r, extra = charla, {"datos": datos}
+            pregunta = original
         elif agente.pide_futuro(original):
             # Del futuro no hay lecturas: no se responde ni se pronostica.
             texto = (
@@ -318,6 +330,8 @@ class AgenteView(APIView):
         datos = extra.get("datos") or {}
         if repetida is not None:
             return ["Era la misma petición que la anterior", "Te envié lo que ya había respondido"]
+        if datos.get("social"):
+            return [social.paso(datos["social"])]
         pasos = []
         if aviso:
             pasos.append("Ignoré lo que no se entendía del mensaje")
@@ -342,7 +356,7 @@ class AgenteView(APIView):
                 pasos.append(f"Este agente solo ve {dispositivo.nombre}")
             pasos.append("Revisé las áreas que puedes consultar")
         elif datos.get("peticion"):
-            pasos += interprete.paso_de(interprete.Peticion(texto="", **datos["peticion"]))
+            pasos += interprete.paso_de(interprete.Peticion(texto=original, **datos["peticion"]))
         if datos.get("ruta") and via == Via.ENRUTADA:
             pasos.insert(
                 0, f"Mis reglas no lo reconocieron; la IA lo interpretó como «{datos['ruta']}»"
@@ -540,6 +554,8 @@ class AgenteView(APIView):
             if herramientas.pide_capacidades(pregunta):
                 return herramientas.capacidades(usuario), Via.PREDEFINIDA, fijo
             return {"texto": herramientas.explicacion(pregunta)}, Via.PREDEFINIDA, fijo
+        if intencion == "estado":
+            return herramientas.estado_actual(dispositivo), Via.PREDEFINIDA, {}
         if intencion == "pendientes":
             return herramientas.pendientes(usuario), Via.PREDEFINIDA, {}
         if intencion == "detalle_alerta":

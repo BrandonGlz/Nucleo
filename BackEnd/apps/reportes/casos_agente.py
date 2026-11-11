@@ -79,7 +79,6 @@ CASOS = [
     },
     {
         "pregunta": "¿cómo está Núcleo A-99?",
-        "intencion": "no_entendida",
         "contiene": ["solo responde sobre"],
     },
     # «Sí la tengo» tras un área que no existe (falló: se juntó con la anterior y dio la
@@ -185,6 +184,62 @@ CASOS = [
         "intencion": "enviar",
         "no_contiene": ["listo", "envie"],
     },
+    # ── Saludos y estado general (fallaron: «Solo puedo responder…» a un saludo) ─────────
+    {
+        "pregunta": "hola nico como estas",
+        "intencion": "comentario",
+        "contiene": ["muy bien", "soy nico ai"],
+        "no_contiene": ["solo puedo responder"],
+    },
+    {
+        "pregunta": "pero tu estas bien",
+        "anterior": "hola nico como estas",
+        "contiene": ["muy bien"],
+        "no_contiene": ["no estoy seguro"],
+    },
+    {
+        "pregunta": "y tu?",
+        "anterior": "¿cómo está la temperatura?",
+        "contiene": ["muy bien"],
+        "no_contiene": ["promedio"],
+    },
+    {
+        "pregunta": "como esta el nucleo",
+        "intencion": "estado",
+        "contiene": ["muestreo"],
+        "no_contiene": ["solo puedo responder"],
+    },
+    {"pregunta": "el nucleo en el que estoy como esta", "intencion": "estado"},
+    {"pregunta": "¿cómo están los sensores?", "intencion": "sensores", "contiene": ["dht22"]},
+    {"pregunta": "¿cómo está el dispositivo ahorita?", "intencion": "estado"},
+    # ── Fuera de la burbuja (fallaron: «Solo puedo responder…» o datos que no se pidieron) ─
+    {"pregunta": "cuéntame un chiste", "contiene": ["solo puedo responder"]},
+    {"pregunta": "¿cuál es la capital de Francia?", "contiene": ["solo puedo responder"]},
+    {"pregunta": "¿quién eres?", "contiene": ["soy nico ai"]},
+    {"pregunta": "¿eres un robot?", "contiene": ["no soy una persona"]},
+    {
+        "pregunta": "¿qué hora es?",
+        "contiene": ["hora de tijuana"],
+        "no_contiene": ["no estoy seguro"],
+    },
+    {"pregunta": "¿qué día es hoy?", "contiene": ["hoy es"], "no_contiene": ["no estoy seguro"]},
+    {"pregunta": "me siento triste hoy", "contiene": ["lamento"]},
+    {"pregunta": "adiós nico", "contiene": ["hasta luego"]},
+    {"pregunta": "necesito ayuda", "contiene": ["que quieres revisar"]},
+    {"pregunta": "eres tonto", "contiene": ["lamento"]},
+    {"pregunta": "jaja", "no_contiene": ["solo puedo responder"]},
+    {
+        "pregunta": "puedes encender el aire acondicionado",
+        "contiene": ["no puedo encender"],
+        "no_contiene": ["ppm"],
+    },
+    {"pregunta": "apaga el dispositivo", "contiene": ["no puedo encender"]},
+    {
+        "pregunta": "¿cómo está el clima afuera?",
+        "contiene": ["no tengo el clima de afuera"],
+        "no_contiene": ["bateria"],
+    },
+    {"pregunta": "¿hablas inglés?", "contiene": ["solo respondo en espanol"]},
     # ── Conversación ────────────────────────────────────────────────────────────────────
     {"pregunta": "gracias", "intencion": "comentario", "contiene": ["con gusto"]},
     {"pregunta": "sí", "intencion": "comentario", "contiene": ["que mas quieres saber"]},

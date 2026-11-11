@@ -1140,3 +1140,30 @@ def confirmar(usuario, dispositivo, accion):
         return {"texto": banco()["errores"]["sin_permiso"], "codigo": "sin_permiso"}
     p = s.save()
     return {"texto": f"Listo: actualicé la programación {_describir_programacion(p)}."}
+
+
+# ── Estado actual del dispositivo («¿cómo está el núcleo?») ─────────────────────────────────
+
+EQUIPO = r"(nucleo|dispositivo|equipo|aparato|nodo|esp|este|aqui|todo)"
+ESTADO_EQUIPO = re.compile(
+    rf"\bcomo (esta|va|anda|se encuentra|sigue|estan)\b.*\b{EQUIPO}\b|"
+    rf"\b{EQUIPO}\b.*\bcomo (esta|va|anda|se encuentra|sigue|estan)\b|"
+    rf"\b(estado|situacion) (general |actual )?(del|de mi|de este|de) {EQUIPO}\b|"
+    r"^(como esta|como va|como estamos|todo bien|todo en orden)\??$|"
+    r"\bcomo esta(mos)? (ahorita|ahora)\b"
+)
+
+
+def pide_estado(pregunta):
+    texto = agente._normalizar(pregunta).strip(" ¡¿!?.")
+    return bool(ESTADO_EQUIPO.search(texto)) and agente._tema(pregunta) in (None, "GENERICA")
+
+
+def estado_actual(dispositivo):
+    """Cómo está ahora: conexión y la última medición de cada variable, con su nivel."""
+    conexion = agente._conexion(dispositivo)["texto"]
+    medicion = agente.ultima_medicion(dispositivo, agente.ORDEN_VARIABLES)
+    return {
+        "texto": conexion
+        + (" " + medicion if medicion else " Todavía no tiene lecturas registradas.")
+    }

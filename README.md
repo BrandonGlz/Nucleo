@@ -465,7 +465,7 @@ flowchart LR
             PG[("PostgreSQL<br/>umbrales · alertas<br/>sensores · reportes")]
             TDB[("TimescaleDB<br/>lecturas")]
         end
-        O["Ollama :11434<br/>qwen2.5:0.5b"]
+        O["Ollama :11434<br/>qwen2.5:1.5b"]
     end
     E["ESP32 · Núcleo A-01<br/>NC-0501 · MicroPython<br/>puente de la IA"]
 
@@ -504,7 +504,7 @@ flowchart LR
 1. La web o la app envía la pregunta al backend, que consulta las cifras.
 2. Si hace falta la IA, el backend deja el trabajo en Redis.
 3. El ESP32 de **Núcleo A-01 (NC-0501)** lo toma por Wi-Fi, lo envía a Ollama
-   (`qwen2.5:0.5b`, en el mismo servidor) y devuelve el texto.
+   (`qwen2.5:1.5b`, en el mismo servidor) y devuelve el texto.
 4. El backend responde al chat.
 
 Solo A-01 usa la IA; los demás dispositivos son simulados y responden sin ella. Si el ESP no
