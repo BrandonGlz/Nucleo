@@ -108,6 +108,7 @@ export function AgenteScreen() {
         comparativa: r.comparativa ?? null,
         registro: r.registro,
         via: r.via,
+        pasos: r.pasos ?? [],
         hora: hora(new Date().toISOString()),
       })
     } catch (e) {
@@ -206,6 +207,7 @@ export function AgenteScreen() {
                   {m.reporte && <ReporteChat r={m.reporte} />}
                   {m.grafica && <GraficaChat g={m.grafica} />}
                   {m.comparativa && <ComparativaChat c={m.comparativa} />}
+                  {m.pasos?.length > 0 && <Pasos pasos={m.pasos} />}
                   {m.hora && (
                     <T size={11} color={c.textMuted}>
                       {`Nico AI · ${d?.nombre} · ${m.hora}`}
@@ -297,6 +299,28 @@ export function AgenteScreen() {
         </View>
       </View>
     </KeyboardAvoidingView>
+  )
+}
+
+// «Cómo lo resolví»: pasos reales que siguió el agente (los arma el backend), plegados.
+function Pasos({ pasos }) {
+  const { c } = useTema()
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <View style={{ marginTop: 6 }}>
+      <Pressable hitSlop={6} onPress={() => setAbierto((x) => !x)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Icon name={abierto ? 'chevron-down' : 'chevron-right'} size={13} color={c.textMuted} />
+        <T size={12} color={c.textMuted}>
+          Cómo lo resolví
+        </T>
+      </Pressable>
+      {abierto &&
+        pasos.map((p, i) => (
+          <T key={p} size={12} lh={18} color={c.textMuted} style={{ paddingLeft: 17 }}>
+            {`${i + 1}. ${p}`}
+          </T>
+        ))}
+    </View>
   )
 }
 

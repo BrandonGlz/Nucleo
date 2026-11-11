@@ -232,7 +232,62 @@ class AgenteView(APIView):
         )
         if aviso:
             r = {**r, "texto": aviso + r.get("texto", "")}
-        return Response({**r, "registro": registro.num, "via": via})
+        pasos = self._pasos(dispositivo, original, anterior, via, extra, fuera, aviso, repetida)
+        return Response({**r, "registro": registro.num, "via": via, "pasos": pasos})
+
+    def _pasos(self, dispositivo, original, anterior, via, extra, fuera, aviso, repetida):
+        """Los pasos que el agente siguió de verdad con esta petición, para mostrarlos con la
+        respuesta («Cómo lo resolví»). Salen de lo que entendió y de lo que hizo."""
+        Via = PreguntaAgente.Via
+        datos = extra.get("datos") or {}
+        if repetida is not None:
+            return ["Era la misma petición que la anterior", "Te envié lo que ya había respondido"]
+        pasos = []
+        if aviso:
+            pasos.append("Ignoré lo que no se entendía del mensaje")
+        propio = agente.lugar_pedido(dispositivo, original)
+        lugar = propio or (
+            agente.lugar_pedido(dispositivo, anterior) if fuera and anterior else None
+        )
+        if agente.es_afirmacion(original) and datos.get("peticion"):
+            pasos.append("Retomé lo que te propuse")
+        if fuera and lugar:
+            tipo, nombre, otra = lugar
+            if propio is None:
+                pasos.append("Retomé tu mensaje anterior")
+            if tipo == "no_existe":
+                pasos += [f"Busqué «{nombre}» entre las áreas de tu organización", "No la encontré"]
+            elif tipo == "otra_area":
+                pasos += [
+                    f"Encontré el área {otra.nombre}",
+                    f"Este agente solo ve {dispositivo.nombre}",
+                ]
+            else:
+                pasos.append(f"Este agente solo ve {dispositivo.nombre}")
+            pasos.append("Revisé las áreas que puedes consultar")
+        elif datos.get("peticion"):
+            pasos += interprete.paso_de(interprete.Peticion(texto="", **datos["peticion"]))
+        if datos.get("ruta") and via == Via.ENRUTADA:
+            pasos.insert(
+                0, f"Mis reglas no lo reconocieron; la IA lo interpretó como «{datos['ruta']}»"
+            )
+        if via == Via.BANCO:
+            pasos.append("Usé una respuesta que aprendí de tus 👍")
+        if datos.get("verificacion"):
+            pasos.append("Revisé la respuesta contra lo que pediste y la corregí")
+        if datos.get("duda"):
+            pasos.append(
+                "No estuve seguro de lo que pides, así que te pregunto para no equivocarme"
+            )
+        if via == Via.IA:
+            pasos.append("La IA redactó el texto con los datos verificados")
+        elif (
+            datos.get("hechos") is None
+            and puente.con_puente(dispositivo)
+            and (extra.get("tokens_salida"))
+        ):
+            pasos.append("La IA no aportó nada fiel a los datos; te respondo con las reglas")
+        return pasos or ["Revisé tu mensaje"]
 
     # Repetir la misma petición seguida no cambia la respuesta: la 2.ª devuelve lo ya enviado
     # (sin IA ni consultas nuevas) y desde la 3.ª se omite, para no gastar tokens ni memoria.

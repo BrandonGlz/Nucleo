@@ -191,6 +191,42 @@ def verificar(peticion, respuesta):
     return problemas
 
 
+HECHO = {
+    "variable": "Revisé las lecturas de {var} {periodo} y las comparé con los umbrales",
+    "por_que": "Revisé cómo cambiaron las lecturas de {var} {periodo}",
+    "gravedad": "Comparé las lecturas de {var} {periodo} con los umbrales de peligro",
+    "ultima": "Busqué la última medición de {var}",
+    "resumen": "Calculé promedio, mínimo y máximo de las tres variables {periodo}",
+    "alertas": "Busqué las alertas {periodo}",
+    "conexion": "Revisé el estado, la última conexión y la batería",
+    "sensores": "Revisé los sensores instalados y su estado",
+    "umbrales": "Consulté los umbrales configurados (solo lectura)",
+    "reportes": "Busqué los reportes ya generados del área",
+    "areas": "Revisé las áreas y los dispositivos que puedes consultar",
+    "grafica": "Armé la gráfica de {var} {periodo}",
+    "comparativa": "Comparé {var} entre los periodos",
+    "reporte": "Generé el reporte del periodo",
+    "comentario": "Tomé en cuenta tu comentario",
+}
+
+
+def paso_de(peticion):
+    """Lo que el agente entendió y la consulta que hizo, en palabras del usuario."""
+    pasos = []
+    if peticion.contexto:
+        pasos.append("Lo relacioné con tu mensaje anterior")
+    if peticion.intencion not in ("no_entendida", "comentario"):
+        pasos.append(f"Entendí que pides {peticion.describir()}")
+    plantilla = HECHO.get(peticion.intencion)
+    if plantilla:
+        var = " y ".join(NOMBRES[v] for v in peticion.variables) or (
+            "los sensores" if peticion.intencion == "ultima" else "todas las variables"
+        )
+        periodo = f"de {peticion.periodo}" if peticion.periodo else "de los últimos 7 días"
+        pasos.append(plantilla.format(var=var, periodo=periodo).replace("  ", " "))
+    return pasos
+
+
 def aclarar(peticion, problemas):
     """Pregunta de vuelta. Si el usuario responde «sí», se hace ``propuesta`` (ver la vista)."""
     return {

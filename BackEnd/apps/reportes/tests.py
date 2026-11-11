@@ -758,6 +758,20 @@ class NicoAprendeTests(PruebaBase):
         ).json()
         self.assertIn("Revisé de nuevo", r["texto"])
         self.assertNotIn("promedió", r["texto"])
+        self.assertEqual(
+            r["pasos"],
+            [
+                "Retomé tu mensaje anterior",
+                "Busqué «ventas» entre las áreas de tu organización",
+                "No la encontré",
+                "Revisé las áreas que puedes consultar",
+            ],
+        )
+        r = self._pedir("¿cuál fue la humedad máxima de hoy?")
+        self.assertIn("Entendí que pides máxima de humedad de hoy", r["pasos"])
+        self.assertIn(
+            "Revisé las lecturas de humedad de hoy y las comparé con los umbrales", r["pasos"]
+        )
 
     def test_entiende_antes_de_responder(self):
         r = self._pedir("anskjndiaidsbajswdbjBK")

@@ -361,6 +361,17 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             </div>
           </div>
         )}
+        {/* Pasos que el agente siguió de verdad (los arma el backend con lo que entendió). */}
+        {completa && m.pasos?.length > 0 && (
+          <details className="ui-ia-pasos">
+            <summary>Cómo lo resolví</summary>
+            <ol>
+              {m.pasos.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ol>
+          </details>
+        )}
         {completa && (
           <div className={`ui-ia-acciones${animar ? ' ui-ia-acciones--llega' : ''}`}>
             <button type="button" aria-label={copiado ? 'Copiado' : 'Copiar respuesta'} title="Copiar" onClick={copiar}>

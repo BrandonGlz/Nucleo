@@ -4562,3 +4562,24 @@ button.ui-menuitem:not(:disabled):hover svg {
   align-items: center;
   flex-wrap: wrap;
 }
+
+/* «Cómo lo resolví»: pasos reales del agente bajo su respuesta */
+.ui-ia-pasos {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ui-ia-pasos summary {
+  cursor: pointer;
+  width: fit-content;
+  list-style: revert;
+}
+.ui-ia-pasos summary:hover {
+  color: var(--text-secondary, var(--text-muted));
+}
+.ui-ia-pasos ol {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+}

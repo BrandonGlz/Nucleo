@@ -117,7 +117,9 @@ Reportes (ADMIN, SUPER y ANALISTA)
 
 Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
 └── POST /agente/                           {"pregunta", "dispositivo"}; un agente por dispositivo;
-                                            responde {"texto"} y, si la pregunta es de una
+                                            responde {"texto", "via", "registro", "pasos"}
+                                            ("pasos": lo que el agente hizo, para «Cómo lo
+                                            resolví») y, si la pregunta es de una
                                             variable con lecturas sobre el máximo, "picos"
                                             [{cuando, valor}], "serie" y "etiquetas" (máximo
                                             diario de 7 días), "unidad" y "maximo"; 404 si el
