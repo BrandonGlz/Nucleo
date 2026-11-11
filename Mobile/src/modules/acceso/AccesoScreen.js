@@ -36,7 +36,7 @@ function CuentasDemo({ entrar, enviando }) {
               {nombreCompleto(u)}
             </T>
             <T size={12} color={c.textMuted}>
-              {`${ROL[u.rol]}${u.rol === 'OPER' ? (u.acceso_agente ? ' · con Núcleo AI' : ' · sin Núcleo AI') : ''}${u.estado_usuario !== 'ACT' ? ' · inactiva' : ''}`}
+              {`${ROL[u.rol]}${u.rol === 'OPER' ? (u.acceso_agente ? ' · con Nico AI' : ' · sin Nico AI') : ''}${u.estado_usuario !== 'ACT' ? ' · inactiva' : ''}`}
             </T>
           </View>
         </Pressable>

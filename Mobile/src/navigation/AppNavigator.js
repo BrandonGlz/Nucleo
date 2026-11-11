@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { TabBar } from '../components/ui'
+import { useAnimaciones } from '../context/PreferenciasContext'
 import { useSesion } from '../context/SesionContext'
 import { useTema } from '../context/TemaContext'
 import { OperadorProvider, pendientesDe, useOperador } from '../hooks/useOperador'
@@ -24,7 +25,7 @@ function BarraInferior({ state, navigation }) {
   const pestanas = pestanasDe(usuario)
   const { datos } = useOperador()
   const pendientes = pendientesDe(datos).length
-  // Con el teclado abierto la barra se oculta para no tapar lo que se escribe (Núcleo AI).
+  // Con el teclado abierto la barra se oculta para no tapar lo que se escribe (Nico AI).
   const [teclado, setTeclado] = useState(false)
   useEffect(() => {
     const abre = Keyboard.addListener('keyboardDidShow', () => setTeclado(true))
@@ -49,8 +50,13 @@ function BarraInferior({ state, navigation }) {
 function Principal() {
   const { usuario } = useSesion()
   const pestanas = pestanasDe(usuario)
+  const animar = useAnimaciones()
+  // Al cambiar de pestaña el contenido se desliza un poco y aparece (en lugar de cambiar de golpe).
   return (
-    <Tab.Navigator tabBar={(props) => <BarraInferior {...props} />} screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      tabBar={(props) => <BarraInferior {...props} />}
+      screenOptions={{ headerShown: false, animation: animar ? 'shift' : 'none' }}
+    >
       {pestanas.map(({ nombre, Pantalla }) => (
         <Tab.Screen key={nombre} name={nombre} component={Pantalla} />
       ))}
@@ -71,8 +77,17 @@ export function AppNavigator() {
   const { c, oscuro } = useTema()
   const base = oscuro ? DarkTheme : DefaultTheme
   const tema = { ...base, colors: { ...base.colors, background: c.background, card: c.surface, text: c.textPrimary, border: c.border, primary: c.accent } }
+  const animar = useAnimaciones()
+  // Los detalles entran desde la derecha y salen hacia ella (también con el gesto o el botón atrás).
   const pilas = (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#121413' } }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: '#121413' },
+        animation: animar ? 'slide_from_right' : 'none',
+        animationDuration: 280,
+      }}
+    >
       {usuario ? (
         <>
           <Stack.Screen name="Principal" component={Principal} />

@@ -16,18 +16,18 @@ con los sensores, así que por ahora las lecturas vienen del simulador.
     y por push, y transmite en vivo por WebSocket las alertas y los cambios de estado.
   - Reportes con cifras, gráficas y PDF, manuales o programados por correo; el texto se
     redacta a partir de las cifras (`IA_PROVEEDOR=local`).
-  - **Núcleo AI:** un agente por dispositivo que responde con sus lecturas y alertas, y
+  - **Nico AI:** un agente por dispositivo que responde con sus lecturas y alertas, y
     genera reportes cuando se le piden («reporte de octubre», «de la semana pasada»); el
     resumen y el PDF se ven en el mismo chat de la web y de la app.
 - **Web**
   - Panel en vivo, Dispositivos (con estado, batería, señal y «Calentando»), Detalle de
-    dispositivo, Histórico, Alertas (atender o descartar), Reportes, Núcleo AI, Umbrales,
+    dispositivo, Histórico, Alertas (atender o descartar), Reportes, Nico AI, Umbrales,
     Usuarios, Empresa y áreas, Mi perfil y Notificaciones, con tema claro u oscuro.
   - **Organizaciones**, solo para el administrador de plataforma: alta, edición,
     suspensión, baja y primer administrador de cada empresa cliente.
 - **App móvil (Android)**
   - Inicio con el dispositivo en vivo (selector si hay varios), Detalle de variable,
-    Alertas y su detalle, Núcleo AI y Perfil.
+    Alertas y su detalle, Nico AI y Perfil.
   - Canal en vivo con la app abierta y notificaciones push con la app cerrada; las de
     peligro suenan y vibran. Modo de bajo consumo y preferencias guardadas en el teléfono.
   - Se instala con el APK de https://nucleo.tailb3f7d8.ts.net/app/nucleo.apk.

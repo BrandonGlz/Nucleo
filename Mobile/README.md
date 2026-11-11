@@ -20,11 +20,11 @@ simulados.
   operador solo las consulta; las atiende su supervisor.
 - **Detalle de alerta:** valor que la disparó, cuánto superó el límite, la curva
   alrededor del evento y su línea de tiempo.
-- **Núcleo AI:** preguntas sobre el dispositivo elegido. Supervisores, analistas y
+- **Nico AI:** preguntas sobre el dispositivo elegido. Supervisores, analistas y
   administradores también le piden reportes: el resumen aparece en el chat, con el PDF
   (se abre con el menú de compartir del teléfono) y el enlace al reporte en la web.
 - **Perfil:** datos de la cuenta y del supervisor, preferencias guardadas en el teléfono
-  (bajo consumo, push, sonido en alertas de peligro, tema claro u oscuro), diagnóstico
+  (reducir animaciones, push, sonido en alertas de peligro, tema claro u oscuro), diagnóstico
   de la API y cierre de sesión.
 - **Avisos:** con la app al frente, cada alerta nueva llega por el canal en vivo y se
   muestra como notificación (las de peligro con sonido y vibración si el perfil lo
@@ -40,8 +40,7 @@ simulados.
 3. `OperadorProvider` (`hooks/useOperador.js`) pide el dispositivo a la vista, sus
    últimas lecturas, sus umbrales y las alertas; todas las pestañas leen de ahí. Con la
    app al frente abre el canal en vivo (`services/tiempoReal.js`) y consulta cada 30 s de
-   respaldo; en modo de bajo consumo, sin canal y cada 2 min. En segundo plano cierra el
-   canal y deja de consultar.
+   respaldo. En segundo plano cierra el canal y deja de consultar.
    Los push (`services/notificaciones.js`) necesitan `EXPO_PUBLIC_EAS_PROJECT_ID` en
    `eas.json` y `google-services.json` en `Mobile/` (ver `deploy/README.md`); sin ellos la
    app no registra el teléfono y solo avisa con el canal en vivo.

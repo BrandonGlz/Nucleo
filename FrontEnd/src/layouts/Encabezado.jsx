@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSalida } from '../hooks/useSalida'
 import { Avatar, Badge, Button, Icon, IconButton, IconCircle, Tabs } from '../design-system/componentes/index.js'
 import { useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
@@ -19,6 +20,8 @@ const fechaCorta = (iso) =>
 export function Encabezado({ eyebrow, titulo, acciones }) {
   const [menu, setMenu] = useState(null)
   const ref = useRef(null)
+  const notif = useSalida(menu === 'notif')
+  const cuenta = useSalida(menu === 'usuario')
   const navegar = useNavigate()
   const { usuario, rol, logout, temaAplicado, setTema } = useSesion()
   // El administrador de plataforma no tiene alertas, notificaciones ni perfil de organización.
@@ -79,8 +82,8 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
         </div>
       </header>
 
-      {menu === 'notif' && (
-        <div className="ui-popover ui-popover--notif" role="dialog" aria-label="Notificaciones">
+      {notif.montado && (
+        <div className={`ui-popover ui-popover--notif${notif.saliendo ? ' is-saliendo' : ''}`} role="dialog" aria-label="Notificaciones">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px 8px' }}>
             <strong style={{ fontSize: 17, lineHeight: '24px' }}>Notificaciones</strong>
             {noLeidas > 0 && <Badge tone="danger">{noLeidas} sin leer</Badge>}
@@ -128,8 +131,8 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
         </div>
       )}
 
-      {menu === 'usuario' && (
-        <div className="ui-popover ui-popover--usuario" role="menu" aria-label="Tu cuenta">
+      {cuenta.montado && (
+        <div className={`ui-popover ui-popover--usuario${cuenta.saliendo ? ' is-saliendo' : ''}`} role="menu" aria-label="Tu cuenta">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 12px 14px' }}>
             <Avatar name={nombre} size={44} />
             <div className="ui-titulo-fila">

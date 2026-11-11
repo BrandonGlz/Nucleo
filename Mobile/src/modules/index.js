@@ -22,7 +22,7 @@ export const acceso = { nombre: 'Acceso', Pantalla: AccesoScreen }
 export const modulos = [
   { nombre: 'Inicio', titulo: 'Inicio', Pantalla: PanelScreen, pestana: 'house' },
   { nombre: 'Alertas', titulo: 'Alertas', Pantalla: AlertasScreen, pestana: 'bell', permiso: conOrganizacion },
-  { nombre: 'Agente', titulo: 'Núcleo AI', Pantalla: AgenteScreen, pestana: 'sparkles', permiso: (u) => conOrganizacion(u) && puedeUsarAgente(u) },
+  { nombre: 'Agente', titulo: 'Nico AI', Pantalla: AgenteScreen, pestana: 'sparkles', permiso: (u) => conOrganizacion(u) && puedeUsarAgente(u) },
   { nombre: 'Perfil', titulo: 'Perfil', Pantalla: PerfilScreen, pestana: 'user' },
   { nombre: 'Variable', titulo: 'Detalle de variable', Pantalla: MedicionesScreen },
   { nombre: 'DetalleAlerta', titulo: 'Alerta', Pantalla: DetalleAlertaScreen },

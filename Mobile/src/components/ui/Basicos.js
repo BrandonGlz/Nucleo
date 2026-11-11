@@ -1,9 +1,27 @@
-import { useEffect, useState } from 'react'
-import { Animated, Pressable, StyleSheet, TextInput, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, Easing, Pressable, StyleSheet, TextInput, View } from 'react-native'
+import { useAnimaciones } from '../../context/PreferenciasContext'
 import { useTema } from '../../context/TemaContext'
 import { font, radius } from '../../theme'
 import { Icon } from './Icon'
 import { T } from './Texto'
+
+// Curva y duraciones de movimiento, las mismas que la web (--ease-standard, --duration-base / slow).
+export const MOV = { curva: Easing.bezier(0.2, 0, 0, 1), base: 200, lento: 320 }
+
+// Valor animado que sigue a `destino`; sin animaciones salta directo.
+function useSigue(destino, duracion = MOV.base) {
+  const animar = useAnimaciones()
+  const [v] = useState(() => new Animated.Value(destino))
+  useEffect(() => {
+    if (!animar) {
+      v.setValue(destino)
+      return
+    }
+    Animated.timing(v, { toValue: destino, duration: duracion, easing: MOV.curva, useNativeDriver: false }).start()
+  }, [destino, animar, duracion, v])
+  return v
+}
 
 // Tonos de nc-tone--*: fondo y color de texto.
 export function tono(c, t) {
@@ -155,7 +173,7 @@ export function IconButton({ icon, label, badge, size = 'md', variant = 'seconda
       style={({ pressed }) => [
         s.circulo,
         { width: lado, height: lado, backgroundColor: bg, borderWidth: inverse ? 0 : 1, borderColor: variant === 'secondary' ? c.border : 'transparent' },
-        pressed && { opacity: 0.8 },
+        pressed && { opacity: 0.8, transform: [{ scale: 0.92 }] },
       ]}
     >
       <Icon name={icon} size={20} color={fg} />
@@ -207,31 +225,52 @@ export function Input({ label, icon, suffix, error, secureTextEntry, ...rest }) 
 
 export function Chip({ selected, count, onPress, children }) {
   const { c } = useTema()
+  // El fondo y el borde pasan de un color a otro en lugar de cambiar de golpe.
+  const p = useSigue(selected ? 1 : 0)
+  const fondo = p.interpolate({ inputRange: [0, 1], outputRange: [c.surface, c.textPrimary] })
+  const borde = p.interpolate({ inputRange: [0, 1], outputRange: [c.border, c.textPrimary] })
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
       onPress={onPress}
-      style={[s.chip, { backgroundColor: selected ? c.textPrimary : c.surface, borderColor: selected ? c.textPrimary : c.border }]}
+      style={({ pressed }) => pressed && { transform: [{ scale: 0.95 }] }}
     >
-      <T peso={600} size={13} color={selected ? c.surface : c.textSecondary}>
-        {children}
-      </T>
-      {count != null && (
-        <View style={[s.cuenta, { backgroundColor: selected ? c.accent : c.surfaceMuted }]}>
-          <T peso={600} size={11} lh={20} color={selected ? c.accentContrast : c.textSecondary}>
-            {count}
-          </T>
-        </View>
-      )}
+      <Animated.View style={[s.chip, { backgroundColor: fondo, borderColor: borde }]}>
+        <T peso={600} size={13} color={selected ? c.surface : c.textSecondary}>
+          {children}
+        </T>
+        {count != null && (
+          <View style={[s.cuenta, { backgroundColor: selected ? c.accent : c.surfaceMuted }]}>
+            <T peso={600} size={11} lh={20} color={selected ? c.accentContrast : c.textSecondary}>
+              {count}
+            </T>
+          </View>
+        )}
+      </Animated.View>
     </Pressable>
   )
 }
 
+// La pastilla oscura se desliza hasta la pestaña elegida (posición y ancho medidos de cada pestaña).
 export function Tabs({ items, value, onChange }) {
   const { c } = useTema()
+  const [medidas, setMedidas] = useState({})
+  const m = medidas[value]
+  const x = useSigue(m?.x ?? 0, MOV.lento)
+  const ancho = useSigue(m?.w ?? 0, MOV.lento)
+  // La primera medida se coloca sin animar para que la pastilla no venga desde la izquierda.
+  const colocada = useRef(false)
+  useEffect(() => {
+    if (m && !colocada.current) {
+      x.setValue(m.x)
+      ancho.setValue(m.w)
+      colocada.current = true
+    }
+  }, [m, x, ancho])
   return (
     <View style={[s.tabs, { backgroundColor: c.surfaceMuted }]}>
+      {m && <Animated.View pointerEvents="none" style={[s.tabPastilla, { backgroundColor: c.textPrimary, width: ancho, transform: [{ translateX: x }] }]} />}
       {items.map((it) => {
         const activo = it.id === value
         return (
@@ -240,7 +279,11 @@ export function Tabs({ items, value, onChange }) {
             accessibilityRole="tab"
             accessibilityState={{ selected: activo }}
             onPress={() => onChange?.(it.id)}
-            style={[s.tab, activo && { backgroundColor: c.textPrimary }]}
+            onLayout={(e) => {
+              const { x: px, width } = e.nativeEvent.layout
+              setMedidas((ant) => (ant[it.id]?.x === px && ant[it.id]?.w === width ? ant : { ...ant, [it.id]: { x: px, w: width } }))
+            }}
+            style={({ pressed }) => [s.tab, !m && activo && { backgroundColor: c.textPrimary }, pressed && { transform: [{ scale: 0.96 }] }]}
           >
             <T peso={600} size={14} color={activo ? c.surface : c.textSecondary}>
               {it.label}
@@ -254,10 +297,7 @@ export function Tabs({ items, value, onChange }) {
 
 export function Toggle({ label, value, onChange }) {
   const { c } = useTema()
-  const [x] = useState(() => new Animated.Value(value ? 20 : 0))
-  useEffect(() => {
-    Animated.timing(x, { toValue: value ? 20 : 0, duration: 180, useNativeDriver: false }).start()
-  }, [value, x])
+  const x = useSigue(value ? 20 : 0, 180)
   return (
     <Pressable
       accessibilityRole="switch"
@@ -342,6 +382,7 @@ const s = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1 },
   cuenta: { minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, alignItems: 'center' },
   tabs: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 999 },
+  tabPastilla: { position: 'absolute', top: 4, bottom: 4, left: 0, borderRadius: 999 },
   tab: { height: 36, paddingHorizontal: 16, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   toggleFila: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 28 },
   toggle: { width: 48, height: 28, borderRadius: 14 },

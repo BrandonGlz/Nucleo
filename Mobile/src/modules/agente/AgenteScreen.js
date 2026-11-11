@@ -17,7 +17,7 @@ const SUGERENCIAS = ['¿Cómo está la temperatura ahora?', '¿Hubo picos de hum
 const SUGERENCIA_REPORTE = 'Genera el reporte de esta semana'
 const ROLES_REPORTE = ['ADMIN', 'SUPER', 'ANALISTA']
 
-// Núcleo AI en la app: hay un agente por dispositivo. El operador habla con el de su dispositivo;
+// Nico AI en la app: hay un agente por dispositivo. El operador habla con el de su dispositivo;
 // las demás cuentas lo eligen en un select. Solo aparece para las cuentas autorizadas.
 // Con el teclado abierto el campo sube sobre él y la conversación se recorre al final.
 export function AgenteScreen() {
@@ -78,7 +78,7 @@ export function AgenteScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <T peso={700} size={22} lh={28} style={{ letterSpacing: -0.5 }}>
-                Núcleo AI
+                Nico AI
               </T>
               <T size={12} color={marca.tenue}>
                 {d ? `Responde con los datos de ${d.nombre}` : 'Cargando tu dispositivo…'}
@@ -125,7 +125,7 @@ export function AgenteScreen() {
                   {m.reporte && <ReporteChat r={m.reporte} />}
                   {m.hora && (
                     <T size={11} color={c.textMuted}>
-                      {`Núcleo AI · ${d?.nombre} · ${m.hora}`}
+                      {`Nico AI · ${d?.nombre} · ${m.hora}`}
                     </T>
                   )}
                 </View>

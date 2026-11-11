@@ -40,10 +40,8 @@ export async function cargarOperador(usuario, elegido) {
 }
 
 // Con la app al frente: canal en vivo (alertas y estados al momento) y consulta de respaldo cada
-// 30 s. En modo de bajo consumo, sin canal y cada 2 min. En segundo plano se cierra el canal y se
-// deja de consultar; los avisos llegan entonces por push.
+// 30 s. En segundo plano se cierra el canal y se deja de consultar; los avisos llegan entonces por push.
 const CADA_MS = 30000
-const CADA_MS_BAJO_CONSUMO = 120000
 
 // Una sola consulta para todas las pestañas. `elegir(num)` cambia el dispositivo a la vista (Inicio
 // y Mediciones lo comparten).
@@ -53,7 +51,7 @@ export function OperadorProvider({ usuario, children }) {
   const [alFrente, setAlFrente] = useState(AppState.currentState !== 'background')
   const { prefs } = usePreferencias()
   const valor = useDatos(() => cargarOperador(usuario, elegido), [usuario?.num, elegido], {
-    cadaMs: prefs.bajoConsumo ? CADA_MS_BAJO_CONSUMO : CADA_MS,
+    cadaMs: CADA_MS,
     activo: alFrente,
   })
 
@@ -78,7 +76,7 @@ export function OperadorProvider({ usuario, children }) {
     preparar().catch(() => {})
   }, [])
   useEffect(() => {
-    if (!alFrente || prefs.bajoConsumo || !usuario?.organizacion) return undefined
+    if (!alFrente || !usuario?.organizacion) return undefined
     marcarCanal(true)
     const cerrar = escucharPanel((evento) => {
       refrescar()
@@ -91,7 +89,7 @@ export function OperadorProvider({ usuario, children }) {
       marcarCanal(false)
       cerrar()
     }
-  }, [alFrente, prefs.bajoConsumo, usuario?.organizacion, refrescar])
+  }, [alFrente, usuario?.organizacion, refrescar])
 
   return createElement(OperadorContext.Provider, { value: { ...valor, elegir } }, children)
 }

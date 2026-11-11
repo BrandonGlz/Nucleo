@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { AccessibilityInfo } from 'react-native'
 
 const CLAVE = 'nucleo.preferencias'
-// tema: null sigue al sistema. bajoConsumo consulta la API con menos frecuencia y sin canal en vivo.
-export const PREFERENCIAS = { bajoConsumo: false, push: true, sonido: true, tema: null }
+// tema: null sigue al sistema. reducirAnimaciones quita los movimientos de pantallas, pestañas y menús.
+export const PREFERENCIAS = { reducirAnimaciones: false, push: true, sonido: true, tema: null }
 
 const PreferenciasContext = createContext({ prefs: PREFERENCIAS, cambiar: () => {}, listas: true })
 
@@ -14,7 +15,11 @@ export function PreferenciasProvider({ children }) {
 
   useEffect(() => {
     AsyncStorage.getItem(CLAVE)
-      .then((texto) => texto && setPrefs({ ...PREFERENCIAS, ...JSON.parse(texto) }))
+      .then((texto) => {
+        if (!texto) return
+        const { bajoConsumo: _viejo, ...guardadas } = JSON.parse(texto) // preferencia que ya no existe
+        setPrefs({ ...PREFERENCIAS, ...guardadas })
+      })
       .catch(() => {})
       .finally(() => setListas(true))
   }, [])
@@ -32,3 +37,15 @@ export function PreferenciasProvider({ children }) {
 }
 
 export const usePreferencias = () => useContext(PreferenciasContext)
+
+// true si la app debe animar: no está activada «Reducir animaciones» ni el ajuste del teléfono equivalente.
+export function useAnimaciones() {
+  const { prefs } = usePreferencias()
+  const [sistema, setSistema] = useState(false)
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setSistema).catch(() => {})
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setSistema)
+    return () => sub.remove()
+  }, [])
+  return !prefs.reducirAnimaciones && !sistema
+}

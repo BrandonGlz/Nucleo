@@ -9,6 +9,7 @@ import { MenuAcciones } from '../../components/MenuAcciones'
 import { Pantalla } from '../../components/Pantalla'
 import { useSesion } from '../../context/SesionContext'
 import { useDatos } from '../../hooks/useDatos'
+import { useCierre } from '../../hooks/useSalida'
 import * as dispositivosApi from '../../services/dispositivos'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as usuariosApi from '../../services/usuarios'
@@ -37,6 +38,7 @@ async function cargar() {
 
 // Alta y edición de un usuario. Con `usuario` edita; sin él, agrega.
 function FormUsuario({ usuario, areas, roles, cerrar, guardado }) {
+  const [saliendo, cerrarAnimado] = useCierre(cerrar)
   const [f, setF] = useState(() =>
     usuario
       ? { nombre: usuario.nombre, primer_apellido: usuario.primer_apellido, correo: usuario.correo, rol: usuario.rol, area: usuario.area == null ? '' : String(usuario.area) }
@@ -63,7 +65,7 @@ function FormUsuario({ usuario, areas, roles, cerrar, guardado }) {
     }
   }
   return (
-    <div className="ui-modal" role="dialog" aria-modal="true" aria-label={usuario ? 'Editar usuario' : 'Agregar usuario'}>
+    <div className={`ui-modal${saliendo ? ' is-saliendo' : ''}`} role="dialog" aria-modal="true" aria-label={usuario ? 'Editar usuario' : 'Agregar usuario'}>
       <div className="ui-modal__caja">
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
@@ -74,7 +76,7 @@ function FormUsuario({ usuario, areas, roles, cerrar, guardado }) {
                 : 'Comparte con la persona su contraseña inicial; podrá cambiarla desde su perfil.'}
             </p>
           </div>
-          <IconButton icon="x" label="Cerrar" variant="ghost" onClick={cerrar} />
+          <IconButton icon="x" label="Cerrar" variant="ghost" onClick={cerrarAnimado} />
         </div>
         <div className="ui-grid-2">
           <Input label="Nombre" value={f.nombre} onChange={campo('nombre')} />
@@ -105,7 +107,7 @@ function FormUsuario({ usuario, areas, roles, cerrar, guardado }) {
           Un operador solo ve el dispositivo que tiene asignado, desde la app móvil. El dispositivo se asigna desde su detalle.
         </p>
         <div className="ui-acciones ui-separado" style={{ paddingTop: 16 }}>
-          <Button variant="ghost" onClick={cerrar}>
+          <Button variant="ghost" onClick={cerrarAnimado}>
             Cancelar
           </Button>
           <Button icon={usuario ? 'circle-check' : 'plus'} disabled={!valido || enviando} onClick={enviar}>
@@ -154,11 +156,11 @@ export function UsuariosPage() {
     return [
       { label: 'Editar usuario', icon: 'pencil', disabled: bloqueado, onClick: () => setModal({ usuario: u }) },
       u.rol === 'OPER' && {
-        label: u.acceso_agente ? 'Quitar Núcleo AI' : 'Permitir Núcleo AI',
+        label: u.acceso_agente ? 'Quitar Nico AI' : 'Permitir Nico AI',
         icon: 'sparkles',
         nota: 'En la app móvil',
         onClick: () =>
-          cambiar(u, { acceso_agente: !u.acceso_agente }, u.acceso_agente ? `${u.nombre} ya no ve Núcleo AI.` : `${u.nombre} ya puede usar Núcleo AI.`),
+          cambiar(u, { acceso_agente: !u.acceso_agente }, u.acceso_agente ? `${u.nombre} ya no ve Nico AI.` : `${u.nombre} ya puede usar Nico AI.`),
       },
       { label: 'Copiar correo', icon: 'mail', onClick: () => navigator.clipboard?.writeText(u.correo).then(() => avisar('Correo copiado.')).catch(() => {}) },
       {
@@ -246,7 +248,7 @@ export function UsuariosPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Badge tone={ROL_TONO[u.rol]}>{ROL[u.rol]}</Badge>
                           {u.rol === 'OPER' && u.acceso_agente && (
-                            <span className="ui-etiqueta-ia" title="Puede usar Núcleo AI en la app">
+                            <span className="ui-etiqueta-ia" title="Puede usar Nico AI en la app">
                               <Icon name="sparkles" size={12} /> IA
                             </span>
                           )}

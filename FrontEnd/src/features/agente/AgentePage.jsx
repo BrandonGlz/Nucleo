@@ -373,7 +373,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
         value={valor}
         disabled={deshabilitado}
         placeholder="Pregunta sobre tus sensores, alertas o lecturas…"
-        aria-label="Pregunta para Núcleo AI"
+        aria-label="Pregunta para Nico AI"
         onChange={(e) => cambiar(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -467,7 +467,7 @@ export function AgentePage() {
   )
 
   return (
-    <Pantalla eyebrow="Pregunta sobre los sensores de tu organización" titulo="Núcleo AI">
+    <Pantalla eyebrow="Pregunta sobre los sensores de tu organización" titulo="Nico AI">
       <div className={`ui-ia${panel && !visor ? '' : ' is-sin-panel'}${visor ? ' con-visor' : ''}`}>
         {panel && !visor && (
           <aside className="ui-ia-panel" aria-label="Conversaciones">
@@ -518,7 +518,7 @@ export function AgentePage() {
                 onChange={ag.setAgente}
                 placeholder="Sin dispositivos"
                 disabled={!dispositivos.length}
-                options={dispositivos.map((d) => ({ value: d.num, label: `Núcleo AI · ${d.nombre}` }))}
+                options={dispositivos.map((d) => ({ value: d.num, label: `Nico AI · ${d.nombre}` }))}
               />
             </div>
           </div>
@@ -557,7 +557,7 @@ export function AgentePage() {
                         <Marca />
                         <div className="ui-ia-cuerpo ui-ia-error">
                           <strong>
-                            {m.caido ? 'Núcleo AI no está disponible por ahora' : 'No se pudo obtener la respuesta'}
+                            {m.caido ? 'Nico AI no está disponible por ahora' : 'No se pudo obtener la respuesta'}
                           </strong>
                           <span className="ui-muted">El monitoreo y las alertas siguen funcionando.</span>
                           {i === mensajes.length - 1 && (
@@ -576,7 +576,7 @@ export function AgentePage() {
                       <Respuesta
                         key={m.clave ?? i}
                         m={m}
-                        autor={`Núcleo AI · ${ag.nombreAgente(conv?.agente)}`}
+                        autor={`Nico AI · ${ag.nombreAgente(conv?.agente)}`}
                         ultima={i === mensajes.length - 1 && !pensando}
                         animar={m.clave === animada}
                         regenerar={regenerar}
@@ -593,7 +593,7 @@ export function AgentePage() {
             </>
           )}
           <p className="ui-ia-aviso">
-            Núcleo AI responde solo sobre los sensores de tu organización y puede equivocarse. Verifica las cifras en Histórico.
+            Nico AI responde solo sobre los sensores de tu organización y puede equivocarse. Verifica las cifras en Histórico.
           </p>
         </section>
         {visor && <VisorReporte key={visor.num} resumen={visor} cerrar={cerrarVisor} ampliado={ampliado} ampliar={setAmpliado} />}

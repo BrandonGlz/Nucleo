@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Icon, IconButton } from '../design-system/componentes/index.js'
+import { useSalida } from '../hooks/useSalida'
 
 const ANCHO = 260
 
@@ -11,6 +12,7 @@ export function MenuAcciones({ items, label = 'Más opciones' }) {
   const [pos, setPos] = useState(null)
   const boton = useRef(null)
   const lista = useRef(null)
+  const salida = useSalida(abierto)
 
   useLayoutEffect(() => {
     if (!abierto) return
@@ -52,11 +54,11 @@ export function MenuAcciones({ items, label = 'Más opciones' }) {
           setAbierto((a) => !a)
         }}
       />
-      {abierto && (
+      {salida.montado && (
         <div
           ref={lista}
           role="menu"
-          className="ui-menu-acciones__lista"
+          className={`ui-menu-acciones__lista${salida.saliendo ? ' is-saliendo' : ''}`}
           style={{ width: ANCHO, ...(pos ?? { visibility: 'hidden' }) }}
         >
           {items.filter(Boolean).map((it) => (

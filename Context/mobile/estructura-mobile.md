@@ -133,5 +133,5 @@ revisarlas al actualizar Expo.
 - Guardar el token de forma segura para no pedir sesión cada vez.
 - Conexión en vivo (`/ws/panel/`), registro del teléfono (`token_expo`) y
   notificaciones push con `expo-notifications`.
-- Aplicar al dispositivo las preferencias del Perfil (bajo consumo, push y sonido).
+- Aplicar al dispositivo las preferencias del Perfil (reducir animaciones, push y sonido).
 - Compilación firmada y publicación en tiendas.

@@ -71,7 +71,7 @@ export async function crear(datos) {
   return adaptar(r, areas, nombres)
 }
 
-// Un reporte con la misma forma que la lista (lo usa Núcleo AI para mostrar la hoja en el chat).
+// Un reporte con la misma forma que la lista (lo usa Nico AI para mostrar la hoja en el chat).
 export async function obtener(num) {
   if (USAR_MOCKS) return (await mock.reportes()).find((r) => r.num === num) ?? null
   const [r, [areas, nombres]] = await Promise.all([pedir(REPORTE(num)), contexto()])

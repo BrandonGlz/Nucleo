@@ -1,6 +1,8 @@
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Animated, Easing, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useAnimaciones } from '../context/PreferenciasContext'
 import { TemaFijo, useTema } from '../context/TemaContext'
 import { marca } from '../theme'
 import { LogoMark } from './ui'
@@ -39,6 +41,14 @@ function Deco({ tipo }) {
 export function Pantalla({ zona, deco = 'anillos', pestanas = true, compacta, recargando, onRecargar, children }) {
   const { c } = useTema()
   const inset = useSafeAreaInsets()
+  // Al abrir la pantalla la zona oscura aparece y la hoja clara sube desde abajo.
+  const animar = useAnimaciones()
+  const [p] = useState(() => new Animated.Value(animar ? 0 : 1))
+  useEffect(() => {
+    Animated.timing(p, { toValue: 1, duration: 420, easing: Easing.bezier(0.2, 0, 0, 1), useNativeDriver: true }).start()
+  }, [p])
+  const subeHoja = { opacity: p, transform: [{ translateY: p.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }
+  const apareceZona = { opacity: p, transform: [{ translateY: p.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }] }
   return (
     <View style={{ flex: 1, backgroundColor: marca.tinta }}>
       <StatusBar style="light" />
@@ -53,18 +63,19 @@ export function Pantalla({ zona, deco = 'anillos', pestanas = true, compacta, re
         <TemaFijo tema="dark">
           <View style={[s.zona, { paddingTop: inset.top + (compacta ? 8 : 16) }, compacta && { paddingBottom: 22 }]}>
             <Deco tipo={deco} />
-            <View style={{ gap: compacta ? 12 : 16 }}>{zona}</View>
+            <Animated.View style={[{ gap: compacta ? 12 : 16 }, apareceZona]}>{zona}</Animated.View>
           </View>
         </TemaFijo>
-        <View
+        <Animated.View
           style={[
             s.hoja,
+            subeHoja,
             { backgroundColor: c.background, paddingBottom: (pestanas ? (compacta ? 100 : 120) : 32) + inset.bottom },
             compacta && { paddingTop: 16, gap: 12 },
           ]}
         >
           {children}
-        </View>
+        </Animated.View>
       </ScrollView>
     </View>
   )

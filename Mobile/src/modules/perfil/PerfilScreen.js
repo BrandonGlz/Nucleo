@@ -77,8 +77,8 @@ export function PerfilScreen({ navigation }) {
         ))}
       </View>
       <View style={[s.tarjeta, { backgroundColor: c.surface }]}>
-        {/* Bajo consumo: sin canal en vivo y consultas cada 2 min. Las preferencias se guardan en el teléfono. */}
-        <Toggle label="Modo de bajo consumo" value={prefs.bajoConsumo} onChange={(v) => cambiar({ bajoConsumo: v })} />
+        {/* Quita los movimientos de pantallas, pestañas y menús. Las preferencias se guardan en el teléfono. */}
+        <Toggle label="Reducir animaciones" value={prefs.reducirAnimaciones} onChange={(v) => cambiar({ reducirAnimaciones: v })} />
         <Toggle
           label="Notificaciones push"
           value={prefs.push}

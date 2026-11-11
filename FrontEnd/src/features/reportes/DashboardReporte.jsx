@@ -8,7 +8,7 @@ import { fechaLarga, hora, mesAnio, miles, periodo } from '../../utils/formato'
 const ORIGEN = {
   MANUAL: { tone: 'neutral', icon: 'user', label: 'Manual' },
   PROGRAMADO: { tone: 'neutral', icon: 'calendar-clock', label: 'Programado' },
-  AGENTE: { tone: 'accent', icon: 'sparkles', label: 'Núcleo AI' },
+  AGENTE: { tone: 'accent', icon: 'sparkles', label: 'Nico AI' },
 }
 const dias = (inicio, fin) => Math.round((new Date(fin) - new Date(inicio)) / 86400000)
 
@@ -683,7 +683,7 @@ function paginar(altos, nFilas) {
 
 // Hojas A4 de la vista previa. Mide las filas en una copia oculta, las reparte en páginas
 // sin cortar ninguna y, si la columna es más angosta que la hoja, reduce todo a escala.
-// `zoom` fija la escala (visor de Núcleo AI); sin él la hoja se ajusta al ancho disponible.
+// `zoom` fija la escala (visor de Nico AI); sin él la hoja se ajusta al ancho disponible.
 function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar }) {
   const medidor = useRef(null)
   const marco = useRef(null)
@@ -713,7 +713,7 @@ function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar }) {
     return () => obs.disconnect()
   }, [])
 
-  // Avisa la escala de ajuste a quien la muestre (el zoom del visor de Núcleo AI).
+  // Avisa la escala de ajuste a quien la muestre (el zoom del visor de Nico AI).
   useEffect(() => {
     alEscalar?.(escala)
   }, [escala, alEscalar])

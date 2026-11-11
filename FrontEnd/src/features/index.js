@@ -25,7 +25,7 @@ export const modulos = [
   { ruta: '/mediciones', titulo: 'Histórico', Pagina: MedicionesPage, seccion: 'Monitoreo', icono: 'history' },
   { ruta: '/alertas', titulo: 'Alertas', Pagina: AlertasPage, seccion: 'Monitoreo', icono: 'bell' },
   { ruta: '/reportes', titulo: 'Reportes', Pagina: ReportesPage, seccion: 'Análisis', icono: 'file-text', roles: ['ADMIN', 'SUPER', 'ANALISTA'] },
-  { ruta: '/agente', titulo: 'Núcleo AI', Pagina: AgentePage, seccion: 'Análisis', icono: 'sparkles' },
+  { ruta: '/agente', titulo: 'Nico AI', Pagina: AgentePage, seccion: 'Análisis', icono: 'sparkles' },
   { ruta: '/umbrales', titulo: 'Umbrales', Pagina: UmbralesPage, seccion: 'Configuración', icono: 'sliders-horizontal' },
   { ruta: '/usuarios', titulo: 'Usuarios', Pagina: UsuariosPage, seccion: 'Configuración', icono: 'users', roles: ['ADMIN', 'SUPER'] },
   { ruta: '/areas', titulo: 'Empresa y áreas', Pagina: AreasPage, seccion: 'Áreas', icono: 'map-pin', roles: ['ADMIN', 'SUPER'] },

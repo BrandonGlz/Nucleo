@@ -12,6 +12,7 @@ import { ESTANDAR, useEdicion } from './personalizacion'
 import { descargarPdf } from './pdf'
 import { Pantalla } from '../../components/Pantalla'
 import { useDatos } from '../../hooks/useDatos'
+import { useCierre } from '../../hooks/useSalida'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as reportesApi from '../../services/reportes'
 import { pagina } from '../../utils/convertir'
@@ -30,6 +31,7 @@ async function cargar() {
 const TODAS = 'todas'
 
 function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado }) {
+  const [saliendo, cerrarAnimado] = useCierre(cerrar)
   const [area, setArea] = useState(null)
   const [rango, setRango] = useState('mes')
   const [formato, setFormato] = useState(ed.formato.id)
@@ -107,7 +109,7 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
     )
 
   return (
-    <div className="ui-modal" role="dialog" aria-modal="true" aria-label="Generar reporte">
+    <div className={`ui-modal${saliendo ? ' is-saliendo' : ''}`} role="dialog" aria-modal="true" aria-label="Generar reporte">
       <div className="ui-modal__caja">
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
@@ -116,7 +118,7 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
               Las cifras salen de las lecturas; el texto lo redacta la IA.
             </p>
           </div>
-          <IconButton icon="x" label="Cerrar" variant="ghost" onClick={cerrar} />
+          <IconButton icon="x" label="Cerrar" variant="ghost" onClick={cerrarAnimado} />
         </div>
         <div className="ui-grid-2">
           <Desplegable
@@ -153,7 +155,7 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
         />
         {estado && estado !== 'enviando' && <p style={{ margin: 0, fontSize: 13, color: 'var(--danger)' }}>{estado}</p>}
         <div className="ui-acciones ui-separado" style={{ paddingTop: 16 }}>
-          <Button variant="ghost" onClick={cerrar}>
+          <Button variant="ghost" onClick={cerrarAnimado}>
             Cancelar
           </Button>
           <Button icon="sparkles" disabled={!area || estado === 'enviando'} onClick={crear}>
@@ -168,7 +170,7 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
 export function ReportesPage() {
   const { organizacion } = useSesion()
   const { estado, datos, reintentar, actualizar } = useDatos(cargar, [])
-  // ?reporte=<num> abre ese reporte (lo usa Núcleo AI al generar uno).
+  // ?reporte=<num> abre ese reporte (lo usa Nico AI al generar uno).
   const [params] = useSearchParams()
   const [elegido, setElegido] = useState(() => Number(params.get('reporte')) || null)
   const [modal, setModal] = useState(false)

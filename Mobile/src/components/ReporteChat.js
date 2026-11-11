@@ -8,7 +8,7 @@ import { Icon, T } from './ui'
 const fecha = (iso) => new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
 const cifra = (v, unidad) => (v == null ? '—' : Number(v).toFixed(unidad === 'ppm' ? 0 : 1))
 
-// Resumen del reporte que generó Núcleo AI, dentro del chat: cifras clave, rango por variable y el
+// Resumen del reporte que generó Nico AI, dentro del chat: cifras clave, rango por variable y el
 // inicio del análisis, con el PDF y el enlace al reporte completo en la web.
 export function ReporteChat({ r }) {
   const { c } = useTema()

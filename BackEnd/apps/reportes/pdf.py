@@ -44,7 +44,7 @@ VARIABLE = {
     "HUM": {"etiqueta": "Humedad", "corta": "Humedad", "decimales": 1, "unidad": "%HR"},
     "AIRE": {"etiqueta": "Calidad del aire", "corta": "Aire", "decimales": 0, "unidad": "ppm"},
 }
-ORIGEN = {"MANUAL": "Manual", "PROGRAMADO": "Programado", "AGENTE": "Núcleo AI"}
+ORIGEN = {"MANUAL": "Manual", "PROGRAMADO": "Programado", "AGENTE": "Nico AI"}
 MESES = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 MESES_LARGOS = (
     "enero",

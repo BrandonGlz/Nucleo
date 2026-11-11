@@ -3570,7 +3570,7 @@ button.ui-menuitem:not(:disabled):hover svg {
   white-space: nowrap;
 }
 
-/* Reporte adjunto en la respuesta de Núcleo AI */
+/* Reporte adjunto en la respuesta de Nico AI */
 .ui-ia-adjunto {
   display: flex;
   flex-direction: column;
@@ -3721,4 +3721,90 @@ button.ui-menuitem:not(:disabled):hover svg {
 .ui-ia-visor__hojas > .ui-aviso,
 .ui-ia-visor__cargando {
   margin: 24px;
+}
+
+/* Salidas: los menús, listas y ventanas se van con el mismo movimiento con el que entran, en reversa */
+@keyframes ui-sale-menu {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes ui-sale-fondo {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ui-baja {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+.ui-popover.is-saliendo,
+.ui-desplegable__lista.is-saliendo,
+.ui-menu-acciones__lista.is-saliendo {
+  animation: ui-sale-menu var(--duration-base) var(--ease-standard) forwards;
+  pointer-events: none;
+}
+.ui-popover.is-saliendo > * {
+  animation: none;
+}
+.ui-modal.is-saliendo {
+  animation: ui-sale-fondo var(--duration-base) var(--ease-standard) forwards;
+  pointer-events: none;
+}
+.ui-modal.is-saliendo .ui-modal__caja {
+  animation: ui-baja var(--duration-base) var(--ease-standard) forwards;
+}
+
+/* Pestañas: la pastilla (o la raya) se desliza hasta la pestaña elegida */
+.nc-tabs {
+  position: relative;
+  isolation: isolate;
+}
+.nc-tabs__indicador {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  z-index: -1;
+  border-radius: var(--radius-full);
+  background: var(--text-primary);
+  pointer-events: none;
+}
+.nc-tabs__indicador.is-deslizando {
+  transition:
+    transform var(--duration-slow) var(--ease-emphasized),
+    width var(--duration-slow) var(--ease-emphasized);
+}
+.nc-tabs.con-indicador .nc-tab.is-active {
+  background: transparent;
+}
+.nc-tabs--underline .nc-tabs__indicador {
+  top: auto;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+.nc-tabs--underline.con-indicador .nc-tab.is-active {
+  box-shadow: none;
+}
+.nc-tab__count {
+  transition:
+    background var(--duration-slow) var(--ease-standard),
+    color var(--duration-slow) var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-popover.is-saliendo,
+  .ui-desplegable__lista.is-saliendo,
+  .ui-menu-acciones__lista.is-saliendo,
+  .ui-modal.is-saliendo,
+  .ui-modal.is-saliendo .ui-modal__caja {
+    animation: none;
+  }
+  .nc-tabs__indicador.is-deslizando {
+    transition: none;
+  }
 }

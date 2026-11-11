@@ -1,11 +1,15 @@
-import { Pressable, StyleSheet, View } from 'react-native'
+import { LayoutAnimation, Pressable, StyleSheet, View } from 'react-native'
+import { useAnimaciones } from '../../context/PreferenciasContext'
 import { useTema } from '../../context/TemaContext'
 import { Icon } from './Icon'
 import { T } from './Texto'
 
 // Barra flotante oscura de pestañas. items: [{ id, label, icon, count }]; la activa muestra su etiqueta.
+// Al cambiar, la pastilla verde se encoge en una pestaña y crece en la otra con una transición suave.
+const TRANSICION = { duration: 280, update: { type: LayoutAnimation.Types.easeInEaseOut } }
 export function TabBar({ items, active, onChange }) {
   const { c } = useTema()
+  const animar = useAnimaciones()
   return (
     <View style={[s.barra, { backgroundColor: c.sidebar, borderColor: c.border }]}>
       {items.map((it) => {
@@ -17,8 +21,16 @@ export function TabBar({ items, active, onChange }) {
             accessibilityRole="tab"
             accessibilityLabel={it.label}
             accessibilityState={{ selected: activo }}
-            onPress={() => onChange?.(it.id)}
-            style={[s.item, activo && { backgroundColor: c.accent, paddingLeft: 14, paddingRight: 18 }]}
+            onPress={() => {
+              if (activo) return
+              if (animar) LayoutAnimation.configureNext(TRANSICION)
+              onChange?.(it.id)
+            }}
+            style={({ pressed }) => [
+              s.item,
+              activo && { backgroundColor: c.accent, paddingLeft: 14, paddingRight: 18 },
+              pressed && !activo && { transform: [{ scale: 0.92 }] },
+            ]}
           >
             <View>
               <Icon name={it.icon} size={22} color={color} />

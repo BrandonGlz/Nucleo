@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Icon } from '../design-system/componentes/index.js'
+import { useSalida } from '../hooks/useSalida'
 
 // Selector con lista propia (la del sistema operativo no toma los estilos de Núcleo).
 // options: [{ value, label }] · accion: { label, icon, onClick } se muestra al final de la lista.
@@ -12,6 +13,7 @@ export function Desplegable({ label, icon, value, onChange, options, accion, pla
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(0)
   const caja = useRef(null)
+  const lista = useSalida(abierto)
   const id = useId()
   const actual = options.find((o) => igual(o.value, value)) ?? (placeholder ? null : options[0])
   const total = options.length + (accion ? 1 : 0)
@@ -86,9 +88,9 @@ export function Desplegable({ label, icon, value, onChange, options, accion, pla
         </span>
         <Icon name="chevron-down" size={18} className="nc-select__chev" />
       </button>
-      {abierto && (
+      {lista.montado && (
         <ul
-          className="ui-desplegable__lista"
+          className={`ui-desplegable__lista${lista.saliendo ? ' is-saliendo' : ''}`}
           role="listbox"
           id={`${id}-lista`}
           aria-labelledby={label ? `${id}-etiqueta` : undefined}
