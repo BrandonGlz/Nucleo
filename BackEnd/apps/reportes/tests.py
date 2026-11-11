@@ -608,6 +608,22 @@ class NicoAprendeTests(PruebaBase):
             "26.4 °C", cuerpo["texto"].split(".")[0] + "." + cuerpo["texto"].split(".")[1]
         )
 
+    def test_solo_espanol(self):
+        for pregunta in ("What is the temperature now?", "Show me the humidity chart", "hello"):
+            cuerpo = self._pedir(pregunta)
+            self.assertEqual(cuerpo["texto"], agente.SOLO_ESPANOL, pregunta)
+            self.assertEqual(cuerpo["via"], "NO_ENTENDIDA")
+        self.assertTrue(agente.es_espanol("¿Cuál fue la máxima de CO2 la semana pasada?"))
+        self.assertTrue(agente.es_espanol("gráfica de alertas por sensor"))
+
+    @override_settings(IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_ia_que_responde_en_ingles_usa_la_predefinida(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        hilo = self._esp(lambda t: "It is not serious, the temperature is fine now.")
+        cuerpo = self._pedir("¿es grave la temperatura?")
+        hilo.join()
+        self.assertEqual(cuerpo["via"], "PREDEFINIDA")
+
     def test_cifra_inventada_no_entra_al_banco(self):
         self.assertIsNone(aprendizaje.a_plantilla("Subirá a 31 °C.", {"actual": 23.0}))
         self.assertEqual(aprendizaje.rellenar("{actual} °C", {"actual": 22.5}), "22.5 °C")

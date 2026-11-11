@@ -138,7 +138,11 @@ class AgenteView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         inicio = time.monotonic()
-        r, via, extra = self._resolver(request.user, dispositivo, pregunta)
+        if agente.es_espanol(original):
+            r, via, extra = self._resolver(request.user, dispositivo, pregunta)
+        else:
+            # Solo español: otra lengua no se procesa ni pasa por la IA.
+            r, via, extra = {"texto": agente.SOLO_ESPANOL}, PreguntaAgente.Via.NO_ENTENDIDA, {}
         registro = aprendizaje.registrar(
             request.user,
             dispositivo,

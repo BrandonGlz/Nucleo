@@ -31,9 +31,10 @@ MAX_EN_COLA = 2  # con más peticiones esperando, se responde con la predefinida
 CALENTAR_CADA = 240  # segundos: el modelo sigue cargado (keep_alive 10 min) mientras haya uso
 NUMERO = re.compile(r"\d+(?:[.,]\d+)?")
 SISTEMA = (
-    "Eres Nico AI, el asistente del dispositivo de monitoreo ambiental {nombre}. Responde en "
-    "español, en máximo dos frases claras, usando solo los datos que se te dan. No inventes "
-    "cifras. Si los datos no alcanzan para responder, dilo."
+    "Eres Nico AI, el asistente del dispositivo de monitoreo ambiental {nombre}. Responde "
+    "siempre y únicamente en español de México, aunque te escriban en otro idioma, en máximo "
+    "dos frases claras, usando solo los datos que se te dan. No inventes cifras. Si los datos "
+    "no alcanzan para responder, dilo."
 )
 # Lo que la plantilla no resuelve y sí necesita redactar: explicar, opinar, recomendar o
 # reformular. Lo demás se responde sin IA.
@@ -221,6 +222,8 @@ def _limpiar(texto, permitidos):
     texto = re.sub(r"\s+", " ", texto.replace("*", "")).strip()
     frases = re.split(r"(?<=[.!?])\s+", texto)
     texto = " ".join(frases[:2])[:320].strip()
+    if not agente.es_espanol(texto):  # el modelo respondió en otro idioma
+        return None
     for n in NUMERO.findall(texto):
         if round(float(n.replace(",", ".")), 1) not in permitidos:
             return None

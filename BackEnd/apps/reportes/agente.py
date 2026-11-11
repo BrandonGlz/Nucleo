@@ -251,6 +251,41 @@ def datos_de(dispositivo, pregunta):
     return datos
 
 
+# Nico AI solo entiende y responde en español. Palabras muy comunes de cada idioma: si la
+# pregunta tiene más de otro idioma que de español, no se procesa.
+ESPANOL = frozenset(
+    "el la los las un una de del que y en es por para con como cual cuales cuanto cuanta "
+    "esta estan este fue hay hoy ayer dame muestra muestrame mi mis se lo le al me sobre "
+    "temperatura humedad aire alertas alerta reporte grafica semana mes dias cuando donde "
+    "porque hola gracias quiero puedes ver ultimo ultima pasada pasado sin mas menos les "
+    "qual".split()
+)
+OTROS = frozenset(
+    "the what how is are was were show give me please my of and in to for with which when "
+    "where why does do did can could would should this that these those it its last week "
+    "month today yesterday temperature humidity air quality alerts alert report chart graph "
+    "hello hi thanks thank you current now level levels data device average maximum "
+    "minimum le les des est une avec pour quel quelle der die das und ist ein eine mit wie "
+    "os um uma com quais voce".split()
+)
+
+
+def es_espanol(texto):
+    """``False`` si el texto está claramente en otro idioma (inglés, francés, alemán, portugués)."""
+    palabras = re.findall(r"[a-zñ]+", _normalizar(texto))
+    if not palabras:
+        return True
+    esp = sum(w in ESPANOL for w in palabras)
+    otros = sum(w in OTROS and w not in ESPANOL for w in palabras)
+    return not ((otros >= 2 and otros > esp) or (esp == 0 and otros >= 1))
+
+
+SOLO_ESPANOL = (
+    "Solo entiendo y respondo en español. Escribe tu pregunta en español, por ejemplo: "
+    "«¿Cómo está la temperatura?» o «Genera el reporte de esta semana»."
+)
+
+
 def con_contexto(pregunta, anterior):
     """Completa un seguimiento corto con la pregunta anterior de la conversación.
 
