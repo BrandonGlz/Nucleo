@@ -39,6 +39,11 @@ SISTEMA = (
     "inventes causas: si preguntan por qué, di solo lo que muestran los datos (si subió, bajó "
     "o salió del rango) y aclara que las lecturas no indican la causa."
 )
+# Meses y días de la semana: solo pueden aparecer si ya venían en la respuesta base.
+FECHAS = re.compile(
+    r"\b(" + "|".join(agente.MESES) + r"|lunes|martes|miercoles|jueves|viernes|sabado|domingo|"
+    r"lun|mar|mie|jue|vie|sab|dom)\b"
+)
 # El modelo pequeño tiende a inventar explicaciones: si afirma una causa, se descarta.
 CAUSA_INVENTADA = re.compile(
     r"\b(debido a|se debe|a causa|causad|por culpa|provocad|ocasionad|gracias a)", re.I
@@ -248,15 +253,19 @@ def calentar(dispositivo):
     )
 
 
-def _limpiar(texto, permitidos):
-    """Máximo dos frases y sin cifras inventadas: toda cifra debe venir de los datos.
-    Devuelve ``None`` si la IA puso un número que no está en ellos."""
+def _limpiar(texto, permitidos, base=""):
+    """Máximo dos frases y sin cifras ni fechas inventadas: toda cifra debe venir de los
+    datos y todo mes o día de la semana, del texto base. Si no, devuelve ``None``."""
     texto = re.sub(r"\s+", " ", texto.replace("*", "")).strip()
     frases = re.split(r"(?<=[.!?])\s+", texto)
     texto = " ".join(frases[:2])[:320].strip()
     if not agente.es_espanol(texto):  # el modelo respondió en otro idioma
         return None
     if CAUSA_INVENTADA.search(texto):
+        return None
+    if FECHAS.findall(agente._normalizar(texto)) and not set(
+        FECHAS.findall(agente._normalizar(texto))
+    ) <= set(FECHAS.findall(agente._normalizar(base))):
         return None
     for n in NUMERO.findall(texto):
         if round(float(n.replace(",", ".")), 1) not in permitidos:
@@ -296,7 +305,7 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
     permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(base)}
     permitidos |= {round(float(v), 1) for v in datos.values() if isinstance(v, int | float)}
     permitidos |= {float(n) for n in range(0, 25)}  # «2 frases», «7 días», horas del día…
-    return _limpiar(r["texto"], permitidos), _tokens(r)
+    return _limpiar(r["texto"], permitidos, base), _tokens(r)
 
 
 # ── Herramientas: la IA solo elige cuál usar ────────────────────────────────────────────
@@ -315,15 +324,20 @@ PERIODOS_IA = (
     "este mes",
     "el mes pasado",
     "los ultimos 7 dias",
+    "los ultimos 30 dias",
+    "este año",
 )
+# Qué cifra se pide de la variable (la regla «_dato_pedido» la reconoce en la pregunta).
+DATOS_IA = ("general", "maximo", "minimo", "promedio")
 ESQUEMA = {
     "type": "object",
     "properties": {
         "herramienta": {"type": "string", "enum": list(HERRAMIENTAS)},
         "variable": {"type": "string", "enum": list(VARIABLES_IA)},
         "periodo": {"type": "string", "enum": list(PERIODOS_IA)},
+        "dato": {"type": "string", "enum": list(DATOS_IA)},
     },
-    "required": ["herramienta", "variable", "periodo"],
+    "required": ["herramienta", "variable", "periodo", "dato"],
 }
 CLASIFICAR = (
     "Clasifica la petición sobre un dispositivo de monitoreo ambiental. Herramientas: variable "
@@ -331,12 +345,14 @@ CLASIFICAR = (
     "(batería, señal, si está en línea), grafica (ver cómo ha ido una variable), comparativa "
     "(comparar dos periodos), reporte (documento PDF), ninguna (no es sobre el ambiente ni los "
     "sensores). Calor o frío es temperatura; aire, CO2 u olor es calidad del aire. «Estos días» "
-    "es los ultimos 7 dias. Ejemplos:\n"
-    "¿qué tal anda el ambiente? → variable, temperatura, ahora\n"
-    "¿cómo ha ido el calor estos días? → grafica, temperatura, los ultimos 7 dias\n"
-    "¿ha sonado algo raro hoy? → alertas, ninguna, hoy\n"
-    "¿sigue vivo el aparato? → conexion, ninguna, ahora\n"
-    "¿quién ganó el partido? → ninguna, ninguna, ahora\n"
+    "es los ultimos 7 dias. Dato: maximo (lo más alto, el pico), minimo (lo más bajo), "
+    "promedio, o general. Ejemplos (herramienta, variable, periodo, dato):\n"
+    "¿qué tal anda el ambiente? → variable, ninguna, ahora, general\n"
+    "¿cómo ha ido el calor estos días? → grafica, temperatura, los ultimos 7 dias, general\n"
+    "¿hasta dónde llegó el bochorno ayer? → variable, humedad, ayer, maximo\n"
+    "¿ha sonado algo raro hoy? → alertas, ninguna, hoy, general\n"
+    "¿sigue vivo el aparato? → conexion, ninguna, ahora, general\n"
+    "¿quién ganó el partido? → ninguna, ninguna, ahora, general\n"
     "Responde solo el JSON."
 )
 
@@ -357,21 +373,23 @@ def del_dominio(pregunta):
     return bool(DOMINIO.search(texto))
 
 
-def _canonica(h, variable, periodo):
+def _canonica(h, variable, periodo, dato="general"):
     """Pregunta en las palabras que entienden las reglas."""
     de_var = "" if variable == "ninguna" else f" de {variable}"
-    de_periodo = "" if periodo == "ahora" else f" de {periodo}"
+    de_periodo = "" if periodo == "ahora" else f" de {periodo}".replace(" de el ", " del ")
     return {
         # Sin variable: las reglas responden con la que tuvo más alertas en el periodo.
         "variable": (
             f"¿cómo están las lecturas{de_periodo}?"
             if variable == "ninguna"
             else f"¿cómo está la {variable}{de_periodo}?"
+            if dato == "general"
+            else f"¿cuál fue el {dato} de {variable}{de_periodo}?"
         ),
         "alertas": f"alertas{de_periodo}",
         "conexion": "estado de conexión",
         "grafica": f"gráfica{de_var}{de_periodo}",
-        "comparativa": f"compara{de_var} de {'esta semana' if periodo == 'ahora' else periodo}",
+        "comparativa": f"compara{de_var} {de_periodo.strip() or 'de esta semana'}",
         "reporte": f"reporte{de_periodo or ' de esta semana'}",
     }.get(h)
 
@@ -400,8 +418,14 @@ def enrutar(dispositivo, pregunta, espera=None):
     try:
         elegido = json.loads(r.get("texto") or "")
         h, v, p = elegido["herramienta"], elegido["variable"], elegido["periodo"]
+        dato = elegido.get("dato", "general")
     except (ValueError, KeyError, TypeError):
         return None, _tokens(r)
-    if h not in HERRAMIENTAS or v not in VARIABLES_IA or p not in PERIODOS_IA:
+    if (
+        h not in HERRAMIENTAS
+        or v not in VARIABLES_IA
+        or p not in PERIODOS_IA
+        or dato not in DATOS_IA
+    ):
         return None, _tokens(r)
-    return _canonica(h, v, p), _tokens(r)
+    return _canonica(h, v, p, dato), _tokens(r)

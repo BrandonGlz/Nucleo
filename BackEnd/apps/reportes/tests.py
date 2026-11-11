@@ -703,6 +703,29 @@ class NicoAprendeTests(PruebaBase):
         hilo.join()
         self.assertEqual(cuerpo["via"], "NO_ENTENDIDA")
 
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_ia_elige_el_dato_pedido(self):
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        hilo = self._esp(
+            lambda t: (
+                '{"herramienta": "variable", "variable": "temperatura", '
+                '"periodo": "los ultimos 7 dias", "dato": "maximo"}'
+            )
+        )
+        cuerpo = self._pedir("¿hasta dónde llegó el bochorno en la bodega?")
+        hilo.join()
+        self.assertEqual(cuerpo["via"], "ENRUTADA")
+        registro = PreguntaAgente.objects.get(pk=cuerpo["registro"])
+        self.assertIn("maximo", registro.datos["ruta"])
+
+    def test_ia_no_inventa_fechas_ni_causas(self):
+        self.assertIsNone(
+            puente._limpiar("Llegó a 26.4 °C el 7 de septiembre.", {26.4, 7.0}, "26.4 °C")
+        )
+        self.assertIsNone(puente._limpiar("Subió debido al sol.", set(), ""))
+        self.assertTrue(puente._limpiar("Llegó a 26.4 °C el lunes.", {26.4}, "el Lunes"))
+        self.assertTrue(puente._limpiar("Llegó a 26.4 °C.", {26.4}, "26.4 °C"))
+
     @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
     def test_fuera_del_dominio_no_gasta_tokens(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
