@@ -84,6 +84,21 @@ Linux, agrega tu usuario al grupo `dialout` y vuelve a iniciar sesión:
 
 - `sudo usermod -aG dialout $USER` — "da permiso para usar el puerto USB."
 
+En Linux con ModemManager (Fedora, Ubuntu), el servicio abre el puerto del ESP32-S3 al
+conectarlo para revisar si es un módem. Eso mueve las líneas DTR/RTS y la placa se reinicia
+en **modo de descarga**: no corre MicroPython, no se conecta al Wi-Fi y no imprime nada. Para
+que ModemManager ignore las placas de Espressif (una sola vez por equipo):
+
+```bash
+echo 'SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", MODE="0666", GROUP="dialout", ENV{ID_MM_DEVICE_IGNORE}="1"' \
+  | sudo tee /etc/udev/rules.d/99-espressif.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+
+Si ya quedó en modo de descarga, `.venv/bin/esptool --port /dev/ttyACM0 --after
+watchdog-reset chip-id` la reinicia en MicroPython. Con un cargador de pared no pasa, porque
+no hay nada que abra el puerto.
+
 ## Inicializar
 
 Todos los comandos se ejecutan desde la carpeta `IoT/`.
