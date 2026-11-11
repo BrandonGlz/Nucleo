@@ -314,17 +314,34 @@ Si un commit necesita muchas líneas para explicarse, probablemente son varios c
 
 Núcleo está publicado en **https://nucleo.tailb3f7d8.ts.net** (web) y
 **https://nucleo.tailb3f7d8.ts.net/api/v1** (API de la app). Corre en un servidor propio: una
-laptop con Debian 13 sin escritorio (8 GB de RAM, disco de 698 GB) que funciona como VPS casero.
+laptop ASUS X75A con Debian 13 sin escritorio (procesador Intel Core i5-3230M de 2 núcleos y 4 hilos a
+2.6 GHz, 8 GB de RAM y disco duro mecánico HDD de 750 GB, 698 GB utilizables) que funciona como VPS casero.
 La app Android se descarga en **https://nucleo.tailb3f7d8.ts.net/app/nucleo.apk**.
 
 **Cómo llega una visita**
 
-```text
-Navegador o app ──HTTPS──▶ Tailscale Funnel ──▶ Caddy :8081 ──┬─▶ web compilada (FrontEnd/dist)
- (cualquier red)          (máquina "nucleo")   (127.0.0.1)    ├─▶ /static
-                                                               └─▶ /api, /ws, /admin ──▶ Daphne :8001
-                                                                     │
-                       PostgreSQL · TimescaleDB · Redis · Mosquitto ◀┘  (Docker, solo 127.0.0.1)
+```mermaid
+flowchart LR
+    U["Navegador o app<br/>(cualquier red)"] -->|HTTPS| TS["Tailscale Funnel<br/>máquina «nucleo»"]
+    TS --> C["Caddy :8081<br/>127.0.0.1"]
+    C --> W["Web compilada<br/>FrontEnd/dist"]
+    C --> ST["Archivos /static"]
+    C --> APK["APK en /app/nucleo.apk"]
+    C -->|"/api, /ws, /admin"| D["Daphne :8001<br/>nucleo-daphne"]
+    subgraph DK["Docker · solo 127.0.0.1"]
+        PG[("PostgreSQL")]
+        TDB[("TimescaleDB")]
+        R[("Redis")]
+        M["Mosquitto TLS"]
+    end
+    D --> PG
+    D --> TDB
+    D <--> R
+    E["ESP32"] -->|"MQTT/TLS :8883"| M
+    M --> MQ["nucleo-mqtt"]
+    MQ --> TDB
+    MQ --> PG
+    MQ --> R
 ```
 
 - **Publicación:** el contenedor `nucleo_tailscale` es una máquina de Tailscale propia

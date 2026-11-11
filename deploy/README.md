@@ -1,6 +1,6 @@
 # Servidor de Núcleo
 
-Núcleo corre en una laptop con Debian 13 (`homelab`, 8 GB de RAM). Se publica
+Núcleo corre en una laptop ASUS X75A con Debian 13 (`homelab`: Intel Core i5-3230M, 8 GB de RAM y disco duro HDD de 750 GB). Se publica
 en internet con Tailscale Funnel, sin dominio ni puertos abiertos en el router, así que se
 llega desde cualquier red.
 
