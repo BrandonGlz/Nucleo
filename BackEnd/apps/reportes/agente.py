@@ -560,12 +560,62 @@ def responder(dispositivo, pregunta):
     return _variable(dispositivo, tema, desde, hasta, descripcion, pide=_dato_pedido(pregunta))
 
 
+# «¿por qué subió?», «¿es grave?»: el modelo pequeño inventa causas; se responde con lo que
+# sí dicen las lecturas (cuándo fue el máximo y el mínimo, y si salió del rango), sin IA.
+PORQUE = re.compile(r"\b(por ?que|a que se debe|cual es la causa|que (lo )?causo|como es que)\b")
+GRAVEDAD = re.compile(
+    r"\b(es grave|es normal|es malo|es bueno|es peligros|preocup|alarmante|riesgo|esta bien)"
+)
+
+
+def _primera_frase(texto):
+    return texto.split(". ", 1)[0].rstrip(".") + "."
+
+
+def explicar(dispositivo, pregunta):
+    """Respuesta sin IA para «por qué» y «es grave» sobre una variable, o ``None``."""
+    tema = _tema(pregunta)
+    if tema not in ORDEN_VARIABLES:
+        return None
+    normal = _normalizar(pregunta)
+    porque, gravedad = bool(PORQUE.search(normal)), bool(GRAVEDAD.search(normal))
+    if not (porque or gravedad):
+        return None
+    desde, hasta, descripcion = periodo_de(pregunta)
+    general = _variable(dispositivo, tema, desde, hasta, descripcion)["texto"]
+    if "promedió" not in general:  # sin lecturas en el periodo
+        return {"texto": general}
+    nombre = VariableAmbiental.objects.get(pk=tema).nombre.lower()
+    fuera = "se mantuvo dentro del rango" not in general
+    if gravedad and not porque:
+        inicio = (
+            "Conviene revisarlo: hubo lecturas fuera del rango. "
+            if fuera
+            else "No hay de qué preocuparse: "
+        )
+        return {"texto": inicio + general}
+    maxima = _variable(dispositivo, tema, desde, hasta, descripcion, "maximo")["texto"]
+    minima = _variable(dispositivo, tema, desde, hasta, descripcion, "minimo")["texto"]
+    rango = (
+        "Hubo lecturas fuera del rango. " if fuera else "Todo el periodo estuvo dentro del rango. "
+    )
+    return {
+        "texto": f"Las lecturas no indican la causa de los cambios de {nombre}, pero sí cuándo "
+        f"pasaron: {_primera_frase(maxima)} {_primera_frase(minima)} {rango}"
+        "Revisa qué pasaba en el lugar en esos momentos (ventilación, puertas o equipos)."
+    }
+
+
 def _dato_pedido(pregunta):
     """Qué cifra concreta se pide: «máxima», «mínima» o «promedio» (o ``None``)."""
     texto = _normalizar(pregunta)
-    if re.search(r"\b(maxim[oa]|mas alt[oa]|pico mas|tope)\b", texto):
+    if re.search(
+        r"\b(maxim[oa]|mas alt[oa]|pico mas|tope|que tan alt[oa]|hasta donde (llego|subio)|"
+        r"cuanto (llego|subio)|lo mas que)\b",
+        texto,
+    ):
         return "maximo"
-    if re.search(r"\b(minim[oa]|mas baj[oa])\b", texto):
+    if re.search(r"\b(minim[oa]|mas baj[oa]|que tan baj[oa]|cuanto bajo|lo menos que)\b", texto):
         return "minimo"
     if re.search(r"\b(promedio|media)\b", texto):
         return "promedio"

@@ -554,7 +554,7 @@ class NicoAprendeTests(PruebaBase):
 
     @override_settings(IA_PUENTE_DISPOSITIVOS=["OTRO"], IA_PUENTE_CLAVE="k")
     def test_dispositivo_simulado_siempre_activo_y_sin_ia(self):
-        cuerpo = self._pedir("¿es grave la temperatura?")
+        cuerpo = self._pedir("explícame la temperatura")
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
         estado = self.cliente.get("/api/v1/agente/estado/").json()
         self.assertEqual(estado["activos"], [self.e.dispositivo.pk])
@@ -568,7 +568,7 @@ class NicoAprendeTests(PruebaBase):
     def test_ia_por_el_esp_y_banco_con_reacciones(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         hilo = self._esp(lambda t: "Ahora está en 23 °C y el máximo fue 26.4 °C; no es grave.")
-        cuerpo = self._pedir("¿es grave la temperatura?")
+        cuerpo = self._pedir("explícame la temperatura")
         hilo.join()
         self.assertEqual(cuerpo["via"], "IA")
         self.assertIn("no es grave", cuerpo["texto"])
@@ -592,7 +592,7 @@ class NicoAprendeTests(PruebaBase):
             fecha_hora=timezone.now(),
         )
         self._pedir("¿hay alertas?")  # corta la racha: si no, sería una petición repetida
-        otra = self._pedir("Oye, ¿es grave la temperatura")
+        otra = self._pedir("Oye, explícame la temperatura")
         self.assertEqual(otra["via"], "BANCO")
         self.assertIn("Ahora está en 24.5 °C", otra["texto"])
         # 👎 la saca del banco.
@@ -640,6 +640,22 @@ class NicoAprendeTests(PruebaBase):
         # Frases cortas no se aprenden.
         _, voto = votar("¿y la cosa?")
         self.assertEqual(RespuestaAprendida.objects.count(), 1)
+
+    def test_por_que_y_gravedad_sin_ia(self):
+        r = self._pedir("¿por qué subió la temperatura?")
+        self.assertEqual(r["via"], "PREDEFINIDA")
+        self.assertIn("no indican la causa", r["texto"])
+        self.assertIn("La máxima de temperatura", r["texto"])
+        r = self._pedir("¿es grave la temperatura?")
+        self.assertEqual(r["via"], "PREDEFINIDA")
+        self.assertTrue(r["texto"].startswith(("No hay de qué", "Conviene revisarlo")))
+
+    def test_herramientas_posibles_segun_la_pregunta(self):
+        self.assertEqual(
+            puente.herramientas_posibles("¿qué tan alto llegó?"), ["variable", "ninguna"]
+        )
+        self.assertIn("alertas", puente.herramientas_posibles("¿sonó algo raro?"))
+        self.assertNotIn("reporte", puente.herramientas_posibles("¿cómo anda la cosa?"))
 
     def test_peticion_repetida(self):
         primera = self._pedir("¿cómo está la temperatura?")
@@ -703,14 +719,14 @@ class NicoAprendeTests(PruebaBase):
     @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=1)
     def test_ia_tarda_responde_predefinida(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
-        cuerpo = self._pedir("¿es grave la temperatura?")
+        cuerpo = self._pedir("explícame la temperatura")
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
 
     @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
     def test_ia_que_inventa_cifras_usa_la_predefinida(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         hilo = self._esp(lambda t: "Mañana subirá a 31.7 °C. Es grave.")
-        cuerpo = self._pedir("¿es grave la temperatura?")
+        cuerpo = self._pedir("explícame la temperatura")
         hilo.join()
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
         self.assertNotIn("31.7", cuerpo["texto"])
@@ -735,7 +751,7 @@ class NicoAprendeTests(PruebaBase):
     def test_ia_que_responde_en_ingles_usa_la_predefinida(self):
         puente.cola().visto(self.e.dispositivo.codigo_mqtt)
         hilo = self._esp(lambda t: "It is not serious, the temperature is fine now.")
-        cuerpo = self._pedir("¿es grave la temperatura?")
+        cuerpo = self._pedir("explícame la temperatura")
         hilo.join()
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
 

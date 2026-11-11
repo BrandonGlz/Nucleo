@@ -235,6 +235,9 @@ class AgenteView(APIView):
         r = agente.responder(dispositivo, pregunta)
         if not puente.pide_ia(pregunta):
             return r, Via.PREDEFINIDA, {}
+        explicado = agente.explicar(dispositivo, pregunta)
+        if explicado is not None:
+            return explicado, Via.PREDEFINIDA, {}
         datos = agente.datos_de(dispositivo, pregunta)
         aprendida, texto = aprendizaje.buscar(dispositivo, pregunta, tema, datos)
         if texto:

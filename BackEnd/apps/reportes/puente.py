@@ -293,7 +293,12 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
                 # El mensaje de sistema es igual en cada petición del dispositivo: Ollama reutiliza
                 # su caché y solo procesa lo nuevo.
                 {"role": "system", "content": SISTEMA.format(nombre=dispositivo.nombre)},
-                {"role": "user", "content": f"Datos: {base} ({cifras})\nPregunta: {pregunta}"},
+                {
+                    "role": "user",
+                    "content": f"Texto base: {base}\nCifras: {cifras}\nPregunta: {pregunta}\n"
+                    "Responde la pregunta reescribiendo el texto base de forma más clara y breve. "
+                    "No agregues cifras, fechas ni causas que no estén en el texto base.",
+                },
             ],
             90,
         ),
@@ -394,9 +399,31 @@ def _canonica(h, variable, periodo, dato="general"):
     }.get(h)
 
 
+# Pistas de cada herramienta en la pregunta: la IA solo puede elegir entre las que tienen
+# alguna pista (más «variable» y «ninguna», que siempre están). Así el modelo pequeño no
+# manda «¿qué tan alto llegó?» a «alertas» ni pide un reporte que nadie pidió.
+PISTAS = {
+    "alertas": r"alert|alarma|aviso|sono|raro|problema|falla|incidente|anomal",
+    "conexion": r"conect|conex|vivo|prendid|encendid|apagad|funciona|responde|senal|bateri|"
+    r"internet|wifi|red\b|en linea",
+    "grafica": r"grafic|ver\b|veo|muestr|ensen|dibuj|tendencia|evoluc|como ha ido|como va|"
+    r"como fue|historial",
+    "comparativa": r"compar|contra|\bvs\b|diferencia|antes|cambi[oa]",
+    "reporte": r"reporte|informe|pdf|documento",
+}
+
+
+def herramientas_posibles(pregunta):
+    texto = agente._normalizar(pregunta)
+    return ["variable", *[h for h, p in PISTAS.items() if re.search(p, texto)], "ninguna"]
+
+
 def enrutar(dispositivo, pregunta, espera=None):
     """Pregunta canónica elegida por la IA (o ``None``) y los tokens usados."""
     codigo = dispositivo.codigo_mqtt
+    posibles = herramientas_posibles(pregunta)
+    esquema = json.loads(json.dumps(ESQUEMA))
+    esquema["properties"]["herramienta"]["enum"] = posibles
     if cola().pendientes(codigo) >= MAX_EN_COLA:
         return None, {}
     espera = espera or settings.IA_ESPERA_SEGUNDOS
@@ -408,7 +435,7 @@ def enrutar(dispositivo, pregunta, espera=None):
             dispositivo,
             [{"role": "system", "content": CLASIFICAR}, {"role": "user", "content": pregunta}],
             40,
-            formato=ESQUEMA,
+            formato=esquema,
         ),
     }
     cola().poner(codigo, trabajo)
@@ -421,12 +448,7 @@ def enrutar(dispositivo, pregunta, espera=None):
         dato = elegido.get("dato", "general")
     except (ValueError, KeyError, TypeError):
         return None, _tokens(r)
-    if (
-        h not in HERRAMIENTAS
-        or v not in VARIABLES_IA
-        or p not in PERIODOS_IA
-        or dato not in DATOS_IA
-    ):
+    if h not in posibles or v not in VARIABLES_IA or p not in PERIODOS_IA or dato not in DATOS_IA:
         return None, _tokens(r)
     # Periodo y dato pedido los sacan mejor las reglas de la pregunta original: si los
     # encuentran, la IA solo aporta la herramienta y la variable.
