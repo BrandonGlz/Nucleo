@@ -4119,3 +4119,95 @@ button.ui-menuitem:not(:disabled):hover svg {
     animation: none;
   }
 }
+
+/* Banco de sugerencias: un destello recorre cada botón al aparecer, la flecha de enviar se asoma al
+   pasar el mouse y la elegida sube y se desvanece hacia el chat mientras las demás se apagan. */
+@keyframes ui-ia-destello-boton {
+  from {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  to {
+    transform: translateX(320%) skewX(-20deg);
+  }
+}
+@keyframes ui-ia-enviada {
+  40% {
+    transform: translateY(-4px) scale(1.04);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-18px) scale(0.96);
+    opacity: 0;
+  }
+}
+.ui-ia-seguir button {
+  position: relative;
+  overflow: hidden;
+  padding-left: 6px;
+}
+.ui-ia-seguir button::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 22%, transparent), transparent);
+  pointer-events: none;
+  transform: translateX(-120%) skewX(-20deg);
+  animation: ui-ia-destello-boton 900ms var(--ease-standard) 420ms backwards;
+}
+.ui-ia-seguir button:nth-child(2)::after {
+  animation-delay: 500ms;
+}
+.ui-ia-seguir button:nth-child(3)::after {
+  animation-delay: 580ms;
+}
+.ui-ia-seguir__icono {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  transition: transform var(--duration-base) var(--ease-emphasized);
+}
+.ui-ia-seguir button:hover .ui-ia-seguir__icono {
+  transform: rotate(-8deg) scale(1.1);
+}
+.ui-ia-seguir__enviar {
+  display: grid;
+  width: 0;
+  margin-left: -8px;
+  overflow: hidden;
+  opacity: 0;
+  color: var(--accent-secondary);
+  transition:
+    width var(--duration-base) var(--ease-standard),
+    margin var(--duration-base) var(--ease-standard),
+    opacity var(--duration-base) var(--ease-standard);
+}
+.ui-ia-seguir button:hover .ui-ia-seguir__enviar,
+.ui-ia-seguir button:focus-visible .ui-ia-seguir__enviar {
+  width: 14px;
+  margin-left: 0;
+  opacity: 1;
+}
+.ui-ia-seguir.is-eligiendo button {
+  cursor: default;
+  opacity: 0.35;
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+.ui-ia-seguir.is-eligiendo button.is-elegida {
+  opacity: 1;
+  border-color: var(--accent-secondary);
+  background: var(--accent-soft);
+  animation: ui-ia-enviada 240ms var(--ease-standard) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ia-seguir button::after,
+  .ui-ia-seguir.is-eligiendo button.is-elegida {
+    animation: none;
+  }
+  .ui-ia-seguir button::after {
+    display: none;
+  }
+}

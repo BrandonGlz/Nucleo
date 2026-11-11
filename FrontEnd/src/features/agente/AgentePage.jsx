@@ -500,6 +500,16 @@ export function AgentePage() {
   // Banco de preguntas sugeridas, justo arriba de la caja de texto: aparece cuando la última
   // respuesta termina de escribirse y cambia según su tema. Todas responden al instante.
   const [terminada, setTerminada] = useState(null)
+  // Al elegir una sugerencia, el botón sube y se desvanece (como si se enviara) y luego se pregunta.
+  const [elegida, setElegida] = useState(null)
+  const elegir = (texto) => {
+    if (sinMovimiento()) return preguntar(texto)
+    setElegida(texto)
+    setTimeout(() => {
+      setElegida(null)
+      preguntar(texto)
+    }, 240)
+  }
   const ultimo = mensajes.at(-1)
   const listo = ultimo?.de === 'agente' && !pensando && (ultimo.clave !== animada || terminada === ultimo.clave)
   const sugerencias = listo
@@ -648,11 +658,26 @@ export function AgentePage() {
               </div>
               <div className="ui-ia-pie">
                 {sugerencias.length > 0 && (
-                  <div key={ultimo?.clave ?? mensajes.length} className="ui-ia-seguir" aria-label="Preguntas sugeridas">
+                  <div
+                    key={ultimo?.clave ?? mensajes.length}
+                    className={`ui-ia-seguir${elegida ? ' is-eligiendo' : ''}`}
+                    aria-label="Preguntas sugeridas"
+                  >
                     {sugerencias.map((x) => (
-                      <button key={x.texto} type="button" onClick={() => preguntar(x.texto)}>
-                        <Icon name={x.icono} size={14} />
+                      <button
+                        key={x.texto}
+                        type="button"
+                        className={elegida === x.texto ? 'is-elegida' : ''}
+                        disabled={!!elegida}
+                        onClick={() => elegir(x.texto)}
+                      >
+                        <span className="ui-ia-seguir__icono">
+                          <Icon name={x.icono} size={14} />
+                        </span>
                         {x.texto}
+                        <span className="ui-ia-seguir__enviar" aria-hidden>
+                          <Icon name="arrow-up-right" size={14} />
+                        </span>
                       </button>
                     ))}
                   </div>
