@@ -73,6 +73,16 @@ Lo mismo vale para programar («programa un reporte semanal para mí y para Ana 
 («cancela la programación #3») y enviar («envía el último reporte a mi supervisor»). Si falta la
 frecuencia o a quién, lo pregunta con el texto del banco.
 
+## Personalidad (`personalidad.py`)
+
+Nico es el compañero de monitoreo y gestión de su dispositivo: cercano, atento y práctico;
+habla de tú y con frases cortas. Saluda según la hora y por el nombre del usuario, y al
+saludar o preguntarle cómo está cuenta en una línea cómo va su dispositivo (conexión y alertas
+pendientes, de la base). Agradecimientos, despedidas, acuses y respuestas a «sí»/«no» tienen
+varias formas y se elige una al azar; todas las de un tipo conservan la frase clave que
+prueban los casos. El mensaje de sistema de la IA lleva el mismo tono. Ante alertas o datos
+fuera de rango es directo, sin bromas.
+
 ## Protección del servidor (`carga.py`)
 
 Según la memoria libre (`/proc/meminfo`): normal (≥ 1200 MB) hasta 30 preguntas por usuario por

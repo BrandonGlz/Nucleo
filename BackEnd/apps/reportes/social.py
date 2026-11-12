@@ -94,13 +94,17 @@ def categoria(pregunta):
     return None
 
 
-def responder(dispositivo, pregunta):
+def responder(dispositivo, pregunta, usuario=None):
     """``{"texto", "social"}`` si el mensaje es conversación o está fuera de la burbuja; si no,
-    None."""
+    None. Con la personalidad de Nico (``personalidad.py``): varía cómo lo dice y, con
+    ``usuario``, lo llama por su nombre."""
+    from . import personalidad as p
+
     cat = categoria(pregunta)
     if cat is None:
         return None
     d = dispositivo.nombre
+    nombre = p.primer_nombre(usuario) if usuario is not None else ""
     ahora = timezone.localtime()
     ofrecer = f"¿Revisamos algo de {d}? Por ejemplo: «¿cómo está ahora?» o «alertas de hoy»."
     textos = {
@@ -109,25 +113,47 @@ def responder(dispositivo, pregunta):
         "ahora para decidir.",
         "clima_exterior": f"No tengo el clima de afuera: solo mido el ambiente donde está {d} "
         f"(área {dispositivo.area.nombre}). ¿Quieres que te diga cómo está ahí ahora?",
-        "identidad": f"Soy Nico AI, el asistente de Núcleo para {d}. No soy una persona: reviso "
-        "sus lecturas, alertas, conexión y reportes con los datos registrados. " + ofrecer,
-        "despedida": f"¡Hasta luego! Aquí estaré cuando necesites revisar {d}.",
-        "gracias": f"¡Con gusto! Si necesitas algo más de {d}, aquí estoy.",
-        "ayuda": f"Claro. Puedo decirte cómo está {d} ahora, cómo estuvo una variable "
-        "(«temperatura de ayer»), sus alertas, su conexión y sensores, sus umbrales, o "
-        "generarte un reporte («reporte de esta semana»). ¿Qué quieres revisar?",
+        "identidad": p.elegir(
+            (
+                f"Soy Nico AI, tu compañero de monitoreo en Núcleo: cuido a {d} día y noche. No "
+                "soy una persona, pero conozco sus lecturas, alertas, conexión y reportes al "
+                "detalle. " + ofrecer,
+                f"Soy Nico AI, el asistente de Núcleo para {d}. No soy una persona: soy quien "
+                "revisa sus lecturas, alertas y reportes para que tú decidas rápido. " + ofrecer,
+            )
+        ),
+        "despedida": p.despedida(usuario, dispositivo),
+        "gracias": p.gracias(usuario, dispositivo),
+        "ayuda": p.elegir(
+            (
+                f"¡Claro{', ' + nombre if nombre else ''}! Puedo decirte cómo está {d} ahora, "
+                "cómo estuvo una variable («temperatura de ayer»), sus alertas, su conexión y "
+                "sensores, sus umbrales, o prepararte un reporte («reporte de esta semana»). "
+                "¿Qué quieres revisar?",
+                f"Para eso estoy. Te puedo contar cómo va {d} ahora, revisar sus alertas, "
+                "enseñarte una gráfica («gráfica de la humedad de hoy») o armarte un reporte y "
+                "mandarlo por correo. ¿Qué quieres revisar?",
+            )
+        ),
         "hora": f"Son las {ahora:%H:%M} (hora de Tijuana). {ofrecer}",
         "fecha": f"Hoy es {DIAS[ahora.weekday()]} {ahora.day} de {MESES[ahora.month - 1]} de "
         f"{ahora.year}. {ofrecer}",
         "emocion_mal": "Lamento que te sientas así. Yo solo puedo ayudarte con los datos de "
         f"{d}, pero si te sirve, lo revisamos juntos: «¿cómo está ahora?».",
-        "emocion_bien": f"¡Qué bueno! {ofrecer}",
-        "afecto": f"¡Gracias! Me alegra ayudarte. {ofrecer}",
+        "emocion_bien": p.elegir(
+            (f"¡Qué bueno, me da gusto! {ofrecer}", f"¡Eso me alegra! {ofrecer}")
+        ),
+        "afecto": p.elegir(
+            (
+                f"¡Gracias! Me alegra ayudarte; para eso estoy. {ofrecer}",
+                f"¡Qué amable! Hacemos buen equipo. {ofrecer}",
+            )
+        ),
         "molestia": "Lamento no haberte ayudado como esperabas. Dime con tus palabras qué "
         f"necesitas de {d} y lo reviso; si una respuesta estuvo mal, márcala con 👎 para "
         "corregirla.",
-        "risa": f"😄 {ofrecer}",
-        "acuse": f"Va. Si necesitas algo más de {d}, dime.",
+        "risa": p.risa(dispositivo),
+        "acuse": p.acuse(dispositivo),
         "idioma": f"Solo respondo en español y sobre {d}. ¿Qué quieres revisar?",
         "general": f"Eso no lo puedo hacer. Solo puedo responder sobre {d}: sus sensores, "
         f"alertas y reportes. {ofrecer}",

@@ -272,7 +272,7 @@ class AgenteView(APIView):
                 "de ayer», «la última medición del aire» o «gráfica de la humedad»."
             )
             r, via, extra = {"texto": texto}, PreguntaAgente.Via.PREDEFINIDA, {}
-        elif (charla := social.responder(dispositivo, original)) is not None:
+        elif (charla := social.responder(dispositivo, original, request.user)) is not None:
             # Conversación o algo fuera de la burbuja del agente: texto fijo que regresa al tema.
             cat = charla.pop("social")
             datos = {"fijo": True, "social": cat}
@@ -595,7 +595,7 @@ class AgenteView(APIView):
         tema = agente._tema(pregunta)
         if tema is None and not agente.pide_ultima(pregunta):
             return self._sin_tema(usuario, dispositivo, pregunta, ruteada)
-        r = agente.responder(dispositivo, pregunta)
+        r = agente.responder(dispositivo, pregunta, usuario)
         if not puente.pide_ia(pregunta):
             return r, Via.PREDEFINIDA, {}
         explicado = agente.explicar(dispositivo, pregunta)
@@ -616,7 +616,7 @@ class AgenteView(APIView):
         """Las reglas no entendieron: una ruta aprendida (👍 anterior) o la IA elige la
         herramienta y se responde con la pregunta canónica. Sin eso, «no entendida»."""
         Via = PreguntaAgente.Via
-        no_entendida = agente.responder(dispositivo, pregunta)
+        no_entendida = agente.responder(dispositivo, pregunta, usuario)
         if (
             agente.es_cortesia(pregunta)
             or agente.es_comentario(pregunta)

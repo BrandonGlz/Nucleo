@@ -925,8 +925,11 @@ def ultima_medicion(dispositivo, codigos):
     )
 
 
-def responder(dispositivo, pregunta):
-    """Respuesta del agente del dispositivo: ``{"texto", "picos"?, "serie"?, ...}``."""
+def responder(dispositivo, pregunta, usuario=None):
+    """Respuesta del agente del dispositivo: ``{"texto", "picos"?, "serie"?, ...}``. Con
+    ``usuario``, la conversación (saludos) lo llama por su nombre."""
+    from . import personalidad
+
     por_sensor = sensores(dispositivo, pregunta)
     if por_sensor is not None:
         return por_sensor
@@ -937,32 +940,17 @@ def responder(dispositivo, pregunta):
         texto = ultima_medicion(dispositivo, list(ORDEN_VARIABLES))
         return {"texto": texto or f"{dispositivo.nombre} todavía no tiene lecturas."}
     if tema is None and es_afirmacion(pregunta):
-        return {
-            "texto": f"Perfecto. ¿Qué más quieres saber de {dispositivo.nombre}? Puedo darte su "
-            "última medición, cómo estuvo una variable, sus alertas, sus sensores o una gráfica."
-        }
+        return {"texto": personalidad.afirmacion(dispositivo)}
     if tema is None and es_negacion(pregunta):
-        return {"texto": f"Va. Si después necesitas algo de {dispositivo.nombre}, aquí estoy."}
+        return {"texto": personalidad.negacion(dispositivo)}
     if tema is None and pregunta_bienestar(pregunta):
-        saludo = SALUDO.match(_normalizar(pregunta).strip(" ¡¿"))
-        return {
-            "texto": ("¡Hola! " if saludo else "")
-            + "Muy bien, gracias por preguntar. "
-            + (f"Soy Nico AI, el agente de {dispositivo.nombre}. " if saludo else "")
-            + f"¿Qué revisamos de {dispositivo.nombre}? Puedo decirte cómo está ahora, su "
-            "temperatura, humedad o calidad del aire, sus alertas o su conexión."
-        }
+        saludo = bool(SALUDO.match(_normalizar(pregunta).strip(" ¡¿")))
+        return {"texto": personalidad.bienestar(usuario, dispositivo, saludo)}
     if tema is None and es_cortesia(pregunta):
-        saludo = re.match(r"(hola|buen|buenas)", _normalizar(pregunta).strip(" ¡¿"))
-        return {
-            "texto": (
-                f"¡Hola! Soy Nico AI, el agente de {dispositivo.nombre}. "
-                if saludo
-                else "¡Con gusto! "
-            )
-            + "Pregúntame por la temperatura, la humedad, la calidad del aire, sus alertas, "
-            "sus sensores o pídeme una gráfica o un reporte."
-        }
+        saludo = bool(
+            re.match(r"(hola|buen|buenas|hey|que onda|saludos)", _normalizar(pregunta).strip(" ¡¿"))
+        )
+        return {"texto": personalidad.cortesia(usuario, dispositivo, pregunta, saludo)}
     if tema is None and es_comentario(pregunta):
         return {
             "texto": "Entendido, gracias por avisar. Dale 👎 a la respuesta que no te sirvió para "

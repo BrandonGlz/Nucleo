@@ -188,7 +188,7 @@ CASOS = [
     {
         "pregunta": "hola nico como estas",
         "intencion": "comentario",
-        "contiene": ["muy bien", "soy nico ai"],
+        "contiene": ["muy bien", "nico ai"],
         "no_contiene": ["solo puedo responder"],
     },
     {
@@ -255,7 +255,7 @@ CASOS = [
         "intencion": "conexion",
         "contiene": ["reviso el equipo", "sensores"],
     },
-    {"pregunta": "hola", "intencion": "comentario", "contiene": ["soy nico ai"]},
+    {"pregunta": "hola", "intencion": "comentario", "contiene": ["nico ai"]},
     {"pregunta": "pues solo dame eso cuando te lo pida", "intencion": "comentario"},
     {
         "pregunta": "¿quién ganó el partido?",
