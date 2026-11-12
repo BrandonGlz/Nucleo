@@ -67,16 +67,18 @@ a Nico activo. `MODO = "puente"`: sin sensores, solo la llave.
 
 ```text
 ESP32-S3
-├── GPIO8    I2C SDA                  Bus compartido: OLED, CCS811 y MAX17048 (fila superior)
-├── GPIO9    I2C SCL                  Bus compartido: OLED, CCS811 y MAX17048
-├── GPIO10–13 microSD (opcional)      CS, MOSI, SCK y MISO (fila superior)
-├── GPIO14   Ventilador (opcional)    Por MOSFET
-├── GPIO2    DHT22 datos              Pull-up interno activado (fila inferior)
+├── GPIO2    I2C SDA                  OLED y CCS811 (lado de los sensores)
+├── GPIO42   I2C SCL                  OLED y CCS811
+├── GPIO47   I2C SDA del MAX17048     Bus propio (lado de la energía)
+├── GPIO21   I2C SCL del MAX17048
+├── GPIO4    DHT22 datos              Pull-up interno activado
 ├── GPIO38   LED RGB rojo
 ├── GPIO39   LED RGB verde
 ├── GPIO40   LED RGB azul
-├── GPIO47   LED de Wi-Fi
-└── GPIO21   Buzzer activo
+├── GPIO41   LED de Wi-Fi
+├── GPIO9    Buzzer activo
+├── GPIO15–18 microSD (opcional)      CS, MOSI, SCK y MISO
+└── GPIO12   Ventilador (opcional)    Por MOSFET
 ```
 
 Están en `IoT/micropython/config.py` y coinciden con los de `IoT/README.md`. Se evitan los

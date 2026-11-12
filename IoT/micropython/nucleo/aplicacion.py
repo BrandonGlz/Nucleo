@@ -59,7 +59,13 @@ def ejecutar():
         pantalla = Pantalla(i2c)
         pantalla.renglones("Nucleo", "Iniciando...")
         sensores = Sensores(i2c)
-        bateria = Bateria(i2c)  # el MAX17048 comparte el bus con la pantalla y el CCS811
+        if getattr(config, "PIN_I2C_BATERIA_SDA", None) is not None:  # bus propio, lado de la energía
+            i2c_bateria = SoftI2C(
+                sda=Pin(config.PIN_I2C_BATERIA_SDA), scl=Pin(config.PIN_I2C_BATERIA_SCL)
+            )
+        else:
+            i2c_bateria = i2c  # comparte el bus con la pantalla y el CCS811
+        bateria = Bateria(i2c_bateria)
     else:
         indicadores.color(APAGADO)
         pantalla = sensores = None

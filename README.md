@@ -530,42 +530,44 @@ Para validar cambios: `manage.py evaluar_agente --dispositivo NC-0501` corre el 
 
 ## Conexiones del ESP32
 
-Placa: ESP32-S3-DevKitC-1 N16R8 (Lonely Binary). Se usan **las dos filas de pines**: arriba la
-alimentación, el bus I2C (OLED, CCS811 y MAX17048), el microSD y el ventilador; abajo el DHT22, el
-LED RGB, el LED de Wi-Fi y el buzzer. Cada componente queda frente a sus pines y en el mismo
-orden, así que los cables salen derechos y no se cruzan. En la fila de abajo solo se usan pines
-seguros (en rojo en el dibujo, los que no se deben usar). Las alimentaciones se marcan con su símbolo (flecha roja de 3V3,
-naranja de 5V y tierra) en lugar de un cable: van a los rieles de la protoboard. Las piezas con
-borde punteado son opcionales.
+Placa: ESP32-S3-DevKitC-1 N16R8 (Lonely Binary). Los pines se reparten según el
+[prototipo beta](#prototipo-final-esperado-beta): la placa va **girada** dentro de la carcasa, con la
+antena hacia la cámara de sensores (izquierda) y el USB hacia el compartimento de energía
+(derecha). Cada pieza usa los pines del lado donde queda, en las dos filas, así que los cables
+salen derechos y no se cruzan. Las alimentaciones se marcan con su símbolo (flecha roja de 3V3,
+naranja de 5V y tierra): van a los rieles. Las piezas con borde punteado son opcionales y los
+pines en rojo no se usan.
 
-![Conexiones del ESP32-S3: cada componente frente a sus pines, sin cables cruzados](IoT/conexiones-esp32.svg)
+![Conexiones del ESP32-S3 según la carcasa beta, sin cables cruzados](IoT/conexiones-esp32.svg)
 
-| Componente | Pines del componente → ESP32-S3 | Alimentación |
-| --- | --- | --- |
-| Módulo de carga | OUT+ → **5V**, OUT− → **G** | Batería en B+ / B− |
-| DHT22 | out → **2** | + → 3V3, − → G |
-| LED RGB (KY-016) | R → **38**, G → **39**, B → **40** | − → G |
-| Buzzer (KY-012) | S → **21** | + → 3V3, − → G |
-| OLED SSD1306 | SCL → **9**, SDA → **8** | VCC → 3V3, GND → G |
-| CCS811 | SCL → **9**, SDA → **8**, WAK → G | VCC → 3V3, GND → G |
-| MAX17048 (opcional) | SCL → **9**, SDA → **8** | VCC → 3V3, GND → G |
-| LED de Wi-Fi (opcional) | ánodo → **47** (con resistencia de 220 Ω) | cátodo → G |
-| Lector microSD HW-125 (opcional) | MISO → **13**, SCK → **12**, MOSI → **11**, CS → **10** | VCC → **5V**, GND → G |
-| Ventilador 5 V (opcional) | MOSFET SIG → **14** | + → 5V, − → MOSFET → G |
+| Zona de la carcasa | Componente | Pines del componente → ESP32-S3 | Fila | Alimentación |
+| --- | --- | --- | --- | --- |
+| Sensores (izq.) | CCS811 | SDA → **2**, SCL → **42**, WAK → G | superior | VCC → 3V3, GND → G |
+| Sensores (izq.) | DHT22 | out → **4** | inferior | + → 3V3, − → G |
+| Frente | Pantalla OLED SSD1306 | SDA → **2**, SCL → **42** (en cadena con el CCS811) | superior | VCC → 3V3, GND → G |
+| Frente | LED de Wi-Fi (opcional) | ánodo → **41** (con resistencia de 220 Ω) | superior | cátodo → G |
+| Frente | LED RGB (KY-016) | B → **40**, G → **39**, R → **38** | superior | − → G |
+| Frente | Buzzer (KY-012) | S → **9** | inferior | + → 3V3, − → G |
+| Borde inferior | Lector microSD HW-125 (opcional) | CS → **15**, MOSI → **16**, SCK → **17**, MISO → **18** | inferior | VCC → **5V**, GND → G |
+| Energía (der.) | MAX17048 (opcional) | SDA → **47**, SCL → **21** (bus propio) | superior | VCC → 3V3, GND → G |
+| Energía (der.) | Ventilador 5 V (opcional) | MOSFET SIG → **12** | inferior | + → 5V, − → MOSFET → G |
+| Energía (der.) | Módulo de carga | OUT+ → **5V**, OUT− → **G** | inferior | Batería en B+ / B− |
+| — | Riel de 3.3 V | sale del pin **3V** | inferior | — |
 
-- **Rieles de la protoboard:** uno de **3V3** (desde el pin 3V), uno de **5V** (desde la salida
-  del módulo de carga) y uno de **GND** común (desde G). Todos los G del dibujo van al riel GND.
-- **Bus I2C:** la OLED, el CCS811 y el MAX17048 comparten SCL (9) y SDA (8) en cadena; cada uno
-  tiene su dirección (0x3C, 0x5A y 0x36). El CCS811 necesita **WAK a GND** o no responde.
+- **Rieles:** uno de **3V3** (desde el pin 3V), uno de **5V** (desde la salida del módulo de carga)
+  y uno de **GND** común. Todos los G del dibujo van al riel GND.
+- **Dos buses I2C:** la OLED (0x3C) y el CCS811 (0x5A) en 2/42, del lado de los sensores; el
+  MAX17048 (0x36) en su propio bus 47/21, junto a la batería, para no cruzar la carcasa con
+  cables. Con `PIN_I2C_BATERIA_SDA = None` vuelve a compartir el primer bus. El CCS811 necesita
+  **WAK a GND** o no responde.
 - **Módulo de carga:** si es solo un TP4056 (sin salida de 5 V), entre OUT+ y el pin 5V va el
   elevador MT3608 ajustado a 5 V. Nunca conectes la batería directo al pin 3V.
 - **microSD:** aliméntalo desde 5V (su regulador AMS1117 necesita más de 3.3 V); su chip LVC125A
   ya adapta las señales al ESP. Tarjeta de hasta 32 GB en FAT32.
-- **Ventilador:** el pin del ESP no da corriente suficiente; se conecta con un módulo MOSFET
-  (o un transistor) y se pone en el compartimento de la batería, lejos del DHT22 y del CCS811
-  para no alterar sus lecturas.
-- Los pines del microSD (10–13) y del ventilador (14) están reservados en `IoT/micropython/config.py`;
-  el firmware todavía no los usa.
+- **Ventilador:** el pin del ESP no da corriente suficiente; va con un módulo MOSFET y en el
+  compartimento de energía, lejos del DHT22 y del CCS811.
+- Los pines del microSD (15–18) y del ventilador (12) están reservados en
+  `IoT/micropython/config.py`; el firmware todavía no los usa.
 - Sigue la serigrafía de cada módulo: el orden de sus pines cambia entre vendedores.
 
 ## Prototipo final esperado (beta)

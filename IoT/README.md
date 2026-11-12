@@ -179,20 +179,22 @@ la consola (43, 44) y el LED integrado de algunas placas (48).
 
 ```text
 ESP32-S3
-│  Fila superior
-├── GPIO8    I2C SDA                   Bus compartido: OLED, CCS811 y MAX17048
-├── GPIO9    I2C SCL                   Bus compartido: OLED, CCS811 y MAX17048
-├── GPIO10–13 Lector microSD (opcional) CS 10, MOSI 11, SCK 12, MISO 13; VCC a 5 V
-├── GPIO14   Ventilador (opcional)     Por MOSFET; el ventilador a 5 V
-│  Fila inferior
-├── GPIO2    DHT22 «out»               Pull-up interno activado por si la placa no trae el suyo
-├── GPIO38   LED RGB R (KY-016)        El módulo ya trae resistencias; su GND a tierra
+│  Fila superior (girada en la carcasa: antena a la izquierda, USB a la derecha)
+├── GPIO2    I2C SDA                   OLED y CCS811 (lado de los sensores)
+├── GPIO42   I2C SCL                   OLED y CCS811
+├── GPIO41   LED de Wi-Fi              Con resistencia de 220 Ω
+├── GPIO40   LED RGB B (KY-016)        El módulo ya trae resistencias; su GND a tierra
 ├── GPIO39   LED RGB G
-├── GPIO40   LED RGB B
-├── GPIO47   LED de Wi-Fi              Con resistencia de 220 Ω
-├── GPIO21   Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
-├── 3V3      DHT22 «+», OLED, CCS811 y MAX17048
-└── 5V/VIN   Salida del elevador (5 V) de la placa de batería; GND común
+├── GPIO38   LED RGB R
+├── GPIO47   I2C SDA del MAX17048      Bus propio, lado de la energía
+├── GPIO21   I2C SCL del MAX17048
+│  Fila inferior
+├── 3V3      Riel de 3.3 V: DHT22, OLED, CCS811, MAX17048, buzzer
+├── GPIO4    DHT22 «out»               Pull-up interno activado por si la placa no trae el suyo
+├── GPIO15–18 Lector microSD (opcional) CS 15, MOSI 16, SCK 17, MISO 18; VCC a 5 V
+├── GPIO9    Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
+├── GPIO12   Ventilador (opcional)     Por MOSFET; el ventilador a 5 V
+└── 5V / G   Salida del módulo de carga (5 V); GND común
 ```
 
 Todos los sensores se alimentan a 3.3 V. El diagrama completo, con cada componente frente a sus

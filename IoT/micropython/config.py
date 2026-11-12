@@ -3,25 +3,29 @@
 # --- Pines (ESP32-S3; confirmar contra el montaje real) -----------------------------------
 # Libres en la S3 con PSRAM octal: se evitan los de arranque (0, 3, 45, 46), USB (19, 20),
 # flash y PSRAM (26 a 37), la consola (43, 44) y el LED integrado de algunas placas (48).
-# Fila superior de la placa: alimentación, bus I2C, microSD y ventilador. Fila inferior: DHT22,
-# LED RGB, LED de Wi-Fi y buzzer. Así ningún cable se cruza (ver el README principal).
-PIN_DHT22 = 2
+# Repartidos según la carcasa beta (ver «Conexiones del ESP32» en el README principal): la placa
+# va girada, con la antena hacia la cámara de sensores (izquierda) y el USB hacia la energía
+# (derecha), y cada pieza usa los pines de su lado para que ningún cable se cruce.
+PIN_DHT22 = 4
 DHT22_PULL_UP_INTERNO = True  # por si la placa del DHT22 no trae su resistencia de 10 kΩ
-PIN_I2C_SDA = 8  # bus compartido por la pantalla OLED, el CCS811 y el MAX17048
-PIN_I2C_SCL = 9
+PIN_I2C_SDA = 2  # bus de la pantalla OLED y el CCS811 (lado de los sensores)
+PIN_I2C_SCL = 42
+# Bus propio del MAX17048, en el lado de la energía. None: comparte el bus de arriba.
+PIN_I2C_BATERIA_SDA = 47
+PIN_I2C_BATERIA_SCL = 21
 PIN_RGB_ROJO = 38
 PIN_RGB_VERDE = 39
 PIN_RGB_AZUL = 40
-PIN_LED_WIFI = 47
-PIN_BUZZER = 21
+PIN_LED_WIFI = 41
+PIN_BUZZER = 9
 PIN_BATERIA = 1  # solo con BATERIA = "ADC": ADC1 (el ADC2 no lee con el Wi-Fi activo)
 # Reservados para piezas opcionales (el firmware aún no los usa): lector microSD por SPI y
 # ventilador de 5 V por MOSFET. Ver «Conexiones del ESP32» en el README principal.
-PIN_SD_CS = 10
-PIN_SD_MOSI = 11
-PIN_SD_SCK = 12
-PIN_SD_MISO = 13
-PIN_VENTILADOR = 14
+PIN_SD_CS = 15
+PIN_SD_MOSI = 16
+PIN_SD_SCK = 17
+PIN_SD_MISO = 18
+PIN_VENTILADOR = 12
 
 RGB_ACTIVO_ALTO = True  # False si el LED RGB es de ánodo común
 BUZZER_ACTIVO_ALTO = True
