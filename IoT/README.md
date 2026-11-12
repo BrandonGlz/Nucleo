@@ -179,22 +179,25 @@ la consola (43, 44) y el LED integrado de algunas placas (48).
 
 ```text
 ESP32-S3
-├── GPIO4    DHT22 «out»               Pull-up interno activado por si la placa no trae el suyo
+│  Fila superior
 ├── GPIO8    I2C SDA                   Bus compartido: OLED, CCS811 y MAX17048
 ├── GPIO9    I2C SCL                   Bus compartido: OLED, CCS811 y MAX17048
-├── GPIO5    LED RGB R (KY-016)        El módulo ya trae resistencias; su GND a tierra
-├── GPIO6    LED RGB G
-├── GPIO7    LED RGB B
-├── GPIO15   LED de Wi-Fi              Con resistencia
-├── GPIO16   Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
 ├── GPIO10–13 Lector microSD (opcional) CS 10, MOSI 11, SCK 12, MISO 13; VCC a 5 V
 ├── GPIO14   Ventilador (opcional)     Por MOSFET; el ventilador a 5 V
+│  Fila inferior
+├── GPIO2    DHT22 «out»               Pull-up interno activado por si la placa no trae el suyo
+├── GPIO38   LED RGB R (KY-016)        El módulo ya trae resistencias; su GND a tierra
+├── GPIO39   LED RGB G
+├── GPIO40   LED RGB B
+├── GPIO47   LED de Wi-Fi              Con resistencia de 220 Ω
+├── GPIO21   Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
 ├── 3V3      DHT22 «+», OLED, CCS811 y MAX17048
 └── 5V/VIN   Salida del elevador (5 V) de la placa de batería; GND común
 ```
 
 Todos los sensores se alimentan a 3.3 V. El diagrama completo, con cada componente frente a sus
-pines y sin cables cruzados, está en «Conexiones del ESP32» del README principal. Antes de conectar, sigue la serigrafía de cada
+pines en las dos filas y sin cables cruzados, está en «Conexiones del ESP32» del README
+principal. Antes de conectar, sigue la serigrafía de cada
 módulo: el orden de los pines cambia entre vendedores. El CCS811 necesita su pin **nWAKE**
 conectado a GND. Si el LED RGB es de ánodo común, `RGB_ACTIVO_ALTO = False`.
 

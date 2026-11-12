@@ -67,14 +67,16 @@ a Nico activo. `MODO = "puente"`: sin sensores, solo la llave.
 
 ```text
 ESP32-S3
-├── GPIO4    DHT22 datos              Pull-up interno activado
-├── GPIO8    I2C SDA                  Bus compartido: OLED, CCS811 y MAX17048
+├── GPIO8    I2C SDA                  Bus compartido: OLED, CCS811 y MAX17048 (fila superior)
 ├── GPIO9    I2C SCL                  Bus compartido: OLED, CCS811 y MAX17048
-├── GPIO5    LED RGB rojo
-├── GPIO6    LED RGB verde
-├── GPIO7    LED RGB azul
-├── GPIO15   LED de Wi-Fi
-└── GPIO16   Buzzer activo
+├── GPIO10–13 microSD (opcional)      CS, MOSI, SCK y MISO (fila superior)
+├── GPIO14   Ventilador (opcional)    Por MOSFET
+├── GPIO2    DHT22 datos              Pull-up interno activado (fila inferior)
+├── GPIO38   LED RGB rojo
+├── GPIO39   LED RGB verde
+├── GPIO40   LED RGB azul
+├── GPIO47   LED de Wi-Fi
+└── GPIO21   Buzzer activo
 ```
 
 Están en `IoT/micropython/config.py` y coinciden con los de `IoT/README.md`. Se evitan los
@@ -85,7 +87,7 @@ pines de arranque (0, 3, 45, 46), USB (19, 20), flash y PSRAM octal (26 a 37), l
 
 Todas están en `IoT/micropython/lib/` y se copian a `/lib` de la placa.
 
-- **`dht`** (integrado en MicroPython) — DHT22: `dht.DHT22(Pin(4))`.
+- **`dht`** (integrado en MicroPython) — DHT22: `dht.DHT22(Pin(config.PIN_DHT22))`.
 - **`machine.Pin`** (integrado en MicroPython) — LEDs y buzzer. Buzzer activo:
   `on()`/`off()`.
 - **`ssd1306.py`** — OLED. Origen: `micropython/micropython-lib` (master).

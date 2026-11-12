@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 980" width="1400" height="980" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<defs>
+<linearGradient id="cuerpo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#d9dee5"/></linearGradient>
+<linearGradient id="torre" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#cbd5e1"/></linearGradient>
+<radialGradient id="anillo"><stop offset="0.55" stop-color="#22c55e" stop-opacity="0"/><stop offset="0.8" stop-color="#22c55e" stop-opacity="0.9"/><stop offset="1" stop-color="#22c55e" stop-opacity="0"/></radialGradient>
+<marker id="flecha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#0284c7"/></marker>
+<marker id="flechaC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#ea580c"/></marker>
+</defs>
+<rect width="1400" height="980" fill="#ffffff"/>
+<text x="700" y="36" text-anchor="middle" font-size="22" font-weight="700" fill="#111827">Prototipo final esperado de Núcleo</text>
+<rect x="985" y="14" width="74" height="28" rx="14" fill="#7c3aed"/><text x="1022" y="34" text-anchor="middle" font-size="15" font-weight="800" fill="#fff" letter-spacing="2">BETA</text>
+<text x="700" y="62" text-anchor="middle" font-size="14" fill="#6b7280">Propuesta de carcasa impresa en 3D · medidas aproximadas · sujeta a cambios con el montaje real</text>
+<text x="80" y="110" font-size="16" font-weight="700" fill="#111827" text-anchor="start">1 · Vista frontal</text>
+<rect x="150" y="150" width="120" height="330" rx="18" fill="url(#torre)" stroke="#94a3b8" stroke-width="2"/>
+<rect x="168" y="175" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="193" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="211" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="229" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="247" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="265" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="283" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="301" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="319" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="337" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="355" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="373" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="391" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="409" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="427" width="84" height="7" rx="3.5" fill="#64748b"/>
+<rect x="168" y="445" width="84" height="7" rx="3.5" fill="#64748b"/>
+<text x="210" y="505" font-size="12" font-weight="700" fill="#334155" text-anchor="middle">Cámara de sensores</text>
+<text x="210" y="521" font-size="11" font-weight="400" fill="#64748b" text-anchor="middle">rejillas: el aire entra aquí</text>
+<rect x="270" y="290" width="18" height="60" fill="#cbd5e1" stroke="#94a3b8"/>
+<rect x="288" y="150" width="440" height="330" rx="26" fill="url(#cuerpo)" stroke="#94a3b8" stroke-width="2"/>
+<rect x="330" y="190" width="230" height="130" rx="10" fill="#0b1220" stroke="#334155" stroke-width="3"/>
+<rect x="345" y="203" width="200" height="104" rx="4" fill="#020617"/>
+<text x="355" y="226" font-size="12" font-weight="600" fill="#7dd3fc" text-anchor="start">NC-0501        ● Wi-Fi</text>
+<text x="355" y="254" font-size="18" font-weight="700" fill="#e0f2fe" text-anchor="start">23.4 °C   48 %</text>
+<text x="355" y="278" font-size="14" font-weight="600" fill="#bae6fd" text-anchor="start">eCO2 412 ppm</text>
+<text x="355" y="298" font-size="12" font-weight="400" fill="#7dd3fc" text-anchor="start">Bat 87 %  ·  Normal</text>
+<circle cx="650" cy="255" r="52" fill="url(#anillo)"/>
+<circle cx="650" cy="255" r="40" fill="#e5e7eb" stroke="#94a3b8" stroke-width="2"/>
+<text x="650" y="252" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">Núcleo</text>
+<text x="650" y="268" font-size="10" font-weight="400" fill="#6b7280" text-anchor="middle">estado</text>
+<circle cx="350" cy="355" r="7" fill="#38bdf8" stroke="#0369a1"/>
+<text x="364" y="359" font-size="11" font-weight="600" fill="#475569" text-anchor="start">LED de Wi-Fi</text>
+<circle cx="620" cy="360" r="3.5" fill="#64748b"/>
+<circle cx="620" cy="374" r="3.5" fill="#64748b"/>
+<circle cx="620" cy="388" r="3.5" fill="#64748b"/>
+<circle cx="620" cy="402" r="3.5" fill="#64748b"/>
+<circle cx="634" cy="360" r="3.5" fill="#64748b"/>
+<circle cx="634" cy="374" r="3.5" fill="#64748b"/>
+<circle cx="634" cy="388" r="3.5" fill="#64748b"/>
+<circle cx="634" cy="402" r="3.5" fill="#64748b"/>
+<circle cx="648" cy="360" r="3.5" fill="#64748b"/>
+<circle cx="648" cy="374" r="3.5" fill="#64748b"/>
+<circle cx="648" cy="388" r="3.5" fill="#64748b"/>
+<circle cx="648" cy="402" r="3.5" fill="#64748b"/>
+<circle cx="662" cy="360" r="3.5" fill="#64748b"/>
+<circle cx="662" cy="374" r="3.5" fill="#64748b"/>
+<circle cx="662" cy="388" r="3.5" fill="#64748b"/>
+<circle cx="662" cy="402" r="3.5" fill="#64748b"/>
+<text x="641" y="430" font-size="11" font-weight="400" fill="#475569" text-anchor="middle">buzzer</text>
+<text x="330" y="440" font-size="26" font-weight="800" fill="#0f172a" text-anchor="start">NÚCLEO</text>
+<text x="332" y="460" font-size="11" font-weight="400" fill="#64748b" text-anchor="start">monitoreo ambiental</text>
+<rect x="480" y="420" width="56" height="22" rx="11" fill="#7c3aed"/>
+<text x="508" y="436" font-size="12" font-weight="800" fill="#ffffff" text-anchor="middle">BETA</text>
+<line x1="560" y1="210" x2="790" y2="160" stroke="#94a3b8" stroke-width="1.5"/><circle cx="560" cy="210" r="3.5" fill="#64748b"/>
+<text x="796" y="164" font-size="12" font-weight="600" fill="#374151" text-anchor="start">Pantalla OLED 0.96″</text>
+<text x="796" y="179" font-size="12" font-weight="400" fill="#374151" text-anchor="start">ventana con acrílico</text>
+<line x1="700" y1="255" x2="790" y2="225" stroke="#94a3b8" stroke-width="1.5"/><circle cx="700" cy="255" r="3.5" fill="#64748b"/>
+<text x="796" y="229" font-size="12" font-weight="600" fill="#374151" text-anchor="start">Anillo de luz RGB</text>
+<text x="796" y="244" font-size="12" font-weight="400" fill="#374151" text-anchor="start">verde · amarillo · rojo</text>
+<line x1="668" y1="390" x2="790" y2="290" stroke="#94a3b8" stroke-width="1.5"/><circle cx="668" cy="390" r="3.5" fill="#64748b"/>
+<text x="796" y="294" font-size="12" font-weight="600" fill="#374151" text-anchor="start">Rejilla del buzzer</text>
+<text x="796" y="309" font-size="12" font-weight="400" fill="#374151" text-anchor="start">alarma de peligro</text>
+<text x="80" y="560" font-size="16" font-weight="700" fill="#111827" text-anchor="start">2 · Borde inferior (puertos)</text>
+<rect x="150" y="585" width="578" height="56" rx="16" fill="url(#cuerpo)" stroke="#94a3b8" stroke-width="2"/>
+<rect x="200" y="603" width="44" height="18" rx="9" fill="#1f2937"/>
+<text x="222" y="664" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">USB-C carga</text>
+<rect x="330" y="602" width="56" height="20" rx="4" fill="#475569"/><rect x="334" y="605" width="22" height="14" rx="3" fill="#f8fafc"/>
+<text x="358" y="664" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">Encendido</text>
+<rect x="460" y="607" width="70" height="8" rx="2" fill="#1f2937"/>
+<text x="495" y="664" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">Ranura microSD</text>
+<circle cx="640" cy="612" r="9" fill="#e5e7eb" stroke="#475569" stroke-width="2"/><circle cx="640" cy="612" r="3" fill="#475569"/>
+<text x="640" y="664" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">Reinicio (oculto)</text>
+<text x="80" y="715" font-size="16" font-weight="700" fill="#111827" text-anchor="start">3 · Interior sin tapa (vista superior)</text>
+<rect x="150" y="740" width="578" height="200" rx="20" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<rect x="160" y="750" width="112" height="180" rx="12" fill="#ecfeff" stroke="#0891b2" stroke-width="2"/>
+<text x="216" y="770" font-size="12" font-weight="700" fill="#0e7490" text-anchor="middle">Sensores</text>
+<rect x="180" y="785" width="72" height="50" rx="6" fill="#ffffff" stroke="#ca8a04" stroke-width="2"/>
+<text x="216" y="815" font-size="12" font-weight="700" fill="#111827" text-anchor="middle">DHT22</text>
+<rect x="180" y="855" width="72" height="50" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+<text x="216" y="885" font-size="12" font-weight="700" fill="#111827" text-anchor="middle">CCS811</text>
+<rect x="276" y="746" width="10" height="188" fill="#94a3b8"/>
+<rect x="292" y="750" width="250" height="180" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="417" y="770" font-size="12" font-weight="700" fill="#1d4ed8" text-anchor="middle">Electrónica</text>
+<rect x="310" y="820" width="215" height="58" rx="5" fill="#111111"/>
+<text x="417" y="854" font-size="13" font-weight="700" fill="#f9fafb" text-anchor="middle">ESP32-S3</text>
+<rect x="310" y="782" width="90" height="30" rx="4" fill="#ffffff" stroke="#2563eb"/>
+<text x="355" y="802" font-size="11" font-weight="700" fill="#111827" text-anchor="middle">OLED</text>
+<circle cx="450" cy="797" r="14" fill="#fce7f3" stroke="#db2777"/>
+<text x="450" y="801" font-size="9" font-weight="700" fill="#111827" text-anchor="middle">RGB</text>
+<circle cx="495" cy="797" r="14" fill="#ffedd5" stroke="#ea580c"/>
+<text x="495" y="801" font-size="9" font-weight="700" fill="#111827" text-anchor="middle">Bz</text>
+<rect x="310" y="888" width="70" height="30" rx="4" fill="#ffffff" stroke="#0891b2" stroke-dasharray="5 4"/>
+<text x="345" y="908" font-size="10" font-weight="700" fill="#111827" text-anchor="middle">microSD</text>
+<rect x="548" y="750" width="170" height="180" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<text x="633" y="770" font-size="12" font-weight="700" fill="#047857" text-anchor="middle">Energía</text>
+<rect x="562" y="782" width="142" height="58" rx="8" fill="#ffffff" stroke="#059669" stroke-width="2"/>
+<text x="633" y="816" font-size="12" font-weight="700" fill="#111827" text-anchor="middle">Batería LiPo</text>
+<rect x="562" y="848" width="80" height="30" rx="4" fill="#ffffff" stroke="#059669"/>
+<text x="602" y="868" font-size="10" font-weight="700" fill="#111827" text-anchor="middle">Carga</text>
+<rect x="648" y="848" width="56" height="30" rx="4" fill="#ffffff" stroke="#2563eb" stroke-dasharray="5 4"/>
+<text x="676" y="868" font-size="10" font-weight="700" fill="#111827" text-anchor="middle">MAX</text>
+<rect x="590" y="886" width="86" height="38" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-dasharray="5 4"/>
+<text x="633" y="910" font-size="11" font-weight="700" fill="#111827" text-anchor="middle">Ventilador</text>
+<path d="M100 810 H170" stroke="#0284c7" stroke-width="3" fill="none" marker-end="url(#flecha)"/>
+<path d="M100 880 H170" stroke="#0284c7" stroke-width="3" fill="none" marker-end="url(#flecha)"/>
+<text x="95" y="850" font-size="12" font-weight="700" fill="#0284c7" text-anchor="end">aire</text>
+<text x="95" y="865" font-size="12" font-weight="700" fill="#0284c7" text-anchor="end">ambiente</text>
+<path d="M633 930 V975" stroke="#ea580c" stroke-width="3" fill="none" marker-end="url(#flechaC)"/>
+<text x="645" y="972" font-size="12" font-weight="700" fill="#ea580c" text-anchor="start">salida de calor (rejilla trasera)</text>
+<text x="790" y="470" font-size="16" font-weight="700" fill="#111827" text-anchor="start">Por qué está así</text>
+<circle cx="800" cy="501" r="10" fill="#7c3aed"/>
+<text x="800" y="505" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">1</text>
+<text x="820" y="505" font-size="13" font-weight="700" fill="#111827" text-anchor="start">Cámara de sensores aparte</text>
+<text x="820" y="524" font-size="12" font-weight="400" fill="#374151" text-anchor="start">Pared y hueco térmico: el calor del ESP y</text>
+<text x="820" y="541" font-size="12" font-weight="400" fill="#374151" text-anchor="start">de la batería no altera temperatura ni aire.</text>
+<circle cx="800" cy="579" r="10" fill="#7c3aed"/>
+<text x="800" y="583" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">2</text>
+<text x="820" y="583" font-size="13" font-weight="700" fill="#111827" text-anchor="start">Ventilador solo en Energía</text>
+<text x="820" y="602" font-size="12" font-weight="400" fill="#374151" text-anchor="start">Saca el calor por atrás, lejos de las rejillas</text>
+<text x="820" y="619" font-size="12" font-weight="400" fill="#374151" text-anchor="start">de los sensores (nunca sopla sobre ellos).</text>
+<circle cx="800" cy="657" r="10" fill="#7c3aed"/>
+<text x="800" y="661" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">3</text>
+<text x="820" y="661" font-size="13" font-weight="700" fill="#111827" text-anchor="start">Todo lo que se mira, al frente</text>
+<text x="820" y="680" font-size="12" font-weight="400" fill="#374151" text-anchor="start">Pantalla, anillo RGB, LED de Wi-Fi y buzzer</text>
+<text x="820" y="697" font-size="12" font-weight="400" fill="#374151" text-anchor="start">quedan sobre el ESP, con cables cortos.</text>
+<circle cx="800" cy="735" r="10" fill="#7c3aed"/>
+<text x="800" y="739" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">4</text>
+<text x="820" y="739" font-size="13" font-weight="700" fill="#111827" text-anchor="start">Puertos abajo</text>
+<text x="820" y="758" font-size="12" font-weight="400" fill="#374151" text-anchor="start">USB-C de carga, interruptor y microSD</text>
+<text x="820" y="775" font-size="12" font-weight="400" fill="#374151" text-anchor="start">accesibles con el equipo en la pared.</text>
+<circle cx="800" cy="813" r="10" fill="#7c3aed"/>
+<text x="800" y="817" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">5</text>
+<text x="820" y="817" font-size="13" font-weight="700" fill="#111827" text-anchor="start">Medidas aproximadas</text>
+<text x="820" y="836" font-size="12" font-weight="400" fill="#374151" text-anchor="start">Cuerpo ~110 × 80 × 40 mm + cámara ~30 mm.</text>
+<text x="820" y="853" font-size="12" font-weight="400" fill="#374151" text-anchor="start">PLA o PETG; montaje en pared o de mesa.</text>
+</svg>

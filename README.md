@@ -530,9 +530,11 @@ Para validar cambios: `manage.py evaluar_agente --dispositivo NC-0501` corre el 
 
 ## Conexiones del ESP32
 
-Placa: ESP32-S3-DevKitC-1 N16R8 (Lonely Binary). Todo va en la fila de pines **G, 5V, 14…4, RST y
-3V**, y cada componente queda frente a sus pines y en el mismo orden, así que los cables bajan
-derechos y no se cruzan. Las alimentaciones se marcan con su símbolo (flecha roja de 3V3,
+Placa: ESP32-S3-DevKitC-1 N16R8 (Lonely Binary). Se usan **las dos filas de pines**: arriba la
+alimentación, el bus I2C (OLED, CCS811 y MAX17048), el microSD y el ventilador; abajo el DHT22, el
+LED RGB, el LED de Wi-Fi y el buzzer. Cada componente queda frente a sus pines y en el mismo
+orden, así que los cables salen derechos y no se cruzan. En la fila de abajo solo se usan pines
+seguros (en rojo en el dibujo, los que no se deben usar). Las alimentaciones se marcan con su símbolo (flecha roja de 3V3,
 naranja de 5V y tierra) en lugar de un cable: van a los rieles de la protoboard. Las piezas con
 borde punteado son opcionales.
 
@@ -541,13 +543,13 @@ borde punteado son opcionales.
 | Componente | Pines del componente → ESP32-S3 | Alimentación |
 | --- | --- | --- |
 | Módulo de carga | OUT+ → **5V**, OUT− → **G** | Batería en B+ / B− |
-| DHT22 | out → **4** | + → 3V3, − → G |
-| LED RGB (KY-016) | R → **5**, G → **6**, B → **7** | − → G |
-| Buzzer (KY-012) | S → **16** | + → 3V3, − → G |
+| DHT22 | out → **2** | + → 3V3, − → G |
+| LED RGB (KY-016) | R → **38**, G → **39**, B → **40** | − → G |
+| Buzzer (KY-012) | S → **21** | + → 3V3, − → G |
 | OLED SSD1306 | SCL → **9**, SDA → **8** | VCC → 3V3, GND → G |
 | CCS811 | SCL → **9**, SDA → **8**, WAK → G | VCC → 3V3, GND → G |
 | MAX17048 (opcional) | SCL → **9**, SDA → **8** | VCC → 3V3, GND → G |
-| LED de Wi-Fi (opcional) | ánodo → **15** (con resistencia de 220 Ω) | cátodo → G |
+| LED de Wi-Fi (opcional) | ánodo → **47** (con resistencia de 220 Ω) | cátodo → G |
 | Lector microSD HW-125 (opcional) | MISO → **13**, SCK → **12**, MOSI → **11**, CS → **10** | VCC → **5V**, GND → G |
 | Ventilador 5 V (opcional) | MOSFET SIG → **14** | + → 5V, − → MOSFET → G |
 
@@ -566,3 +568,21 @@ borde punteado son opcionales.
   el firmware todavía no los usa.
 - Sigue la serigrafía de cada módulo: el orden de sus pines cambia entre vendedores.
 
+## Prototipo final esperado (beta)
+
+Propuesta de cómo se vería Núcleo ya como producto, en una carcasa impresa en 3D. Es una
+**versión beta**: las medidas son aproximadas y se ajustarán con el montaje real.
+
+![Prototipo final esperado de Núcleo, versión beta: vista frontal, puertos e interior](IoT/prototipo-beta.svg)
+
+- **Cámara de sensores aparte:** el DHT22 y el CCS811 van en una torre lateral con rejillas,
+  separada del resto por una pared, para que el calor del ESP y de la batería no altere la
+  temperatura ni la lectura del aire.
+- **Frente:** la pantalla OLED tras una ventana de acrílico, un anillo de luz para el LED RGB
+  (verde, amarillo o rojo), el LED de Wi-Fi y la rejilla del buzzer.
+- **Borde inferior:** USB-C de carga, interruptor de encendido, ranura del microSD y el botón de
+  reinicio oculto.
+- **Interior:** tres compartimentos (sensores, electrónica y energía). El ventilador va en el de
+  energía y saca el calor por una rejilla trasera, nunca hacia los sensores.
+- **Medidas estimadas:** cuerpo de ~110 × 80 × 40 mm más la cámara de ~30 mm; en PLA o PETG, para
+  pared o mesa.

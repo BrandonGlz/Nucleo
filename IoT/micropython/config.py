@@ -3,15 +3,17 @@
 # --- Pines (ESP32-S3; confirmar contra el montaje real) -----------------------------------
 # Libres en la S3 con PSRAM octal: se evitan los de arranque (0, 3, 45, 46), USB (19, 20),
 # flash y PSRAM (26 a 37), la consola (43, 44) y el LED integrado de algunas placas (48).
-PIN_DHT22 = 4
+# Fila superior de la placa: alimentación, bus I2C, microSD y ventilador. Fila inferior: DHT22,
+# LED RGB, LED de Wi-Fi y buzzer. Así ningún cable se cruza (ver el README principal).
+PIN_DHT22 = 2
 DHT22_PULL_UP_INTERNO = True  # por si la placa del DHT22 no trae su resistencia de 10 kΩ
 PIN_I2C_SDA = 8  # bus compartido por la pantalla OLED, el CCS811 y el MAX17048
 PIN_I2C_SCL = 9
-PIN_RGB_ROJO = 5
-PIN_RGB_VERDE = 6
-PIN_RGB_AZUL = 7
-PIN_LED_WIFI = 15
-PIN_BUZZER = 16
+PIN_RGB_ROJO = 38
+PIN_RGB_VERDE = 39
+PIN_RGB_AZUL = 40
+PIN_LED_WIFI = 47
+PIN_BUZZER = 21
 PIN_BATERIA = 1  # solo con BATERIA = "ADC": ADC1 (el ADC2 no lee con el Wi-Fi activo)
 # Reservados para piezas opcionales (el firmware aún no los usa): lector microSD por SPI y
 # ventilador de 5 V por MOSFET. Ver «Conexiones del ESP32» en el README principal.
