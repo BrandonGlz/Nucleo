@@ -532,40 +532,11 @@ Para validar cambios: `manage.py evaluar_agente --dispositivo NC-0501` corre el 
 
 Placa: ESP32-S3-DevKitC-1 N16R8 (Lonely Binary). Todo va en la fila de pines **G, 5V, 14…4, RST y
 3V**, y cada componente queda frente a sus pines y en el mismo orden, así que los cables bajan
-derechos y no se cruzan. Las alimentaciones (`VCC→3V3`, `GND→G`, `+→5V`) no se dibujan como
-cables: van a los rieles de la protoboard.
+derechos y no se cruzan. Las alimentaciones se marcan con su símbolo (flecha roja de 3V3,
+naranja de 5V y tierra) en lugar de un cable: van a los rieles de la protoboard. Las piezas con
+borde punteado son opcionales.
 
-```text
- ┌──────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
- │ USB  │                                                                              ┌──────────────────┐             │
- │UART  │   ESP32-S3 N16R8 (Lonely Binary) · vista superior                            │ ESP32-S3-WROOM-1 │ antena      │
- │ USB  │                                                                              └──────────────────┘             │
- │      │G    5V   14   13   12   11   10   9    46   3    8    18   17   16   15   7    6    5    4   RST   3V   3V    │
- └──────┴┬────┬────┬────┬────┬────┬────┬────┬──────────────┬──────────────┬────┬────┬────┬────┬────┬─────────┬──────────┘
-         │    │    │    │    │    │    │    │              │              │    ┆    │    │    │    │         │
-         │    │    │    │    │    │    │    │              │              │    ┆    │    │    │    │         │
-         │    │    │    │    │    │    │    │              │              │    ┆    │    │    │    │         │
-     ┌───┴────┴───┐│ ┌──┴────┴────┴────┴─┐┌─┴──────────────┴──┐           │    ┆ ┌──┴────┴────┴──┐ │         │
-     │ Módulo de  ││ │ microSD HW-125    ││ SCL           SDA │           │    ┆ │ B    G    R   │ │         │
-     │ carga      ││ │ MISO SCK MOSI CS  ││ OLED SSD1306      │           │    ┆ │ LED RGB       │ │         │
-     │ OUT− OUT+  ││ │ VCC→5V  GND→G     ││ VCC→3V3 GND→G     │           │    ┆ │ −→G           │ │         │
-     └───┬────┬───┘│ │ (opcional)        │└─┬──────────────┬──┘           │    ┆ └───────────────┘ │         │
-         │    │    │ └───────────────────┘  │              │              │    ┆                   │         │
-     ┌───┴────┴───┐│                      ┌─┴──────────────┴──┐           │    ┆                   │         │
-     │ Batería    ││                      │ SCL           SDA │   ┌───────┴──┐ ┆                ┌──┴────────┐│
-     │ LiPo 3.7 V ││                      │ CCS811            │   │       S  │ ┆                │ out       ││
-     │ B−   B+    ││                      │ VCC→3V3 GND→G     │   │ Buzzer   │ ┆                │ DHT22     ││
-     └────────────┘│                      │ WAK→G             │   │ +→3V3    │ ┆                │ +→3V3     ││
-                   │                      └─┬──────────────┬──┘   │ −→G      │ ┆                │ −→G       ││
-                   │                        │              │      └──────────┘ ┆                └───────────┘│
-                ┌──┴───────────────┐      ┌─┴──────────────┴──┐                ┆                             │
-                │ Ventilador 5 V   │      │ SCL           SDA │                ┆                             │
-                │ MOSFET: SIG      │      │ MAX17048          │               LED Wi-Fi                      │
-                │ +→5V  −→G        │      │ VCC→3V3 GND→G     │               (opcional)                     │
-                │ (opcional)       │      │ (opcional)        │                                              │
-                └──────────────────┘      └───────────────────┘                                              │
-                                                                                                         riel 3V3
-```
+![Conexiones del ESP32-S3: cada componente frente a sus pines, sin cables cruzados](IoT/conexiones-esp32.svg)
 
 | Componente | Pines del componente → ESP32-S3 | Alimentación |
 | --- | --- | --- |
