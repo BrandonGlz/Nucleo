@@ -110,6 +110,8 @@ class Tubo:
         return datos
 
     def write(self, datos, n=None):
+        if isinstance(datos, str):  # umqtt manda el client_id y el usuario como texto
+            datos = datos.encode()
         datos = bytes(datos[:n] if n is not None else datos)
         self._sock.write(trama(_BINARIA, datos))
         return len(datos)

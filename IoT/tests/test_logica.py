@@ -504,6 +504,11 @@ class WebSocketTests(unittest.TestCase):
         self.assertEqual(cuerpo, b"\x10\x0ccon")
         self.assertTrue(sock.salida[1] & 0x80)  # el cliente siempre enmascara
 
+    def test_acepta_texto_como_el_socket_tls(self):
+        sock = _SocketFalso()
+        self.ws.Tubo(sock).write("NC-0501")
+        self.assertEqual(self._desenmascarar(sock.salida)[1], b"NC-0501")
+
     def test_lee_el_flujo_mqtt_a_traves_de_tramas_y_responde_ping(self):
         ping = bytes((0x89, 2)) + b"hi"
         datos = bytes((0x82, 4)) + b"\x20\x02\x00\x00" + bytes((0x82, 2)) + b"ab"
