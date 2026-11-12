@@ -100,7 +100,9 @@ de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
 Nico AI responde primero con respuestas predefinidas y con las que aprendió de los 👍 de los
 usuarios (tabla `respuesta_aprendida`). Solo cuando se le pide explicar, opinar o recomendar
 («¿es grave?», «¿por qué subió?», «¿qué recomiendas?») redacta con un modelo local chico
-(`qwen2.5:1.5b`, ~1.3 GB de RAM cargado, tope 3 GB; 4-6 s por respuesta, ~13 s con dos a la vez) que corre en el contenedor `nucleo_ollama`.
+(`qwen2.5:1.5b`, ~1.2 GB de RAM cargado, tope 3 GB; ~3 s por respuesta con el modelo cargado,
+~6 s si estaba descargado y ~13 s con dos a la vez o con la firma del ESP incluida) que corre en
+el contenedor `nucleo_ollama`.
 
 El ESP32 de cada dispositivo es la **llave** de su agente. Por MQTT (Funnel en el puerto
 **8443**, TLS de Let's Encrypt hacia el listener interno 1883 de Mosquitto) publica un latido
@@ -115,11 +117,13 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 
 - Usuario MQTT del ESP: `bash Mosquitto/dispositivo.sh <codigo_mqtt>` (imprime la contraseña
   una vez; va solo al `secrets.py` de la placa).
+- La firma tiene 12 s para llegar; si no llega, se responde con lo predefinido.
+- Con todo encendido el servidor usa ~2.7 GB de los 8 GB (Ollama ~1.2 GB) y la carga ronda 0.5.
 - Encender: poner `IA_PUENTE_CLAVE` (`openssl rand -hex 24`) en `BackEnd/.env` y correr
   `bash deploy/instalar.sh`; levanta Ollama y descarga el modelo. La misma clave va en el ESP.
 - Apagar: dejar `IA_PUENTE_CLAVE` vacía y volver a instalar; Ollama se detiene y el agente
   responde solo con lo predefinido, sin depender de ningún ESP.
-- Si la IA tarda más de `IA_ESPERA_SEGUNDOS` (8 s), hay 2 peticiones en cola o pone una cifra
+- Si la IA tarda más de `IA_ESPERA_SEGUNDOS` (20 s), hay 2 peticiones en cola o pone una cifra
   que no viene de los datos, se responde con la predefinida.
 - `deploy/compilar_apk.sh` apaga Ollama mientras compila la app y lo vuelve a encender al final.
 - Protección por carga: con menos de 1200 MB libres el agente deja de usar la IA (responde con
