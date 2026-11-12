@@ -25,6 +25,7 @@ ESTADOS_WIFI = {
     1001: "sin_respuesta",
 }
 HORA_SERVIDORES = ("pool.ntp.org", "time.cloudflare.com", "time.windows.com", "time.google.com")
+_ESTADOS_FALLA = (200, 201, 202, 203, 204)
 
 
 def redes_conocidas():
@@ -78,9 +79,13 @@ class Red:
             return
         if self._intento:
             ssid, inicio = self._intento
-            if time.ticks_diff(ahora, inicio) < config.WIFI_INTENTO_SEG * 1000:
-                return
             estado = self._wlan.status()
+            transcurrido = time.ticks_diff(ahora, inicio)
+            # Un rechazo (p. ej. 202 con señal débil) no se espera completo: se pasa al
+            # siguiente intento, que suele entrar a la primera.
+            fallo = estado in _ESTADOS_FALLA and transcurrido >= 8000
+            if not fallo and transcurrido < config.WIFI_INTENTO_SEG * 1000:
+                return
             self.falla = "wifi_%s_%s" % (ESTADOS_WIFI.get(estado, estado), ssid)
             self._wlan.disconnect()
             self._intento = None
@@ -119,9 +124,13 @@ class Red:
         except OSError:
             pass
         gc.collect()
-        self._pendientes = [
-            (ssid, clave, mejores[ssid][1]) for ssid, clave in redes_conocidas() if ssid in mejores
-        ]
+        # Cada red: primero su punto de acceso más fuerte y, si falla, la que elija el driver
+        # (con señal débil el más fuerte del escaneo no siempre acepta).
+        self._pendientes = []
+        for ssid, clave in redes_conocidas():
+            if ssid in mejores:
+                self._pendientes.append((ssid, clave, mejores[ssid][1]))
+                self._pendientes.append((ssid, clave, None))
         if not mejores:
             self.falla = "wifi_sin_redes_visibles"
         elif not self._pendientes:

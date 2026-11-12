@@ -373,3 +373,66 @@ class BateriaTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WifiTests(unittest.TestCase):
+    """Con señal débil el primer intento suele rechazarse (202): se reintenta pronto y sin
+    fijar el punto de acceso, en lugar de esperar el intento completo."""
+
+    class WLAN:
+        def __init__(self, *a):
+            self.conexiones = []
+            self.estado = 1001
+            self.conectada = False
+
+        def active(self, *a):
+            return True
+
+        def config(self, **k):
+            pass
+
+        def scan(self):
+            return [(b"red", b"\x01" * 6, 1, -82, 3, False)]
+
+        def connect(self, ssid, clave, bssid=None):
+            self.conexiones.append((ssid, bssid))
+
+        def disconnect(self):
+            pass
+
+        def status(self):
+            return self.estado
+
+        def isconnected(self):
+            return self.conectada
+
+        def ifconfig(self):
+            return ("10.0.0.2",)
+
+    def setUp(self):
+        import network
+
+        network.STA_IF = 0
+        network.WLAN = self.WLAN
+        import time
+
+        if not hasattr(time, "sleep_ms"):
+            time.sleep_ms = lambda ms: None
+            self.addCleanup(delattr, time, "sleep_ms")
+        from nucleo import red
+
+        self.red = red.Red()
+        reloj["ms"] = 0
+
+    def test_un_rechazo_pasa_pronto_al_intento_sin_bssid(self):
+        wlan = self.red._wlan
+        self.red.mantener()
+        self.assertEqual(wlan.conexiones, [("red", b"\x01" * 6)])
+        wlan.estado = 202
+        reloj["ms"] = 8500  # antes de WIFI_INTENTO_SEG
+        self.red.mantener()
+        self.assertEqual(wlan.conexiones[-1], ("red", None))
+        self.assertIn("autenticacion_rechazada", self.red.falla)
+        wlan.conectada = True
+        self.red.mantener()
+        self.assertEqual(self.red.red, "red")
