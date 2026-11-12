@@ -1,7 +1,7 @@
 """Puente de Nico AI: este ESP32 lleva las peticiones de su agente a la IA local (Ollama).
 
 Ciclo: consulta al servidor por HTTPS si hay una petición para su dispositivo (espera larga de
-hasta 20 s), la envía a Ollama por la ruta /puente-ia/ del mismo servidor y devuelve la
+hasta 12 s), la envía a Ollama por la ruta /puente-ia/ del mismo servidor y devuelve la
 respuesta con los tokens usados. Cada consulta le dice al servidor que este dispositivo está
 activo; si el ESP se apaga o se queda sin red, su agente se deshabilita en la web y en la app.
 
@@ -39,12 +39,6 @@ class Puente:
     def __init__(self):
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
-        try:
-            # Sin ahorro de energía: con señal débil (redes institucionales con varios puntos de
-            # acceso) la asociación falla menos y la conexión no se cae entre peticiones.
-            self.wlan.config(pm=network.WLAN.PM_NONE)
-        except (AttributeError, ValueError, OSError):
-            pass
         self.host = secrets.PUENTE_HOST
         self.clave = secrets.PUENTE_CLAVE
         self.codigo = secrets.CODIGO_MQTT
@@ -59,19 +53,33 @@ class Puente:
     def conectar(self):
         if self.wlan.isconnected():
             return True
-        disponibles = set()
+        # Tras un intento fallido la interfaz puede quedarse atorada (estado 202 sin fin):
+        # se apaga y enciende antes de buscar de nuevo.
+        self.wlan.active(False)
+        time.sleep_ms(300)
+        self.wlan.active(True)
+        self._sin_ahorro()
+        mejores = {}  # ssid -> (señal, bssid) del punto de acceso más fuerte
         try:
-            disponibles = {r[0].decode() for r in self.wlan.scan()}
+            for r in self.wlan.scan():
+                ssid = r[0].decode()
+                if ssid not in mejores or r[3] > mejores[ssid][0]:
+                    mejores[ssid] = (r[3], r[1])
         except OSError:
             pass
         for ssid, clave in _redes():
-            if disponibles and ssid not in disponibles:
+            if mejores and ssid not in mejores:
                 continue
-            print("Wi-Fi: conectando a", ssid)
-            self.wlan.connect(ssid, clave)
-            # Hasta 30 s: con varios puntos de acceso, los primeros intentos pueden fallar la
-            # autenticación (estado 202) antes de asociarse.
-            for _ in range(120):
+            senal, bssid = mejores.get(ssid, (None, None))
+            print("Wi-Fi: conectando a", ssid, senal if senal is not None else "")
+            try:
+                # Con varios puntos de acceso de la misma red, se elige el de mejor señal.
+                self.wlan.connect(ssid, clave, bssid=bssid) if bssid else self.wlan.connect(ssid, clave)
+            except OSError as e:
+                print("Wi-Fi:", e)
+                continue
+            # Hasta 20 s por red.
+            for _ in range(80):
                 if self.perro:
                     self.perro.feed()
                 if self.wlan.isconnected():
@@ -80,6 +88,14 @@ class Puente:
                 time.sleep_ms(250)
             self.wlan.disconnect()
         return False
+
+    def _sin_ahorro(self):
+        try:
+            # Sin ahorro de energía: con señal débil (redes institucionales con varios puntos de
+            # acceso) la asociación falla menos y la conexión no se cae entre peticiones.
+            self.wlan.config(pm=network.WLAN.PM_NONE)
+        except (AttributeError, ValueError, OSError):
+            pass
 
     def hora(self):
         """El certificado se valida con la fecha: sin hora no se puede usar HTTPS."""
