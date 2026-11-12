@@ -527,3 +527,71 @@ reglas.
 Para validar cambios: `manage.py evaluar_agente --dispositivo NC-0501` corre el banco de casos
 (`apps/reportes/casos_agente.py`) sin guardar nada. El detalle está en
 [`Context/backend/estructura-backend.md`](Context/backend/estructura-backend.md#agente-ia).
+
+## Conexiones del ESP32
+
+Placa: ESP32-S3-DevKitC-1 N16R8 (Lonely Binary). Todo va en la fila de pines **G, 5V, 14…4, RST y
+3V**, y cada componente queda frente a sus pines y en el mismo orden, así que los cables bajan
+derechos y no se cruzan. Las alimentaciones (`VCC→3V3`, `GND→G`, `+→5V`) no se dibujan como
+cables: van a los rieles de la protoboard.
+
+```text
+ ┌──────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │ USB  │                                                                              ┌──────────────────┐             │
+ │UART  │   ESP32-S3 N16R8 (Lonely Binary) · vista superior                            │ ESP32-S3-WROOM-1 │ antena      │
+ │ USB  │                                                                              └──────────────────┘             │
+ │      │G    5V   14   13   12   11   10   9    46   3    8    18   17   16   15   7    6    5    4   RST   3V   3V    │
+ └──────┴┬────┬────┬────┬────┬────┬────┬────┬──────────────┬──────────────┬────┬────┬────┬────┬────┬─────────┬──────────┘
+         │    │    │    │    │    │    │    │              │              │    ┆    │    │    │    │         │
+         │    │    │    │    │    │    │    │              │              │    ┆    │    │    │    │         │
+         │    │    │    │    │    │    │    │              │              │    ┆    │    │    │    │         │
+     ┌───┴────┴───┐│ ┌──┴────┴────┴────┴─┐┌─┴──────────────┴──┐           │    ┆ ┌──┴────┴────┴──┐ │         │
+     │ Módulo de  ││ │ microSD HW-125    ││ SCL           SDA │           │    ┆ │ B    G    R   │ │         │
+     │ carga      ││ │ MISO SCK MOSI CS  ││ OLED SSD1306      │           │    ┆ │ LED RGB       │ │         │
+     │ OUT− OUT+  ││ │ VCC→5V  GND→G     ││ VCC→3V3 GND→G     │           │    ┆ │ −→G           │ │         │
+     └───┬────┬───┘│ │ (opcional)        │└─┬──────────────┬──┘           │    ┆ └───────────────┘ │         │
+         │    │    │ └───────────────────┘  │              │              │    ┆                   │         │
+     ┌───┴────┴───┐│                      ┌─┴──────────────┴──┐           │    ┆                   │         │
+     │ Batería    ││                      │ SCL           SDA │   ┌───────┴──┐ ┆                ┌──┴────────┐│
+     │ LiPo 3.7 V ││                      │ CCS811            │   │       S  │ ┆                │ out       ││
+     │ B−   B+    ││                      │ VCC→3V3 GND→G     │   │ Buzzer   │ ┆                │ DHT22     ││
+     └────────────┘│                      │ WAK→G             │   │ +→3V3    │ ┆                │ +→3V3     ││
+                   │                      └─┬──────────────┬──┘   │ −→G      │ ┆                │ −→G       ││
+                   │                        │              │      └──────────┘ ┆                └───────────┘│
+                ┌──┴───────────────┐      ┌─┴──────────────┴──┐                ┆                             │
+                │ Ventilador 5 V   │      │ SCL           SDA │                ┆                             │
+                │ MOSFET: SIG      │      │ MAX17048          │               LED Wi-Fi                      │
+                │ +→5V  −→G        │      │ VCC→3V3 GND→G     │               (opcional)                     │
+                │ (opcional)       │      │ (opcional)        │                                              │
+                └──────────────────┘      └───────────────────┘                                              │
+                                                                                                         riel 3V3
+```
+
+| Componente | Pines del componente → ESP32-S3 | Alimentación |
+| --- | --- | --- |
+| Módulo de carga | OUT+ → **5V**, OUT− → **G** | Batería en B+ / B− |
+| DHT22 | out → **4** | + → 3V3, − → G |
+| LED RGB (KY-016) | R → **5**, G → **6**, B → **7** | − → G |
+| Buzzer (KY-012) | S → **16** | + → 3V3, − → G |
+| OLED SSD1306 | SCL → **9**, SDA → **8** | VCC → 3V3, GND → G |
+| CCS811 | SCL → **9**, SDA → **8**, WAK → G | VCC → 3V3, GND → G |
+| MAX17048 (opcional) | SCL → **9**, SDA → **8** | VCC → 3V3, GND → G |
+| LED de Wi-Fi (opcional) | ánodo → **15** (con resistencia de 220 Ω) | cátodo → G |
+| Lector microSD HW-125 (opcional) | MISO → **13**, SCK → **12**, MOSI → **11**, CS → **10** | VCC → **5V**, GND → G |
+| Ventilador 5 V (opcional) | MOSFET SIG → **14** | + → 5V, − → MOSFET → G |
+
+- **Rieles de la protoboard:** uno de **3V3** (desde el pin 3V), uno de **5V** (desde la salida
+  del módulo de carga) y uno de **GND** común (desde G). Todos los G del dibujo van al riel GND.
+- **Bus I2C:** la OLED, el CCS811 y el MAX17048 comparten SCL (9) y SDA (8) en cadena; cada uno
+  tiene su dirección (0x3C, 0x5A y 0x36). El CCS811 necesita **WAK a GND** o no responde.
+- **Módulo de carga:** si es solo un TP4056 (sin salida de 5 V), entre OUT+ y el pin 5V va el
+  elevador MT3608 ajustado a 5 V. Nunca conectes la batería directo al pin 3V.
+- **microSD:** aliméntalo desde 5V (su regulador AMS1117 necesita más de 3.3 V); su chip LVC125A
+  ya adapta las señales al ESP. Tarjeta de hasta 32 GB en FAT32.
+- **Ventilador:** el pin del ESP no da corriente suficiente; se conecta con un módulo MOSFET
+  (o un transistor) y se pone en el compartimento de la batería, lejos del DHT22 y del CCS811
+  para no alterar sus lecturas.
+- Los pines del microSD (10–13) y del ventilador (14) están reservados en `IoT/micropython/config.py`;
+  el firmware todavía no los usa.
+- Sigue la serigrafía de cada módulo: el orden de sus pines cambia entre vendedores.
+

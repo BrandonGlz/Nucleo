@@ -13,6 +13,13 @@ PIN_RGB_AZUL = 7
 PIN_LED_WIFI = 15
 PIN_BUZZER = 16
 PIN_BATERIA = 1  # solo con BATERIA = "ADC": ADC1 (el ADC2 no lee con el Wi-Fi activo)
+# Reservados para piezas opcionales (el firmware aún no los usa): lector microSD por SPI y
+# ventilador de 5 V por MOSFET. Ver «Conexiones del ESP32» en el README principal.
+PIN_SD_CS = 10
+PIN_SD_MOSI = 11
+PIN_SD_SCK = 12
+PIN_SD_MISO = 13
+PIN_VENTILADOR = 14
 
 RGB_ACTIVO_ALTO = True  # False si el LED RGB es de ánodo común
 BUZZER_ACTIVO_ALTO = True

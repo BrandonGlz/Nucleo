@@ -187,11 +187,14 @@ ESP32-S3
 ├── GPIO7    LED RGB B
 ├── GPIO15   LED de Wi-Fi              Con resistencia
 ├── GPIO16   Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
+├── GPIO10–13 Lector microSD (opcional) CS 10, MOSI 11, SCK 12, MISO 13; VCC a 5 V
+├── GPIO14   Ventilador (opcional)     Por MOSFET; el ventilador a 5 V
 ├── 3V3      DHT22 «+», OLED, CCS811 y MAX17048
 └── 5V/VIN   Salida del elevador (5 V) de la placa de batería; GND común
 ```
 
-Todos los sensores se alimentan a 3.3 V. Antes de conectar, sigue la serigrafía de cada
+Todos los sensores se alimentan a 3.3 V. El diagrama completo, con cada componente frente a sus
+pines y sin cables cruzados, está en «Conexiones del ESP32» del README principal. Antes de conectar, sigue la serigrafía de cada
 módulo: el orden de los pines cambia entre vendedores. El CCS811 necesita su pin **nWAKE**
 conectado a GND. Si el LED RGB es de ánodo común, `RGB_ACTIVO_ALTO = False`.
 
