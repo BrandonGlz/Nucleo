@@ -2,14 +2,15 @@
 
 ## Lenguaje y plataforma
 
-El nodo se programa en **Python con MicroPython** sobre un ESP32 genérico
-(ESP32-WROOM, DevKit). Se eligió por prototipado rápido y familiaridad del equipo
+El nodo se programa en **Python con MicroPython** sobre un **ESP32-S3 con PSRAM octal**
+(antes se planeó un ESP32-WROOM DevKit). Se eligió por prototipado rápido y familiaridad del equipo
 con Python, aceptando menor rendimiento y menos bibliotecas que una solución en C.
 
-- Firmware: MicroPython **v1.29.0**, build `ESP32_GENERIC`
-  (`IoT/micropython/firmware/ESP32_GENERIC-20260824-v1.29.0.bin`,
-  SHA-256 `e67ad6015a0a504c1fec9aa9bbf589d0432ed28e62546f4f8dd8a147f8bd95f6`).
-  Fuente: <https://micropython.org/download/ESP32_GENERIC/>.
+- Firmware: MicroPython **v1.29.0**, build `ESP32_GENERIC_S3-SPIRAM_OCT`
+  (`IoT/micropython/firmware/ESP32_GENERIC_S3-SPIRAM_OCT-20260824-v1.29.0.bin`,
+  SHA-256 `ab24eadfe3ef0e6ee38834d730e648def7cd82f3fa51ee0bbc59c29a6e1bd176`).
+  Fuente: <https://micropython.org/download/ESP32_GENERIC_S3/>. Para un ESP32 normal queda
+  `ESP32_GENERIC-20260824-v1.29.0.bin`.
 - Edición y carga: extensión de VS Code **Pymakr** (`pycom.pymakr`, v2.22.5) o
   `mpremote` 1.29.0.
 - Autocompletado: `micropython-esp32-stubs==1.29.0.post1`.
@@ -39,8 +40,9 @@ Las pruebas de la lógica están en `IoT/tests/` (módulos de MicroPython simula
 
 ## Hardware
 
-- **ESP32 DevKit:** controlador y conectividad. Wi-Fi 2.4 GHz.
-- **DHT22:** temperatura y humedad. Pull-up y mínimo 2 s entre lecturas.
+- **ESP32-S3:** controlador y conectividad. Wi-Fi 2.4 GHz.
+- **DHT22:** temperatura y humedad, en placa de 3 pines. Pull-up (el de la placa o el
+  interno del ESP) y mínimo 2 s entre lecturas.
 - **CCS811:** eCO2 (ppm) y TVOC (ppb). I2C 0x5A (0x5B si ADDR en alto); pin
   nWAKE a GND; 48 h de acondicionamiento previo y 20 min de estabilización tras cada
   arranque.
@@ -48,26 +50,26 @@ Las pruebas de la lógica están en `IoT/tests/` (módulos de MicroPython simula
 - **LED RGB:** nivel de la lectura. Verde normal, amarillo advertencia, rojo peligro.
 - **LED de Wi-Fi:** encendido con la conexión Wi-Fi.
 - **Buzzer activo:** suena a pulsos en peligro. Verificar corriente y nivel lógico.
-- **Batería Li-ion + carga USB:** alimentación portátil. Necesita protección y
-  validación; su medición está desactivada hasta montar el divisor de tensión.
+- **Batería LiPo 3.7 V 1000 mAh (con protección) + placa de carga:** TP4056 (carga USB),
+  MT3608 (eleva a 5 V para el pin 5V del ESP) y MAX17048 (medidor de carga por I2C, 0x36).
 
-## Pines provisionales
+## Pines (ESP32-S3)
 
 ```text
-ESP32
-├── GPIO4    DHT22 datos              Provisional
-├── GPIO21   I2C SDA (OLED + CCS811)  Bus compartido
-├── GPIO22   I2C SCL (OLED + CCS811)  Bus compartido
-├── GPIO25   LED RGB rojo
-├── GPIO26   LED RGB verde
-├── GPIO27   LED RGB azul             Arranque
-├── GPIO33   LED de Wi-Fi
-├── GPIO32   Buzzer activo
-└── GPIO35   Batería                  ADC1, solo entrada; divisor de tensión 1:2
+ESP32-S3
+├── GPIO4    DHT22 datos              Pull-up interno activado
+├── GPIO8    I2C SDA                  Bus compartido: OLED, CCS811 y MAX17048
+├── GPIO9    I2C SCL                  Bus compartido: OLED, CCS811 y MAX17048
+├── GPIO5    LED RGB rojo
+├── GPIO6    LED RGB verde
+├── GPIO7    LED RGB azul
+├── GPIO15   LED de Wi-Fi
+└── GPIO16   Buzzer activo
 ```
 
-Son **provisionales**, están en `IoT/micropython/config.py` y coinciden con los de
-`IoT/README.md`. Se usa ADC1 porque ADC2 no funciona mientras el Wi-Fi está activo.
+Están en `IoT/micropython/config.py` y coinciden con los de `IoT/README.md`. Se evitan los
+pines de arranque (0, 3, 45, 46), USB (19, 20), flash y PSRAM octal (26 a 37), la consola
+(43, 44) y el LED integrado (48). Falta confirmarlos con el montaje real.
 
 ## Bibliotecas
 
@@ -145,8 +147,8 @@ IoT/.venv/bin/python -m unittest discover -s IoT/tests -t IoT
   `baseline.json` cada hora y lo restaura al arrancar, para que el sensor se estabilice antes.
 - **Hora:** NTP al conectar el Wi-Fi; hace falta antes de conectar al broker para validar
   el certificado. Sin hora, el mensaje omite `fecha_hora`.
-- **Batería:** `BATERIA_CONECTADA = False` mientras no exista el divisor; el campo
-  `bateria` se omite.
+- **Batería:** `BATERIA = "MAX17048"` lee el porcentaje real por I2C; si el medidor no
+  responde, el campo `bateria` se omite. `"ADC"` usa un divisor 1:2 y `None` lo desactiva.
 
 ## Conectividad y secretos
 

@@ -16,7 +16,9 @@ sys.dont_write_bytecode = True
 
 
 class Pin:
+    IN = 0
     OUT = 1
+    PULL_UP = 2
 
     def __init__(self, *args, **kwargs):
         self.valor = 0

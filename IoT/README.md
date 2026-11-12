@@ -18,18 +18,23 @@ extensión **Pymakr**. La placa ejecuta primero `boot.py` (inicio) y después
 - **Broker:** Mosquitto con TLS en el puerto 8883, en Docker (ver
   [Broker MQTT](../Context/mqtt/broker-mosquitto.md)). El `client_id` y el usuario MQTT de
   la placa son su `codigo_mqtt`.
-- **Pruebas de la lógica:** `tests/` ejecuta en la computadora 16 pruebas del firmware
-  (umbrales, calentamiento, baseline, cola y mensaje) con módulos de MicroPython simulados.
+- **Pruebas de la lógica:** `tests/` ejecuta en la computadora 20 pruebas del firmware
+  (umbrales, calentamiento, baseline, cola, mensaje y batería) con módulos de MicroPython simulados.
 - **Sin validar en hardware:** los pines, la batería y el TLS en la placa se confirman al
   montar el dispositivo.
 
 ## Hardware y bibliotecas
 
-- **ESP32 normal (DevKit):** firmware MicroPython v1.29.0, en `micropython/firmware/`.
+- **ESP32-S3 con PSRAM octal:** firmware MicroPython v1.29.0 (`ESP32_GENERIC_S3-SPIRAM_OCT`),
+  en `micropython/firmware/`. También está el de un ESP32 normal, pero los pines de
+  `config.py` son los de la S3.
 - **DHT22 (temperatura y humedad):** `dht`, ya viene dentro de MicroPython.
 - **CCS811 (eCO2 y TVOC):** `ccs811`, en `micropython/lib/ccs811.py`.
 - **Pantalla OLED 0.96" I2C:** `ssd1306`, en `micropython/lib/ssd1306.py`.
-- **LED RGB, LED de Wi-Fi y buzzer activo:** `machine.Pin`, ya viene dentro de MicroPython.
+- **LED RGB (KY-016), LED de Wi-Fi y buzzer activo (KY-012):** `machine.Pin`, ya viene dentro de MicroPython.
+- **Batería LiPo de 3.7 V:** placa con cargador TP4056, elevador MT3608 y medidor MAX17048
+  (por ejemplo, el cargador LiPo Boost & I2C de UNIT Electronics). El MAX17048 se lee por I2C
+  en `nucleo/bateria.py`, sin biblioteca externa.
 - **Envío por internet (MQTT):** `umqtt.simple` y `umqtt.robust`, en `micropython/lib/umqtt/`.
 - **MQ-135:** `mq135`, en `micropython/lib/mq135.py`; el firmware no lo usa.
 
@@ -113,7 +118,7 @@ Cambia `/dev/ttyUSB0` por el puerto real (en Linux suele ser `/dev/ttyUSB0` o
 `/dev/ttyACM0`).
 
 - `.venv/bin/esptool --port /dev/ttyUSB0 erase-flash` — "borra la memoria del ESP32."
-- `.venv/bin/esptool --port /dev/ttyUSB0 --baud 460800 write-flash 0x1000 micropython/firmware/ESP32_GENERIC-20260824-v1.29.0.bin` — "graba MicroPython en la placa."
+- `.venv/bin/esptool --port /dev/ttyACM0 --baud 460800 write-flash 0 micropython/firmware/ESP32_GENERIC_S3-SPIRAM_OCT-20260824-v1.29.0.bin` — "graba MicroPython en la ESP32-S3 (en un ESP32 normal es `0x1000` y el archivo `ESP32_GENERIC`)."
 
 Si no conecta, mantén presionado el botón **BOOT** de la placa al iniciar el
 comando. Pymakr **no** graba el firmware; eso se hace una sola vez con `esptool`.
@@ -131,27 +136,34 @@ Sin Pymakr, lo mismo se hace con `mpremote`:
 - `.venv/bin/mpremote connect /dev/ttyUSB0 fs cp -r micropython/lib :` — "copia las bibliotecas a la placa."
 - `.venv/bin/mpremote connect /dev/ttyUSB0 repl` — "abre la consola de Python de la placa; se sale con `Ctrl+]`."
 
-## Pines provisionales
+## Pines (ESP32-S3)
 
-Se definen en `micropython/config.py`; si el montaje cambia, solo se edita ese archivo.
+Se definen en `micropython/config.py`; si el montaje cambia, solo se edita ese archivo. Se
+evitan los pines de arranque (0, 3, 45, 46), USB (19, 20), flash y PSRAM octal (26 a 37),
+la consola (43, 44) y el LED integrado de algunas placas (48).
 
 ```text
-ESP32
-├── GPIO4    DHT22 datos              Con resistencia pull-up
-├── GPIO21   I2C SDA (OLED + CCS811)  Bus compartido
-├── GPIO22   I2C SCL (OLED + CCS811)  Bus compartido
-├── GPIO25   LED RGB rojo             Con resistencia
-├── GPIO26   LED RGB verde            Con resistencia
-├── GPIO27   LED RGB azul             Con resistencia
-├── GPIO33   LED de Wi-Fi             Con resistencia
-├── GPIO32   Buzzer activo            Verificar corriente y nivel lógico
-└── GPIO35   Batería                  ADC1, solo entrada; divisor de tensión 1:2
+ESP32-S3
+├── GPIO4    DHT22 «out»               Pull-up interno activado por si la placa no trae el suyo
+├── GPIO8    I2C SDA                   Bus compartido: OLED, CCS811 y MAX17048
+├── GPIO9    I2C SCL                   Bus compartido: OLED, CCS811 y MAX17048
+├── GPIO5    LED RGB R (KY-016)        El módulo ya trae resistencias; su GND a tierra
+├── GPIO6    LED RGB G
+├── GPIO7    LED RGB B
+├── GPIO15   LED de Wi-Fi              Con resistencia
+├── GPIO16   Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
+├── 3V3      DHT22 «+», OLED, CCS811 y MAX17048
+└── 5V/VIN   Salida del elevador (5 V) de la placa de batería; GND común
 ```
 
-La batería está desactivada (`BATERIA_CONECTADA = False`) hasta montar el divisor; sin
-ella el mensaje omite el nivel de batería. Se usa ADC1 porque el ADC2 no lee con el
-Wi-Fi encendido. El CCS811 necesita su pin **nWAKE** conectado a GND. Si el LED RGB es de
-ánodo común, `RGB_ACTIVO_ALTO = False`.
+Todos los sensores se alimentan a 3.3 V. Antes de conectar, sigue la serigrafía de cada
+módulo: el orden de los pines cambia entre vendedores. El CCS811 necesita su pin **nWAKE**
+conectado a GND. Si el LED RGB es de ánodo común, `RGB_ACTIVO_ALTO = False`.
+
+**Batería:** `BATERIA = "MAX17048"` lee el porcentaje real y el voltaje de la celda por I2C
+(dirección 0x36). Si el medidor no responde, el mensaje solo omite el nivel. Con
+`BATERIA = "ADC"` se usa un divisor de tensión 1:2 en `PIN_BATERIA` (porcentaje aproximado
+por voltaje) y con `None` no se informa batería.
 
 ## Configurar y subir el código
 

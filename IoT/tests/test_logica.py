@@ -206,5 +206,45 @@ class MensajeTests(unittest.TestCase):
         self.assertEqual(aplicacion._nivel_local(ajustes, lecturas, True), PELIGRO)
 
 
+
+
+class BateriaTests(unittest.TestCase):
+    class I2C:
+        def __init__(self, registros=None, falla=False):
+            self.registros, self.falla = registros or {}, falla
+
+        def readfrom_mem(self, direccion, registro, n):
+            if self.falla:
+                raise OSError("sin respuesta")
+            valor = self.registros[registro]
+            return bytes([valor >> 8, valor & 0xFF])
+
+    def setUp(self):
+        from nucleo import bateria
+
+        self.bateria = bateria
+        self.original = config.BATERIA
+        config.BATERIA = "MAX17048"
+
+    def tearDown(self):
+        config.BATERIA = self.original
+
+    def test_lee_porcentaje_y_voltaje_del_max17048(self):
+        # 0x5280 → 82.5 %; 0xCCCC × 78.125 µV ≈ 4.096 V
+        b = self.bateria.Bateria(self.I2C({0x04: 0x5280, 0x02: 0xCCCC}))
+        self.assertEqual(b.porcentaje(), 82)
+        self.assertAlmostEqual(b.voltaje, 4.096, places=3)
+
+    def test_la_carga_se_limita_a_100(self):
+        b = self.bateria.Bateria(self.I2C({0x04: 0x6500, 0x02: 0xD000}))
+        self.assertEqual(b.porcentaje(), 100)
+
+    def test_sin_medidor_se_omite_el_nivel(self):
+        self.assertIsNone(self.bateria.Bateria(self.I2C(falla=True)).porcentaje())
+
+    def test_sin_bateria_configurada_no_hay_nivel(self):
+        config.BATERIA = None
+        self.assertIsNone(self.bateria.Bateria(self.I2C({0x04: 0x5000})).porcentaje())
+
 if __name__ == "__main__":
     unittest.main()

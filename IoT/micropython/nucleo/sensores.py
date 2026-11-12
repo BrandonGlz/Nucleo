@@ -20,7 +20,8 @@ class Sensores:
 
     def __init__(self, i2c):
         self._i2c = i2c
-        self._dht = dht.DHT22(Pin(config.PIN_DHT22))
+        pin = Pin(config.PIN_DHT22, Pin.IN, Pin.PULL_UP if config.DHT22_PULL_UP_INTERNO else None)
+        self._dht = dht.DHT22(pin)
         self._ccs = None
         self._arranque = time.ticks_ms()
         self._baseline_guardado = None

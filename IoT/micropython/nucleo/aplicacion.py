@@ -56,7 +56,7 @@ def ejecutar():
 
     sensores = Sensores(i2c)
     ajustes = Ajustes()
-    bateria = Bateria()
+    bateria = Bateria(i2c)  # el MAX17048 comparte el bus con la pantalla y el CCS811
     red = Red()
     broker = Broker(ajustes.actualizar)
     cola = ColaDeEnvio()

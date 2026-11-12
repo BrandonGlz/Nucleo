@@ -1,15 +1,18 @@
 """Parámetros del dispositivo. Las credenciales van en secrets.py, no aquí."""
 
-# --- Pines (provisionales; confirmar contra el montaje real) ------------------------------
+# --- Pines (ESP32-S3; confirmar contra el montaje real) -----------------------------------
+# Libres en la S3 con PSRAM octal: se evitan los de arranque (0, 3, 45, 46), USB (19, 20),
+# flash y PSRAM (26 a 37), la consola (43, 44) y el LED integrado de algunas placas (48).
 PIN_DHT22 = 4
-PIN_I2C_SDA = 21  # bus compartido por la pantalla OLED y el CCS811
-PIN_I2C_SCL = 22
-PIN_RGB_ROJO = 25
-PIN_RGB_VERDE = 26
-PIN_RGB_AZUL = 27
-PIN_LED_WIFI = 33
-PIN_BUZZER = 32
-PIN_BATERIA = 35  # ADC1 (el ADC2 no funciona con el Wi-Fi activo), detrás de un divisor 1:2
+DHT22_PULL_UP_INTERNO = True  # por si la placa del DHT22 no trae su resistencia de 10 kΩ
+PIN_I2C_SDA = 8  # bus compartido por la pantalla OLED, el CCS811 y el MAX17048
+PIN_I2C_SCL = 9
+PIN_RGB_ROJO = 5
+PIN_RGB_VERDE = 6
+PIN_RGB_AZUL = 7
+PIN_LED_WIFI = 15
+PIN_BUZZER = 16
+PIN_BATERIA = 1  # solo con BATERIA = "ADC": ADC1 (el ADC2 no lee con el Wi-Fi activo)
 
 RGB_ACTIVO_ALTO = True  # False si el LED RGB es de ánodo común
 BUZZER_ACTIVO_ALTO = True
@@ -19,6 +22,7 @@ OLED_ANCHO = 128
 OLED_ALTO = 64
 OLED_DIRECCION = 0x3C
 CCS811_DIRECCION = 0x5A
+MAX17048_DIRECCION = 0x36
 
 SENSOR_TEMP_HUM = "DHT22"  # modelos tal como están registrados en la plataforma
 SENSOR_AIRE = "CCS811"
@@ -48,8 +52,10 @@ COLA_MAX_MENSAJES = 20
 COLA_ENVIOS_POR_CICLO = 5
 
 # --- Batería ------------------------------------------------------------------------------
-BATERIA_CONECTADA = False  # activar cuando el divisor de tensión esté montado
-BATERIA_DIVISOR = 2.0
+# "MAX17048": medidor de carga por I2C (porcentaje real de la celda). "ADC": divisor de
+# tensión 1:2 en PIN_BATERIA (porcentaje aproximado por voltaje). None: sin batería.
+BATERIA = "MAX17048"
+BATERIA_DIVISOR = 2.0  # solo para "ADC"
 BATERIA_VACIA_V = 3.3
 BATERIA_LLENA_V = 4.2
 
