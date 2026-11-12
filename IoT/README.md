@@ -192,8 +192,8 @@ ESP32-S3
 ├── 3V3      Riel de 3.3 V: DHT22, OLED, CCS811, MAX17048, buzzer
 ├── GPIO4    DHT22 «out»               Pull-up interno activado por si la placa no trae el suyo
 ├── GPIO15–18 Lector microSD (opcional) CS 15, MOSI 16, SCK 17, MISO 18; VCC a 5 V
-├── GPIO9    Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
-├── GPIO12   Ventilador (opcional)     Por MOSFET; el ventilador a 5 V
+├── GPIO9    Ventilador (opcional)     Por MOSFET; el ventilador a 5 V
+├── GPIO12   Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
 └── 5V / G   Salida del módulo de carga (5 V); GND común
 ```
 

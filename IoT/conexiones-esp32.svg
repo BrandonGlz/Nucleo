@@ -257,32 +257,32 @@
 <line x1="638" y1="964" x2="662" y2="964" stroke="#111827" stroke-width="2.5"/>
 <line x1="642" y1="968" x2="658" y2="968" stroke="#111827" stroke-width="2.5"/>
 <line x1="646" y1="972" x2="654" y2="972" stroke="#111827" stroke-width="2.5"/>
-<line x1="844" y1="769" x2="844" y2="880" stroke="#ea580c" stroke-width="4" stroke-linecap="round"/>
-<circle cx="844" cy="880" r="4.5" fill="#ea580c"/>
-<text x="850" y="872" font-size="11" font-weight="700" fill="#111827">S</text>
-<rect x="804" y="880" width="80" height="70" rx="10" fill="#ea580c" fill-opacity="0.10" stroke="#ea580c" stroke-width="2"/>
-<text x="844.0" y="912.0" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">Buzzer</text>
-<text x="844.0" y="931.0" text-anchor="middle" font-size="12" fill="#4b5563">KY-012</text>
-<line x1="824" y1="950" x2="824" y2="966" stroke="#dc2626" stroke-width="3"/>
-<polygon points="815,966 833,966 824,978" fill="#dc2626"/>
-<text x="824" y="994" text-anchor="middle" font-size="11" font-weight="700" fill="#dc2626">3V3</text>
-<line x1="864" y1="950" x2="864" y2="964" stroke="#111827" stroke-width="3"/>
-<line x1="852" y1="964" x2="876" y2="964" stroke="#111827" stroke-width="2.5"/>
-<line x1="856" y1="968" x2="872" y2="968" stroke="#111827" stroke-width="2.5"/>
-<line x1="860" y1="972" x2="868" y2="972" stroke="#111827" stroke-width="2.5"/>
-<line x1="982" y1="769" x2="982" y2="880" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>
-<circle cx="982" cy="880" r="4.5" fill="#7c3aed"/>
-<text x="988" y="872" font-size="11" font-weight="700" fill="#111827">SIG</text>
-<rect x="922" y="880" width="120" height="70" rx="10" fill="#7c3aed" fill-opacity="0.10" stroke="#7c3aed" stroke-width="2" stroke-dasharray="7 5"/>
-<text x="982.0" y="912.0" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">Ventilador 5 V</text>
-<text x="982.0" y="931.0" text-anchor="middle" font-size="12" fill="#4b5563">con MOSFET</text>
-<line x1="957" y1="950" x2="957" y2="966" stroke="#ea580c" stroke-width="3"/>
-<polygon points="948,966 966,966 957,978" fill="#ea580c"/>
-<text x="957" y="994" text-anchor="middle" font-size="11" font-weight="700" fill="#ea580c">5V</text>
-<line x1="1007" y1="950" x2="1007" y2="964" stroke="#111827" stroke-width="3"/>
-<line x1="995" y1="964" x2="1019" y2="964" stroke="#111827" stroke-width="2.5"/>
-<line x1="999" y1="968" x2="1015" y2="968" stroke="#111827" stroke-width="2.5"/>
-<line x1="1003" y1="972" x2="1011" y2="972" stroke="#111827" stroke-width="2.5"/>
+<line x1="982" y1="769" x2="982" y2="880" stroke="#ea580c" stroke-width="4" stroke-linecap="round"/>
+<circle cx="982" cy="880" r="4.5" fill="#ea580c"/>
+<text x="988" y="872" font-size="11" font-weight="700" fill="#111827">S</text>
+<rect x="942" y="880" width="80" height="70" rx="10" fill="#ea580c" fill-opacity="0.10" stroke="#ea580c" stroke-width="2"/>
+<text x="982.0" y="912.0" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">Buzzer</text>
+<text x="982.0" y="931.0" text-anchor="middle" font-size="12" fill="#4b5563">KY-012</text>
+<line x1="962" y1="950" x2="962" y2="966" stroke="#dc2626" stroke-width="3"/>
+<polygon points="953,966 971,966 962,978" fill="#dc2626"/>
+<text x="962" y="994" text-anchor="middle" font-size="11" font-weight="700" fill="#dc2626">3V3</text>
+<line x1="1002" y1="950" x2="1002" y2="964" stroke="#111827" stroke-width="3"/>
+<line x1="990" y1="964" x2="1014" y2="964" stroke="#111827" stroke-width="2.5"/>
+<line x1="994" y1="968" x2="1010" y2="968" stroke="#111827" stroke-width="2.5"/>
+<line x1="998" y1="972" x2="1006" y2="972" stroke="#111827" stroke-width="2.5"/>
+<line x1="844" y1="769" x2="844" y2="880" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>
+<circle cx="844" cy="880" r="4.5" fill="#7c3aed"/>
+<text x="850" y="872" font-size="11" font-weight="700" fill="#111827">SIG</text>
+<rect x="784" y="880" width="120" height="70" rx="10" fill="#7c3aed" fill-opacity="0.10" stroke="#7c3aed" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="844.0" y="912.0" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">Ventilador 5 V</text>
+<text x="844.0" y="931.0" text-anchor="middle" font-size="12" fill="#4b5563">con MOSFET</text>
+<line x1="819" y1="950" x2="819" y2="966" stroke="#ea580c" stroke-width="3"/>
+<polygon points="810,966 828,966 819,978" fill="#ea580c"/>
+<text x="819" y="994" text-anchor="middle" font-size="11" font-weight="700" fill="#ea580c">5V</text>
+<line x1="869" y1="950" x2="869" y2="964" stroke="#111827" stroke-width="3"/>
+<line x1="857" y1="964" x2="881" y2="964" stroke="#111827" stroke-width="2.5"/>
+<line x1="861" y1="968" x2="877" y2="968" stroke="#111827" stroke-width="2.5"/>
+<line x1="865" y1="972" x2="873" y2="972" stroke="#111827" stroke-width="2.5"/>
 <line x1="1120" y1="769" x2="1120" y2="880" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
 <circle cx="1120" cy="880" r="4.5" fill="#dc2626"/>
 <text x="1126" y="872" font-size="11" font-weight="700" fill="#111827">OUT+</text>

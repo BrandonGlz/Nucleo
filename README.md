@@ -547,10 +547,10 @@ pines en rojo no se usan.
 | Frente | Pantalla OLED SSD1306 | SDA → **2**, SCL → **42** (en cadena con el CCS811) | superior | VCC → 3V3, GND → G |
 | Frente | LED de Wi-Fi (opcional) | ánodo → **41** (con resistencia de 220 Ω) | superior | cátodo → G |
 | Frente | LED RGB (KY-016) | B → **40**, G → **39**, R → **38** | superior | − → G |
-| Frente | Buzzer (KY-012) | S → **9** | inferior | + → 3V3, − → G |
+| Frente | Buzzer (KY-012) | S → **12** | inferior | + → 3V3, − → G |
 | Borde inferior | Lector microSD HW-125 (opcional) | CS → **15**, MOSI → **16**, SCK → **17**, MISO → **18** | inferior | VCC → **5V**, GND → G |
 | Energía (der.) | MAX17048 (opcional) | SDA → **47**, SCL → **21** (bus propio) | superior | VCC → 3V3, GND → G |
-| Energía (der.) | Ventilador 5 V (opcional) | MOSFET SIG → **12** | inferior | + → 5V, − → MOSFET → G |
+| Energía (der.) | Ventilador 5 V (opcional) | MOSFET SIG → **9** | inferior | + → 5V, − → MOSFET → G |
 | Energía (der.) | Módulo de carga | OUT+ → **5V**, OUT− → **G** | inferior | Batería en B+ / B− |
 | — | Riel de 3.3 V | sale del pin **3V** | inferior | — |
 
@@ -566,71 +566,16 @@ pines en rojo no se usan.
   ya adapta las señales al ESP. Tarjeta de hasta 32 GB en FAT32.
 - **Ventilador:** el pin del ESP no da corriente suficiente; va con un módulo MOSFET y en el
   compartimento de energía, lejos del DHT22 y del CCS811.
-- Los pines del microSD (15–18) y del ventilador (12) están reservados en
+- Los pines del microSD (15–18) y del ventilador (9) están reservados en
   `IoT/micropython/config.py`; el firmware todavía no los usa.
 - Sigue la serigrafía de cada módulo: el orden de sus pines cambia entre vendedores.
 
 ## Prototipo final esperado (beta)
 
-Propuesta de cómo se vería Núcleo ya como producto, en una carcasa impresa en 3D. Es una
-**versión beta**: las medidas son aproximadas y se ajustarán con el montaje real. Las tres
-hojas salen del mismo modelo en milímetros, así que sirven de referencia directa para
-modelarlo en 3D.
+Propuesta de cómo se vería Núcleo ya como producto, en una carcasa impresa en 3D (versión beta,
+medidas aproximadas).
 
-**Exterior en 3D:** frente y ambos lados, parte trasera y por debajo.
+![Prototipo beta de Núcleo](Docs/nucleo3d/portada.svg)
 
-![Prototipo beta de Núcleo: cuatro vistas exteriores en perspectiva con medidas](IoT/prototipo-beta-exterior.svg)
-
-**Interior en 3D:** corte desde el frente, desde atrás y desde arriba, y vista explotada con el
-orden de armado. Los números corresponden a la tabla de piezas.
-
-![Prototipo beta de Núcleo: cortes interiores y vista explotada](IoT/prototipo-beta-interior.svg)
-
-**Planos con medidas:** frente, lados, atrás, arriba, abajo y cortes interiores.
-
-![Prototipo beta de Núcleo: planos ortogonales y cortes con medidas](IoT/prototipo-beta-planos.svg)
-
-### Medidas para el modelo 3D
-
-- **Cuerpo:** 110 × 40 × 80 mm (ancho × fondo × alto), paredes de 2.5 mm. La **tapa frontal**
-  es una pieza aparte de 110 × 80 × 2.5 mm, sujeta con 4 tornillos M3 a 5 mm de cada esquina.
-- **Cámara de sensores:** 28 × 36 × 72 mm, a la izquierda, separada 6 mm del cuerpo y a 4 mm del
-  piso. Solo la une un puente hueco de 12 × 12 mm (paso de cables a la altura z 34–46). Lleva
-  rejillas al frente, a la izquierda, atrás y arriba; el fondo va abierto.
-- **Tapa frontal** (medido desde la esquina inferior izquierda del frente): ventana de la
-  pantalla de 24 × 14 en x 11–35, z 50–64; anillo RGB de Ø22 con centro en (86.5, 54.5); LED de
-  Wi-Fi de Ø5 en (15.5, 36.5); rejilla del buzzer de 4 × 4 orificios de Ø2 cada 3.6 con centro en
-  (86.5, 22.5); logo de Núcleo en bajorrelieve de 40 mm de ancho abajo a la izquierda.
-- **Abajo:** ranura microSD 16 × 2.2 en x 50–66; interruptor 10 × 5 en x 72–82; USB-C de carga
-  9 × 3.4 en x 89–98, a 14 mm del frente.
-- **Lado derecho:** abertura de 9 × 4 para el USB del ESP (programar), a 13–22 mm del frente y
-  z 53–57.
-- **Atrás:** rejilla del ventilador de Ø23 con centro en x 92.5, z 65; dos ranuras para colgar
-  en x 25 y x 85, z 22.
-
-Posición de cada pieza: esquina inferior izquierda delantera, con el origen en la esquina
-inferior izquierda del frente del cuerpo (x a la derecha, y hacia atrás, z hacia arriba).
-
-| # | Pieza | Tamaño x × y × z (mm) | Posición x · y · z (mm) |
-| --- | --- | --- | --- |
-| 1 | DHT22 | 16 × 8 × 26 | -28 · 15 · 44 |
-| 2 | CCS811 | 21 × 2 × 18 | -30 · 24 · 12 |
-| 3 | Pantalla OLED | 27 × 4 × 27 | 9 · 2.5 · 44 |
-| 4 | LED de Wi-Fi | 5 × 6.5 × 5 | 13 · 2.5 · 34 |
-| 5 | LED RGB KY-016 | 19 × 2 × 15 | 77 · 5.5 · 47 |
-| 6 | Buzzer KY-012 | 19 × 2 × 15 | 77 · 11.5 · 15 |
-| 7 | Lector microSD HW-125 | 24 × 6 × 42 | 46 · 4 · 2.5 |
-| 8 | Interruptor | 10 × 5.5 × 8 | 72 · 3.5 · 0 |
-| 9 | Placa perforada | 81 × 1.6 × 48 | 16 · 20 · 28 |
-| 10 | ESP32-S3 (girado) | 69 × 6 × 26 | 22 · 14 · 42 |
-| 11 | Módulo de carga TP4056 | 26 × 3 × 17 | 80 · 14 · 2.5 |
-| 12 | Elevador MT3608 | 36 × 3 × 17 | 40 · 14 · 2.5 |
-| 13 | Batería LiPo | 60 × 10 × 50 | 46 · 26 · 3 |
-| 14 | Ventilador 5 V | 25 × 10 × 25 | 80 · 27.5 · 52.5 |
-| 15 | MAX17048 | 23 × 2 × 18 | 55 · 33 · 56 |
-
-- **Tres capas de fondo:** al frente, pegado a la tapa, va lo que se ve o se oye (pantalla, LEDs,
-  buzzer, microSD e interruptor); en medio, la placa perforada con el ESP32 girado y los
-  módulos de carga; al fondo, la batería, el MAX17048 y el ventilador.
-- **Cámara de sensores aparte:** el calor del ESP y de la batería no altera la temperatura ni la
-  lectura del aire. El ventilador saca el aire por atrás, nunca hacia los sensores.
+Las vistas exteriores e interiores, el esqueleto vacío, el cableado completo, las piezas una por
+una y los planos con medidas en centímetros están en [Docs/nucleo3d](Docs/nucleo3d/README.md).

@@ -76,9 +76,9 @@ ESP32-S3
 ├── GPIO39   LED RGB verde
 ├── GPIO40   LED RGB azul
 ├── GPIO41   LED de Wi-Fi
-├── GPIO9    Buzzer activo
+├── GPIO12   Buzzer activo
 ├── GPIO15–18 microSD (opcional)      CS, MOSI, SCK y MISO
-└── GPIO12   Ventilador (opcional)    Por MOSFET
+└── GPIO9    Ventilador (opcional)    Por MOSFET
 ```
 
 Están en `IoT/micropython/config.py` y coinciden con los de `IoT/README.md`. Se evitan los
