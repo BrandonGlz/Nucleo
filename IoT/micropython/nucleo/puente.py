@@ -22,7 +22,8 @@ import ntptime
 import secrets
 
 RAIZ = "/nucleo/isrg_raiz.pem"
-ESPERA_TOMAR = 30  # el servidor responde a más tardar en ~20 s
+ESPERA_TOMAR = 30  # el servidor responde a más tardar en ~12 s
+HORA_SERVIDORES = ("pool.ntp.org", "time.cloudflare.com", "time.windows.com", "time.google.com")
 ABRIR_SEG = 10  # tope para abrir la conexión y el TLS
 ESPERA_IA = 25
 
@@ -48,6 +49,7 @@ class Puente:
         self.atendidas = 0
         self.sock = self.crudo = None
         self.perro = None  # watchdog: se alimenta también mientras busca red
+        self.rondas = 0  # rondas seguidas sin poder entrar a ninguna red
 
     # ── Red ──────────────────────────────────────────────────────────────────────────
     def conectar(self):
@@ -89,6 +91,19 @@ class Puente:
             self.wlan.disconnect()
         return False
 
+    def _pausa_red(self):
+        """Espera creciente entre rondas fallidas (15 s, 30 s, 60 s… hasta 5 min). Las redes
+        institucionales bloquean un rato al equipo que reintenta sin parar; seguir intentando
+        cada pocos segundos solo alarga el bloqueo."""
+        self.rondas += 1
+        espera = min(300, 15 * 2 ** min(self.rondas - 1, 5))
+        print("Wi-Fi: sin red, nuevo intento en", espera, "s")
+        fin = time.ticks_add(time.ticks_ms(), espera * 1000)
+        while time.ticks_diff(fin, time.ticks_ms()) > 0:
+            if self.perro:
+                self.perro.feed()
+            time.sleep(1)
+
     def _sin_ahorro(self):
         try:
             # Sin ahorro de energía: con señal débil (redes institucionales con varios puntos de
@@ -98,13 +113,18 @@ class Puente:
             pass
 
     def hora(self):
-        """El certificado se valida con la fecha: sin hora no se puede usar HTTPS."""
-        for _ in range(5):
+        """El certificado se valida con la fecha: sin hora no se puede usar HTTPS. Algunas redes
+        bloquean o pierden NTP hacia ciertos servidores, así que se prueban varios."""
+        for host in HORA_SERVIDORES:
+            if self.perro:
+                self.perro.feed()
+            ntptime.host = host
+            ntptime.timeout = 3
             try:
                 ntptime.settime()
                 return True
             except OSError:
-                time.sleep(1)
+                pass
         return False
 
     # ── HTTPS ────────────────────────────────────────────────────────────────────────
@@ -252,20 +272,25 @@ class Puente:
     def ejecutar(self):
         perro = machine.WDT(timeout=120000)  # si algo se cuelga, el ESP se reinicia solo
         self.perro = perro
-        while not self.conectar():
-            perro.feed()
-            time.sleep(5)
-        while not self.hora():
-            perro.feed()
-            time.sleep(5)
+        # Sin hora después de dos vueltas por los servidores, la red no está dejando salir
+        # tráfico: se suelta y se busca red de nuevo (puede tocar otro punto de acceso u otra red).
+        while True:
+            while not self.conectar():
+                self._pausa_red()
+            if self.hora() or self.hora():
+                break
+            print("Wi-Fi: la red no da salida, buscando otra")
+            self.wlan.disconnect()
+            self._pausa_red()
         print("Puente de Nico AI listo para", self.codigo, "en", self.host)
         fallos = 0
         while True:
             perro.feed()
             gc.collect()
             if not self.conectar():
-                time.sleep(3)
+                self._pausa_red()
                 continue
+            self.rondas = 0
             try:
                 estado, cuerpo = self.pedir(
                     "GET", "/api/v1/puente/tomar/?dispositivo=" + self.codigo, espera=ESPERA_TOMAR
@@ -279,7 +304,7 @@ class Puente:
             except (OSError, ValueError) as e:
                 fallos += 1
                 print("Error de red:", e)
-                if fallos >= 2:
+                if fallos >= 3:
                     # Con varios puntos de acceso y señal débil, el Wi-Fi puede quedar «conectado»
                     # sin tráfico: se reconecta desde cero en vez de seguir esperando.
                     print("Wi-Fi: reconectando")
