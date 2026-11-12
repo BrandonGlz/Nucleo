@@ -53,6 +53,13 @@ Las pruebas de la lógica están en `IoT/tests/` (módulos de MicroPython simula
 - **Batería LiPo 3.7 V 1000 mAh (con protección) + placa de carga:** TP4056 (carga USB),
   MT3608 (eleva a 5 V para el pin 5V del ESP) y MAX17048 (medidor de carga por I2C, 0x36).
 
+## Modos
+
+`MODO` en `secrets.py`: sin valor solo mide; `"puente"` solo atiende a Nico AI;
+`"ambos"` mide y atiende a Nico en un segundo hilo (`_thread`). En `"ambos"` el hilo del
+puente maneja el Wi-Fi y deja un latido; el ciclo de sensores reinicia la placa si el latido
+se detiene más de 5 minutos.
+
 ## Pines (ESP32-S3)
 
 ```text

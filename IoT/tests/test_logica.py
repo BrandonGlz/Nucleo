@@ -208,6 +208,23 @@ class MensajeTests(unittest.TestCase):
 
 
 
+
+class ModoAmbosTests(unittest.TestCase):
+    class Puente:
+        latido = 0
+
+    def test_el_puente_que_late_no_reinicia_la_placa(self):
+        p = self.Puente()
+        p.latido = 1000
+        self.assertFalse(aplicacion.puente_detenido(p, 1000 + aplicacion.LATIDO_MAX_SEG * 1000))
+
+    def test_el_puente_sin_latido_reinicia_la_placa(self):
+        p = self.Puente()
+        self.assertTrue(aplicacion.puente_detenido(p, aplicacion.LATIDO_MAX_SEG * 1000 + 1))
+
+    def test_solo_sensores_no_vigila_ningun_puente(self):
+        self.assertFalse(aplicacion.puente_detenido(None, 10**9))
+
 class BateriaTests(unittest.TestCase):
     class I2C:
         def __init__(self, registros=None, falla=False):

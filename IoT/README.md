@@ -136,6 +136,18 @@ Sin Pymakr, lo mismo se hace con `mpremote`:
 - `.venv/bin/mpremote connect /dev/ttyUSB0 fs cp -r micropython/lib :` — "copia las bibliotecas a la placa."
 - `.venv/bin/mpremote connect /dev/ttyUSB0 repl` — "abre la consola de Python de la placa; se sale con `Ctrl+]`."
 
+## Modos de la placa
+
+`MODO` en `secrets.py` decide qué hace el ESP:
+
+- **Sin `MODO`:** solo mide y publica lecturas por MQTT.
+- **`"puente"`:** solo lleva las peticiones de Nico AI a la IA del servidor
+  (`nucleo/puente.py`). Necesita `PUENTE_HOST`, `PUENTE_CLAVE` y, opcional, `REDES`.
+- **`"ambos"`:** mide y publica lecturas, y el puente corre en un segundo hilo. Necesita
+  las credenciales de los dos modos. El hilo del puente maneja el Wi-Fi con sus redes de
+  respaldo; el ciclo de sensores sigue midiendo aunque el puente esté atendiendo a Nico o
+  sin red. Si el puente deja de dar señales de vida 5 minutos, la placa se reinicia.
+
 ## Pines (ESP32-S3)
 
 Se definen en `micropython/config.py`; si el montaje cambia, solo se edita ese archivo. Se

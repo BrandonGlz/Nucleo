@@ -37,7 +37,13 @@ def _redes():
 
 
 class Puente:
-    def __init__(self):
+    """``compartido=True``: corre en un hilo junto a los sensores (MODO = "ambos"). Entonces no
+    crea su propio watchdog ni reinicia la placa: deja ``latido`` al día y el ciclo de los
+    sensores reinicia la placa solo si el puente deja de latir varios minutos."""
+
+    def __init__(self, compartido=False):
+        self.compartido = compartido
+        self.latido = time.ticks_ms()
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
         self.host = secrets.PUENTE_HOST
@@ -82,14 +88,19 @@ class Puente:
                 continue
             # Hasta 20 s por red.
             for _ in range(80):
-                if self.perro:
-                    self.perro.feed()
+                self._vivo()
                 if self.wlan.isconnected():
                     print("Wi-Fi: conectado", self.wlan.ifconfig()[0])
                     return True
                 time.sleep_ms(250)
             self.wlan.disconnect()
         return False
+
+    def _vivo(self):
+        """Señal de vida: alimenta el watchdog propio o, compartido, actualiza el latido."""
+        self.latido = time.ticks_ms()
+        if self.perro:
+            self.perro.feed()
 
     def _pausa_red(self):
         """Espera creciente entre rondas fallidas (15 s, 30 s, 60 s… hasta 5 min). Las redes
@@ -100,8 +111,7 @@ class Puente:
         print("Wi-Fi: sin red, nuevo intento en", espera, "s")
         fin = time.ticks_add(time.ticks_ms(), espera * 1000)
         while time.ticks_diff(fin, time.ticks_ms()) > 0:
-            if self.perro:
-                self.perro.feed()
+            self._vivo()
             time.sleep(1)
 
     def _sin_ahorro(self):
@@ -116,8 +126,7 @@ class Puente:
         """El certificado se valida con la fecha: sin hora no se puede usar HTTPS. Algunas redes
         bloquean o pierden NTP hacia ciertos servidores, así que se prueban varios."""
         for host in HORA_SERVIDORES:
-            if self.perro:
-                self.perro.feed()
+            self._vivo()
             ntptime.host = host
             ntptime.timeout = 3
             try:
@@ -270,8 +279,8 @@ class Puente:
         self.atendidas += 1
 
     def ejecutar(self):
-        perro = machine.WDT(timeout=120000)  # si algo se cuelga, el ESP se reinicia solo
-        self.perro = perro
+        if not self.compartido:
+            self.perro = machine.WDT(timeout=120000)  # si algo se cuelga, el ESP se reinicia solo
         # Sin hora después de dos vueltas por los servidores, la red no está dejando salir
         # tráfico: se suelta y se busca red de nuevo (puede tocar otro punto de acceso u otra red).
         while True:
@@ -285,7 +294,7 @@ class Puente:
         print("Puente de Nico AI listo para", self.codigo, "en", self.host)
         fallos = 0
         while True:
-            perro.feed()
+            self._vivo()
             gc.collect()
             if not self.conectar():
                 self._pausa_red()
@@ -310,9 +319,23 @@ class Puente:
                     print("Wi-Fi: reconectando")
                     self.wlan.disconnect()
                 time.sleep(min(10, 2 * fallos))
-                if fallos >= 10:
-                    machine.reset()
+                if fallos >= 10 and not self.compartido:
+                    machine.reset()  # compartido no: reiniciaría también los sensores
 
 
 def ejecutar():
     Puente().ejecutar()
+
+
+def en_hilo(puente):
+    """Cuerpo del hilo en MODO = "ambos": un error inesperado no tumba los sensores; el puente
+    espera y vuelve a empezar (sin latido por más de LATIDO_MAX_SEG, la placa se reinicia)."""
+    while True:
+        try:
+            puente.ejecutar()
+        except Exception as error:  # noqa: BLE001 - el hilo no debe morir
+            import sys
+
+            sys.print_exception(error)
+            puente._cerrar()
+            time.sleep(10)

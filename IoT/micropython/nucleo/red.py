@@ -10,7 +10,10 @@ import secrets
 
 
 class Red:
-    def __init__(self):
+    def __init__(self, gestionar=True):
+        """``gestionar=False`` (MODO = "ambos"): el hilo del puente conecta el Wi-Fi con sus redes
+        de respaldo; aquí solo se consulta el estado, para no pisar sus intentos."""
+        self._gestionar = gestionar
         self._wlan = network.WLAN(network.STA_IF)
         self._wlan.active(True)
         self._ultimo_intento = None
@@ -21,7 +24,7 @@ class Red:
 
     def mantener(self):
         """Inicia la conexión sin bloquear y la reintenta cada WIFI_REINTENTO_SEG."""
-        if self._wlan.isconnected():
+        if not self._gestionar or self._wlan.isconnected():
             return
         ahora = time.ticks_ms()
         if (
