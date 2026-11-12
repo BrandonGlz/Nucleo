@@ -65,6 +65,7 @@ MQTT_PUERTO = 8883  # por internet (Funnel): MQTT_PUERTO = 8443 en secrets.py
 MQTT_KEEPALIVE_SEG = 30  # sin señales en 1.5 veces esto, el broker publica el último mensaje
 MQTT_REINTENTO_SEG = 10
 MQTT_CONECTAR_SEG = 10  # tope para abrir la conexión y el TLS
+MQTT_ESPERA_SEG = 5  # tope de cada lectura o escritura ya conectado (señal débil)
 # CA del broker; el certificado se valida siempre. Por internet (Funnel) el certificado es de
 # Let's Encrypt: MQTT_CA = "nucleo/isrg_raiz.pem" en secrets.py.
 CA_CERT = "certs/ca.der"

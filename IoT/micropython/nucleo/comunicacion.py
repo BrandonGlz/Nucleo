@@ -43,12 +43,32 @@ def _contexto_tls():
     return contexto
 
 
+class _TLS:
+    """Envuelve el contexto TLS para quedarse con el socket TCP de abajo: umqtt lo vuelve
+    bloqueante sin límite en cada ``check_msg`` y, con señal débil, una escritura atorada
+    congelaría el ciclo hasta que el watchdog reinicie la placa. Con el límite, la escritura
+    falla en pocos segundos y solo se reconecta el broker."""
+
+    def __init__(self, contexto):
+        self._contexto = contexto
+        self.crudo = None
+
+    def wrap_socket(self, sock, **opciones):
+        self.crudo = sock
+        return self._contexto.wrap_socket(sock, **opciones)
+
+    def limitar(self):
+        if self.crudo is not None:
+            self.crudo.settimeout(config.MQTT_ESPERA_SEG)
+
+
 class Broker:
     def __init__(self, al_recibir_configuracion, red=None, al_firmar=None):
         self._al_recibir = al_recibir_configuracion
         self._al_firmar = al_firmar
         self._red = red
         self._cliente = None
+        self._tls = None
         self._ultimo_intento = None
         self._ultimo_latido = None
         self.fallos_seguidos = 0
@@ -79,6 +99,7 @@ class Broker:
             return
         self._ultimo_intento = ahora
         try:
+            self._tls = _TLS(_contexto_tls())
             cliente = MQTTClient(
                 secrets.CODIGO_MQTT,  # client_id y usuario = codigo_mqtt; la ACL liga el tópico al usuario
                 secrets.MQTT_HOST,
@@ -86,11 +107,12 @@ class Broker:
                 user=secrets.CODIGO_MQTT,
                 password=secrets.MQTT_PASSWORD,
                 keepalive=config.MQTT_KEEPALIVE_SEG,
-                ssl=_contexto_tls(),
+                ssl=self._tls,
             )
             cliente.set_last_will(self._topico_latido, b'{"estado":"offline"}')
             cliente.set_callback(self._mensaje)
             cliente.connect(timeout=config.MQTT_CONECTAR_SEG)
+            self._tls.limitar()
             cliente.subscribe(self._topico_config)  # la configuración retenida llega al suscribir
             if self._clave_puente:
                 cliente.subscribe(self._topico_peticion)
@@ -115,6 +137,7 @@ class Broker:
             return
         try:
             self._cliente.check_msg()
+            self._tls.limitar()  # check_msg deja el socket bloqueante sin límite
         except (OSError, ValueError):
             self._cerrar()
 

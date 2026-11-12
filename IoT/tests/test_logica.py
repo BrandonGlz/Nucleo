@@ -228,6 +228,25 @@ class LlaveNicoTests(unittest.TestCase):
         secrets.PUENTE_CLAVE = "clave-del-puente"
         self.addCleanup(delattr, secrets, "PUENTE_CLAVE")
 
+    def test_el_socket_conectado_tiene_limite_de_espera(self):
+        """check_msg deja el socket bloqueante sin límite: se le vuelve a poner el tope."""
+
+        class Sock:
+            limite = "sin"
+
+            def settimeout(self, segundos):
+                self.limite = segundos
+
+        class Contexto:
+            def wrap_socket(self, sock, **opciones):
+                return ("tls", sock)
+
+        tls = self.comunicacion._TLS(Contexto())
+        crudo = Sock()
+        self.assertEqual(tls.wrap_socket(crudo, server_hostname="h"), ("tls", crudo))
+        tls.limitar()
+        self.assertEqual(crudo.limite, self.comunicacion.config.MQTT_ESPERA_SEG)
+
     def test_hmac_igual_al_de_python(self):
         import hashlib
         import hmac
