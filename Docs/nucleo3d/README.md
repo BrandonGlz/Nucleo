@@ -60,7 +60,7 @@ sí. Las medidas van en **centímetros**.
      MAX17048, MOSFET y ventilador. El tabique tiene rejilla arriba (el ventilador saca ese aire por
      atrás) y un pasacables abajo a la derecha.
 - **El ESP32 va girado:** antena hacia la cámara de sensores y USB hacia la energía, igual que en
-  el diagrama de conexiones del README principal.
+  el [diagrama de conexiones](../../Context/iot/conexiones.md).
 
 ## Piezas
 

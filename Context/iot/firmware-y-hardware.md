@@ -84,6 +84,8 @@ ESP32-S3
 Están en `IoT/micropython/config.py` y coinciden con los de `IoT/README.md`. Se evitan los
 pines de arranque (0, 3, 45, 46), USB (19, 20), flash y PSRAM octal (26 a 37), la consola
 (43, 44) y el LED integrado (48). Falta confirmarlos con el montaje real.
+La tabla completa de cada componente, con sus rieles y notas de cableado, está en
+[conexiones.md](conexiones.md).
 
 ## Bibliotecas
 

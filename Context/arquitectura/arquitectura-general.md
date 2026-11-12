@@ -16,16 +16,24 @@ reportes, y expone una API REST que consumen la web y la app móvil.
   - Consumidor MQTT que valida y guarda lecturas y genera alertas de advertencia y peligro.
   - Canal en vivo (WebSocket `ws/panel/`, Django Channels y Redis) y notificaciones push con Expo.
   - Reportes con cifras calculadas en el backend, texto de IA, PDF y programaciones.
+  - Nico AI: un agente por dispositivo que responde con sus lecturas y alertas y genera
+    reportes cuando se le piden ([Nico AI](../agente/nico-ai.md)).
 - **`FrontEnd/`**
-  - Web React con la pantalla de salud del backend y un esqueleto de módulos enlazados
-    por rutas y menú (`acceso`, `panel`, `dispositivos`, `mediciones`, `alertas`,
-    `reportes`, `usuarios`, `organizaciones`) que muestran una pantalla provisional.
+  - Web React: panel en vivo, Dispositivos (estado, batería, señal y «Calentando»), Detalle
+    de dispositivo, Histórico, Alertas (atender o descartar), Reportes, Nico AI, Umbrales,
+    Usuarios, Empresa y áreas, Mi perfil y Notificaciones, con tema claro u oscuro.
+  - Organizaciones, solo para el administrador de plataforma: alta, edición, suspensión, baja
+    y primer administrador de cada empresa cliente.
 - **`Mobile/`**
-  - App Expo/React Native con la pantalla de salud del backend y un esqueleto de módulos
-    enlazados por navegación (`acceso`, `panel`, `dispositivos`, `mediciones`, `alertas`).
+  - App Expo/React Native (Android): Inicio con el dispositivo en vivo (selector si hay
+    varios), Detalle de variable, Alertas y su detalle, Nico AI y Perfil.
+  - Canal en vivo con la app abierta y push con la app cerrada (las de peligro suenan y
+    vibran); opción para reducir animaciones. Se instala con el APK de https://app.bynucleo.com.
 - **`IoT/`**
-  - Firmware base MicroPython 1.29.0 para el ESP32 con DHT22, CCS811, OLED, LED RGB,
-    buzzer y MQTT sobre TLS; cola de lecturas sin conexión y baseline del CCS811.
+  - Firmware MicroPython 1.29.0 para el ESP32-S3 con DHT22, CCS811, OLED, LED RGB, buzzer,
+    medidor de batería y MQTT con TLS (dentro de WebSocket en producción); cola de lecturas sin
+    conexión, baseline del CCS811 y la llave de Nico AI. Conexiones en
+    [iot/conexiones.md](../iot/conexiones.md).
 - **`Mosquitto/`**
   - Configuración del broker, ACL por usuario, `preparar.sh` (certificados y usuarios de
     desarrollo) y `dispositivo.sh` (alta de un usuario por dispositivo).
@@ -39,6 +47,52 @@ reportes, y expone una API REST que consumen la web y la app móvil.
   - SRS, modelo relacional y documentos de planificación y análisis.
 - **Docker Compose**
   - PostgreSQL 17 para Django, TimescaleDB para IoT, Redis para el canal en vivo y Mosquitto.
+
+## Flujo de punta a punta
+
+```mermaid
+flowchart LR
+    E["ESP32<br/>DHT22 · CCS811<br/>OLED · LED · buzzer"] -->|"1 · MQTT con TLS"| M["Mosquitto<br/>:8883"]
+    M -->|"2 · recibe y valida"| B["Backend Django<br/>escuchar_mqtt"]
+    B -->|guarda la lectura| T[("TimescaleDB<br/>lecturas")]
+    B -->|"3 · fuera de umbral"| A[("PostgreSQL<br/>alerta")]
+    B -->|correo al supervisor| G["Gmail SMTP"]
+    B -->|"4 · evento"| R[("Redis")]
+    R -->|WebSocket /ws/panel/| W["Web React"]
+    R -->|WebSocket /ws/panel/| P["App Android"]
+    B -->|push con la app cerrada| X["Expo · Firebase"] --> P
+    W -->|"5 · API con token<br/>según rol y organización"| B
+    P --> B
+    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
+    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
+    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
+    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
+    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
+    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
+    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
+    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
+    class E,M iot
+    class B backend
+    class T,A,R datos
+    class G,X externo
+    class W web
+    class P cliente
+```
+
+1. El ESP32 lee el DHT22 y el CCS811, muestra los datos en la pantalla OLED, enciende
+   el LED RGB y el buzzer según los umbrales y publica las mediciones por MQTT con TLS.
+2. El backend las recibe del broker, las valida y las guarda en TimescaleDB.
+3. Si una lectura sale de los límites de advertencia o de peligro de su dispositivo,
+   crea la alerta en PostgreSQL y avisa por correo al supervisor del área.
+4. El backend publica la alerta y los cambios de estado en Redis y llegan por WebSocket a
+   la web y la app. Con la app cerrada, la alerta llega al teléfono por push (Expo y
+   Firebase).
+5. La web y la app móvil piden los datos al mismo backend con su token; cada
+   persona ve solo lo que su rol y su organización permiten.
+
+Hoy el flujo funciona de punta a punta desde el broker hasta la web y la app; mientras el
+ESP32 no se prueba en la placa, `simular_dispositivos` publica lecturas con el mismo
+formato que el firmware.
 
 ## Vista de despliegue local
 
@@ -106,17 +160,17 @@ separada de la base transaccional y sin llaves foráneas entre ambas; `nucleo_te
 
 ```text
 Origen → Destino                                Protocolo                  Estado
-├── Web → Backend                               HTTP/JSON con token        API lista; la web solo consulta salud
-├── Mobile → Backend                            HTTP/JSON con token        API lista; la app solo consulta salud
-├── Web / Mobile → Backend                      WebSocket /ws/panel/       Activo en el backend; sin cliente todavía
+├── Web → Backend                               HTTP/JSON con token        Activo
+├── Mobile → Backend                            HTTP/JSON con token        Activo
+├── Web / Mobile → Backend                      WebSocket /ws/panel/       Activo
 ├── Backend → Redis                             Capa de canales            Activo
 ├── Backend → Expo Push                         HTTPS                      Activo en producción; Firebase
 ├── Backend → PostgreSQL nucleo_db              SQL/psycopg 3              Activo; 16 tablas
-├── ESP32 → Mosquitto                           MQTT sobre TLS :8883       Firmware base escrito; sin probar en hardware
+├── ESP32 → Mosquitto                           MQTT sobre TLS             :8883 en local; en WebSocket por Cloudflare en producción
 ├── Mosquitto → Backend                         MQTT (escuchar_mqtt)       Activo
 ├── Backend → Mosquitto                         MQTT retenido (config)     Activo con MQTT_PUBLICAR_CONFIG
 ├── Backend → correo                            SMTP                       Activo; consola en desarrollo
-├── Backend → servicio de IA                    HTTPS                      Proveedor por definir
+├── Backend → Ollama (Nico AI)                  HTTP local :11434          Activo; solo con la firma del ESP32
 ├── Backend → TimescaleDB nucleo_iot            SQL/psycopg 3              Activo; hypertable lectura
 └── Herramientas locales → PostgreSQL/Timescale SQL :55432 y :55433        Activo; solo loopback
 ```

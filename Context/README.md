@@ -14,16 +14,20 @@ línea base histórica del entorno.
 Context/
 ├── arquitectura/            Vista general, componentes y flujos
 ├── instalacion/             Preparación del entorno y solución de problemas
+├── seguridad/               Secretos, red, permisos, broker y firmas de Nico AI
 ├── backend/                 Diseño y estructura de Django/DRF
 ├── frontend/                Diseño y estructura de la web React/Vite
 ├── mobile/                  Diseño y estructura de la app Expo/React Native
 ├── api/                     Contrato compartido entre web y móvil
-├── iot/                     MicroPython, hardware, bibliotecas y comunicación MQTT
+├── iot/                     MicroPython, hardware, conexiones del ESP32 y comunicación MQTT
+├── agente/                  Nico AI: recorrido de una pregunta, firmas y latido
+├── servidor/                Producción: Cloudflare, Caddy, servicios, respaldos
 ├── base-de-datos/           PostgreSQL, TimescaleDB, modelo relacional y esquema local
 ├── mqtt/                    Broker Mosquitto, tópicos, mensajes y permisos
 ├── reportes/                Verificación inicial y evidencia técnica de la preparación
 ├── pruebas/                 Estrategia y documentación de pruebas
 ├── decisiones-tecnicas/     Decisiones de arquitectura y stack
+├── equipo/                  Ramas y commits
 └── README.md                Este documento
 ```
 
@@ -40,6 +44,12 @@ crearán en `Docs/`, no aquí.
 - [Estructura de la app móvil](mobile/estructura-mobile.md)
 - [Contrato de la API](api/contrato-api.md)
 - [Firmware y hardware](iot/firmware-y-hardware.md)
+- [Conexiones del ESP32](iot/conexiones.md)
+- [Nico AI](agente/nico-ai.md)
+- [Herramientas de Nico AI](backend/herramientas-agente.md)
+- [Servidor de producción](servidor/produccion.md)
+- [Seguridad](seguridad/seguridad.md)
+- [Flujo de trabajo con Git](equipo/flujo-de-trabajo.md)
 - [Modelo relacional](base-de-datos/modelo-relacional.md)
 - [PostgreSQL y TimescaleDB con Docker](base-de-datos/postgresql-docker.md)
 - [Broker MQTT](mqtt/broker-mosquitto.md)

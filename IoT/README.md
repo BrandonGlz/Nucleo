@@ -198,8 +198,8 @@ ESP32-S3
 ```
 
 Todos los sensores se alimentan a 3.3 V. El diagrama completo, con cada componente frente a sus
-pines en las dos filas y sin cables cruzados, está en «Conexiones del ESP32» del README
-principal. Antes de conectar, sigue la serigrafía de cada
+pines en las dos filas y sin cables cruzados, está en
+[Context/iot/conexiones.md](../Context/iot/conexiones.md). Antes de conectar, sigue la serigrafía de cada
 módulo: el orden de los pines cambia entre vendedores. El CCS811 necesita su pin **nWAKE**
 conectado a GND. Si el LED RGB es de ánodo común, `RGB_ACTIVO_ALTO = False`.
 

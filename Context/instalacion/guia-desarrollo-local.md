@@ -42,6 +42,11 @@ python3.12 -c "import secrets; print(secrets.token_urlsafe(64))"
 - `Mobile/.env`: `EXPO_PUBLIC_API_BASE_URL`; usa `10.0.2.2` en el emulador
   Android, `localhost` en el simulador iOS o la IP local en un teléfono.
 
+- `.env`: `MQTT_BACKEND_PASSWORD` y `MQTT_DEVICE_PASSWORD` son las contraseñas del broker; la
+  primera va también como `MQTT_PASSWORD` en `BackEnd/.env`.
+
+No subas `.env`, `secrets.py` ni certificados privados a Git.
+
 Protege los archivos:
 
 ```bash
@@ -113,6 +118,10 @@ La app móvil se inicia aparte:
 (cd Mobile && npm start)
 ```
 
+Las notificaciones push solo llegan en el APK compilado (`deploy/compilar_apk.sh`), con
+`Mobile/google-services.json` (fuera de git); en Expo Go o en el emulador se prueban con la
+app abierta por el canal en vivo.
+
 El nodo IoT (MicroPython) es independiente:
 
 ```bash
@@ -139,6 +148,39 @@ El grabado del firmware se hace una sola vez por placa. Después se trabaja con
 Pymakr abriendo `IoT/micropython/` en VS Code. Las credenciales están en
 `secrets.py`, ignorado por Git.
 
+### Servicios locales
+
+```mermaid
+flowchart LR
+    N["Navegador"] -->|localhost:5173| V["Web de Vite"]
+    V -->|"/api y /ws"| B["Backend<br/>127.0.0.1:8000<br/>API y WebSocket"]
+    subgraph DK["Docker · solo 127.0.0.1"]
+        PG[("PostgreSQL 17<br/>:55432")]
+        TS[("TimescaleDB 2.31<br/>:55433")]
+        RD[("Redis 7<br/>:56379")]
+        MQ["Mosquitto 2<br/>:8883 TLS"]
+    end
+    B --> PG & TS & RD
+    MQ --> B
+    X[("PostgreSQL 18 nativo<br/>:5432 · ajeno a Núcleo")]
+    classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
+    classDef red fill:#6d28d9,stroke:#c4b5fd,color:#fff,stroke-width:2px
+    classDef web fill:#15803d,stroke:#86efac,color:#fff,stroke-width:2px
+    classDef backend fill:#c2410c,stroke:#fdba74,color:#fff,stroke-width:2px
+    classDef datos fill:#a16207,stroke:#fde047,color:#fff,stroke-width:2px
+    classDef iot fill:#0f766e,stroke:#5eead4,color:#fff,stroke-width:2px
+    classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
+    classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
+    classDef ajeno fill:#374151,stroke:#9ca3af,color:#e5e7eb,stroke-dasharray:4 4
+    class N cliente
+    class V web
+    class B backend
+    class PG,TS,RD datos
+    class MQ iot
+    class X ajeno
+    style DK fill:transparent,stroke:#64748b,stroke-dasharray:5 5
+```
+
 ## 3. Verificación rápida
 
 ```bash
@@ -163,6 +205,15 @@ docker exec nucleo_postgres psql -U nucleo_app -d nucleo_db -c '\l'
 docker exec nucleo_timescaledb psql -U nucleo_iot -d nucleo_iot -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';"
 ```
 
+Resultado esperado: `curl` responde un JSON con `status: ok`; `check` muestra
+`System check identified no issues`; las pruebas terminan en `OK`; `ruff` muestra
+`All checks passed!`; los lint no muestran avisos; `npm run build` genera `FrontEnd/dist/`;
+`export:android` genera el bundle (no un APK) y `mpremote devs` lista el ESP32 con su puerto.
+
+Para practicar SQL sin tocar las bases reales, `Database/` tiene `nucleo_test` (16 tablas) y
+`nucleo_iot_test` (hypertable de lecturas); los comandos están en
+[`Database/README.md`](../../Database/README.md).
+
 ## 4. Detener el entorno
 
 ```bash
@@ -171,7 +222,12 @@ docker compose down
 ```
 
 `docker compose down` elimina los contenedores y la red, pero conserva los
-volúmenes `nucleo_postgres_data` y `nucleo_timescale_data`. No uses
+volúmenes `nucleo_postgres_data` y `nucleo_timescale_data`.
+
+```bash
+docker compose logs -f --tail=100 postgres timescaledb   # mensajes en vivo (Ctrl+C)
+docker compose config --quiet                             # revisa la receta de Docker
+``` No uses
 `docker compose down -v` salvo que quieras destruir datos de desarrollo de forma
 deliberada.
 
