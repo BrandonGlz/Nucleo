@@ -41,7 +41,9 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
 
 - `bynucleo.com` y `www.bynucleo.com` llegan por el Cloudflare Tunnel `nucleo` (servicio
   `cloudflared`, configuración `deploy/cloudflared.yml` → `/etc/cloudflared/config.yml`) a Caddy
-  (`127.0.0.1:8081`); Caddy redirige `www` al dominio principal. Los DNS son CNAME del túnel en
+  (`127.0.0.1:8081`); Caddy manda `http://` a `https://` y `www` al dominio principal. En la
+  dirección anterior (`*.ts.net`) la web redirige a `bynucleo.com` con la misma ruta; ahí solo
+  siguen `/api`, `/ws` (apps 0.1.7 y el respaldo de los ESP32) y `/app` (APK). Los DNS son CNAME del túnel en
   Cloudflare (`cloudflared tunnel route dns nucleo <host>`). El Tailscale del host es solo de TMO.
 - Núcleo conserva además su propia máquina de Tailscale, `nucleo`: el contenedor
   `nucleo_tailscale` (perfil `servidor` de `docker-compose.yml`) que publica Caddy (`127.0.0.1:8081`) con Funnel según
