@@ -19,8 +19,6 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_VERSION': JSON.stringify(version),
     'import.meta.env.VITE_BUILD': JSON.stringify(git('rev-list --count HEAD')),
-    'import.meta.env.VITE_COMMIT': JSON.stringify(git('rev-parse --short HEAD')),
-    'import.meta.env.VITE_COMPILADA': JSON.stringify(new Date().toISOString()),
   },
   server: {
     port: 5173,

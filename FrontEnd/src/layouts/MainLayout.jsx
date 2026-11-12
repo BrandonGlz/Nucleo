@@ -88,15 +88,9 @@ function MenuLateral() {
 
 // Versión de la web desplegada (la fija vite.config.js al compilar en cada deploy).
 function Version() {
-  const { VITE_VERSION: version, VITE_BUILD: build, VITE_COMMIT: commit, VITE_COMPILADA: fecha } = import.meta.env
+  const { VITE_VERSION: version, VITE_BUILD: build } = import.meta.env
   if (!version) return null
-  const compilada = fecha ? new Date(fecha) : null
-  const corta = compilada?.toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
-  return (
-    <p className="ui-version" title={compilada ? `Desplegada el ${compilada.toLocaleString('es-MX')}${commit ? ` · commit ${commit}` : ''}` : undefined}>
-      {`v${version}${build ? ` · build ${build}` : ''}${corta ? ` · ${corta}` : ''}`}
-    </p>
-  )
+  return <p className="ui-version">{`v${version}${build ? ` · build ${build}` : ''}`}</p>
 }
 
 // Marco de las pantallas con sesión: menú lateral y columna de contenido que llena la ventana.
