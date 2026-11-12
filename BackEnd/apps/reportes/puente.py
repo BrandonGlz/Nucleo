@@ -469,9 +469,10 @@ def _limpiar(texto, permitidos, base=""):
 
 
 def redactar(dispositivo, pregunta, base, datos, espera=None):
-    """Pide a la IA, por el ESP del dispositivo, una respuesta corta a partir del texto
-    predefinido (``base``) y de las cifras (``datos``). Devuelve el texto o ``None`` si no llegó
-    a tiempo, la cola está llena o inventó cifras: entonces se usa la respuesta predefinida.
+    """Pide a la IA del servidor, con la firma del ESP del dispositivo, una respuesta corta a
+    partir del texto predefinido (``base``) y de las cifras (``datos``). Devuelve el texto o
+    ``None`` si no llegó a tiempo, la cola está llena o inventó cifras: entonces se usa la
+    respuesta predefinida.
     Devuelve ``(texto | None, tokens)``."""
     codigo = dispositivo.codigo_mqtt
     if cola().pendientes(codigo) >= MAX_EN_COLA:
@@ -503,6 +504,8 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
         return None, _tokens(r or {})
     permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(base)}
     permitidos |= {round(float(v), 1) for v in datos.values() if isinstance(v, int | float)}
+    # Las que dio el usuario («¿es grave si llega a 29?»): repetirlas no es inventar.
+    permitidos |= {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(pregunta)}
     permitidos |= {float(n) for n in range(0, 25)}  # «2 frases», «7 días», horas del día…
     return _limpiar(r["texto"], permitidos, base), _tokens(r)
 

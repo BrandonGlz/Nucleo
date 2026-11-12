@@ -945,6 +945,22 @@ class NicoAprendeTests(PruebaBase):
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
         self.assertNotIn("31.7", cuerpo["texto"])
 
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
+    def test_ia_puede_repetir_la_cifra_que_dio_el_usuario(self):
+        def responde(texto):
+            return lambda codigo, trabajo, espera: {"texto": texto}
+
+        pregunta = "¿es grave si llega a 29 grados?"
+        base, datos = "La temperatura está en 24 °C, dentro del rango.", {"actual": 24.0}
+        with mock.patch.object(
+            puente, "_ejecutar", responde("Si llega a 29 °C sí conviene revisar.")
+        ):
+            texto, _ = puente.redactar(self.e.dispositivo, pregunta, base, datos)
+        self.assertIn("29", texto)
+        with mock.patch.object(puente, "_ejecutar", responde("Mañana llegará a 31.7 °C.")):
+            texto, _ = puente.redactar(self.e.dispositivo, pregunta, base, datos)
+        self.assertIsNone(texto)
+
     def test_errores_de_dedo_y_dato_pedido(self):
         self.assertEqual(agente._tema("como esta la temperatrua"), "TEMP")
         cuerpo = self._pedir("¿cuál fue la temperatura máxima?")

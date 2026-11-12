@@ -104,6 +104,14 @@ Si ya quedó en modo de descarga, `.venv/bin/esptool --port /dev/ttyACM0 --after
 watchdog-reset chip-id` la reinicia en MicroPython. Con un cargador de pared no pasa, porque
 no hay nada que abra el puerto.
 
+Las placas con dos USB-C tienen uno nativo del ESP32-S3 (`/dev/ttyACM0`, ID `303a`) y otro con
+convertidor CH340 (`/dev/ttyUSB0`, ID `1a86`). El del CH340 no sufre lo de ModemManager y
+reinicia la placa solo al grabar: es el recomendado para cargar y ver la consola.
+
+Si el puerto deja de responder (`Write timeout` o `could not enter raw repl`) y ni `esptool`
+la reinicia: desconéctala, mantén presionado **BOOT** (o `IO0`), vuelve a conectarla y suelta
+el botón a los 2 s. Queda en modo de descarga y ya se puede borrar o grabar.
+
 ## Inicializar
 
 Todos los comandos se ejecutan desde la carpeta `IoT/`.
