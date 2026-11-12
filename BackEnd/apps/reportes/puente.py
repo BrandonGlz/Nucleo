@@ -504,8 +504,8 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
         return None, _tokens(r or {})
     permitidos = {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(base)}
     permitidos |= {round(float(v), 1) for v in datos.values() if isinstance(v, int | float)}
-    # Las que dio el usuario («¿es grave si llega a 29?»): repetirlas no es inventar.
-    permitidos |= {round(float(n.replace(",", ".")), 1) for n in NUMERO.findall(pregunta)}
+    # Las cifras hipotéticas del usuario («¿es grave si llega a 29?») no se aceptan: el modelo
+    # chico no las compara bien con el rango; eso lo contestan las reglas.
     permitidos |= {float(n) for n in range(0, 25)}  # «2 frases», «7 días», horas del día…
     return _limpiar(r["texto"], permitidos, base), _tokens(r)
 

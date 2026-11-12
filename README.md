@@ -361,12 +361,16 @@ Si un commit necesita muchas líneas para explicarse, probablemente son varios c
 
 ## Servidor
 
-Núcleo está publicado en **https://bynucleo.com** (web) y **https://bynucleo.com/api/v1** (API
-de la app), con un Cloudflare Tunnel. Los ESP32 se conectan por MQTT a
-`nucleo.tailb3f7d8.ts.net:8443` (Tailscale Funnel), que también sigue sirviendo la web anterior. Corre en un servidor propio: una
+| Dirección | Para qué |
+| --- | --- |
+| **https://bynucleo.com** | Web, API de la app (`/api/v1`), panel en vivo y admin |
+| **https://bynucleo.com/app/nucleo.apk** | Descarga de la app Android |
+| `nucleo.tailb3f7d8.ts.net:8443` | Subdominio de los ESP32: MQTT con TLS y llave de Nico AI |
+
+El dominio llega por un Cloudflare Tunnel y el subdominio por Tailscale Funnel; ninguno abre
+puertos en el router. Abrir el subdominio en el navegador lleva a `bynucleo.com`. Corre en un servidor propio: una
 laptop ASUS X75A con Debian 13 sin escritorio (procesador Intel Core i5-3230M de 2 núcleos y 4 hilos a
 2.6 GHz, 8 GB de RAM y disco duro mecánico HDD de 750 GB, 698 GB utilizables) que funciona como VPS casero.
-La app Android se descarga en **https://bynucleo.com/app/nucleo.apk**.
 
 **Cómo llega una visita**
 
@@ -417,9 +421,13 @@ flowchart LR
     style BD fill:transparent,stroke:#facc15,stroke-dasharray:3 3
 ```
 
-- **Publicación:** el contenedor `nucleo_tailscale` es una máquina de Tailscale propia
-  (`nucleo`) que, con Funnel, da la URL `https`, el certificado y el puerto 443 sin dominio ni
-  puertos abiertos en el router; se entra desde cualquier red.
+- **Dominio:** `bynucleo.com` está en Cloudflare; el túnel `nucleo` (servicio `cloudflared`)
+  lleva las visitas a Caddy sin abrir puertos en el router. `http://` y `www.` redirigen a
+  `https://bynucleo.com`.
+- **Subdominio de los ESP32:** el contenedor `nucleo_tailscale` es una máquina de Tailscale
+  propia (`nucleo`) que, con Funnel, publica el broker en el puerto 8443 con certificado de
+  Let's Encrypt; los ESP32 lo validan con la raíz que lleva el firmware. Por ese mismo
+  subdominio siguen la API y el canal en vivo para las apps 0.1.7 y el respaldo HTTPS del ESP.
 - **Web:** Vite la compila contra la API real y Caddy la sirve como archivos estáticos.
 - **API y tiempo real:** Daphne atiende HTTP y WebSocket (`/ws/panel/`) como servicio
   `nucleo-daphne`; Redis reparte los eventos en vivo.

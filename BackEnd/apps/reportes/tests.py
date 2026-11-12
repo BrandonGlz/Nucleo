@@ -946,18 +946,14 @@ class NicoAprendeTests(PruebaBase):
         self.assertNotIn("31.7", cuerpo["texto"])
 
     @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
-    def test_ia_puede_repetir_la_cifra_que_dio_el_usuario(self):
-        def responde(texto):
-            return lambda codigo, trabajo, espera: {"texto": texto}
-
+    def test_ia_no_juzga_cifras_hipoteticas_del_usuario(self):
+        """«¿Es grave si llega a 29?» con rango hasta 27: el modelo chico respondió «no es
+        grave». Una cifra que no sale de los datos descarta el texto de la IA."""
         pregunta = "¿es grave si llega a 29 grados?"
-        base, datos = "La temperatura está en 24 °C, dentro del rango.", {"actual": 24.0}
+        base, datos = "La temperatura está en 24 °C, dentro del rango (18–27 °C).", {"actual": 24.0}
         with mock.patch.object(
-            puente, "_ejecutar", responde("Si llega a 29 °C sí conviene revisar.")
+            puente, "_ejecutar", lambda *a: {"texto": "No, 29 grados no es grave."}
         ):
-            texto, _ = puente.redactar(self.e.dispositivo, pregunta, base, datos)
-        self.assertIn("29", texto)
-        with mock.patch.object(puente, "_ejecutar", responde("Mañana llegará a 31.7 °C.")):
             texto, _ = puente.redactar(self.e.dispositivo, pregunta, base, datos)
         self.assertIsNone(texto)
 
