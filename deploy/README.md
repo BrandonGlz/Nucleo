@@ -2,16 +2,16 @@
 
 Núcleo corre en una laptop ASUS X75A con Debian 13 (`homelab`: Intel Core i5-3230M, 8 GB de RAM y disco duro HDD de 750 GB). Se publica
 en internet con un Cloudflare Tunnel en el dominio `bynucleo.com`, sin puertos abiertos en el
-router, así que se llega desde cualquier red. Tailscale Funnel (`nucleo.<tailnet>.ts.net`) sigue
-activo para los ESP32 (MQTT en el 8443) y para las apps instaladas con la dirección anterior.
+router, así que se llega desde cualquier red. Núcleo no usa Tailscale; el Tailscale del host solo
+sirve para entrar por SSH.
 
 | Qué | Dirección |
 | --- | --- |
 | Web | https://bynucleo.com (`www.` redirige aquí) |
 | API (la usa la app) | https://bynucleo.com/api/v1 |
 | Admin de Django | https://bynucleo.com/admin/ |
-| MQTT de los ESP32 | `nucleo.tailb3f7d8.ts.net:8443` (TLS) |
-| Dirección anterior | https://nucleo.tailb3f7d8.ts.net (sigue funcionando) |
+| Descarga de la app | https://app.bynucleo.com (`bynucleo.com/app/…` redirige aquí) |
+| ESP32 (MQTT en WebSocket) | `wss://dispositivos.bynucleo.com/mqtt` |
 
 ## Acceso
 
@@ -39,15 +39,16 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
 
 ## Cómo está armado
 
-- `bynucleo.com` y `www.bynucleo.com` llegan por el Cloudflare Tunnel `nucleo` (servicio
-  `cloudflared`, configuración `deploy/cloudflared.yml` → `/etc/cloudflared/config.yml`) a Caddy
-  (`127.0.0.1:8081`); Caddy manda `http://` a `https://` y `www` al dominio principal. En la
-  dirección anterior (`*.ts.net`) la web redirige a `bynucleo.com` con la misma ruta; ahí solo
-  siguen `/api`, `/ws` (apps 0.1.7 y el respaldo de los ESP32) y `/app` (APK). Los DNS son CNAME del túnel en
-  Cloudflare (`cloudflared tunnel route dns nucleo <host>`). El Tailscale del host es solo de TMO.
-- Núcleo conserva además su propia máquina de Tailscale, `nucleo`: el contenedor
-  `nucleo_tailscale` (perfil `servidor` de `docker-compose.yml`) que publica Caddy (`127.0.0.1:8081`) con Funnel según
-  `tailscale-serve.json`. Se conecta la primera vez con `TS_AUTHKEY` en el `.env` raíz.
+- Todo llega por el Cloudflare Tunnel `nucleo` (servicio `cloudflared`, configuración
+  `deploy/cloudflared.yml` → `/etc/cloudflared/config.yml`):
+  - `bynucleo.com` y `www.` → Caddy (`127.0.0.1:8081`), que manda `http://` a `https://` y `www`
+    al dominio principal.
+  - `app.bynucleo.com` → Caddy, que entrega `deploy/descargas/` (la raíz lleva a `nucleo.apk`).
+  - `dispositivos.bynucleo.com/mqtt` → directo al listener WebSocket de Mosquitto
+    (`127.0.0.1:51884`). El resto de ese subdominio pasa por Caddy, que solo deja el respaldo
+    HTTPS de Nico y la hora (`/api/v1/puente/`, `/api/v1/health/`) y lo demás lo manda a la web.
+- Los DNS son CNAME del túnel en Cloudflare: `cloudflared tunnel route dns nucleo <host>` por cada
+  nombre (`bynucleo.com`, `www`, `app`, `dispositivos`).
 - Caddy sirve la web compilada y pasa `/api`, `/admin` y `/ws` a Daphne (`127.0.0.1:8001`).
 - systemd: `nucleo-daphne` (API y WebSocket), `nucleo-mqtt` (lecturas del broker),
   `nucleo-sin-conexion`, `nucleo-reportes.timer` (cada 15 min) y `nucleo-respaldo.timer` (diario).
@@ -61,13 +62,13 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 - `bash deploy/desplegar.sh` — trae los cambios de `dev` y reinstala; se puede repetir.
 - `systemctl status nucleo-daphne nucleo-mqtt caddy --no-pager` — estado de los servicios.
 - `journalctl -u nucleo-daphne -n 50 --no-pager` — últimos mensajes de la API.
-- `docker ps` — contenedores: postgres, timescaledb, redis, mosquitto y tailscale.
-- `docker exec nucleo_tailscale tailscale --socket=/tmp/tailscaled.sock funnel status` — qué publica la máquina `nucleo`.
+- `docker ps` — contenedores: postgres, timescaledb, redis, mosquitto y ollama.
+- `systemctl status cloudflared --no-pager` — estado del túnel de Cloudflare.
 - `bash deploy/respaldar.sh` — respaldo inmediato en `~/respaldos/nucleo` y en Drive (`gdrive-nucleo:servidor/nucleo`).
 
 ### App móvil (APK)
 
-El APK se descarga en `https://bynucleo.com/app/nucleo.apk`. Caddy entrega la carpeta
+El APK se descarga en `https://app.bynucleo.com`. Caddy entrega la carpeta
 `deploy/descargas/` del proyecto (no va a git), donde también queda una copia por versión (`nucleo-<versión>.apk`).
 
 Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.json` y correr
@@ -113,14 +114,15 @@ usuarios (tabla `respuesta_aprendida`). Solo cuando se le pide explicar, opinar 
 ~6 s si estaba descargado y ~13 s con dos a la vez o con la firma del ESP incluida) que corre en
 el contenedor `nucleo_ollama`.
 
-El ESP32 de cada dispositivo es la **llave** de su agente. Por MQTT (Funnel en el puerto
-**8443**, TLS de Let's Encrypt hacia el listener interno 1883 de Mosquitto) publica un latido
+El ESP32 de cada dispositivo es la **llave** de su agente. Por MQTT dentro de WebSocket
+(`wss://dispositivos.bynucleo.com/mqtt`, por el túnel hasta el listener interno 9001 de
+Mosquitto) publica un latido
 cada 20 s con su diagnóstico de red y firma cada petición: el backend publica `{id, reto}` en
 `nucleo/devices/<c>/puente/peticion` y el ESP responde en `.../puente/autoriza` con
 HMAC-SHA256(`IA_PUENTE_CLAVE`, `codigo:id:reto`). Solo con esa firma el backend llama a
 Ollama (`IA_OLLAMA_URL`, local). Sin latido ni lecturas en 75 s, o con el último mensaje del
 ESP (`{"estado":"offline"}`), el agente se deshabilita en la web y en la app. Si la red del ESP
-bloquea el 8443, el ESP consulta `GET /api/v1/puente/tomar/` por HTTPS cada 10 s con la cabecera
+no deja pasar el WebSocket, el ESP consulta `GET /api/v1/puente/tomar/` por HTTPS cada 10 s con la cabecera
 `X-Puente-Clave` (respaldo). `.venv/bin/python manage.py puente_diagnostico` (en `BackEnd/`)
 muestra el último diagnóstico de cada ESP para saber si un corte fue de la red o del ESP.
 
@@ -152,22 +154,20 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 
 1. Copia los respaldos a `~/traspaso` y corre `bash deploy/restaurar.sh ~/traspaso`.
 2. `bash deploy/configurar_env.sh` — crea `BackEnd/.env`; pide la contraseña de aplicación de Gmail.
-3. Agrega `TS_AUTHKEY=tskey-auth-…` al `.env` raíz (clave *Reusable* de
-   https://login.tailscale.com/admin/settings/keys).
-4. Cloudflare Tunnel: `sudo apt install cloudflared` (repositorio `pkg.cloudflare.com`),
+3. Cloudflare Tunnel: `sudo apt install cloudflared` (repositorio `pkg.cloudflare.com`),
    `cloudflared tunnel login` (se autoriza `bynucleo.com` en el navegador), luego
-   `cloudflared tunnel create nucleo`, `cloudflared tunnel route dns nucleo bynucleo.com` y
-   `... www.bynucleo.com`. Copia `~/.cloudflared/<ID>.json` a `/etc/cloudflared/` (permiso 600)
+   `cloudflared tunnel create nucleo` y `cloudflared tunnel route dns nucleo <host>` para
+   `bynucleo.com`, `www.bynucleo.com`, `app.bynucleo.com` y `dispositivos.bynucleo.com`. Copia `~/.cloudflared/<ID>.json` a `/etc/cloudflared/` (permiso 600)
    y pon `CLOUDFLARE_TUNEL=<ID>` en el `.env` raíz. Si `tunnel create` falla con 524, activa
    Zero Trust (plan Free) en la cuenta del dominio. Para mudar de servidor basta con copiar
    `/etc/cloudflared/` y `~/.cloudflared/`.
-5. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios, Funnel y túnel.
-6. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file`.
+4. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios y túnel.
+5. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file`.
 
 | Archivo | Para qué |
 | --- | --- |
 | `instalar.sh`, `desplegar.sh` | Instalar o actualizar |
 | `restaurar.sh`, `respaldar.sh` | Restaurar desde respaldos y respaldar |
 | `configurar_env.sh`, `backend.env.ejemplo` | Generar `BackEnd/.env` de producción |
-| `nucleo.caddy`, `tailscale-serve.json`, `cloudflared.yml` | Caddy, Funnel y Cloudflare Tunnel |
+| `nucleo.caddy`, `cloudflared.yml` | Caddy y Cloudflare Tunnel |
 | `*.service`, `*.timer` | Servicios y tareas de systemd |

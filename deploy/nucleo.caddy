@@ -1,5 +1,4 @@
-# Núcleo: Cloudflare Tunnel (https://bynucleo.com) y el Funnel del contenedor nucleo_tailscale
-# (https://nucleo.<tailnet>.ts.net, que usan los ESP32) -> Caddy 127.0.0.1:8081
+# Núcleo: Cloudflare Tunnel (bynucleo.com, app. y dispositivos.) -> Caddy 127.0.0.1:8081
 # __RAIZ__ lo reemplaza deploy/instalar.sh por la carpeta del proyecto.
 # /media no se publica: los PDF de reportes se descargan por la API con token.
 http://:8081 {
@@ -20,13 +19,29 @@ http://:8081 {
 	@www header_regexp www Host ^www\.(.+)$
 	redir @www https://{re.www.1}{uri} permanent
 
-	# La dirección anterior (Tailscale, *.ts.net) lleva la web al dominio. Se quedan ahí la API y el
-	# canal en vivo (apps 0.1.7 y el respaldo HTTPS de los ESP32) y la descarga del APK.
-	@anterior {
-		header_regexp anterior Host \.ts\.net$
-		not path /api/* /ws/* /app/* /latido
+	# app.bynucleo.com: solo la descarga del APK (la raíz lleva al archivo)
+	@app host app.bynucleo.com
+	handle @app {
+		redir / /nucleo.apk
+		root * __RAIZ__/deploy/descargas
+		@apk path *.apk
+		header @apk Content-Type application/vnd.android.package-archive
+		header @apk Content-Disposition attachment
+		header Cache-Control no-cache
+		file_server
 	}
-	redir @anterior https://bynucleo.com{uri} permanent
+
+	# La descarga anterior (bynucleo.com/app/...) se mudó a app.bynucleo.com
+	@app_anterior path_regexp app_anterior ^/app/(.*)$
+	redir @app_anterior https://app.bynucleo.com/{re.app_anterior.1} permanent
+
+	# dispositivos.bynucleo.com es de los ESP32: /mqtt lo toma cloudflared y aquí solo quedan el
+	# respaldo HTTPS de Nico y la hora (health). Lo demás lleva a la web.
+	@dispositivos {
+		host dispositivos.bynucleo.com
+		not path /api/v1/puente/* /api/v1/health/
+	}
+	redir @dispositivos https://bynucleo.com permanent
 
 	# Latido de las páginas con sesión abierta (cada minuto): solo queda en la bitácora para contar conectados
 	handle /latido {
@@ -40,16 +55,6 @@ http://:8081 {
 		reverse_proxy 127.0.0.1:8001 {
 			header_up X-Forwarded-Proto https
 		}
-	}
-
-	# APK de la app móvil (fuera de git): se copia a __RAIZ__/deploy/descargas; ver deploy/README.md
-	handle_path /app/* {
-		root * __RAIZ__/deploy/descargas
-		@apk path *.apk
-		header @apk Content-Type application/vnd.android.package-archive
-		header @apk Content-Disposition attachment
-		header Cache-Control no-cache
-		file_server
 	}
 
 	handle_path /static/* {

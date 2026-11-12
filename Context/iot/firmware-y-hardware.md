@@ -31,7 +31,8 @@ Estructura en la placa (`IoT/micropython/`):
 - `certs/ca.der` (no se versiona): CA del broker en formato DER.
 - `nucleo/`: `aplicacion` (ciclo principal), `sensores`, `umbrales`, `cola`, `indicadores`,
   `pantalla`, `bateria`, `red` (Wi-Fi y hora), `comunicacion` (MQTT, latido y firma) y
-  `respaldo` (HTTPS si la red bloquea el broker); `isrg_raiz.pem` valida el broker por internet.
+  `respaldo` (HTTPS si la red bloquea el broker) y `websocket` (MQTT dentro de WebSocket para el
+  túnel de Cloudflare); `raices.pem` (Let's Encrypt y Google) valida el servidor por internet.
 - `baseline.json` y `ajustes.json` los crea el firmware en la placa (calibración del
   CCS811 y última configuración recibida).
 

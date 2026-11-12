@@ -110,4 +110,4 @@ cp "$raiz/deploy/descargas/nucleo-$version.apk" "$raiz/deploy/descargas/.nucleo.
 mv -f "$raiz/deploy/descargas/.nucleo.apk.tmp" "$raiz/deploy/descargas/nucleo.apk"
 echo "$h_apk" > "$ultima"
 ls -lh "$raiz/deploy/descargas"
-echo "Listo: versión $version publicada en /app/nucleo.apk y guardada como deploy/descargas/nucleo-$version.apk"
+echo "Listo: versión $version publicada en https://app.bynucleo.com y guardada como deploy/descargas/nucleo-$version.apk"

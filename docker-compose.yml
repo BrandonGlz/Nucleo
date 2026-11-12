@@ -56,8 +56,8 @@ services:
     restart: unless-stopped
     ports:
       - "${MQTT_BIND:-127.0.0.1}:${MQTT_PORT:-8883}:8883"
-      # Interno sin TLS, solo local: lo publica Tailscale Funnel en el 8443 con TLS público.
-      - "127.0.0.1:${MQTT_INTERNO_PORT:-51883}:1883"
+      # WebSocket interno sin TLS, solo local: lo publica el túnel de Cloudflare con TLS público.
+      - "127.0.0.1:${MQTT_WS_PORT:-51884}:9001"
     volumes:
       - ./Mosquitto/config:/mosquitto/config:ro
       - ./Mosquitto/certs:/mosquitto/certs:ro
@@ -103,28 +103,6 @@ services:
     volumes:
       - ollama_data:/root/.ollama
 
-  # Solo en el servidor (docker compose --profile servidor up -d tailscale): una máquina de
-  # Tailscale llamada «nucleo» que publica la web y la API (Caddy en 127.0.0.1:8081) con Funnel
-  # en https://nucleo.<tailnet>.ts.net. Usa red del anfitrión en modo userspace, así que convive
-  # con el Tailscale de la laptop (otro puerto UDP y sin interfaz tun).
-  tailscale:
-    image: tailscale/tailscale:v1.104.2
-    container_name: nucleo_tailscale
-    profiles: ["servidor"]
-    network_mode: host
-    mem_limit: ${TS_MEM_LIMIT:-96m}
-    restart: unless-stopped
-    environment:
-      TS_HOSTNAME: nucleo
-      TS_AUTHKEY: ${TS_AUTHKEY:-}
-      TS_STATE_DIR: /var/lib/tailscale
-      TS_USERSPACE: "true"
-      TS_TAILSCALED_EXTRA_ARGS: --port=41642
-      TS_SERVE_CONFIG: /config/serve.json
-    volumes:
-      - tailscale_state:/var/lib/tailscale
-      - ./deploy/tailscale-serve.json:/config/serve.json:ro
-
 volumes:
   ollama_data:
     name: nucleo_ollama_data
@@ -134,5 +112,3 @@ volumes:
     name: nucleo_timescale_data
   mosquitto_data:
     name: nucleo_mosquitto_data
-  tailscale_state:
-    name: nucleo_tailscale_state

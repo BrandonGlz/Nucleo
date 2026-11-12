@@ -2,7 +2,7 @@
 # Crea BackEnd/.env de producción a partir de deploy/backend.env.ejemplo y del .env raíz:
 # arma DATABASE_URL, IOT_DATABASE_URL, REDIS_URL y MQTT_PASSWORD con las contraseñas del
 # .env raíz, genera DJANGO_SECRET_KEY y pide la contraseña de aplicación de Gmail
-# (y la URL de Tailscale y el Gmail si la plantilla aún no los trae).
+# (y el Gmail si la plantilla aún no lo trae).
 # Uso, desde la carpeta del proyecto (después de deploy/restaurar.sh):  bash deploy/configurar_env.sh
 set -euo pipefail
 
@@ -20,10 +20,7 @@ set +a
 : "${REDIS_PASSWORD:?Falta REDIS_PASSWORD en .env}" "${MQTT_BACKEND_PASSWORD:?Falta MQTT_BACKEND_PASSWORD en .env}"
 q() { python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"; }
 
-url="" gmail=""
-if grep -q 'TU-TAILNET.ts.net' "$plantilla"; then
-  read -rp "Nombre del tailnet (ej. tail1234ab.ts.net): " url
-fi
+gmail=""
 if grep -q 'tu_cuenta@gmail.com' "$plantilla"; then
   read -rp "Cuenta de Gmail que envía los correos: " gmail
 fi
@@ -38,7 +35,7 @@ secreto="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')"
 
 umask 077
 DB="$db" IOT="$iot" REDIS="$redis" SECRETO="$secreto" APP="$app" MQTT="$MQTT_BACKEND_PASSWORD" \
-URL="${url:-TU-TAILNET.ts.net}" GMAIL="${gmail:-tu_cuenta@gmail.com}" \
+GMAIL="${gmail:-tu_cuenta@gmail.com}" \
 python3 - "$plantilla" "$destino" <<'EOF'
 import os, sys
 e = os.environ
@@ -51,7 +48,7 @@ for linea in open(sys.argv[1], encoding='utf-8'):
     clave = linea.split('=', 1)[0]
     if clave in lineas:
         linea = f'{clave}={lineas[clave]}\n'
-    linea = linea.replace('TU-TAILNET.ts.net', e['URL']).replace('tu_cuenta@gmail.com', e['GMAIL'])
+    linea = linea.replace('tu_cuenta@gmail.com', e['GMAIL'])
     salida.append(linea)
 open(sys.argv[2], 'w', encoding='utf-8').writelines(salida)
 EOF

@@ -34,7 +34,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 mkdir -p media
 
 # URL pública de la API (primer origen de CORS_ALLOWED_ORIGINS): absoluta, para que el canal
-# en vivo se abra en wss://nucleo.<tailnet>.ts.net/ws/panel/.
+# en vivo se abra en wss://bynucleo.com/ws/panel/.
 origen="$(sed -n 's/^CORS_ALLOWED_ORIGINS=\([^,]*\).*/\1/p' "$raiz/BackEnd/.env")"
 [[ "$origen" == https://* ]] || { echo "CORS_ALLOWED_ORIGINS no trae la URL https del servidor"; exit 1; }
 
@@ -90,16 +90,6 @@ sleep 3
 curl -fsS -o /dev/null http://127.0.0.1:8081/ && echo "Web: OK"
 curl -fsS http://127.0.0.1:8081/api/v1/health/ && echo
 systemctl --no-pager --lines=0 status nucleo-mqtt | head -3
-# Segunda máquina de Tailscale («nucleo») que publica Caddy :8081 con Funnel en el 443.
-# La primera vez necesita TS_AUTHKEY en el .env raíz; después usa el estado guardado.
-if grep -q '^TS_AUTHKEY=tskey-' "$raiz/.env" || docker volume inspect nucleo_tailscale_state >/dev/null 2>&1; then
-  paso "Tailscale de Núcleo (Funnel en https://nucleo.<tailnet>.ts.net)"
-  (cd "$raiz" && docker compose --profile servidor up -d tailscale)
-  # Relee deploy/tailscale-serve.json (443 web y 8443 MQTT para los dispositivos).
-  (cd "$raiz" && docker compose --profile servidor restart tailscale >/dev/null)
-else
-  echo "Aviso: sin TS_AUTHKEY en .env no se publica Núcleo en internet."
-fi
 # Dominio propio con Cloudflare Tunnel (https://bynucleo.com): con CLOUDFLARE_TUNEL (ID del túnel)
 # en el .env raíz y sus credenciales en /etc/cloudflared/<ID>.json (ver deploy/README.md).
 tunel="$(sed -n 's/^CLOUDFLARE_TUNEL=//p' "$raiz/.env")"

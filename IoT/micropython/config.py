@@ -61,13 +61,13 @@ BATERIA_LLENA_V = 4.2
 
 # --- Red y MQTT ---------------------------------------------------------------------------
 WIFI_INTENTO_SEG = 20  # tiempo para asociarse a una red antes de probar la siguiente
-MQTT_PUERTO = 8883  # por internet (Funnel): MQTT_PUERTO = 8443 en secrets.py
+MQTT_PUERTO = 8883  # por internet (Cloudflare): MQTT_PUERTO = 443 y MQTT_WS = "/mqtt" en secrets.py
 MQTT_KEEPALIVE_SEG = 30  # sin señales en 1.5 veces esto, el broker publica el último mensaje
 MQTT_REINTENTO_SEG = 10
 MQTT_CONECTAR_SEG = 10  # tope para abrir la conexión y el TLS
 MQTT_ESPERA_SEG = 5  # tope de cada lectura o escritura ya conectado (señal débil)
-# CA del broker; el certificado se valida siempre. Por internet (Funnel) el certificado es de
-# Let's Encrypt: MQTT_CA = "nucleo/isrg_raiz.pem" en secrets.py.
+# CA del broker; el certificado se valida siempre. Por internet el certificado lo emite
+# Cloudflare (Let's Encrypt o Google): MQTT_CA = "nucleo/raices.pem" en secrets.py.
 CA_CERT = "certs/ca.der"
 TOPICO_LECTURAS = "nucleo/devices/{codigo}/measurements"
 TOPICO_CONFIG = "nucleo/devices/{codigo}/config"
@@ -84,7 +84,7 @@ MQTT_FALLOS_RESPALDO = 3
 MQTT_REINTENTO_RESPALDO_SEG = 120
 RESPALDO_SEG = 10
 RESPALDO_ESPERA_SEG = 8
-RAIZ_PUENTE = "nucleo/isrg_raiz.pem"
+RAIZ_PUENTE = "nucleo/raices.pem"
 
 # Reinicia la placa si el programa deja de responder; 0 lo desactiva (útil al depurar con Pymakr).
 WATCHDOG_MS = 60000

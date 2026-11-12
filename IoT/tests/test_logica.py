@@ -448,3 +448,87 @@ class HoraTests(unittest.TestCase):
             red.fecha_http("Date: Thu, 12 Nov 2026 04:57:03 GMT"), (2026, 11, 12, 4, 57, 3)
         )
         self.assertIsNone(red.fecha_http("Date: basura"))
+
+
+class _SocketFalso:
+    """Socket TLS simulado: entrega ``entrada`` y guarda lo escrito."""
+
+    def __init__(self, entrada=b""):
+        self.entrada = bytearray(entrada)
+        self.salida = b""
+        self.bloqueante = True
+
+    def read(self, n):
+        if not self.entrada:
+            return None if not self.bloqueante else b""
+        datos = bytes(self.entrada[:n])
+        del self.entrada[:n]
+        return datos
+
+    def write(self, datos):
+        self.salida += bytes(datos)
+        return len(datos)
+
+    def setblocking(self, valor):
+        self.bloqueante = valor
+
+    def close(self):
+        pass
+
+
+class WebSocketTests(unittest.TestCase):
+    def setUp(self):
+        from nucleo import websocket
+
+        self.ws = websocket
+
+    def _desenmascarar(self, trama):
+        n = trama[1] & 0x7F
+        mascara, cuerpo = trama[2:6], trama[6 : 6 + n]
+        return trama[0], bytes(b ^ mascara[i & 3] for i, b in enumerate(cuerpo))
+
+    def test_saludo_pide_mqtt_y_exige_101(self):
+        sock = _SocketFalso(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n")
+        self.ws.Tubo(sock).saludo("dispositivos.bynucleo.com", "/mqtt")
+        self.assertIn(b"GET /mqtt HTTP/1.1", sock.salida)
+        self.assertIn(b"Host: dispositivos.bynucleo.com", sock.salida)
+        self.assertIn(b"Sec-WebSocket-Protocol: mqtt", sock.salida)
+        with self.assertRaises(OSError):
+            self.ws.Tubo(_SocketFalso(b"HTTP/1.1 404 Not Found\r\n\r\n")).saludo("h", "/mqtt")
+
+    def test_escritura_va_en_trama_binaria_enmascarada(self):
+        sock = _SocketFalso()
+        self.ws.Tubo(sock).write(b"\x10\x0cconectar", 5)
+        opcode, cuerpo = self._desenmascarar(sock.salida)
+        self.assertEqual(opcode, 0x82)
+        self.assertEqual(cuerpo, b"\x10\x0ccon")
+        self.assertTrue(sock.salida[1] & 0x80)  # el cliente siempre enmascara
+
+    def test_lee_el_flujo_mqtt_a_traves_de_tramas_y_responde_ping(self):
+        ping = bytes((0x89, 2)) + b"hi"
+        datos = bytes((0x82, 4)) + b"\x20\x02\x00\x00" + bytes((0x82, 2)) + b"ab"
+        sock = _SocketFalso(ping + datos)
+        tubo = self.ws.Tubo(sock)
+        self.assertEqual(tubo.read(4), b"\x20\x02\x00\x00")  # CONNACK
+        self.assertEqual(tubo.read(2), b"ab")
+        opcode, cuerpo = self._desenmascarar(sock.salida)
+        self.assertEqual((opcode, cuerpo), (0x8A, b"hi"))  # pong con el mismo contenido
+
+    def test_sin_bloqueo_y_sin_datos_devuelve_none(self):
+        sock = _SocketFalso()
+        tubo = self.ws.Tubo(sock)
+        tubo.setblocking(False)
+        self.assertIsNone(tubo.read(1))
+        sock.entrada += bytes((0x82, 1)) + b"\x30"
+        self.assertEqual(tubo.read(1), b"\x30")
+        self.assertFalse(sock.bloqueante)  # vuelve a sin bloqueo para check_msg
+
+    def test_trama_de_cierre_es_desconexion(self):
+        tubo = self.ws.Tubo(_SocketFalso(bytes((0x88, 0))))
+        with self.assertRaises(OSError):
+            tubo.read(1)
+
+    def test_trama_larga_usa_16_bits(self):
+        trama = self.ws.trama(0x2, b"x" * 300, b"\0\0\0\0")
+        self.assertEqual(trama[1], 0x80 | 126)
+        self.assertEqual((trama[2] << 8) | trama[3], 300)

@@ -157,11 +157,12 @@ los sensores primero. Por la misma conexión MQTT:
   y el ESP responde en `.../puente/autoriza` con HMAC-SHA256(`PUENTE_CLAVE`, `codigo:id:reto`).
   Solo entonces el servidor usa la IA. Firmar son unos bytes: los sensores no esperan.
 - **Respaldo:** si el broker falla 3 veces seguidas con Wi-Fi (p. ej. la red bloquea el puerto
-  8443), Nico sigue vivo con una consulta HTTPS corta cada 10 s y MQTT se reintenta cada 2 min.
+  443), Nico sigue vivo con una consulta HTTPS corta cada 10 s y MQTT se reintenta cada 2 min.
 
 `MODO = "puente"` en `secrets.py` arranca sin sensores ni pantalla (solo la llave). Por
-internet, el broker se alcanza con Tailscale Funnel: `MQTT_HOST = "nucleo.<tailnet>.ts.net"`,
-`MQTT_PUERTO = 8443` y `MQTT_CA = "nucleo/isrg_raiz.pem"`. Además: `PUENTE_HOST`,
+internet, el broker va dentro de WebSocket por el túnel de Cloudflare (que solo deja pasar
+HTTPS): `MQTT_HOST = "dispositivos.bynucleo.com"`, `MQTT_PUERTO = 443`, `MQTT_WS = "/mqtt"` y
+`MQTT_CA = "nucleo/raices.pem"` (raíces de Let's Encrypt y Google). Además: `PUENTE_HOST`,
 `PUENTE_CLAVE` (la `IA_PUENTE_CLAVE` del servidor), `MQTT_PASSWORD` (de
 `Mosquitto/dispositivo.sh`) y, opcional, `REDES` como redes de respaldo.
 

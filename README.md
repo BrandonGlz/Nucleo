@@ -30,7 +30,7 @@ con los sensores, así que por ahora las lecturas vienen del simulador.
     Alertas y su detalle, Nico AI y Perfil.
   - Canal en vivo con la app abierta y notificaciones push con la app cerrada; las de
     peligro suenan y vibran. Opción para reducir animaciones y preferencias guardadas en el teléfono.
-  - Se instala con el APK de https://bynucleo.com/app/nucleo.apk.
+  - Se instala con el APK de https://app.bynucleo.com.
 - **IoT**
   - Firmware de MicroPython (`boot.py`, `main.py` y el paquete `nucleo/`) con DHT22,
     CCS811, pantalla OLED, LED RGB, buzzer y MQTT con TLS, cola de lecturas sin conexión y
@@ -364,11 +364,11 @@ Si un commit necesita muchas líneas para explicarse, probablemente son varios c
 | Dirección | Para qué |
 | --- | --- |
 | **https://bynucleo.com** | Web, API de la app (`/api/v1`), panel en vivo y admin |
-| **https://bynucleo.com/app/nucleo.apk** | Descarga de la app Android |
-| `nucleo.tailb3f7d8.ts.net:8443` | Subdominio de los ESP32: MQTT con TLS y llave de Nico AI |
+| **https://app.bynucleo.com** | Descarga de la app Android |
+| `dispositivos.bynucleo.com` | Solo para los ESP32: MQTT (dentro de WebSocket) y llave de Nico AI |
 
-El dominio llega por un Cloudflare Tunnel y el subdominio por Tailscale Funnel; ninguno abre
-puertos en el router. Abrir el subdominio en el navegador lleva a `bynucleo.com`. Corre en un servidor propio: una
+Todo llega por un Cloudflare Tunnel, sin abrir puertos en el router. Abrir `dispositivos.` en el
+navegador lleva a `bynucleo.com`. Corre en un servidor propio: una
 laptop ASUS X75A con Debian 13 sin escritorio (procesador Intel Core i5-3230M de 2 núcleos y 4 hilos a
 2.6 GHz, 8 GB de RAM y disco duro mecánico HDD de 750 GB, 698 GB utilizables) que funciona como VPS casero.
 
@@ -376,11 +376,11 @@ laptop ASUS X75A con Debian 13 sin escritorio (procesador Intel Core i5-3230M de
 
 ```mermaid
 flowchart LR
-    U["Navegador o app<br/>cualquier red"] -->|"HTTPS bynucleo.com"| CF["Cloudflare Tunnel<br/>cloudflared"]
+    U["Navegador o app<br/>cualquier red"] -->|"HTTPS bynucleo.com<br/>app.bynucleo.com"| CF["Cloudflare Tunnel<br/>cloudflared"]
     CF --> C["Caddy :8081<br/>127.0.0.1"]
     C --> W["Web compilada<br/>FrontEnd/dist"]
     C --> ST["Archivos /static"]
-    C --> APK["APK en /app/nucleo.apk"]
+    C --> APK["APK en app.bynucleo.com"]
     C -->|"/api, /ws, /admin"| D
     subgraph SY["Servicios de systemd"]
         direction TB
@@ -391,15 +391,15 @@ flowchart LR
     end
     subgraph DK["Docker · solo 127.0.0.1"]
         direction TB
-        M["Mosquitto TLS<br/>:8883"]
+        M["Mosquitto<br/>WebSocket :9001"]
         subgraph BD["Bases de datos"]
             PG[("PostgreSQL")]
             TDB[("TimescaleDB")]
             R[("Redis")]
         end
     end
-    E["ESP32"] -->|"MQTT/TLS :8443"| TS["Tailscale Funnel<br/>máquina «nucleo»"]
-    TS --> M
+    E["ESP32"] -->|"MQTT en WebSocket<br/>wss://dispositivos.bynucleo.com/mqtt"| CF
+    CF -->|"/mqtt"| M
     M -->|lecturas| MQ
     SY <==>|"consultas, lecturas,<br/>alertas y eventos"| BD
     classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
@@ -411,7 +411,7 @@ flowchart LR
     classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
     classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
     class U cliente
-    class CF,TS,C red
+    class CF,C red
     class W,ST,APK web
     class D,MQ,SC,RP backend
     class PG,TDB,R datos
@@ -423,15 +423,16 @@ flowchart LR
 
 - **Dominio:** `bynucleo.com` está en Cloudflare; el túnel `nucleo` (servicio `cloudflared`)
   lleva las visitas a Caddy sin abrir puertos en el router. `http://` y `www.` redirigen a
-  `https://bynucleo.com`.
-- **Subdominio de los ESP32:** el contenedor `nucleo_tailscale` es una máquina de Tailscale
-  propia (`nucleo`) que, con Funnel, publica el broker en el puerto 8443 con certificado de
-  Let's Encrypt; los ESP32 lo validan con la raíz que lleva el firmware. Por ese mismo
-  subdominio siguen la API y el canal en vivo para las apps 0.1.7 y el respaldo HTTPS del ESP.
+  `https://bynucleo.com`; `app.bynucleo.com` entrega el APK.
+- **Subdominio de los ESP32:** Cloudflare solo deja pasar HTTPS, así que los ESP32 hablan MQTT
+  dentro de WebSocket en `wss://dispositivos.bynucleo.com/mqtt`; el túnel lo lleva directo al
+  listener WebSocket de Mosquitto (solo local). El ESP valida el certificado con las raíces de
+  Let's Encrypt y Google que lleva el firmware. En ese subdominio solo quedan además el respaldo
+  HTTPS de Nico y la hora (`/api/v1/puente/`, `/api/v1/health/`).
 - **Web:** Vite la compila contra la API real y Caddy la sirve como archivos estáticos.
 - **API y tiempo real:** Daphne atiende HTTP y WebSocket (`/ws/panel/`) como servicio
   `nucleo-daphne`; Redis reparte los eventos en vivo.
-- **Lecturas:** `nucleo-mqtt` recibe las lecturas del broker Mosquitto (TLS) y las guarda en
+- **Lecturas:** `nucleo-mqtt` recibe las lecturas del broker Mosquitto y las guarda en
   TimescaleDB; `nucleo-sin-conexion` marca los dispositivos que dejan de reportar.
 - **Reportes:** `nucleo-reportes.timer` genera cada 15 minutos los reportes programados, con el
   texto redactado por `IA_PROVEEDOR=local`.
@@ -439,7 +440,7 @@ flowchart LR
 - **Push:** `NUCLEO_PUSH_HABILITADO=true`; el backend envía a Expo, que entrega por Firebase
   (proyecto `nucleo-firebase`) a los teléfonos registrados al iniciar sesión en la app.
 - **App:** `deploy/compilar_apk.sh` compila el APK en el mismo servidor y lo publica en
-  `/app/nucleo.apk`.
+  `https://app.bynucleo.com`.
 - **Respaldos:** `nucleo-respaldo.timer` respalda a diario las dos bases y la configuración del
   broker: 7 días en el servidor y 30 en Google Drive.
 - **Disponibilidad:** todos los servicios arrancan con el equipo y se reinician solos; los
@@ -472,8 +473,7 @@ flowchart LR
         D["Daphne :8001<br/>Django · DRF<br/>AgenteView"]
         R[("Redis<br/>retos y firmas")]
         MQ["nucleo-mqtt<br/>escuchar_mqtt"]
-        M["Mosquitto"]
-        TS["Tailscale Funnel<br/>:8443 TLS"]
+        M["Mosquitto<br/>WebSocket"]
         subgraph BD["Bases de datos"]
             PG[("PostgreSQL<br/>umbrales · alertas<br/>sensores · reportes")]
             TDB[("TimescaleDB<br/>lecturas")]
@@ -488,8 +488,8 @@ flowchart LR
     D <-->|"1 · consultas"| BD
     D -->|"2 · reto"| R
     R --> MQ --> M
-    M <-->|"2 · puente/peticion<br/>3 · puente/autoriza (HMAC)<br/>latido cada 20 s"| TS
-    TS <--> E
+    M <-->|"2 · puente/peticion<br/>3 · puente/autoriza (HMAC)<br/>latido cada 20 s"| CF
+    CF <-->|"wss://dispositivos.bynucleo.com/mqtt"| E
     MQ -->|"3 · firma válida"| R
     D -->|"3 · solo con firma"| O
     D -->|"4 · respuesta JSON<br/>texto · gráfica · tabla"| W
@@ -503,7 +503,7 @@ flowchart LR
     classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
     class W web
     class A cliente
-    class CF,TS,C red
+    class CF,C red
     class D,MQ backend
     class R,PG,TDB datos
     class E,M iot

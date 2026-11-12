@@ -10,7 +10,8 @@ Una sola conexión segura lleva todo:
   y el ESP responde en ``.../puente/autoriza`` con HMAC-SHA256(``PUENTE_CLAVE``,
   ``codigo:id:reto``). Son unos bytes: los sensores no esperan.
 
-Si la red bloquea el puerto del broker, ``respaldo.py`` mantiene vivo a Nico por HTTPS.
+Por internet va dentro de WebSocket (``MQTT_WS``, ``websocket.py``) para pasar por el túnel de
+Cloudflare en el 443. Si aun así falla, ``respaldo.py`` mantiene vivo a Nico por HTTPS.
 """
 
 import binascii
@@ -23,6 +24,7 @@ from umqtt.simple import MQTTClient
 
 import config
 import secrets
+from nucleo.websocket import Tubo
 
 
 def hmac_sha256(clave, mensaje):
@@ -49,13 +51,20 @@ class _TLS:
     congelaría el ciclo hasta que el watchdog reinicie la placa. Con el límite, la escritura
     falla en pocos segundos y solo se reconecta el broker."""
 
-    def __init__(self, contexto):
+    def __init__(self, contexto, ruta_ws=None):
         self._contexto = contexto
+        self._ruta_ws = ruta_ws
         self.crudo = None
 
     def wrap_socket(self, sock, **opciones):
         self.crudo = sock
-        return self._contexto.wrap_socket(sock, **opciones)
+        seguro = self._contexto.wrap_socket(sock, **opciones)
+        if not self._ruta_ws:
+            return seguro
+        self.limitar()
+        tubo = Tubo(seguro, al_bloquear=self.limitar)
+        tubo.saludo(opciones.get("server_hostname", ""), self._ruta_ws)
+        return tubo
 
     def limitar(self):
         if self.crudo is not None:
@@ -99,7 +108,7 @@ class Broker:
             return
         self._ultimo_intento = ahora
         try:
-            self._tls = _TLS(_contexto_tls())
+            self._tls = _TLS(_contexto_tls(), getattr(secrets, "MQTT_WS", ""))
             cliente = MQTTClient(
                 secrets.CODIGO_MQTT,  # client_id y usuario = codigo_mqtt; la ACL liga el tópico al usuario
                 secrets.MQTT_HOST,
