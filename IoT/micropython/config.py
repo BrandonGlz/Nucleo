@@ -60,13 +60,30 @@ BATERIA_VACIA_V = 3.3
 BATERIA_LLENA_V = 4.2
 
 # --- Red y MQTT ---------------------------------------------------------------------------
-WIFI_REINTENTO_SEG = 15
-MQTT_PUERTO = 8883
-MQTT_KEEPALIVE_SEG = 60
+WIFI_INTENTO_SEG = 20  # tiempo para asociarse a una red antes de probar la siguiente
+MQTT_PUERTO = 8883  # por internet (Funnel): MQTT_PUERTO = 8443 en secrets.py
+MQTT_KEEPALIVE_SEG = 30  # sin señales en 1.5 veces esto, el broker publica el último mensaje
 MQTT_REINTENTO_SEG = 10
-CA_CERT = "certs/ca.der"  # CA del broker en formato DER; el certificado se valida siempre
+MQTT_CONECTAR_SEG = 10  # tope para abrir la conexión y el TLS
+# CA del broker; el certificado se valida siempre. Por internet (Funnel) el certificado es de
+# Let's Encrypt: MQTT_CA = "nucleo/isrg_raiz.pem" en secrets.py.
+CA_CERT = "certs/ca.der"
 TOPICO_LECTURAS = "nucleo/devices/{codigo}/measurements"
 TOPICO_CONFIG = "nucleo/devices/{codigo}/config"
 
+# --- Puente de Nico AI ----------------------------------------------------------------------
+# El ESP es la llave del agente: late por MQTT y firma cada petición (ver comunicacion.py).
+TOPICO_LATIDO = "nucleo/devices/{codigo}/latido"
+TOPICO_PETICION = "nucleo/devices/{codigo}/puente/peticion"
+TOPICO_AUTORIZA = "nucleo/devices/{codigo}/puente/autoriza"
+LATIDO_SEG = 20
+# Si el broker falla MQTT_FALLOS_RESPALDO veces seguidas con Wi-Fi (p. ej. la red bloquea el
+# puerto), Nico se mantiene por HTTPS cada RESPALDO_SEG y MQTT se reintenta cada 2 min.
+MQTT_FALLOS_RESPALDO = 3
+MQTT_REINTENTO_RESPALDO_SEG = 120
+RESPALDO_SEG = 10
+RESPALDO_ESPERA_SEG = 8
+RAIZ_PUENTE = "nucleo/isrg_raiz.pem"
+
 # Reinicia la placa si el programa deja de responder; 0 lo desactiva (útil al depurar con Pymakr).
-WATCHDOG_MS = 0
+WATCHDOG_MS = 60000

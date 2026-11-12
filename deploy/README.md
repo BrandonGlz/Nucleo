@@ -102,20 +102,19 @@ usuarios (tabla `respuesta_aprendida`). Solo cuando se le pide explicar, opinar 
 («¿es grave?», «¿por qué subió?», «¿qué recomiendas?») redacta con un modelo local chico
 (`qwen2.5:1.5b`, ~1.3 GB de RAM cargado, tope 3 GB; 4-6 s por respuesta, ~13 s con dos a la vez) que corre en el contenedor `nucleo_ollama`.
 
-El ESP32 de cada dispositivo es el puente de su agente: consulta `GET /api/v1/puente/tomar/`
-(espera larga), lleva la petición a Ollama por `https://nucleo.<tailnet>.ts.net/puente-ia/` y
-devuelve la respuesta en `POST /api/v1/puente/entregar/`, siempre con la cabecera
-`X-Puente-Clave`. Si el ESP deja de consultar 75 s (sin corriente o sin red; tolera cortes breves del Wi-Fi), el agente de ese
-dispositivo se deshabilita en la web y en la app.
+El ESP32 de cada dispositivo es la **llave** de su agente. Por MQTT (Funnel en el puerto
+**8443**, TLS de Let's Encrypt hacia el listener interno 1883 de Mosquitto) publica un latido
+cada 20 s con su diagnóstico de red y firma cada petición: el backend publica `{id, reto}` en
+`nucleo/devices/<c>/puente/peticion` y el ESP responde en `.../puente/autoriza` con
+HMAC-SHA256(`IA_PUENTE_CLAVE`, `codigo:id:reto`). Solo con esa firma el backend llama a
+Ollama (`IA_OLLAMA_URL`, local). Sin latido ni lecturas en 75 s, o con el último mensaje del
+ESP (`{"estado":"offline"}`), el agente se deshabilita en la web y en la app. Si la red del ESP
+bloquea el 8443, el ESP consulta `GET /api/v1/puente/tomar/` por HTTPS cada 10 s con la cabecera
+`X-Puente-Clave` (respaldo). `.venv/bin/python manage.py puente_diagnostico` (en `BackEnd/`)
+muestra el último diagnóstico de cada ESP para saber si un corte fue de la red o del ESP.
 
-Si el ESP además mide sensores (`MODO = "ambos"`), usa el **modo ligero**: consulta con
-`?ligero=1` y el servidor ejecuta la IA contra Ollama (`IA_OLLAMA_URL`) en cuanto el ESP toma
-la petición; el ESP no hace la llamada a la IA. En cada consulta el ESP manda su diagnóstico de
-red (cabecera `X-Puente-Diag`: red, señal, reconexiones, última falla, memoria libre).
-`.venv/bin/python manage.py puente_diagnostico` (en `BackEnd/`) lo muestra y sirve para saber
-si un corte fue de la red (señal baja, autenticación rechazada, red sin salida) o del ESP
-(memoria).
-
+- Usuario MQTT del ESP: `bash Mosquitto/dispositivo.sh <codigo_mqtt>` (imprime la contraseña
+  una vez; va solo al `secrets.py` de la placa).
 - Encender: poner `IA_PUENTE_CLAVE` (`openssl rand -hex 24`) en `BackEnd/.env` y correr
   `bash deploy/instalar.sh`; levanta Ollama y descarga el modelo. La misma clave va en el ESP.
 - Apagar: dejar `IA_PUENTE_CLAVE` vacía y volver a instalar; Ollama se detiene y el agente

@@ -53,13 +53,13 @@ Las pruebas de la lógica están en `IoT/tests/` (módulos de MicroPython simula
 - **Batería LiPo 3.7 V 1000 mAh (con protección) + placa de carga:** TP4056 (carga USB),
   MT3608 (eleva a 5 V para el pin 5V del ESP) y MAX17048 (medidor de carga por I2C, 0x36).
 
-## Modos
+## Llave de Nico AI
 
-`MODO` en `secrets.py`: sin valor solo mide; `"puente"` solo atiende a Nico AI;
-`"ambos"` mide y atiende a Nico en un segundo hilo (`_thread`). En `"ambos"` el hilo del
-puente maneja el Wi-Fi, va en modo ligero (el servidor ejecuta la IA al tomar la petición) y
-manda su diagnóstico de red en `X-Puente-Diag`. La placa no se reinicia por el puente: el
-servidor marca a Nico inactivo y el hilo se recupera solo. El buzzer pulsa con PWM (1 Hz).
+Un solo ciclo (sin hilos) con los sensores primero. Por la misma conexión MQTT el ESP publica
+un latido cada 20 s con su diagnóstico de red (último mensaje `{"estado": "offline"}`) y firma
+con HMAC-SHA256 cada petición de Nico (`puente/peticion` → `puente/autoriza`); el servidor
+solo usa la IA con esa firma. Si la red bloquea el broker, un respaldo HTTPS cada 10 s mantiene
+a Nico activo. `MODO = "puente"`: sin sensores, solo la llave.
 
 ## Pines (ESP32-S3)
 

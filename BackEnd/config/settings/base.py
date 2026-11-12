@@ -185,6 +185,15 @@ MQTT_CLIENT_ID = env("MQTT_CLIENT_ID", default="nucleo-backend")
 MQTT_TOPIC_LECTURAS = env("MQTT_TOPIC_LECTURAS", default="nucleo/devices/+/measurements")
 MQTT_TOPIC_CONFIG = env("MQTT_TOPIC_CONFIG", default="nucleo/devices/{codigo_mqtt}/config")
 MQTT_PUBLICAR_CONFIG = env.bool("MQTT_PUBLICAR_CONFIG", default=False)
+# Puente de Nico AI por MQTT: el ESP late (y su último mensaje avisa si se pierde) y firma cada
+# petición del agente antes de que el servidor use la IA.
+MQTT_TOPIC_LATIDO = env("MQTT_TOPIC_LATIDO", default="nucleo/devices/+/latido")
+MQTT_TOPIC_PUENTE_AUTORIZA = env(
+    "MQTT_TOPIC_PUENTE_AUTORIZA", default="nucleo/devices/+/puente/autoriza"
+)
+MQTT_TOPIC_PUENTE_PETICION = env(
+    "MQTT_TOPIC_PUENTE_PETICION", default="nucleo/devices/{codigo_mqtt}/puente/peticion"
+)
 
 # Reglas de monitoreo.
 NUCLEO_SIN_CONEXION_FACTOR = env.int("NUCLEO_SIN_CONEXION_FACTOR", default=3)

@@ -1,5 +1,4 @@
 import tempfile
-import time
 from datetime import UTC, timedelta
 from io import StringIO
 from pathlib import Path
@@ -530,14 +529,31 @@ class NicoAprendeTests(PruebaBase):
         return r.json()
 
     def _esp(self, responder):
-        """Un ESP32 simulado que toma una petición y devuelve ``responder(trabajo)``."""
+        """Un ESP32 simulado: firma la siguiente petición (como por MQTT) y la IA del servidor
+        contesta ``responder(trabajo)``."""
         import threading
+        from unittest import mock
+
+        def ia(trabajo, espera):
+            return {
+                "texto": responder(trabajo),
+                "error": None,
+                "tokens_entrada": 120,
+                "tokens_salida": 18,
+            }
+
+        parche = mock.patch.object(puente, "_llamar_ia", side_effect=ia)
+        parche.start()
+        self.addCleanup(parche.stop)
+        codigo = self.e.dispositivo.codigo_mqtt
 
         def correr():
-            trabajo = puente.tomar(self.e.dispositivo.codigo_mqtt, espera=5)
-            if trabajo:
-                puente.entregar(
-                    self.e.dispositivo.codigo_mqtt, trabajo["id"], responder(trabajo), None, 120, 18
+            salida = puente.cola().siguiente_salida(5)
+            if salida:
+                carga = salida[1]
+                puente.recibir_autorizacion(
+                    codigo,
+                    {"id": carga["id"], "firma": puente.firma(codigo, carga["id"], carga["reto"])},
                 )
 
         hilo = threading.Thread(target=correr)
@@ -1070,36 +1086,56 @@ class NicoAprendeTests(PruebaBase):
         )
         self.assertEqual(r.status_code, 403)
 
-    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
-    def test_modo_ligero_el_servidor_ejecuta_la_ia(self):
-        import io
-        import json
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_sin_firma_valida_no_se_usa_la_ia(self):
         from unittest import mock
 
         codigo = self.e.dispositivo.codigo_mqtt
-        respuesta = io.BytesIO(
-            json.dumps(
-                {"message": {"content": "Todo en orden."}, "prompt_eval_count": 90, "eval_count": 6}
-            ).encode()
-        )
-        trabajo = {"id": "t1", "ruta": "/api/chat", "vence": time.time() + 30, "cuerpo": {}}
-        puente.cola().poner(codigo, trabajo)
-        with mock.patch("urllib.request.urlopen") as abrir:
-            abrir.return_value.__enter__.return_value = respuesta
-            r = self.client.get(
-                "/api/v1/puente/tomar/",
-                {"dispositivo": codigo, "ligero": "1"},
-                HTTP_X_PUENTE_CLAVE="k",
-                HTTP_X_PUENTE_DIAG="red=UTT;rssi=-72;rec=2;falla=auth_202;mem=180000",
-            )
-            self.assertEqual(r.status_code, 200)
-            self.assertEqual(r.json(), {"id": "t1", "ligero": True, "calentar": False})
-            entregado = puente.cola().esperar("t1", 5)
-        self.assertEqual(entregado["texto"], "Todo en orden.")
-        self.assertEqual((entregado["tokens_entrada"], entregado["tokens_salida"]), (90, 6))
-        diag = puente.diagnostico(codigo)["datos"]
-        self.assertEqual((diag["red"], diag["rssi"], diag["falla"]), ("UTT", "-72", "auth_202"))
+        puente.recibir_latido(codigo, {"diag": "red=UTT;rssi=-72;rec=2;falla=ninguna;mem=180000"})
         self.assertTrue(puente.activo(self.e.dispositivo))
+        diag = puente.diagnostico(codigo)["datos"]
+        self.assertEqual((diag["red"], diag["rssi"]), ("UTT", "-72"))
+        with (
+            mock.patch.object(puente, "ESPERA_AUTORIZA", 1),
+            mock.patch.object(puente, "_llamar_ia") as ia,
+        ):
+            import threading
+
+            def falsificar():
+                carga = puente.cola().siguiente_salida(3)[1]
+                self.assertFalse(
+                    puente.recibir_autorizacion(codigo, {"id": carga["id"], "firma": "mala"})
+                )
+
+            hilo = threading.Thread(target=falsificar)
+            hilo.start()
+            texto, _ = puente.redactar(self.e.dispositivo, "¿es grave?", "Está en 23 °C.", {})
+            hilo.join()
+        self.assertIsNone(texto)
+        ia.assert_not_called()
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
+    def test_el_ultimo_mensaje_del_esp_lo_desactiva(self):
+        codigo = self.e.dispositivo.codigo_mqtt
+        puente.recibir_latido(codigo, {})
+        self.assertTrue(puente.activo(self.e.dispositivo))
+        puente.recibir_latido(codigo, {"estado": "offline"})
+        self.assertFalse(puente.activo(self.e.dispositivo))
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
+    def test_respaldo_https_marca_activo_y_autoriza(self):
+        codigo = self.e.dispositivo.codigo_mqtt
+        puente.cola().guardar_reto("t1", codigo, "abc")
+        r = self.client.get(
+            "/api/v1/puente/tomar/",
+            {"dispositivo": codigo},
+            HTTP_X_PUENTE_CLAVE="k",
+            HTTP_X_PUENTE_DIAG="red=UTT;rssi=-70;falla=mqtt_bloqueado",
+        )
+        self.assertEqual(r.json(), {"autorizadas": 1})
+        self.assertTrue(puente.cola().esperar_autorizacion("t1", 1))
+        self.assertTrue(puente.activo(self.e.dispositivo))
+        self.assertEqual(puente.diagnostico(codigo)["datos"]["falla"], "mqtt_bloqueado")
 
     def test_grafica_general_del_dispositivo(self):
         cuerpo = self._pedir("dame una grafica general del dispositivo")

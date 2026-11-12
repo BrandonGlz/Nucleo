@@ -56,6 +56,8 @@ services:
     restart: unless-stopped
     ports:
       - "${MQTT_BIND:-127.0.0.1}:${MQTT_PORT:-8883}:8883"
+      # Interno sin TLS, solo local: lo publica Tailscale Funnel en el 8443 con TLS público.
+      - "127.0.0.1:${MQTT_INTERNO_PORT:-51883}:1883"
     volumes:
       - ./Mosquitto/config:/mosquitto/config:ro
       - ./Mosquitto/certs:/mosquitto/certs:ro

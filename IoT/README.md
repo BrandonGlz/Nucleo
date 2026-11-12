@@ -136,23 +136,30 @@ Sin Pymakr, lo mismo se hace con `mpremote`:
 - `.venv/bin/mpremote connect /dev/ttyUSB0 fs cp -r micropython/lib :` — "copia las bibliotecas a la placa."
 - `.venv/bin/mpremote connect /dev/ttyUSB0 repl` — "abre la consola de Python de la placa; se sale con `Ctrl+]`."
 
-## Modos de la placa
+## Llave de Nico AI y modos
 
-`MODO` en `secrets.py` decide qué hace el ESP:
+El mismo programa mide y es la **llave** del agente de su dispositivo, en un solo ciclo con
+los sensores primero. Por la misma conexión MQTT:
 
-- **Sin `MODO`:** solo mide y publica lecturas por MQTT.
-- **`"puente"`:** solo lleva las peticiones de Nico AI a la IA del servidor
-  (`nucleo/puente.py`). Necesita `PUENTE_HOST`, `PUENTE_CLAVE` y, opcional, `REDES`.
-- **`"ambos"`:** mide y publica lecturas, y el puente corre en un segundo hilo. Necesita
-  las credenciales de los dos modos. El hilo del puente maneja el Wi-Fi con sus redes de
-  respaldo; el ciclo de sensores sigue midiendo aunque el puente esté atendiendo a Nico o
-  sin red. El puente va en **modo ligero**: el servidor ejecuta la IA y el ESP solo toma la
-  petición (`PUENTE_LIGERO = False` en `secrets.py` lo desactiva). La placa nunca se reinicia
-  por el puente: si se traba, el servidor marca a Nico como inactivo y el hilo se recupera solo.
+- **Latido** cada 20 s (`nucleo/devices/<codigo>/latido`) con el diagnóstico de red (red,
+  señal, reconexiones, última falla, memoria libre). Su último mensaje es
+  `{"estado": "offline"}`: si el ESP se apaga o pierde la red, el broker lo publica y Nico se
+  desactiva al instante.
+- **Firma** de cada petición de Nico: el servidor publica `{id, reto}` en `.../puente/peticion`
+  y el ESP responde en `.../puente/autoriza` con HMAC-SHA256(`PUENTE_CLAVE`, `codigo:id:reto`).
+  Solo entonces el servidor usa la IA. Firmar son unos bytes: los sensores no esperan.
+- **Respaldo:** si el broker falla 3 veces seguidas con Wi-Fi (p. ej. la red bloquea el puerto
+  8443), Nico sigue vivo con una consulta HTTPS corta cada 10 s y MQTT se reintenta cada 2 min.
 
-En cada consulta el puente envía al servidor su red, señal, reconexiones, última falla y
-memoria libre; `manage.py puente_diagnostico` en el servidor dice si un corte fue de la red o
-del ESP. El buzzer pulsa con el PWM del ESP, así que no se congela si el procesador se ocupa.
+`MODO = "puente"` en `secrets.py` arranca sin sensores ni pantalla (solo la llave). Por
+internet, el broker se alcanza con Tailscale Funnel: `MQTT_HOST = "nucleo.<tailnet>.ts.net"`,
+`MQTT_PUERTO = 8443` y `MQTT_CA = "nucleo/isrg_raiz.pem"`. Además: `PUENTE_HOST`,
+`PUENTE_CLAVE` (la `IA_PUENTE_CLAVE` del servidor), `MQTT_PASSWORD` (de
+`Mosquitto/dispositivo.sh`) y, opcional, `REDES` como redes de respaldo.
+
+El Wi-Fi no bloquea el ciclo: prueba las redes conocidas visibles (punto de acceso de mejor
+señal) y espera cada vez más entre rondas fallidas, hasta 5 min. El watchdog (60 s) reinicia
+la placa si el ciclo se traba. El buzzer pulsa con el PWM del ESP.
 
 ## Pines (ESP32-S3)
 

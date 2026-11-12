@@ -209,21 +209,64 @@ class MensajeTests(unittest.TestCase):
 
 
 
-class ModoAmbosTests(unittest.TestCase):
-    class Puente:
-        latido = 0
+class LlaveNicoTests(unittest.TestCase):
+    """El ESP firma las peticiones de Nico igual que las verifica el servidor."""
 
-    def test_el_puente_que_late_no_reinicia_la_placa(self):
-        p = self.Puente()
-        p.latido = 1000
-        self.assertFalse(aplicacion.puente_detenido(p, 1000 + aplicacion.LATIDO_MAX_SEG * 1000))
+    class Cliente:
+        def __init__(self):
+            self.publicados = []
 
-    def test_el_puente_sin_latido_reinicia_la_placa(self):
-        p = self.Puente()
-        self.assertTrue(aplicacion.puente_detenido(p, aplicacion.LATIDO_MAX_SEG * 1000 + 1))
+        def publish(self, topico, carga):
+            self.publicados.append((topico, json.loads(carga)))
 
-    def test_solo_sensores_no_vigila_ningun_puente(self):
-        self.assertFalse(aplicacion.puente_detenido(None, 10**9))
+    def setUp(self):
+        import secrets
+
+        from nucleo import comunicacion
+
+        self.comunicacion = comunicacion
+        secrets.PUENTE_CLAVE = "clave-del-puente"
+        self.addCleanup(delattr, secrets, "PUENTE_CLAVE")
+
+    def test_hmac_igual_al_de_python(self):
+        import hashlib
+        import hmac
+
+        esperado = hmac.new(b"k", b"NUC-001:id:reto", hashlib.sha256).hexdigest()
+        self.assertEqual(self.comunicacion.hmac_sha256(b"k", b"NUC-001:id:reto"), esperado)
+
+    def test_firma_la_peticion_y_avisa(self):
+        import hashlib
+        import hmac
+
+        firmas = []
+        broker = self.comunicacion.Broker(lambda c: None, None, lambda: firmas.append(1))
+        broker._cliente = self.Cliente()
+        broker._mensaje(
+            b"nucleo/devices/NUC-001/puente/peticion", json.dumps({"id": "a1", "reto": "r9"})
+        )
+        topico, carga = broker._cliente.publicados[0]
+        self.assertEqual(topico, "nucleo/devices/NUC-001/puente/autoriza")
+        esperada = hmac.new(
+            b"clave-del-puente", b"NUC-001:a1:r9", hashlib.sha256
+        ).hexdigest()
+        self.assertEqual(carga, {"id": "a1", "firma": esperada})
+        self.assertEqual((broker.firmadas, firmas), (1, [1]))
+
+    def test_una_peticion_incompleta_no_se_firma(self):
+        broker = self.comunicacion.Broker(lambda c: None)
+        broker._cliente = self.Cliente()
+        broker._mensaje(b"nucleo/devices/NUC-001/puente/peticion", json.dumps({"id": "a1"}))
+        self.assertEqual(broker._cliente.publicados, [])
+
+    def test_la_configuracion_sigue_llegando(self):
+        recibidas = []
+        broker = self.comunicacion.Broker(recibidas.append)
+        broker._mensaje(
+            b"nucleo/devices/NUC-001/config",
+            json.dumps({"dispositivo": "NUC-001", "intervalo_muestreo_seg": 20}),
+        )
+        self.assertEqual(recibidas[0]["intervalo_muestreo_seg"], 20)
 
 
 class BuzzerTests(unittest.TestCase):

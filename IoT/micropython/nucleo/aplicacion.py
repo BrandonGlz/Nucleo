@@ -9,17 +9,14 @@ import secrets
 from nucleo.bateria import Bateria
 from nucleo.cola import ColaDeEnvio
 from nucleo.comunicacion import Broker
-from nucleo.indicadores import AZUL, Indicadores
+from nucleo.indicadores import APAGADO, AZUL, Indicadores
 from nucleo.pantalla import Pantalla
 from nucleo.red import Red
+from nucleo.respaldo import RespaldoHTTPS
 from nucleo.sensores import Sensores
 from nucleo.umbrales import NORMAL, Ajustes
 
 _PAUSA_MS = 100
-# Sin latido del puente en este tiempo se avisa en la consola. La placa NO se reinicia por el
-# puente (cortaría los sensores y el calentamiento del CCS811): el servidor ya marca a Nico
-# como inactivo cuando el ESP deja de consultar, y el hilo del puente se recupera solo.
-LATIDO_MAX_SEG = 5 * 60
 
 
 def _construir_mensaje(red, sensores, lecturas, estabilizado, bateria):
@@ -49,61 +46,55 @@ def _nivel_local(ajustes, lecturas, estabilizado):
     return peor
 
 
-def puente_detenido(puente, ahora):
-    """True si el hilo del puente lleva más de LATIDO_MAX_SEG sin dar señales de vida."""
-    return puente is not None and time.ticks_diff(ahora, puente.latido) > LATIDO_MAX_SEG * 1000
-
-
-def ejecutar(puente=None):
-    """``puente``: en MODO = "ambos", el puente de Nico AI corre en otro hilo y se encarga del
-    Wi-Fi; este ciclo sigue midiendo aunque el puente esté atendiendo o sin red. El puente va
-    en modo ligero: el servidor ejecuta la IA y el ESP solo toma la petición."""
+def ejecutar():
+    """Un solo ciclo, con los sensores primero. Sin sensores (MODO = "puente") solo mantiene la
+    red, el latido y las firmas de Nico AI."""
     perro = WDT(timeout=config.WATCHDOG_MS) if config.WATCHDOG_MS else None
-    if puente is not None:
-        import _thread
-
-        from nucleo.puente import en_hilo
-
-        _thread.stack_size(32 * 1024)  # el TLS necesita más pila que la de un hilo por defecto
-        _thread.start_new_thread(en_hilo, (puente,))
+    con_sensores = getattr(secrets, "MODO", "sensores") != "puente"
 
     indicadores = Indicadores()
     indicadores.color(AZUL)  # arrancando
-    i2c = SoftI2C(sda=Pin(config.PIN_I2C_SDA), scl=Pin(config.PIN_I2C_SCL))
-    pantalla = Pantalla(i2c)
-    pantalla.renglones("Nucleo", "Iniciando...")
-
-    sensores = Sensores(i2c)
+    if con_sensores:
+        i2c = SoftI2C(sda=Pin(config.PIN_I2C_SDA), scl=Pin(config.PIN_I2C_SCL))
+        pantalla = Pantalla(i2c)
+        pantalla.renglones("Nucleo", "Iniciando...")
+        sensores = Sensores(i2c)
+        bateria = Bateria(i2c)  # el MAX17048 comparte el bus con la pantalla y el CCS811
+    else:
+        indicadores.color(APAGADO)
+        pantalla = sensores = None
+        bateria = Bateria()
     ajustes = Ajustes()
-    bateria = Bateria(i2c)  # el MAX17048 comparte el bus con la pantalla y el CCS811
-    red = Red(gestionar=puente is None)
-    broker = Broker(ajustes.actualizar)
+    red = Red()
+    broker = Broker(ajustes.actualizar, red, indicadores.parpadeo)
+    respaldo = RespaldoHTTPS(red)
     cola = ColaDeEnvio()
 
     lecturas = {}
-    avisado = False
     nivel = NORMAL
     ultimo_muestreo = None
 
     while True:
         if perro:
             perro.feed()
-        detenido = puente_detenido(puente, time.ticks_ms())
-        if detenido and not avisado:
-            print("Puente de Nico sin latido; los sensores siguen midiendo")
-        avisado = detenido
 
         red.mantener()
         conectada = red.conectada()
         indicadores.wifi(conectada)
+        en_respaldo = broker.fallos_seguidos >= config.MQTT_FALLOS_RESPALDO
         if conectada and red.sincronizar_hora():
-            broker.mantener()  # el certificado se valida con la hora ya sincronizada
+            # El certificado se valida con la hora ya sincronizada. Si el broker no responde
+            # varias veces seguidas, Nico sigue vivo por HTTPS y MQTT se reintenta más espaciado.
+            broker.mantener(config.MQTT_REINTENTO_RESPALDO_SEG if en_respaldo else None)
+            if en_respaldo and not broker.conectado() and respaldo.disponible():
+                if respaldo.mantener():
+                    indicadores.parpadeo()
         broker.revisar()
         cola.enviar(broker.publicar_lecturas)  # lecturas guardadas mientras no hubo conexión
         indicadores.actualizar_buzzer()
 
         ahora = time.ticks_ms()
-        if (
+        if sensores is not None and (
             ultimo_muestreo is None
             or time.ticks_diff(ahora, ultimo_muestreo) >= ajustes.intervalo_seg * 1000
         ):

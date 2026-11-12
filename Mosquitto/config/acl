@@ -2,9 +2,16 @@
 user nucleo_backend
 topic read nucleo/devices/+/measurements
 topic write nucleo/devices/+/config
+# Puente de Nico AI: latido y firmas del ESP; peticiones de firma hacia el ESP.
+topic read nucleo/devices/+/latido
+topic read nucleo/devices/+/puente/autoriza
+topic write nucleo/devices/+/puente/peticion
 
 # Cada dispositivo tiene su propio usuario, igual a su codigo_mqtt (que también es su
 # client ID). Se liga al usuario autenticado (%u) y no al client ID, que cada cliente elige:
 # así un dispositivo no puede publicar ni leer en el tópico de otro.
 pattern write nucleo/devices/%u/measurements
 pattern read nucleo/devices/%u/config
+pattern write nucleo/devices/%u/latido
+pattern write nucleo/devices/%u/puente/autoriza
+pattern read nucleo/devices/%u/puente/peticion

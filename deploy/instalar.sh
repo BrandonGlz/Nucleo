@@ -51,10 +51,9 @@ VITE_API_BASE_URL="$origen/api/v1" VITE_USE_MOCKS="${WEB_USE_MOCKS:-false}" \
   NODE_OPTIONS=--max-old-space-size=1536 npm run build
 
 paso "Caddy y servicios de systemd (pide sudo)"
-# Clave del puente de Nico AI; sin ella la ruta /puente-ia/ queda cerrada con una clave al azar.
+# Clave del puente de Nico AI: con ella corre Ollama (la IA la llama el backend).
 puente="$(sed -n 's/^IA_PUENTE_CLAVE=//p' "$raiz/BackEnd/.env")"
-clave_caddy="${puente:-$(openssl rand -hex 24)}"
-plantilla() { sed -e "s#__RAIZ__#$raiz#g" -e "s#__USUARIO__#$usuario#g" -e "s#__PUENTE_CLAVE__#$clave_caddy#g" "$raiz/deploy/$1" | sudo tee "$2" >/dev/null; }
+plantilla() { sed -e "s#__RAIZ__#$raiz#g" -e "s#__USUARIO__#$usuario#g" "$raiz/deploy/$1" | sudo tee "$2" >/dev/null; }
 sudo install -d /etc/caddy/sitios
 if ! grep -q 'import /etc/caddy/sitios/\*.caddy' /etc/caddy/Caddyfile 2>/dev/null; then
   printf '{\n\tauto_https off\n}\n\nimport /etc/caddy/sitios/*.caddy\n' | sudo tee /etc/caddy/Caddyfile >/dev/null
@@ -96,6 +95,8 @@ systemctl --no-pager --lines=0 status nucleo-mqtt | head -3
 if grep -q '^TS_AUTHKEY=tskey-' "$raiz/.env" || docker volume inspect nucleo_tailscale_state >/dev/null 2>&1; then
   paso "Tailscale de Núcleo (Funnel en https://nucleo.<tailnet>.ts.net)"
   (cd "$raiz" && docker compose --profile servidor up -d tailscale)
+  # Relee deploy/tailscale-serve.json (443 web y 8443 MQTT para los dispositivos).
+  (cd "$raiz" && docker compose --profile servidor restart tailscale >/dev/null)
 else
   echo "Aviso: sin TS_AUTHKEY en .env no se publica Núcleo en internet."
 fi

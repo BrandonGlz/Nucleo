@@ -3,27 +3,12 @@ import time
 
 import machine
 
-import secrets
-
-# MODO = "puente": este ESP solo es el puente de Nico AI (nucleo/puente.py).
-# MODO = "ambos": mide y publica lecturas, y el puente corre en otro hilo.
-# Otro valor o sin MODO: solo mide y publica lecturas por MQTT (nucleo/aplicacion.py).
-MODO = getattr(secrets, "MODO", "sensores")
+# Un solo programa: mide y publica lecturas (si hay sensores) y es la llave de Nico AI (latido y
+# firma de peticiones por MQTT). MODO = "puente" en secrets.py: sin sensores, solo la llave.
+from nucleo.aplicacion import ejecutar
 
 try:
-    if MODO == "puente":
-        from nucleo.puente import ejecutar
-
-        ejecutar()
-    elif MODO == "ambos":
-        from nucleo.aplicacion import ejecutar
-        from nucleo.puente import Puente
-
-        ejecutar(puente=Puente(compartido=True))
-    else:
-        from nucleo.aplicacion import ejecutar
-
-        ejecutar()
+    ejecutar()
 except KeyboardInterrupt:
     raise
 except Exception as error:

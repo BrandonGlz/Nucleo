@@ -50,6 +50,12 @@ class Indicadores:
         if not self._peligro:
             self._sonar(False)
 
+    def parpadeo(self):
+        """Destello corto del LED de Wi-Fi: el ESP acaba de autorizar una petición de Nico."""
+        self._wifi.value(0)
+        time.sleep_ms(60)
+        self._wifi.value(1)
+
     def wifi(self, conectado):
         self._wifi.value(1 if conectado else 0)
 

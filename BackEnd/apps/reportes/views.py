@@ -712,27 +712,12 @@ class _PuenteBase(APIView):
 
 
 class PuenteTomarView(_PuenteBase):
+    """Respaldo HTTPS del latido cuando la red del ESP bloquea MQTT: la consulta con la clave
+    lo marca activo y autoriza las peticiones que estén esperando su firma."""
+
     def get(self, request):
         codigo = self._dispositivo(request, request.query_params.get("dispositivo", ""))
-        trabajo = puente.tomar(
-            codigo,
-            ligero=request.query_params.get("ligero") == "1",
-            diag=request.headers.get("X-Puente-Diag", ""),
-        )
-        if trabajo is None:
+        autorizadas = puente.latido_https(codigo, request.headers.get("X-Puente-Diag", ""))
+        if not autorizadas:
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(trabajo)
-
-
-class PuenteEntregarView(_PuenteBase):
-    def post(self, request):
-        codigo = self._dispositivo(request, request.data.get("dispositivo", ""))
-        puente.entregar(
-            codigo,
-            str(request.data.get("id", "")),
-            request.data.get("texto"),
-            request.data.get("error"),
-            request.data.get("tokens_entrada", 0),
-            request.data.get("tokens_salida", 0),
-        )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({"autorizadas": autorizadas})

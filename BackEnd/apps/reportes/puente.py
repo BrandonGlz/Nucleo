@@ -1,20 +1,22 @@
-"""Puente de Nico AI: el ESP32 de cada dispositivo lleva las peticiones a la IA (Ollama).
+"""Puente de Nico AI: el ESP32 de cada dispositivo es la llave de su agente.
 
-Hay un agente por dispositivo y su ESP32 es el puente. El ESP consulta al backend por HTTPS
-(``GET /api/v1/puente/tomar/``, espera larga de hasta 20 s); si hay una petición para él, la
-envía a Ollama a través de Caddy (``/puente-ia/``) y devuelve la respuesta
-(``POST /api/v1/puente/entregar/``). Cada consulta marca al dispositivo como activo; si su ESP
-deja de consultar (sin corriente o sin red), su agente queda inactivo y la web y la app no
-le pueden preguntar.
+Hay un agente por dispositivo y su ESP32 lo habilita, con poca carga para que los sensores
+vayan primero:
 
-**Modo ligero** (``?ligero=1`` al tomar, lo usa el ESP que además mide sensores): al tomar la
-petición, el servidor la ejecuta él mismo contra Ollama en segundo plano y la entrega; el ESP
-solo recibe ``{"id", "ligero": true}``. Sigue siendo el ESP quien habilita al agente (sin sus
-consultas no se procesa nada), pero no carga con el TLS ni con el cuerpo de la IA.
+- **Vida:** el ESP publica un latido por MQTT cada 20 s (``nucleo/devices/<c>/latido``, con su
+  diagnóstico de red) y deja como último mensaje ``{"estado": "offline"}``: si se apaga o pierde
+  la red, el broker lo publica y el agente se desactiva al instante. Sin latido ni lecturas en
+  ``ACTIVO_SEGUNDOS``, también queda inactivo.
+- **Puente:** cada petición a la IA pasa por el ESP. El servidor le publica ``{id, reto}`` en
+  ``.../puente/peticion`` y el ESP responde en ``.../puente/autoriza`` con la firma HMAC-SHA256
+  de ``codigo:id:reto`` hecha con ``IA_PUENTE_CLAVE``. Solo con esa firma el servidor llama a
+  Ollama (``IA_OLLAMA_URL``). El ESP no carga con la IA: firma unos bytes y sigue midiendo.
+- **Respaldo:** si la red bloquea MQTT, el ESP consulta ``GET /api/v1/puente/tomar/`` por HTTPS
+  con la clave cada 10 s; esa consulta lo marca activo y autoriza lo que esté esperando.
 
-Cada consulta puede traer la cabecera ``X-Puente-Diag`` (red, señal, reconexiones, última
-falla, memoria libre): se guarda por dispositivo para distinguir una red que falla de un ESP
-que falla (``manage.py puente_diagnostico``).
+El diagnóstico del ESP (red, señal, reconexiones, última falla, memoria libre) se guarda por
+dispositivo para distinguir una red que falla de un ESP que falla
+(``manage.py puente_diagnostico``).
 
 Con ``IA_PUENTE_CLAVE`` vacía el puente está apagado: el agente responde solo con las
 respuestas predefinidas y no depende de ningún ESP.
@@ -23,8 +25,11 @@ La cola vive en Redis (``REDIS_URL``) para que la compartan los procesos de daph
 (pruebas y desarrollo) se usa una cola en memoria del proceso.
 """
 
+import hashlib
+import hmac
 import json
 import re
+import secrets
 import threading
 import time
 import unicodedata
@@ -38,9 +43,9 @@ from . import agente
 # Sin consultar en este tiempo, el agente del dispositivo está inactivo. 75 s toleran un corte
 # breve del Wi-Fi del ESP (reconectar y volver a consultar) sin que el agente se apague en la web.
 ACTIVO_SEGUNDOS = 75
-# Espera larga del ESP. 12 s: algunas redes (p. ej. institucionales) cortan las conexiones que
-# pasan ~15 s sin tráfico; con menos de eso la consulta termina antes del corte.
-ESPERA_TOMAR = 12
+# Tiempo máximo para que el ESP firme una petición: por MQTT tarda menos de 1 s; por el
+# respaldo HTTPS (consulta cada 10 s) puede tardar hasta la siguiente consulta.
+ESPERA_AUTORIZA = 12
 MAX_EN_COLA = 2  # con más peticiones esperando, se responde con la predefinida sin esperar
 CALENTAR_CADA = 600  # segundos: el modelo sigue cargado (keep_alive 30 min) mientras haya uso
 NUMERO = re.compile(r"\d+(?:[.,]\d+)?")
@@ -79,27 +84,25 @@ def pide_ia(pregunta):
 
 
 class _Memoria:
-    """Cola en memoria (un solo proceso): para pruebas y desarrollo sin Redis."""
+    """Estado en memoria (un solo proceso): para pruebas y desarrollo sin Redis."""
 
     def __init__(self):
         self.cond = threading.Condition()
-        self.colas = defaultdict(deque)
-        self.respuestas = {}
         self.vistos = {}
+        self.en_curso = defaultdict(int)
+        self.salida = deque()
+        self.retos = {}
+        self.autorizados = set()
+        self.esperando = defaultdict(set)
 
     def visto(self, codigo):
         self.vistos[codigo] = time.time()
 
+    def olvidar(self, codigo):
+        self.vistos.pop(codigo, None)
+
     def activo(self, codigo):
         return time.time() - self.vistos.get(codigo, 0) < ACTIVO_SEGUNDOS
-
-    def poner(self, codigo, trabajo):
-        with self.cond:
-            self.colas[codigo].append(json.dumps(trabajo))
-            self.cond.notify_all()
-
-    def pendientes(self, codigo):
-        return len(self.colas[codigo])
 
     def una_vez(self, clave, segundos):
         if time.time() < self.vistos.get(clave, 0):
@@ -107,67 +110,121 @@ class _Memoria:
         self.vistos[clave] = time.time() + segundos
         return True
 
-    def tomar(self, codigo, espera):
-        fin = time.time() + espera
-        with self.cond:
-            while not self.colas[codigo]:
-                resta = fin - time.time()
-                if resta <= 0:
-                    return None
-                self.cond.wait(resta)
-            return json.loads(self.colas[codigo].popleft())
+    def pendientes(self, codigo):
+        return self.en_curso[codigo]
 
-    def entregar(self, id_, datos):
+    def empezar(self, codigo):
+        self.en_curso[codigo] += 1
+
+    def terminar(self, codigo):
+        self.en_curso[codigo] = max(0, self.en_curso[codigo] - 1)
+
+    def publicar(self, topico, carga):
         with self.cond:
-            self.respuestas[id_] = json.dumps(datos)
+            self.salida.append((topico, carga))
             self.cond.notify_all()
 
-    def esperar(self, id_, espera):
+    def siguiente_salida(self, espera):
         fin = time.time() + espera
         with self.cond:
-            while id_ not in self.respuestas:
+            while not self.salida:
                 resta = fin - time.time()
                 if resta <= 0:
                     return None
                 self.cond.wait(resta)
-            return json.loads(self.respuestas.pop(id_))
+            return self.salida.popleft()
+
+    def guardar_reto(self, id_, codigo, reto):
+        self.retos[id_] = (codigo, reto)
+        self.esperando[codigo].add(id_)
+
+    def reto_de(self, id_):
+        return self.retos.get(id_)
+
+    def esperando_de(self, codigo):
+        return list(self.esperando[codigo])
+
+    def autorizar(self, id_):
+        with self.cond:
+            self.autorizados.add(id_)
+            self.cond.notify_all()
+
+    def esperar_autorizacion(self, id_, espera):
+        fin = time.time() + espera
+        with self.cond:
+            while id_ not in self.autorizados:
+                resta = fin - time.time()
+                if resta <= 0:
+                    break
+                self.cond.wait(resta)
+            ok = id_ in self.autorizados
+            self.autorizados.discard(id_)
+            codigo, _ = self.retos.pop(id_, (None, None))
+            if codigo:
+                self.esperando[codigo].discard(id_)
+            return ok
 
 
 class _Redis:
     def __init__(self, url):
         import redis
 
-        self.r = redis.Redis.from_url(url, socket_timeout=ESPERA_TOMAR + 5)
+        self.r = redis.Redis.from_url(url, socket_timeout=ESPERA_AUTORIZA + 10)
 
     def visto(self, codigo):
         self.r.set(f"puente:visto:{codigo}", 1, ex=ACTIVO_SEGUNDOS)
 
+    def olvidar(self, codigo):
+        self.r.delete(f"puente:visto:{codigo}")
+
     def activo(self, codigo):
         return bool(self.r.exists(f"puente:visto:{codigo}"))
-
-    def poner(self, codigo, trabajo):
-        clave = f"puente:cola:{codigo}"
-        self.r.rpush(clave, json.dumps(trabajo))
-        self.r.expire(clave, 60)
-
-    def pendientes(self, codigo):
-        return self.r.llen(f"puente:cola:{codigo}")
 
     def una_vez(self, clave, segundos):
         return bool(self.r.set(f"puente:{clave}", 1, ex=segundos, nx=True))
 
-    def tomar(self, codigo, espera):
-        r = self.r.blpop([f"puente:cola:{codigo}"], timeout=espera)
-        return json.loads(r[1]) if r else None
+    def pendientes(self, codigo):
+        return int(self.r.get(f"puente:curso:{codigo}") or 0)
 
-    def entregar(self, id_, datos):
-        clave = f"puente:resp:{id_}"
-        self.r.rpush(clave, json.dumps(datos))
-        self.r.expire(clave, 60)
+    def empezar(self, codigo):
+        self.r.incr(f"puente:curso:{codigo}")
+        self.r.expire(f"puente:curso:{codigo}", 120)
 
-    def esperar(self, id_, espera):
-        r = self.r.blpop([f"puente:resp:{id_}"], timeout=max(1, round(espera)))
-        return json.loads(r[1]) if r else None
+    def terminar(self, codigo):
+        if self.r.decr(f"puente:curso:{codigo}") < 0:
+            self.r.set(f"puente:curso:{codigo}", 0, ex=120)
+
+    def publicar(self, topico, carga):
+        self.r.rpush("puente:salida", json.dumps([topico, carga]))
+        self.r.expire("puente:salida", 60)
+
+    def siguiente_salida(self, espera):
+        r = self.r.blpop(["puente:salida"], timeout=max(1, round(espera)))
+        return tuple(json.loads(r[1])) if r else None
+
+    def guardar_reto(self, id_, codigo, reto):
+        self.r.set(f"puente:reto:{id_}", json.dumps([codigo, reto]), ex=60)
+        self.r.sadd(f"puente:esperando:{codigo}", id_)
+        self.r.expire(f"puente:esperando:{codigo}", 60)
+
+    def reto_de(self, id_):
+        v = self.r.get(f"puente:reto:{id_}")
+        return tuple(json.loads(v)) if v else None
+
+    def esperando_de(self, codigo):
+        return [v.decode() for v in self.r.smembers(f"puente:esperando:{codigo}")]
+
+    def autorizar(self, id_):
+        self.r.rpush(f"puente:ok:{id_}", 1)
+        self.r.expire(f"puente:ok:{id_}", 60)
+
+    def esperar_autorizacion(self, id_, espera):
+        ok = bool(self.r.blpop([f"puente:ok:{id_}"], timeout=max(1, round(espera))))
+        reto = self.reto_de(id_)
+        if reto:
+            self.r.srem(f"puente:esperando:{reto[0]}", id_)
+        self.r.delete(f"puente:reto:{id_}")
+        return ok
 
 
 _cola = None
@@ -192,21 +249,22 @@ def con_puente(dispositivo):
 
 
 def activo(dispositivo):
-    """Un dispositivo simulado siempre está activo; uno físico, si su ESP está consultando."""
+    """Un dispositivo simulado siempre está activo; uno físico, si su ESP late."""
     return not con_puente(dispositivo) or cola().activo(dispositivo.codigo_mqtt)
 
 
+# ── Lo que llega del ESP ─────────────────────────────────────────────────────────────────
 DIAG_SEGUNDOS = 7 * 24 * 3600
 
 
 def registrar_diagnostico(codigo, diag):
-    """Guarda el último diagnóstico de red que mandó el ESP (``clave=valor;...``)."""
+    """Guarda el último diagnóstico que mandó el ESP (``clave=valor;...``)."""
     if not diag:
         return
     from django.core.cache import cache
 
     datos = {}
-    for parte in diag[:400].split(";"):
+    for parte in str(diag)[:400].split(";"):
         clave, _, valor = parte.partition("=")
         if clave.strip():
             datos[clave.strip()[:20]] = valor.strip()[:60]
@@ -219,64 +277,81 @@ def diagnostico(codigo):
     return cache.get(f"puente:diag:{codigo}")
 
 
-def _procesar_en_servidor(codigo, trabajo):
-    """Modo ligero: llama a Ollama desde el servidor y entrega como si lo hubiera hecho el ESP."""
+def firma(codigo, id_, reto):
+    """La que calcula el ESP con la clave del puente: prueba que la petición pasó por él."""
+    mensaje = f"{codigo}:{id_}:{reto}".encode()
+    return hmac.new(settings.IA_PUENTE_CLAVE.encode(), mensaje, hashlib.sha256).hexdigest()
+
+
+def recibir_latido(codigo, carga):
+    """Latido del ESP por MQTT (o lecturas): marca el dispositivo activo. ``estado=offline``
+    es su último mensaje (lo publica el broker al perderlo): se desactiva al instante."""
+    if isinstance(carga, dict) and carga.get("estado") == "offline":
+        cola().olvidar(codigo)
+        return
+    cola().visto(codigo)
+    if isinstance(carga, dict):
+        registrar_diagnostico(codigo, carga.get("diag"))
+
+
+def recibir_autorizacion(codigo, carga):
+    """El ESP firmó la petición: el servidor ya puede usar la IA para ella."""
+    id_ = str(carga.get("id", ""))
+    reto = cola().reto_de(id_)
+    if not reto or reto[0] != codigo:
+        return False
+    if not hmac.compare_digest(str(carga.get("firma", "")), firma(codigo, id_, reto[1])):
+        return False
+    cola().visto(codigo)
+    cola().autorizar(id_)
+    return True
+
+
+def latido_https(codigo, diag=None):
+    """Respaldo cuando la red bloquea MQTT: el ESP consulta por HTTPS con la clave del
+    puente. La consulta misma lo marca activo y autoriza lo que esté esperando."""
+    cola().visto(codigo)
+    registrar_diagnostico(codigo, diag)
+    autorizadas = 0
+    for id_ in cola().esperando_de(codigo):
+        cola().autorizar(id_)
+        autorizadas += 1
+    return autorizadas
+
+
+# ── Ejecución ────────────────────────────────────────────────────────────────────────────
+def _llamar_ia(trabajo, espera):
+    """Llama a Ollama desde el servidor."""
     import urllib.request
 
-    texto, error, entrada, salida = None, None, 0, 0
-    try:
-        peticion = urllib.request.Request(
-            settings.IA_OLLAMA_URL.rstrip("/") + trabajo["ruta"],
-            data=json.dumps(trabajo["cuerpo"]).encode(),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(peticion, timeout=settings.IA_ESPERA_SEGUNDOS + 10) as r:
-            datos = json.loads(r.read())
-        texto = (datos.get("message") or {}).get("content", "")
-        entrada, salida = datos.get("prompt_eval_count", 0), datos.get("eval_count", 0)
-    except Exception as e:  # noqa: BLE001 - cualquier falla se entrega como error
-        error = f"Sin respuesta de la IA: {e}"
-    if not trabajo.get("calentar"):
-        entregar(codigo, trabajo["id"], texto, error, entrada, salida)
-
-
-def tomar(codigo, espera=ESPERA_TOMAR, ligero=False, diag=None):
-    """Lo llama el ESP: marca su dispositivo como activo y espera una petición. En modo ligero
-    la petición se ejecuta aquí y al ESP solo se le avisa cuál fue."""
-    registrar_diagnostico(codigo, diag)
-    trabajo = _tomar(codigo, espera)
-    if trabajo is None or not ligero:
-        return trabajo
-    threading.Thread(target=_procesar_en_servidor, args=(codigo, trabajo), daemon=True).start()
-    return {"id": trabajo["id"], "ligero": True, "calentar": bool(trabajo.get("calentar"))}
-
-
-def _tomar(codigo, espera):
-    cola().visto(codigo)
-    fin = time.time() + espera
-    while (resta := fin - time.time()) > 0:
-        trabajo = cola().tomar(codigo, max(1, round(resta)))
-        if trabajo is None:
-            break
-        # Una petición que ya venció (el usuario ya recibió la predefinida) no se procesa.
-        if trabajo.get("vence", 0) >= time.time():
-            cola().visto(codigo)
-            return trabajo
-    cola().visto(codigo)
-    return None
-
-
-def entregar(codigo, id_, texto=None, error=None, tokens_entrada=0, tokens_salida=0):
-    cola().visto(codigo)
-    cola().entregar(
-        id_,
-        {
-            "texto": texto,
-            "error": error,
-            "tokens_entrada": int(tokens_entrada or 0),
-            "tokens_salida": int(tokens_salida or 0),
-        },
+    peticion = urllib.request.Request(
+        settings.IA_OLLAMA_URL.rstrip("/") + trabajo["ruta"],
+        data=json.dumps(trabajo["cuerpo"]).encode(),
+        headers={"Content-Type": "application/json"},
     )
+    try:
+        with urllib.request.urlopen(peticion, timeout=espera) as r:
+            datos = json.loads(r.read())
+    except Exception as e:  # noqa: BLE001 - cualquier falla se informa como error
+        return {"texto": None, "error": f"Sin respuesta de la IA: {e}"}
+    return {
+        "texto": (datos.get("message") or {}).get("content", ""),
+        "error": None,
+        "tokens_entrada": int(datos.get("prompt_eval_count") or 0),
+        "tokens_salida": int(datos.get("eval_count") or 0),
+    }
+
+
+def _autorizar(codigo, trabajo):
+    """Pide al ESP que firme la petición y espera su firma (por MQTT llega en menos de un
+    segundo; por el respaldo HTTPS, en la siguiente consulta)."""
+    reto = secrets.token_hex(8)
+    cola().guardar_reto(trabajo["id"], codigo, reto)
+    cola().publicar(
+        settings.MQTT_TOPIC_PUENTE_PETICION.format(codigo_mqtt=codigo),
+        {"id": trabajo["id"], "reto": reto},
+    )
+    return cola().esperar_autorizacion(trabajo["id"], ESPERA_AUTORIZA)
 
 
 def _tokens(r):
@@ -316,9 +391,8 @@ CACHE_IA_SEGUNDOS = 15 * 60
 
 
 def _ejecutar(codigo, trabajo, espera):
-    """Manda el trabajo al ESP y espera su respuesta, o la toma de la caché si ya se hizo."""
-    import hashlib
-
+    """Pide la firma del ESP y, con ella, ejecuta la IA en el servidor. Si la misma petición ya
+    se hizo, la toma de la caché (sin IA, pero también con el ESP vivo)."""
     from django.core.cache import cache
 
     cuerpo = trabajo["cuerpo"]
@@ -333,29 +407,30 @@ def _ejecutar(codigo, trabajo, espera):
     guardada = cache.get(clave)
     if guardada is not None:
         return {**guardada, "tokens_entrada": 0, "tokens_salida": 0, "en_cache": True}
-    cola().poner(codigo, trabajo)
-    r = cola().esperar(trabajo["id"], espera)
+    cola().empezar(codigo)
+    try:
+        if not _autorizar(codigo, trabajo):
+            return {"texto": None, "error": "El ESP no autorizó la petición a tiempo."}
+        r = _llamar_ia(trabajo, espera)
+    finally:
+        cola().terminar(codigo)
     if r and not r.get("error") and (r.get("texto") or "").strip():
         cache.set(clave, r, CACHE_IA_SEGUNDOS)
     return r
 
 
 def calentar(dispositivo):
-    """Carga el modelo antes de la primera pregunta (al abrir el chat), una vez cada 4 min."""
-    if not con_puente(dispositivo) or not cola().una_vez("calentar", CALENTAR_CADA):
+    """Carga el modelo antes de la primera pregunta (al abrir el chat), una vez cada 10 min.
+    Solo con el ESP vivo; no hace falta su firma porque no responde nada a nadie."""
+    if not con_puente(dispositivo) or not activo(dispositivo):
         return
-    if cola().pendientes(dispositivo.codigo_mqtt):
+    if not cola().una_vez("calentar", CALENTAR_CADA):
         return
-    cola().poner(
-        dispositivo.codigo_mqtt,
-        {
-            "id": uuid.uuid4().hex,
-            "ruta": "/api/chat",
-            "vence": time.time() + 30,
-            "calentar": True,
-            "cuerpo": _cuerpo(dispositivo, [{"role": "user", "content": "hola"}], 1),
-        },
-    )
+    trabajo = {
+        "ruta": "/api/chat",
+        "cuerpo": _cuerpo(dispositivo, [{"role": "user", "content": "hola"}], 1),
+    }
+    threading.Thread(target=_llamar_ia, args=(trabajo, 60), daemon=True).start()
 
 
 def _limpiar(texto, permitidos, base=""):
