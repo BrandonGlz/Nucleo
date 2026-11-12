@@ -29,7 +29,9 @@ from . import agente
 # Sin consultar en este tiempo, el agente del dispositivo está inactivo. 75 s toleran un corte
 # breve del Wi-Fi del ESP (reconectar y volver a consultar) sin que el agente se apague en la web.
 ACTIVO_SEGUNDOS = 75
-ESPERA_TOMAR = 20  # espera larga del ESP
+# Espera larga del ESP. 12 s: algunas redes (p. ej. institucionales) cortan las conexiones que
+# pasan ~15 s sin tráfico; con menos de eso la consulta termina antes del corte.
+ESPERA_TOMAR = 12
 MAX_EN_COLA = 2  # con más peticiones esperando, se responde con la predefinida sin esperar
 CALENTAR_CADA = 600  # segundos: el modelo sigue cargado (keep_alive 30 min) mientras haya uso
 NUMERO = re.compile(r"\d+(?:[.,]\d+)?")
