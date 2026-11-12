@@ -436,3 +436,15 @@ class WifiTests(unittest.TestCase):
         wlan.conectada = True
         self.red.mantener()
         self.assertEqual(self.red.red, "red")
+
+
+class HoraTests(unittest.TestCase):
+    """Sin NTP (red que bloquea UDP 123) la hora sale de la cabecera Date del servidor."""
+
+    def test_lee_la_cabecera_date(self):
+        from nucleo import red
+
+        self.assertEqual(
+            red.fecha_http("Date: Thu, 12 Nov 2026 04:57:03 GMT"), (2026, 11, 12, 4, 57, 3)
+        )
+        self.assertIsNone(red.fecha_http("Date: basura"))

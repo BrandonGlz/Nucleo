@@ -43,6 +43,57 @@ def _limpio(texto):
     return texto[:50]
 
 
+_MESES = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def fecha_http(linea):
+    """«Date: Thu, 12 Nov 2026 04:57:03 GMT» → (2026, 11, 12, 4, 57, 3) o None."""
+    try:
+        partes = linea.split()
+        dia, mes, anio = int(partes[2]), _MESES.index(partes[3]) + 1, int(partes[4])
+        h, m, sg = (int(x) for x in partes[5].split(":"))
+        return (anio, mes, dia, h, m, sg)
+    except (IndexError, ValueError):
+        return None
+
+
+def hora_por_https():
+    """Pone el reloj con la cabecera Date del servidor de Núcleo. Solo para leer la hora no se
+    valida el certificado (sin hora no se puede); MQTT y el respaldo sí lo validan después."""
+    import socket
+    import ssl
+
+    import machine
+
+    host = getattr(secrets, "PUENTE_HOST", None) or getattr(secrets, "MQTT_HOST", "")
+    sock = None
+    try:
+        contexto = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        contexto.verify_mode = ssl.CERT_NONE
+        sock = socket.socket()
+        sock.settimeout(5)
+        sock.connect(socket.getaddrinfo(host, 443)[0][-1])
+        sock = contexto.wrap_socket(sock, server_hostname=host)
+        sock.write(b"HEAD /api/v1/health/ HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n" % host.encode())
+        respuesta = sock.read(700) or b""
+    except Exception:  # noqa: BLE001 - cualquier falla de red: se reintenta en otra ronda
+        return False
+    finally:
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:  # noqa: BLE001
+                pass
+    for linea in respuesta.split(b"\r\n"):
+        if linea.lower().startswith(b"date:"):
+            fecha = fecha_http(linea.decode())
+            if fecha:
+                a, mes, d, h, m, sg = fecha
+                machine.RTC().datetime((a, mes, d, 0, h, m, sg, 0))
+                return True
+    return False
+
+
 class Red:
     def __init__(self):
         self._wlan = network.WLAN(network.STA_IF)
@@ -178,7 +229,10 @@ class Red:
             self._hora_sincronizada = True
         except OSError:
             if self._hora_turno % len(HORA_SERVIDORES) == 0:
-                self.falla = "red_sin_salida_ntp_%s" % self.red
+                # Ronda completa sin NTP (redes que bloquean UDP 123): la hora del servidor.
+                self._hora_sincronizada = hora_por_https()
+                if not self._hora_sincronizada:
+                    self.falla = "red_sin_salida_ntp_%s" % self.red
         return self._hora_sincronizada
 
     def hora_iso(self):

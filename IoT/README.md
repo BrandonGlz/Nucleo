@@ -159,7 +159,8 @@ internet, el broker se alcanza con Tailscale Funnel: `MQTT_HOST = "nucleo.<tailn
 
 El Wi-Fi no bloquea el ciclo: prueba las redes conocidas visibles (punto de acceso de mejor
 señal) y espera cada vez más entre rondas fallidas, hasta 5 min. El watchdog (60 s) reinicia
-la placa si el ciclo se traba. El buzzer pulsa con el PWM del ESP.
+la placa si el ciclo se traba. Si la red bloquea el NTP (UDP 123), la hora se toma de la
+cabecera `Date` del servidor por HTTPS. El buzzer pulsa con el PWM del ESP.
 
 ## Pines (ESP32-S3)
 
