@@ -94,6 +94,7 @@ class _Memoria:
         self.en_curso = defaultdict(int)
         self.salida = deque()
         self.retos = {}
+        self.diags = {}
         self.autorizados = set()
         self.esperando = defaultdict(set)
 
@@ -135,6 +136,13 @@ class _Memoria:
                     return None
                 self.cond.wait(resta)
             return self.salida.popleft()
+
+    def guardar_diag(self, codigo, valor):
+        self.diags[codigo] = (time.time() + DIAG_SEGUNDOS, valor)
+
+    def diag(self, codigo):
+        vence, valor = self.diags.get(codigo, (0, None))
+        return valor if time.time() < vence else None
 
     def guardar_reto(self, id_, codigo, reto):
         self.retos[id_] = (codigo, reto)
@@ -204,6 +212,13 @@ class _Redis:
         r = self.r.blpop(["puente:salida"], timeout=max(1, round(espera)))
         return tuple(json.loads(r[1])) if r else None
 
+    def guardar_diag(self, codigo, valor):
+        self.r.set(f"puente:diag:{codigo}", json.dumps(valor), ex=DIAG_SEGUNDOS)
+
+    def diag(self, codigo):
+        v = self.r.get(f"puente:diag:{codigo}")
+        return json.loads(v) if v else None
+
     def guardar_reto(self, id_, codigo, reto):
         self.r.set(f"puente:reto:{id_}", json.dumps([codigo, reto]), ex=60)
         self.r.sadd(f"puente:esperando:{codigo}", id_)
@@ -263,20 +278,18 @@ def registrar_diagnostico(codigo, diag):
     """Guarda el último diagnóstico que mandó el ESP (``clave=valor;...``)."""
     if not diag:
         return
-    from django.core.cache import cache
-
     datos = {}
     for parte in str(diag)[:400].split(";"):
         clave, _, valor = parte.partition("=")
         if clave.strip():
             datos[clave.strip()[:20]] = valor.strip()[:60]
-    cache.set(f"puente:diag:{codigo}", {"datos": datos, "hora": time.time()}, DIAG_SEGUNDOS)
+    # En Redis (no en la caché del proceso): lo escribe escuchar_mqtt y lo leen la API y
+    # el comando puente_diagnostico.
+    cola().guardar_diag(codigo, {"datos": datos, "hora": time.time()})
 
 
 def diagnostico(codigo):
-    from django.core.cache import cache
-
-    return cache.get(f"puente:diag:{codigo}")
+    return cola().diag(codigo)
 
 
 def firma(codigo, id_, reto):
