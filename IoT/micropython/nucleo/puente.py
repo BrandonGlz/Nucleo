@@ -38,6 +38,12 @@ class Puente:
     def __init__(self):
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
+        try:
+            # Sin ahorro de energía: con señal débil (redes institucionales con varios puntos de
+            # acceso) la asociación falla menos y la conexión no se cae entre peticiones.
+            self.wlan.config(pm=network.WLAN.PM_NONE)
+        except (AttributeError, ValueError, OSError):
+            pass
         self.host = secrets.PUENTE_HOST
         self.clave = secrets.PUENTE_CLAVE
         self.codigo = secrets.CODIGO_MQTT
@@ -61,7 +67,9 @@ class Puente:
                 continue
             print("Wi-Fi: conectando a", ssid)
             self.wlan.connect(ssid, clave)
-            for _ in range(80):
+            # Hasta 30 s: con varios puntos de acceso, los primeros intentos pueden fallar la
+            # autenticación (estado 202) antes de asociarse.
+            for _ in range(120):
                 if self.wlan.isconnected():
                     print("Wi-Fi: conectado", self.wlan.ifconfig()[0])
                     return True
