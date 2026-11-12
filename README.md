@@ -30,7 +30,7 @@ con los sensores, así que por ahora las lecturas vienen del simulador.
     Alertas y su detalle, Nico AI y Perfil.
   - Canal en vivo con la app abierta y notificaciones push con la app cerrada; las de
     peligro suenan y vibran. Opción para reducir animaciones y preferencias guardadas en el teléfono.
-  - Se instala con el APK de https://nucleo.tailb3f7d8.ts.net/app/nucleo.apk.
+  - Se instala con el APK de https://bynucleo.com/app/nucleo.apk.
 - **IoT**
   - Firmware de MicroPython (`boot.py`, `main.py` y el paquete `nucleo/`) con DHT22,
     CCS811, pantalla OLED, LED RGB, buzzer y MQTT con TLS, cola de lecturas sin conexión y
@@ -361,18 +361,19 @@ Si un commit necesita muchas líneas para explicarse, probablemente son varios c
 
 ## Servidor
 
-Núcleo está publicado en **https://nucleo.tailb3f7d8.ts.net** (web) y
-**https://nucleo.tailb3f7d8.ts.net/api/v1** (API de la app). Corre en un servidor propio: una
+Núcleo está publicado en **https://bynucleo.com** (web) y **https://bynucleo.com/api/v1** (API
+de la app), con un Cloudflare Tunnel. Los ESP32 se conectan por MQTT a
+`nucleo.tailb3f7d8.ts.net:8443` (Tailscale Funnel), que también sigue sirviendo la web anterior. Corre en un servidor propio: una
 laptop ASUS X75A con Debian 13 sin escritorio (procesador Intel Core i5-3230M de 2 núcleos y 4 hilos a
 2.6 GHz, 8 GB de RAM y disco duro mecánico HDD de 750 GB, 698 GB utilizables) que funciona como VPS casero.
-La app Android se descarga en **https://nucleo.tailb3f7d8.ts.net/app/nucleo.apk**.
+La app Android se descarga en **https://bynucleo.com/app/nucleo.apk**.
 
 **Cómo llega una visita**
 
 ```mermaid
 flowchart LR
-    U["Navegador o app<br/>cualquier red"] -->|HTTPS| TS["Tailscale Funnel<br/>máquina «nucleo»"]
-    TS --> C["Caddy :8081<br/>127.0.0.1"]
+    U["Navegador o app<br/>cualquier red"] -->|"HTTPS bynucleo.com"| CF["Cloudflare Tunnel<br/>cloudflared"]
+    CF --> C["Caddy :8081<br/>127.0.0.1"]
     C --> W["Web compilada<br/>FrontEnd/dist"]
     C --> ST["Archivos /static"]
     C --> APK["APK en /app/nucleo.apk"]
@@ -393,7 +394,8 @@ flowchart LR
             R[("Redis")]
         end
     end
-    E["ESP32"] -->|MQTT/TLS| M
+    E["ESP32"] -->|"MQTT/TLS :8443"| TS["Tailscale Funnel<br/>máquina «nucleo»"]
+    TS --> M
     M -->|lecturas| MQ
     SY <==>|"consultas, lecturas,<br/>alertas y eventos"| BD
     classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
@@ -405,7 +407,7 @@ flowchart LR
     classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
     classDef doc fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:2px
     class U cliente
-    class TS,C red
+    class CF,TS,C red
     class W,ST,APK web
     class D,MQ,SC,RP backend
     class PG,TDB,R datos
@@ -457,29 +459,31 @@ flowchart LR
     end
     subgraph HOST["Servidor · laptop Debian"]
         direction TB
-        TS["Tailscale Funnel<br/>HTTPS"]
+        CF["Cloudflare Tunnel<br/>bynucleo.com"]
         C["Caddy :8081"]
         D["Daphne :8001<br/>Django · DRF<br/>AgenteView"]
-        R[("Redis<br/>cola del puente")]
+        R[("Redis<br/>retos y firmas")]
+        MQ["nucleo-mqtt<br/>escuchar_mqtt"]
+        M["Mosquitto"]
+        TS["Tailscale Funnel<br/>:8443 TLS"]
         subgraph BD["Bases de datos"]
             PG[("PostgreSQL<br/>umbrales · alertas<br/>sensores · reportes")]
             TDB[("TimescaleDB<br/>lecturas")]
         end
         O["Ollama :11434<br/>qwen2.5:1.5b"]
     end
-    E["ESP32 · Núcleo A-01<br/>NC-0501 · MicroPython<br/>puente de la IA"]
+    E["ESP32 · Núcleo A-01<br/>NC-0501 · MicroPython<br/>llave de la IA"]
 
-    W -->|"1 · POST /api/v1/agente/<br/>pregunta + token"| TS
-    A -->|"1"| TS
-    TS --> C -->|"/api"| D
+    W -->|"1 · POST /api/v1/agente/<br/>pregunta + token"| CF
+    A -->|"1"| CF
+    CF --> C -->|"/api"| D
     D <-->|"1 · consultas"| BD
-    D -->|"2 · trabajo para la IA"| R
-    E -->|"3 · GET /puente/tomar/<br/>Wi-Fi · HTTPS"| TS
-    R -.->|trabajo| E
-    E -->|"3 · /puente-ia/api/chat<br/>X-Puente-Clave"| C
-    C -->|proxy| O
-    O -.->|texto y tokens| E
-    E -->|"3 · POST /puente/entregar/"| D
+    D -->|"2 · reto"| R
+    R --> MQ --> M
+    M <-->|"2 · puente/peticion<br/>3 · puente/autoriza (HMAC)<br/>latido cada 20 s"| TS
+    TS <--> E
+    MQ -->|"3 · firma válida"| R
+    D -->|"3 · solo con firma"| O
     D -->|"4 · respuesta JSON<br/>texto · gráfica · tabla"| W
     D -->|"4"| A
     classDef cliente fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:2px
@@ -491,10 +495,10 @@ flowchart LR
     classDef externo fill:#a21caf,stroke:#f0abfc,color:#fff,stroke-width:2px
     class W web
     class A cliente
-    class TS,C red
-    class D backend
+    class CF,TS,C red
+    class D,MQ backend
     class R,PG,TDB datos
-    class E iot
+    class E,M iot
     class O externo
     style CL fill:transparent,stroke:#64748b,stroke-dasharray:5 5
     style HOST fill:transparent,stroke:#fb923c,stroke-dasharray:5 5
@@ -502,13 +506,15 @@ flowchart LR
 ```
 
 1. La web o la app envía la pregunta al backend, que consulta las cifras.
-2. Si hace falta la IA, el backend deja el trabajo en Redis.
-3. El ESP32 de **Núcleo A-01 (NC-0501)** lo toma por Wi-Fi, lo envía a Ollama
-   (`qwen2.5:1.5b`, en el mismo servidor) y devuelve el texto.
+2. Si hace falta la IA, el backend manda un reto al ESP32 de **Núcleo A-01 (NC-0501)** por MQTT.
+3. El ESP lo firma con su clave (HMAC-SHA256) y solo con esa firma el backend usa Ollama
+   (`qwen2.5:1.5b`, en el mismo servidor).
 4. El backend responde al chat.
 
-Solo A-01 usa la IA; los demás dispositivos son simulados y responden sin ella. Si el ESP no
-responde en 20 s, el agente contesta solo con las reglas.
+El ESP manda un latido cada 20 s: sin latido en 75 s, o con su último mensaje al desconectarse,
+Nico se desactiva. Solo A-01 usa la IA; los demás dispositivos son simulados y responden sin
+ella. Si la firma no llega en 12 s o la IA tarda más de 20 s, el agente contesta solo con las
+reglas.
 
 Para validar cambios: `manage.py evaluar_agente --dispositivo NC-0501` corre el banco de casos
 (`apps/reportes/casos_agente.py`) sin guardar nada. El detalle está en

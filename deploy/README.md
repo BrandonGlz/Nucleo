@@ -1,14 +1,17 @@
 # Servidor de Núcleo
 
 Núcleo corre en una laptop ASUS X75A con Debian 13 (`homelab`: Intel Core i5-3230M, 8 GB de RAM y disco duro HDD de 750 GB). Se publica
-en internet con Tailscale Funnel, sin dominio ni puertos abiertos en el router, así que se
-llega desde cualquier red.
+en internet con un Cloudflare Tunnel en el dominio `bynucleo.com`, sin puertos abiertos en el
+router, así que se llega desde cualquier red. Tailscale Funnel (`nucleo.<tailnet>.ts.net`) sigue
+activo para los ESP32 (MQTT en el 8443) y para las apps instaladas con la dirección anterior.
 
 | Qué | Dirección |
 | --- | --- |
-| Web | https://nucleo.tailb3f7d8.ts.net |
-| API (la usa la app) | https://nucleo.tailb3f7d8.ts.net/api/v1 |
-| Admin de Django | https://nucleo.tailb3f7d8.ts.net/admin/ |
+| Web | https://bynucleo.com (`www.` redirige aquí) |
+| API (la usa la app) | https://bynucleo.com/api/v1 |
+| Admin de Django | https://bynucleo.com/admin/ |
+| MQTT de los ESP32 | `nucleo.tailb3f7d8.ts.net:8443` (TLS) |
+| Dirección anterior | https://nucleo.tailb3f7d8.ts.net (sigue funcionando) |
 
 ## Acceso
 
@@ -36,7 +39,11 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
 
 ## Cómo está armado
 
-- Núcleo se publica con su propia máquina de Tailscale, `nucleo`: el contenedor
+- `bynucleo.com` y `www.bynucleo.com` llegan por el Cloudflare Tunnel `nucleo` (servicio
+  `cloudflared`, configuración `deploy/cloudflared.yml` → `/etc/cloudflared/config.yml`) a Caddy
+  (`127.0.0.1:8081`); Caddy redirige `www` al dominio principal. Los DNS son CNAME del túnel en
+  Cloudflare (`cloudflared tunnel route dns nucleo <host>`). El Tailscale del host es solo de TMO.
+- Núcleo conserva además su propia máquina de Tailscale, `nucleo`: el contenedor
   `nucleo_tailscale` (perfil `servidor` de `docker-compose.yml`) que publica Caddy (`127.0.0.1:8081`) con Funnel según
   `tailscale-serve.json`. Se conecta la primera vez con `TS_AUTHKEY` en el `.env` raíz.
 - Caddy sirve la web compilada y pasa `/api`, `/admin` y `/ws` a Daphne (`127.0.0.1:8001`).
@@ -58,7 +65,7 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 
 ### App móvil (APK)
 
-El APK se descarga en `https://nucleo.<tailnet>.ts.net/app/nucleo.apk`. Caddy entrega la carpeta
+El APK se descarga en `https://bynucleo.com/app/nucleo.apk`. Caddy entrega la carpeta
 `deploy/descargas/` del proyecto (no va a git), donde también queda una copia por versión (`nucleo-<versión>.apk`).
 
 Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.json` y correr
@@ -145,13 +152,20 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 2. `bash deploy/configurar_env.sh` — crea `BackEnd/.env`; pide la contraseña de aplicación de Gmail.
 3. Agrega `TS_AUTHKEY=tskey-auth-…` al `.env` raíz (clave *Reusable* de
    https://login.tailscale.com/admin/settings/keys).
-4. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios y Funnel.
-5. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file`.
+4. Cloudflare Tunnel: `sudo apt install cloudflared` (repositorio `pkg.cloudflare.com`),
+   `cloudflared tunnel login` (se autoriza `bynucleo.com` en el navegador), luego
+   `cloudflared tunnel create nucleo`, `cloudflared tunnel route dns nucleo bynucleo.com` y
+   `... www.bynucleo.com`. Copia `~/.cloudflared/<ID>.json` a `/etc/cloudflared/` (permiso 600)
+   y pon `CLOUDFLARE_TUNEL=<ID>` en el `.env` raíz. Si `tunnel create` falla con 524, activa
+   Zero Trust (plan Free) en la cuenta del dominio. Para mudar de servidor basta con copiar
+   `/etc/cloudflared/` y `~/.cloudflared/`.
+5. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios, Funnel y túnel.
+6. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file`.
 
 | Archivo | Para qué |
 | --- | --- |
 | `instalar.sh`, `desplegar.sh` | Instalar o actualizar |
 | `restaurar.sh`, `respaldar.sh` | Restaurar desde respaldos y respaldar |
 | `configurar_env.sh`, `backend.env.ejemplo` | Generar `BackEnd/.env` de producción |
-| `nucleo.caddy`, `tailscale-serve.json` | Caddy y la publicación con Funnel |
+| `nucleo.caddy`, `tailscale-serve.json`, `cloudflared.yml` | Caddy, Funnel y Cloudflare Tunnel |
 | `*.service`, `*.timer` | Servicios y tareas de systemd |

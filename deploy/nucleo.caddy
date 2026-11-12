@@ -1,4 +1,5 @@
-# Núcleo: Funnel del contenedor nucleo_tailscale (https://nucleo.<tailnet>.ts.net) -> Caddy 127.0.0.1:8081
+# Núcleo: Cloudflare Tunnel (https://bynucleo.com) y el Funnel del contenedor nucleo_tailscale
+# (https://nucleo.<tailnet>.ts.net, que usan los ESP32) -> Caddy 127.0.0.1:8081
 # __RAIZ__ lo reemplaza deploy/instalar.sh por la carpeta del proyecto.
 # /media no se publica: los PDF de reportes se descargan por la API con token.
 http://:8081 {
@@ -10,6 +11,10 @@ http://:8081 {
 		output stderr
 		format json
 	}
+
+	# www.bynucleo.com -> bynucleo.com
+	@www header_regexp www Host ^www\.(.+)$
+	redir @www https://{re.www.1}{uri} permanent
 
 	# Latido de las páginas con sesión abierta (cada minuto): solo queda en la bitácora para contar conectados
 	handle /latido {

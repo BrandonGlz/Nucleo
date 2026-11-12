@@ -10,7 +10,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://nucleo.tailb3f7d8.ts.net/api/v1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://bynucleo.com/api/v1",
         "EXPO_PUBLIC_USE_MOCKS": "false",
         "EXPO_PUBLIC_EAS_PROJECT_ID": "9dfd5c1a-95a1-490b-86c3-6079efd52269"
       }

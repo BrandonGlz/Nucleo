@@ -100,4 +100,14 @@ if grep -q '^TS_AUTHKEY=tskey-' "$raiz/.env" || docker volume inspect nucleo_tai
 else
   echo "Aviso: sin TS_AUTHKEY en .env no se publica Núcleo en internet."
 fi
+# Dominio propio con Cloudflare Tunnel (https://bynucleo.com): con CLOUDFLARE_TUNEL (ID del túnel)
+# en el .env raíz y sus credenciales en /etc/cloudflared/<ID>.json (ver deploy/README.md).
+tunel="$(sed -n 's/^CLOUDFLARE_TUNEL=//p' "$raiz/.env")"
+if [[ -n "$tunel" ]] && command -v cloudflared >/dev/null; then
+  paso "Cloudflare Tunnel de Núcleo (https://bynucleo.com)"
+  sed "s#__TUNEL__#$tunel#g" "$raiz/deploy/cloudflared.yml" | sudo tee /etc/cloudflared/config.yml >/dev/null
+  [[ -f /etc/systemd/system/cloudflared.service ]] || sudo cloudflared service install
+  sudo systemctl enable cloudflared >/dev/null
+  sudo systemctl restart cloudflared
+fi
 echo "Núcleo listo en http://127.0.0.1:8081"

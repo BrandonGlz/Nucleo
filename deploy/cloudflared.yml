@@ -1,0 +1,14 @@
+# Cloudflare Tunnel de Núcleo: https://bynucleo.com (y www) -> Caddy 127.0.0.1:8081.
+# deploy/instalar.sh lo copia a /etc/cloudflared/config.yml si CLOUDFLARE_TUNEL está en el .env raíz;
+# __TUNEL__ es el ID del túnel y sus credenciales van en /etc/cloudflared/<ID>.json (fuera de git).
+# Las métricas locales (127.0.0.1:20241) las lee estadoServer.sh para contar las conexiones.
+tunnel: __TUNEL__
+credentials-file: /etc/cloudflared/__TUNEL__.json
+metrics: 127.0.0.1:20241
+no-autoupdate: true
+ingress:
+  - hostname: bynucleo.com
+    service: http://127.0.0.1:8081
+  - hostname: www.bynucleo.com
+    service: http://127.0.0.1:8081
+  - service: http_status:404
