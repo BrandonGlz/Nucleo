@@ -105,7 +105,7 @@ usuarios (tabla `respuesta_aprendida`). Solo cuando se le pide explicar, opinar 
 El ESP32 de cada dispositivo es el puente de su agente: consulta `GET /api/v1/puente/tomar/`
 (espera larga), lleva la petición a Ollama por `https://nucleo.<tailnet>.ts.net/puente-ia/` y
 devuelve la respuesta en `POST /api/v1/puente/entregar/`, siempre con la cabecera
-`X-Puente-Clave`. Si el ESP deja de consultar 30 s (sin corriente o sin red), el agente de ese
+`X-Puente-Clave`. Si el ESP deja de consultar 75 s (sin corriente o sin red; tolera cortes breves del Wi-Fi), el agente de ese
 dispositivo se deshabilita en la web y en la app.
 
 - Encender: poner `IA_PUENTE_CLAVE` (`openssl rand -hex 24`) en `BackEnd/.env` y correr

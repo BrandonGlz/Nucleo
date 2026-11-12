@@ -26,7 +26,9 @@ from django.conf import settings
 
 from . import agente
 
-ACTIVO_SEGUNDOS = 30  # sin consultar en este tiempo, el agente del dispositivo está inactivo
+# Sin consultar en este tiempo, el agente del dispositivo está inactivo. 75 s toleran un corte
+# breve del Wi-Fi del ESP (reconectar y volver a consultar) sin que el agente se apague en la web.
+ACTIVO_SEGUNDOS = 75
 ESPERA_TOMAR = 20  # espera larga del ESP
 MAX_EN_COLA = 2  # con más peticiones esperando, se responde con la predefinida sin esperar
 CALENTAR_CADA = 600  # segundos: el modelo sigue cargado (keep_alive 30 min) mientras haya uso

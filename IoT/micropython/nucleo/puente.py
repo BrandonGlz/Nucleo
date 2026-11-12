@@ -23,6 +23,7 @@ import secrets
 
 RAIZ = "/nucleo/isrg_raiz.pem"
 ESPERA_TOMAR = 30  # el servidor responde a más tardar en ~20 s
+ABRIR_SEG = 10  # tope para abrir la conexión y el TLS
 ESPERA_IA = 25
 
 
@@ -52,6 +53,7 @@ class Puente:
         self.led = machine.Pin(getattr(secrets, "LED_PIN", 2), machine.Pin.OUT)
         self.atendidas = 0
         self.sock = self.crudo = None
+        self.perro = None  # watchdog: se alimenta también mientras busca red
 
     # ── Red ──────────────────────────────────────────────────────────────────────────
     def conectar(self):
@@ -70,6 +72,8 @@ class Puente:
             # Hasta 30 s: con varios puntos de acceso, los primeros intentos pueden fallar la
             # autenticación (estado 202) antes de asociarse.
             for _ in range(120):
+                if self.perro:
+                    self.perro.feed()
                 if self.wlan.isconnected():
                     print("Wi-Fi: conectado", self.wlan.ifconfig()[0])
                     return True
@@ -93,7 +97,9 @@ class Puente:
     def _abrir(self, espera):
         direccion = socket.getaddrinfo(self.host, 443, 0, socket.SOCK_STREAM)[0][-1]
         crudo = socket.socket()
-        crudo.settimeout(espera)
+        # Abrir la conexión y el TLS no debe tardar más de 10 s; si la red se cayó, mejor
+        # fallar rápido y reconectar el Wi-Fi que esperar toda la espera larga.
+        crudo.settimeout(min(espera, ABRIR_SEG))
         try:
             crudo.connect(direccion)
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -229,6 +235,7 @@ class Puente:
 
     def ejecutar(self):
         perro = machine.WDT(timeout=120000)  # si algo se cuelga, el ESP se reinicia solo
+        self.perro = perro
         while not self.conectar():
             perro.feed()
             time.sleep(5)
@@ -256,7 +263,12 @@ class Puente:
             except (OSError, ValueError) as e:
                 fallos += 1
                 print("Error de red:", e)
-                time.sleep(min(30, 2 * fallos))
+                if fallos >= 2:
+                    # Con varios puntos de acceso y señal débil, el Wi-Fi puede quedar «conectado»
+                    # sin tráfico: se reconecta desde cero en vez de seguir esperando.
+                    print("Wi-Fi: reconectando")
+                    self.wlan.disconnect()
+                time.sleep(min(10, 2 * fallos))
                 if fallos >= 10:
                     machine.reset()
 
