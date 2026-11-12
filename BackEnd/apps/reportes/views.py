@@ -714,7 +714,11 @@ class _PuenteBase(APIView):
 class PuenteTomarView(_PuenteBase):
     def get(self, request):
         codigo = self._dispositivo(request, request.query_params.get("dispositivo", ""))
-        trabajo = puente.tomar(codigo)
+        trabajo = puente.tomar(
+            codigo,
+            ligero=request.query_params.get("ligero") == "1",
+            diag=request.headers.get("X-Puente-Diag", ""),
+        )
         if trabajo is None:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(trabajo)

@@ -7,6 +7,15 @@ envía a Ollama a través de Caddy (``/puente-ia/``) y devuelve la respuesta
 deja de consultar (sin corriente o sin red), su agente queda inactivo y la web y la app no
 le pueden preguntar.
 
+**Modo ligero** (``?ligero=1`` al tomar, lo usa el ESP que además mide sensores): al tomar la
+petición, el servidor la ejecuta él mismo contra Ollama en segundo plano y la entrega; el ESP
+solo recibe ``{"id", "ligero": true}``. Sigue siendo el ESP quien habilita al agente (sin sus
+consultas no se procesa nada), pero no carga con el TLS ni con el cuerpo de la IA.
+
+Cada consulta puede traer la cabecera ``X-Puente-Diag`` (red, señal, reconexiones, última
+falla, memoria libre): se guarda por dispositivo para distinguir una red que falla de un ESP
+que falla (``manage.py puente_diagnostico``).
+
 Con ``IA_PUENTE_CLAVE`` vacía el puente está apagado: el agente responde solo con las
 respuestas predefinidas y no depende de ningún ESP.
 
@@ -187,8 +196,62 @@ def activo(dispositivo):
     return not con_puente(dispositivo) or cola().activo(dispositivo.codigo_mqtt)
 
 
-def tomar(codigo, espera=ESPERA_TOMAR):
-    """Lo llama el ESP: marca su dispositivo como activo y espera una petición."""
+DIAG_SEGUNDOS = 7 * 24 * 3600
+
+
+def registrar_diagnostico(codigo, diag):
+    """Guarda el último diagnóstico de red que mandó el ESP (``clave=valor;...``)."""
+    if not diag:
+        return
+    from django.core.cache import cache
+
+    datos = {}
+    for parte in diag[:400].split(";"):
+        clave, _, valor = parte.partition("=")
+        if clave.strip():
+            datos[clave.strip()[:20]] = valor.strip()[:60]
+    cache.set(f"puente:diag:{codigo}", {"datos": datos, "hora": time.time()}, DIAG_SEGUNDOS)
+
+
+def diagnostico(codigo):
+    from django.core.cache import cache
+
+    return cache.get(f"puente:diag:{codigo}")
+
+
+def _procesar_en_servidor(codigo, trabajo):
+    """Modo ligero: llama a Ollama desde el servidor y entrega como si lo hubiera hecho el ESP."""
+    import urllib.request
+
+    texto, error, entrada, salida = None, None, 0, 0
+    try:
+        peticion = urllib.request.Request(
+            settings.IA_OLLAMA_URL.rstrip("/") + trabajo["ruta"],
+            data=json.dumps(trabajo["cuerpo"]).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(peticion, timeout=settings.IA_ESPERA_SEGUNDOS + 10) as r:
+            datos = json.loads(r.read())
+        texto = (datos.get("message") or {}).get("content", "")
+        entrada, salida = datos.get("prompt_eval_count", 0), datos.get("eval_count", 0)
+    except Exception as e:  # noqa: BLE001 - cualquier falla se entrega como error
+        error = f"Sin respuesta de la IA: {e}"
+    if not trabajo.get("calentar"):
+        entregar(codigo, trabajo["id"], texto, error, entrada, salida)
+
+
+def tomar(codigo, espera=ESPERA_TOMAR, ligero=False, diag=None):
+    """Lo llama el ESP: marca su dispositivo como activo y espera una petición. En modo ligero
+    la petición se ejecuta aquí y al ESP solo se le avisa cuál fue."""
+    registrar_diagnostico(codigo, diag)
+    trabajo = _tomar(codigo, espera)
+    if trabajo is None or not ligero:
+        return trabajo
+    threading.Thread(target=_procesar_en_servidor, args=(codigo, trabajo), daemon=True).start()
+    return {"id": trabajo["id"], "ligero": True, "calentar": bool(trabajo.get("calentar"))}
+
+
+def _tomar(codigo, espera):
     cola().visto(codigo)
     fin = time.time() + espera
     while (resta := fin - time.time()) > 0:

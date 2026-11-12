@@ -2,7 +2,6 @@
 
 import time
 
-import machine
 from machine import WDT, SoftI2C, Pin
 
 import config
@@ -17,7 +16,10 @@ from nucleo.sensores import Sensores
 from nucleo.umbrales import NORMAL, Ajustes
 
 _PAUSA_MS = 100
-LATIDO_MAX_SEG = 5 * 60  # sin latido del puente en este tiempo, la placa se reinicia
+# Sin latido del puente en este tiempo se avisa en la consola. La placa NO se reinicia por el
+# puente (cortaría los sensores y el calentamiento del CCS811): el servidor ya marca a Nico
+# como inactivo cuando el ESP deja de consultar, y el hilo del puente se recupera solo.
+LATIDO_MAX_SEG = 5 * 60
 
 
 def _construir_mensaje(red, sensores, lecturas, estabilizado, bateria):
@@ -54,7 +56,8 @@ def puente_detenido(puente, ahora):
 
 def ejecutar(puente=None):
     """``puente``: en MODO = "ambos", el puente de Nico AI corre en otro hilo y se encarga del
-    Wi-Fi; este ciclo sigue midiendo aunque el puente esté atendiendo o sin red."""
+    Wi-Fi; este ciclo sigue midiendo aunque el puente esté atendiendo o sin red. El puente va
+    en modo ligero: el servidor ejecuta la IA y el ESP solo toma la petición."""
     perro = WDT(timeout=config.WATCHDOG_MS) if config.WATCHDOG_MS else None
     if puente is not None:
         import _thread
@@ -78,15 +81,17 @@ def ejecutar(puente=None):
     cola = ColaDeEnvio()
 
     lecturas = {}
+    avisado = False
     nivel = NORMAL
     ultimo_muestreo = None
 
     while True:
         if perro:
             perro.feed()
-        if puente_detenido(puente, time.ticks_ms()):
-            print("Puente sin latido; reiniciando la placa")
-            machine.reset()
+        detenido = puente_detenido(puente, time.ticks_ms())
+        if detenido and not avisado:
+            print("Puente de Nico sin latido; los sensores siguen midiendo")
+        avisado = detenido
 
         red.mantener()
         conectada = red.conectada()

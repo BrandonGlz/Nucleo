@@ -25,6 +25,15 @@ RAIZ = "/nucleo/isrg_raiz.pem"
 ESPERA_TOMAR = 30  # el servidor responde a más tardar en ~12 s
 HORA_SERVIDORES = ("pool.ntp.org", "time.cloudflare.com", "time.windows.com", "time.google.com")
 ABRIR_SEG = 10  # tope para abrir la conexión y el TLS
+# Estados de network.WLAN.status() al fallar la conexión, para el diagnóstico.
+ESTADOS_WIFI = {
+    200: "senal_perdida",
+    201: "red_no_encontrada",
+    202: "autenticacion_rechazada",
+    203: "asociacion_rechazada",
+    204: "handshake_sin_respuesta",
+    1001: "sin_respuesta",
+}
 ESPERA_IA = 25
 
 
@@ -44,6 +53,14 @@ class Puente:
     def __init__(self, compartido=False):
         self.compartido = compartido
         self.latido = time.ticks_ms()
+        # Ligero: el servidor ejecuta la IA al tomar la petición; el ESP no hace el TLS ni carga
+        # el cuerpo de la IA. Por omisión, solo cuando además mide sensores.
+        self.ligero = getattr(secrets, "PUENTE_LIGERO", compartido)
+        # Diagnóstico que viaja al servidor en cada consulta: separa fallas de la red de fallas
+        # del ESP (ver manage.py puente_diagnostico).
+        self.red = ""
+        self.reconexiones = 0
+        self.falla = "ninguna"
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
         self.host = secrets.PUENTE_HOST
@@ -80,6 +97,7 @@ class Puente:
                 continue
             senal, bssid = mejores.get(ssid, (None, None))
             print("Wi-Fi: conectando a", ssid, senal if senal is not None else "")
+            estado = None
             try:
                 # Con varios puntos de acceso de la misma red, se elige el de mejor señal.
                 self.wlan.connect(ssid, clave, bssid=bssid) if bssid else self.wlan.connect(ssid, clave)
@@ -91,10 +109,39 @@ class Puente:
                 self._vivo()
                 if self.wlan.isconnected():
                     print("Wi-Fi: conectado", self.wlan.ifconfig()[0])
+                    self.red = ssid
+                    self.reconexiones += 1
                     return True
+                estado = self.wlan.status()
                 time.sleep_ms(250)
+            self.falla = "wifi_%s_%s" % (ESTADOS_WIFI.get(estado, estado), ssid)
             self.wlan.disconnect()
+        if not mejores:
+            self.falla = "wifi_sin_redes_visibles"
+        elif not any(ssid in mejores for ssid, _ in _redes()):
+            self.falla = "wifi_ninguna_red_conocida_visible"
         return False
+
+    def diagnostico(self):
+        try:
+            rssi = self.wlan.status("rssi")
+        except (OSError, ValueError, TypeError):
+            rssi = ""
+        def limpio(texto):
+            texto = str(texto)
+            for c in ";=\r\n":
+                texto = texto.replace(c, " ")
+            return texto[:50]
+
+        return "red=%s;rssi=%s;rec=%d;falla=%s;mem=%d;up=%d;modo=%s" % (
+            limpio(self.red),
+            rssi,
+            self.reconexiones,
+            limpio(self.falla),
+            gc.mem_free(),
+            time.ticks_ms() // 1000,
+            ("ambos" if self.compartido else "puente") + ("+ligero" if self.ligero else ""),
+        )
 
     def _vivo(self):
         """Señal de vida: alimenta el watchdog propio o, compartido, actualiza el latido."""
@@ -178,8 +225,9 @@ class Puente:
         self.crudo.settimeout(espera)
         cabeza = (
             "%s %s HTTP/1.1\r\nHost: %s\r\nX-Puente-Clave: %s\r\nUser-Agent: nucleo-puente\r\n"
-            "Content-Type: application/json\r\nContent-Length: %d\r\nConnection: keep-alive\r\n\r\n"
-            % (metodo, ruta, self.host, self.clave, len(datos))
+            "Content-Type: application/json\r\nContent-Length: %d\r\nConnection: keep-alive\r\n"
+            "X-Puente-Diag: %s\r\n\r\n"
+            % (metodo, ruta, self.host, self.clave, len(datos), self.diagnostico())
         )
         self.sock.write(cabeza.encode() + datos)
         linea = self.sock.readline()
@@ -242,6 +290,11 @@ class Puente:
         return 0, b""
 
     # ── Ciclo ────────────────────────────────────────────────────────────────────────
+    def _parpadeo(self):
+        self.led.value(1)
+        time.sleep_ms(80)
+        self.led.value(0)
+
     def atender(self, trabajo):
         inicio = time.ticks_ms()
         self.led.value(1)
@@ -289,6 +342,7 @@ class Puente:
             if self.hora() or self.hora():
                 break
             print("Wi-Fi: la red no da salida, buscando otra")
+            self.falla = "red_sin_salida_ntp_%s" % self.red
             self.wlan.disconnect()
             self._pausa_red()
         print("Puente de Nico AI listo para", self.codigo, "en", self.host)
@@ -301,17 +355,29 @@ class Puente:
                 continue
             self.rondas = 0
             try:
-                estado, cuerpo = self.pedir(
-                    "GET", "/api/v1/puente/tomar/?dispositivo=" + self.codigo, espera=ESPERA_TOMAR
-                )
+                ruta = "/api/v1/puente/tomar/?dispositivo=" + self.codigo
+                if self.ligero:
+                    ruta += "&ligero=1"
+                estado, cuerpo = self.pedir("GET", ruta, espera=ESPERA_TOMAR)
                 fallos = 0
                 if estado == 200:
-                    self.atender(json.loads(cuerpo))
+                    trabajo = json.loads(cuerpo)
+                    if trabajo.get("ligero"):
+                        self._parpadeo()  # el servidor ya la está procesando
+                        self.atendidas += 1
+                    else:
+                        self.atender(trabajo)
                 elif estado != 204:
                     print("Servidor:", estado, cuerpo[:120])
                     time.sleep(5)
+            except MemoryError:
+                self.falla = "esp_memoria"  # falla del ESP, no de la red
+                self._cerrar()
+                gc.collect()
+                time.sleep(2)
             except (OSError, ValueError) as e:
                 fallos += 1
+                self.falla = "servidor_%s" % e
                 print("Error de red:", e)
                 if fallos >= 3:
                     # Con varios puntos de acceso y señal débil, el Wi-Fi puede quedar «conectado»

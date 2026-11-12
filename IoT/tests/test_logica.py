@@ -225,6 +225,52 @@ class ModoAmbosTests(unittest.TestCase):
     def test_solo_sensores_no_vigila_ningun_puente(self):
         self.assertFalse(aplicacion.puente_detenido(None, 10**9))
 
+
+class BuzzerTests(unittest.TestCase):
+    class PWM:
+        creados = []
+
+        def __init__(self, pin, freq, duty_u16):
+            self.freq, self.duty = freq, duty_u16
+            self.activo = True
+            BuzzerTests.PWM.creados.append(self)
+
+        def deinit(self):
+            self.activo = False
+
+    def setUp(self):
+        from nucleo import indicadores
+
+        self.modulo = indicadores
+        self.original = indicadores._PWM
+        BuzzerTests.PWM.creados = []
+
+    def tearDown(self):
+        self.modulo._PWM = self.original
+
+    def test_en_peligro_los_pulsos_los_genera_el_hardware(self):
+        self.modulo._PWM = BuzzerTests.PWM
+        ind = self.modulo.Indicadores()
+        ind.nivel(PELIGRO)
+        ind.actualizar_buzzer()
+        ind.actualizar_buzzer()
+        self.assertEqual(len(BuzzerTests.PWM.creados), 1)  # se crea una sola vez
+        pwm = BuzzerTests.PWM.creados[0]
+        self.assertEqual((pwm.freq, pwm.duty), (1, 200 * 65535 // 1000))
+        ind.nivel(NORMAL)
+        self.assertFalse(pwm.activo)  # al salir del peligro se apaga
+
+    def test_sin_pwm_lento_se_generan_por_software(self):
+        self.modulo._PWM = None
+        ind = self.modulo.Indicadores()
+        ind.nivel(PELIGRO)
+        reloj["ms"] = 100
+        ind.actualizar_buzzer()
+        self.assertEqual(ind._buzzer.valor, 1)
+        reloj["ms"] = 500
+        ind.actualizar_buzzer()
+        self.assertEqual(ind._buzzer.valor, 0)
+
 class BateriaTests(unittest.TestCase):
     class I2C:
         def __init__(self, registros=None, falla=False):

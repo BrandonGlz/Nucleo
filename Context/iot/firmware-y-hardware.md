@@ -57,8 +57,9 @@ Las pruebas de la lógica están en `IoT/tests/` (módulos de MicroPython simula
 
 `MODO` en `secrets.py`: sin valor solo mide; `"puente"` solo atiende a Nico AI;
 `"ambos"` mide y atiende a Nico en un segundo hilo (`_thread`). En `"ambos"` el hilo del
-puente maneja el Wi-Fi y deja un latido; el ciclo de sensores reinicia la placa si el latido
-se detiene más de 5 minutos.
+puente maneja el Wi-Fi, va en modo ligero (el servidor ejecuta la IA al tomar la petición) y
+manda su diagnóstico de red en `X-Puente-Diag`. La placa no se reinicia por el puente: el
+servidor marca a Nico inactivo y el hilo se recupera solo. El buzzer pulsa con PWM (1 Hz).
 
 ## Pines (ESP32-S3)
 

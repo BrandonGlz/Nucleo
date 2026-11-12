@@ -213,6 +213,8 @@ IA_MODELO = env("IA_MODELO", default="")
 # Sin clave el puente está apagado y el agente responde solo con respuestas predefinidas.
 IA_PUENTE_CLAVE = env("IA_PUENTE_CLAVE", default="")
 IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen2.5:1.5b")
+# Ollama visto desde el backend (modo ligero del puente: el servidor ejecuta la IA).
+IA_OLLAMA_URL = env("IA_OLLAMA_URL", default="http://127.0.0.1:11434")
 # Dispositivos con ESP32 físico como puente (codigo_mqtt). Los demás son simulados: su agente
 # siempre está disponible y responde con lo predefinido y lo aprendido, sin IA.
 IA_PUENTE_DISPOSITIVOS = env.list("IA_PUENTE_DISPOSITIVOS", default=[])

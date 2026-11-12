@@ -146,7 +146,13 @@ Sin Pymakr, lo mismo se hace con `mpremote`:
 - **`"ambos"`:** mide y publica lecturas, y el puente corre en un segundo hilo. Necesita
   las credenciales de los dos modos. El hilo del puente maneja el Wi-Fi con sus redes de
   respaldo; el ciclo de sensores sigue midiendo aunque el puente esté atendiendo a Nico o
-  sin red. Si el puente deja de dar señales de vida 5 minutos, la placa se reinicia.
+  sin red. El puente va en **modo ligero**: el servidor ejecuta la IA y el ESP solo toma la
+  petición (`PUENTE_LIGERO = False` en `secrets.py` lo desactiva). La placa nunca se reinicia
+  por el puente: si se traba, el servidor marca a Nico como inactivo y el hilo se recupera solo.
+
+En cada consulta el puente envía al servidor su red, señal, reconexiones, última falla y
+memoria libre; `manage.py puente_diagnostico` en el servidor dice si un corte fue de la red o
+del ESP. El buzzer pulsa con el PWM del ESP, así que no se congela si el procesador se ocupa.
 
 ## Pines (ESP32-S3)
 

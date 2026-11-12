@@ -108,6 +108,14 @@ devuelve la respuesta en `POST /api/v1/puente/entregar/`, siempre con la cabecer
 `X-Puente-Clave`. Si el ESP deja de consultar 75 s (sin corriente o sin red; tolera cortes breves del Wi-Fi), el agente de ese
 dispositivo se deshabilita en la web y en la app.
 
+Si el ESP además mide sensores (`MODO = "ambos"`), usa el **modo ligero**: consulta con
+`?ligero=1` y el servidor ejecuta la IA contra Ollama (`IA_OLLAMA_URL`) en cuanto el ESP toma
+la petición; el ESP no hace la llamada a la IA. En cada consulta el ESP manda su diagnóstico de
+red (cabecera `X-Puente-Diag`: red, señal, reconexiones, última falla, memoria libre).
+`.venv/bin/python manage.py puente_diagnostico` (en `BackEnd/`) lo muestra y sirve para saber
+si un corte fue de la red (señal baja, autenticación rechazada, red sin salida) o del ESP
+(memoria).
+
 - Encender: poner `IA_PUENTE_CLAVE` (`openssl rand -hex 24`) en `BackEnd/.env` y correr
   `bash deploy/instalar.sh`; levanta Ollama y descarga el modelo. La misma clave va en el ESP.
 - Apagar: dejar `IA_PUENTE_CLAVE` vacía y volver a instalar; Ollama se detiene y el agente

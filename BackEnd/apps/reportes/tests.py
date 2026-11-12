@@ -1,4 +1,5 @@
 import tempfile
+import time
 from datetime import UTC, timedelta
 from io import StringIO
 from pathlib import Path
@@ -1068,6 +1069,37 @@ class NicoAprendeTests(PruebaBase):
             HTTP_X_PUENTE_CLAVE="mala",
         )
         self.assertEqual(r.status_code, 403)
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
+    def test_modo_ligero_el_servidor_ejecuta_la_ia(self):
+        import io
+        import json
+        from unittest import mock
+
+        codigo = self.e.dispositivo.codigo_mqtt
+        respuesta = io.BytesIO(
+            json.dumps(
+                {"message": {"content": "Todo en orden."}, "prompt_eval_count": 90, "eval_count": 6}
+            ).encode()
+        )
+        trabajo = {"id": "t1", "ruta": "/api/chat", "vence": time.time() + 30, "cuerpo": {}}
+        puente.cola().poner(codigo, trabajo)
+        with mock.patch("urllib.request.urlopen") as abrir:
+            abrir.return_value.__enter__.return_value = respuesta
+            r = self.client.get(
+                "/api/v1/puente/tomar/",
+                {"dispositivo": codigo, "ligero": "1"},
+                HTTP_X_PUENTE_CLAVE="k",
+                HTTP_X_PUENTE_DIAG="red=UTT;rssi=-72;rec=2;falla=auth_202;mem=180000",
+            )
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json(), {"id": "t1", "ligero": True, "calentar": False})
+            entregado = puente.cola().esperar("t1", 5)
+        self.assertEqual(entregado["texto"], "Todo en orden.")
+        self.assertEqual((entregado["tokens_entrada"], entregado["tokens_salida"]), (90, 6))
+        diag = puente.diagnostico(codigo)["datos"]
+        self.assertEqual((diag["red"], diag["rssi"], diag["falla"]), ("UTT", "-72", "auth_202"))
+        self.assertTrue(puente.activo(self.e.dispositivo))
 
     def test_grafica_general_del_dispositivo(self):
         cuerpo = self._pedir("dame una grafica general del dispositivo")

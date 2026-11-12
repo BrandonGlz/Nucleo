@@ -4,6 +4,11 @@ import time
 
 from machine import Pin
 
+try:
+    from machine import PWM as _PWM
+except ImportError:
+    _PWM = None
+
 import config
 from nucleo.umbrales import ADVERTENCIA, NORMAL, PELIGRO
 
@@ -29,6 +34,7 @@ class Indicadores:
         ]
         self._wifi = Pin(config.PIN_LED_WIFI, Pin.OUT)
         self._buzzer = Pin(config.PIN_BUZZER, Pin.OUT)
+        self._pwm = None  # pulsos del buzzer por hardware (no se congelan si el CPU está ocupado)
         self._peligro = False
         self.color(APAGADO)
         self.wifi(False)
@@ -48,10 +54,29 @@ class Indicadores:
         self._wifi.value(1 if conectado else 0)
 
     def actualizar_buzzer(self):
-        """Pulsos de 200 ms cada segundo mientras haya peligro. Llamar con frecuencia."""
-        if self._peligro:
-            fase = time.ticks_ms() % _BUZZER_PERIODO_MS
-            self._sonar(fase < _BUZZER_ENCENDIDO_MS)
+        """Pulsos de 200 ms cada segundo mientras haya peligro. Llamar con frecuencia.
+
+        Primero intenta generarlos con el PWM del ESP (1 Hz, 20 %): el hardware los mantiene
+        aunque el procesador se ocupe un par de segundos (p. ej. al abrir una conexión TLS).
+        Si la placa no admite 1 Hz, los genera este ciclo como antes."""
+        if not self._peligro:
+            return
+        if self._pwm is None and _PWM is not None:
+            try:
+                ciclo = _BUZZER_ENCENDIDO_MS * 65535 // _BUZZER_PERIODO_MS
+                if not config.BUZZER_ACTIVO_ALTO:
+                    ciclo = 65535 - ciclo
+                self._pwm = _PWM(self._buzzer, freq=1000 // _BUZZER_PERIODO_MS, duty_u16=ciclo)
+            except (ValueError, OSError):
+                self._pwm = False  # sin PWM lento: pulsos por software
+        if self._pwm:
+            return
+        fase = time.ticks_ms() % _BUZZER_PERIODO_MS
+        self._sonar(fase < _BUZZER_ENCENDIDO_MS)
 
     def _sonar(self, activo):
+        if self._pwm:
+            self._pwm.deinit()
+            self._pwm = None
+            self._buzzer = Pin(config.PIN_BUZZER, Pin.OUT)
         self._buzzer.value(activo if config.BUZZER_ACTIVO_ALTO else not activo)
