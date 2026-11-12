@@ -12,9 +12,21 @@ http://:8081 {
 		format json
 	}
 
+	# Visitas por http:// (Cloudflare lo avisa en X-Forwarded-Proto) -> https://
+	@http header X-Forwarded-Proto http
+	redir @http https://{host}{uri} permanent
+
 	# www.bynucleo.com -> bynucleo.com
 	@www header_regexp www Host ^www\.(.+)$
 	redir @www https://{re.www.1}{uri} permanent
+
+	# La dirección anterior (Tailscale, *.ts.net) lleva la web al dominio. Se quedan ahí la API y el
+	# canal en vivo (apps 0.1.7 y el respaldo HTTPS de los ESP32) y la descarga del APK.
+	@anterior {
+		header_regexp anterior Host \.ts\.net$
+		not path /api/* /ws/* /app/* /latido
+	}
+	redir @anterior https://bynucleo.com{uri} permanent
 
 	# Latido de las páginas con sesión abierta (cada minuto): solo queda en la bitácora para contar conectados
 	handle /latido {
