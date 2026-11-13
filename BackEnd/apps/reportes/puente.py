@@ -38,6 +38,8 @@ from collections import defaultdict, deque
 
 from django.conf import settings
 
+from apps.nico import configuracion
+
 from . import agente
 
 # Sin consultar en este tiempo, el agente del dispositivo está inactivo. 75 s toleran un corte
@@ -376,6 +378,11 @@ def _tokens(r):
     }
 
 
+def _sistema(dispositivo):
+    """Instrucciones de la IA: las de siempre más los documentos activos de la consola."""
+    return configuracion.instrucciones(SISTEMA.format(nombre=dispositivo.nombre))
+
+
 def _cuerpo(dispositivo, mensajes, num_predict, formato=None):
     cuerpo = {
         "model": settings.IA_MODELO_LOCAL,
@@ -386,7 +393,9 @@ def _cuerpo(dispositivo, mensajes, num_predict, formato=None):
         # 3 hilos de 4 para que la API y MQTT sigan atendiendo mientras la IA trabaja.
         "options": {
             "num_predict": num_predict,
-            "num_ctx": 1024,
+            # Igual en todas las peticiones (cambiarlo recarga el modelo); crece con los
+            # documentos activos de la consola de Nico AI.
+            "num_ctx": configuracion.contexto(),
             "temperature": 0.2,
             "top_p": 0.9,
             "num_thread": 3,
@@ -488,7 +497,7 @@ def redactar(dispositivo, pregunta, base, datos, espera=None):
             [
                 # El mensaje de sistema es igual en cada petición del dispositivo: Ollama reutiliza
                 # su caché y solo procesa lo nuevo.
-                {"role": "system", "content": SISTEMA.format(nombre=dispositivo.nombre)},
+                {"role": "system", "content": _sistema(dispositivo)},
                 {
                     "role": "user",
                     "content": f"Texto base: {base}\nCifras: {cifras}\nPregunta: {pregunta}\n"
@@ -588,7 +597,7 @@ def conversar(dispositivo, mensaje, hechos, historial=(), espera=None):
         "cuerpo": _cuerpo(
             dispositivo,
             [
-                {"role": "system", "content": SISTEMA.format(nombre=dispositivo.nombre)},
+                {"role": "system", "content": _sistema(dispositivo)},
                 {
                     "role": "user",
                     "content": f"{CONVERSAR}\n\n"

@@ -18,6 +18,7 @@ urlpatterns = [
                 path("", include("apps.mediciones.urls")),
                 path("", include("apps.alertas.urls")),
                 path("", include("apps.reportes.urls")),
+                path("nico/", include("apps.nico.urls")),
             ]
         ),
     ),

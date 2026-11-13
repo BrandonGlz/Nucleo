@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.dispositivos.models import Dispositivo
+from apps.nico import configuracion
 from apps.reportes import (
     agente,
     aprendizaje,
@@ -272,6 +273,11 @@ class AgenteView(APIView):
                 "de ayer», «la última medición del aire» o «gráfica de la humedad»."
             )
             r, via, extra = {"texto": texto}, PreguntaAgente.Via.PREDEFINIDA, {}
+        elif (fija := aprendizaje.respuesta_fija(dispositivo, original)) is not None:
+            # Respuesta fija de la consola de Nico AI: gana a la charla y a las reglas.
+            r, via = {"texto": fija.plantilla}, PreguntaAgente.Via.BANCO
+            extra = {"aprendida": fija, "datos": {"fijo": True}}
+            pregunta = original
         elif (charla := social.responder(dispositivo, original, request.user)) is not None:
             # Conversación o algo fuera de la burbuja del agente: texto fijo que regresa al tema.
             cat = charla.pop("social")
@@ -538,6 +544,18 @@ class AgenteView(APIView):
         Via = PreguntaAgente.Via
         intencion = interprete.interpretar(pregunta).intencion
         fijo = {"datos": {"fijo": True}}
+        # Respuesta fija escrita en la consola de Nico AI para esta pregunta exacta.
+        fija = aprendizaje.respuesta_fija(dispositivo, pregunta)
+        if fija is not None:
+            return (
+                {"texto": fija.plantilla},
+                Via.BANCO,
+                {"aprendida": fija, "datos": {"fijo": True}},
+            )
+        # Herramienta desactivada desde la consola: no se ejecuta.
+        nombre = self._herramienta_de(intencion, pregunta)
+        if nombre and not configuracion.activa(nombre):
+            return {"texto": configuracion.DESACTIVADA}, Via.PREDEFINIDA, fijo
         if intencion in ("programar", "editar_programacion", "cancelar_programacion", "enviar"):
             if intencion == "programar":
                 r = herramientas.preparar_programacion(usuario, dispositivo, pregunta)
@@ -611,6 +629,19 @@ class AgenteView(APIView):
                 return {**r, "texto": texto}, Via.IA, {"datos": datos, **tokens}
             return r, Via.PREDEFINIDA, {"datos": datos, **tokens}
         return r, Via.PREDEFINIDA, {"datos": datos}
+
+    @staticmethod
+    def _herramienta_de(intencion, pregunta):
+        """Herramienta del catálogo que atendería la pregunta (para respetar las desactivadas)."""
+        if intencion in herramientas.CATALOGO or intencion in configuracion.NOMBRES_ACCIONES:
+            return intencion
+        if graficas.pide_comparativa(pregunta):
+            return "comparativa"
+        if graficas.pide_grafica(pregunta):
+            return "grafica"
+        if agente.pide_reporte(pregunta):
+            return "reporte"
+        return None
 
     def _sin_tema(self, usuario, dispositivo, pregunta, ruteada):
         """Las reglas no entendieron: una ruta aprendida (👍 anterior) o la IA elige la

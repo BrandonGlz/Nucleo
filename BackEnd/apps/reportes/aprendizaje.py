@@ -76,6 +76,16 @@ def buscar(dispositivo, pregunta, tema, datos):
     return (aprendida, texto) if texto else (None, None)
 
 
+def respuesta_fija(dispositivo, pregunta):
+    """Respuesta escrita en la consola de Nico AI para esta pregunta (tema ``FIJA``)."""
+    return RespuestaAprendida.objects.filter(
+        organizacion_id=dispositivo.area.organizacion_id,
+        pregunta_normalizada=normalizar(pregunta),
+        tema="FIJA",
+        activa=True,
+    ).first()
+
+
 def ruta_aprendida(dispositivo, pregunta):
     """Herramienta (pregunta canónica) que la IA eligió antes para esta pregunta y recibió 👍."""
     return RespuestaAprendida.objects.filter(

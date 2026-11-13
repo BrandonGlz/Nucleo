@@ -78,19 +78,23 @@ function consultar(pregunta, agente, anterior = '', { precarga = false, sinCache
   return enVuelo.get(k)
 }
 
-export function AgenteProvider({ children }) {
+// `dispositivos`: lista dada desde fuera (la consola de Nico AI la arma con empresa y área); sin
+// ella se usan los dispositivos de la organización del usuario.
+export function AgenteProvider({ children, dispositivos: externos }) {
   const [conversaciones, setConversaciones] = useState(() => leer(CLAVE, []))
   const [actual, setActual] = useState(null)
   const [estado, setEstado] = useState('listo')
   const [animada, setAnimada] = useState(null)
-  const [dispositivos, setDispositivos] = useState([])
+  const [propios, setDispositivos] = useState([])
+  const dispositivos = externos ?? propios
   const [agente, setAgenteEstado] = useState(() => leer(CLAVE_AGENTE, null))
   const turno = useRef(0)
   const { usuario } = useSesion()
   const conOrganizacion = Boolean(usuario?.organizacion)
+  const conExternos = Boolean(externos)
 
   useEffect(() => {
-    if (!conOrganizacion) return undefined
+    if (!conOrganizacion || conExternos) return undefined
     let vivo = true
     dispositivosApi
       .lista()
@@ -99,13 +103,13 @@ export function AgenteProvider({ children }) {
     return () => {
       vivo = false
     }
-  },[conOrganizacion])
+  }, [conOrganizacion, conExternos])
 
   // Si no hay agente elegido (o ya no existe), se usa el del primer dispositivo.
   // Estado del puente: con él, solo los dispositivos con su ESP32 conectado tienen agente.
   const [puente, setPuente] = useState({ puente: false, activos: [] })
   useEffect(() => {
-    if (!conOrganizacion) return undefined
+    if (!conOrganizacion && !conExternos) return undefined
     let vivo = true
     const leer = () =>
       agenteApi
@@ -118,7 +122,7 @@ export function AgenteProvider({ children }) {
       vivo = false
       clearInterval(t)
     }
-  }, [conOrganizacion])
+  }, [conOrganizacion, conExternos])
   const agenteValido = dispositivos.some((d) => d.num === agente) ? agente : (dispositivos[0]?.num ?? null)
   const dispositivoAgente = dispositivos.find((d) => d.num === agenteValido) ?? null
   const agenteActivo = !puente.puente || puente.activos.includes(agenteValido)

@@ -1,4 +1,4 @@
-# Núcleo: Cloudflare Tunnel (bynucleo.com, app. y dispositivos.) -> Caddy 127.0.0.1:8081
+# Núcleo: Cloudflare Tunnel (bynucleo.com, app., nicoai. y dispositivos.) -> Caddy 127.0.0.1:8081
 # __RAIZ__ lo reemplaza deploy/instalar.sh por la carpeta del proyecto.
 # /media no se publica: los PDF de reportes se descargan por la API con token.
 http://:8081 {

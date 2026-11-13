@@ -115,6 +115,25 @@ Reportes (ADMIN, SUPER y ANALISTA)
                                             misma organización; SUPER y ANALISTA con área
                                             solo programan la suya
 
+Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
+└── /nico/
+    ├── POST chat/ · POST calificar/       Igual que /agente/, con el dispositivo de cualquier empresa
+    ├── GET estado/                         Agentes activos de todas las empresas
+    ├── GET arbol/                          {puente, empresas: [{num, nombre, areas: [{num, nombre,
+    │                                       dispositivos: [{num, nombre, activo, fisico}]}]}]}
+    ├── GET resumen/                        Cifras de inicio
+    ├── banco/                              CRUD de respuestas: {organizacion | todas, pregunta,
+    │                                       tema FIJA|RUTA (TEMP/HUM/AIRE aprendidas), plantilla,
+    │                                       activa}; filtros organizacion, tema, activa, q
+    ├── GET registro/                       Preguntas registradas; filtros organizacion, via,
+    │                                       calificacion si|no, q
+    ├── GET herramientas/                   Catálogo con ajustes {nombre, descripcion, proposito,
+    │   PATCH herramientas/{nombre}/        ejemplo, activa, accion, editada, original};
+    │                                       PATCH {descripcion?, proposito?, ejemplo?, activa?,
+    │                                       restaurar?}
+    └── documentos/                         GET {documentos, limite, usados}; POST {clave,
+                                            descripcion, contenido}; PATCH; DELETE (no los base)
+
 Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
 └── POST /agente/                           {"pregunta", "dispositivo"}; un agente por dispositivo;
                                             {"accion"?} confirma una acción preparada;

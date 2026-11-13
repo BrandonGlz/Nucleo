@@ -469,7 +469,9 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
   )
 }
 
-export function AgentePage() {
+// `eyebrow` y `acciones` permiten usar la misma pantalla en la consola de Nico AI (con el selector de
+// empresa y área en el encabezado).
+export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organización', acciones } = {}) {
   const { usuario } = useSesion()
   const navegarA = useNavigate()
   const ag = useAgente()
@@ -642,7 +644,7 @@ export function AgentePage() {
   )
 
   return (
-    <Pantalla eyebrow="Pregunta sobre los sensores de tu organización" titulo="Nico AI">
+    <Pantalla eyebrow={eyebrow} titulo="Nico AI" acciones={acciones}>
       <div className={`ui-ia${panel && !visor ? '' : ' is-sin-panel'}${visor ? ' con-visor' : ''}`}>
         {panel && !visor && (
           <aside className="ui-ia-panel" aria-label="Conversaciones">

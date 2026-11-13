@@ -1,6 +1,16 @@
 // Íconos de Lucide (https://lucide.dev/icons/). Es la única fuente de íconos del front.
 // Para agregar uno: búscalo en lucide.dev, impórtalo aquí y regístralo con su nombre en kebab-case.
 import {
+  BookOpen,
+  MessageSquareText,
+  FileCode,
+  Lightbulb,
+  ThumbsUp,
+  ThumbsDown,
+  RotateCcw,
+  Save,
+  Moon,
+  Sun,
   Activity,
   ArrowDownRight,
   ArrowUpRight,
@@ -130,6 +140,16 @@ const ICONS = {
   'user-check': UserCheck,
   'key-round': KeyRound,
   'x': X,
+  'book-open': BookOpen,
+  'message-square-text': MessageSquareText,
+  'file-code': FileCode,
+  'lightbulb': Lightbulb,
+  'thumbs-up': ThumbsUp,
+  'thumbs-down': ThumbsDown,
+  'rotate-ccw': RotateCcw,
+  'save': Save,
+  'moon': Moon,
+  'sun': Sun,
 }
 
 export { ICONS }

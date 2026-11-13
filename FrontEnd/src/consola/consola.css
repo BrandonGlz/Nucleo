@@ -1,0 +1,315 @@
+/* Consola de Nico AI: piezas propias sobre el sistema de diseño de Núcleo. Solo usa tokens
+   (--surface, --border, --text-*, --accent…), así que sigue el modo claro y el oscuro. */
+
+.ui-consola-marca {
+  margin: -16px 0 18px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.ui-consola-filtros {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ui-consola-filtros .ui-desplegable,
+.ui-consola-barra .ui-desplegable {
+  min-width: 190px;
+}
+
+/* Inicio */
+.ui-consola-accesos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+.ui-consola-acceso {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+}
+.ui-consola-acceso strong {
+  font-size: 17px;
+  line-height: 24px;
+}
+.ui-consola-acceso p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-secondary);
+}
+
+/* Texto largo con el aspecto de los campos */
+.ui-consola-area.nc-input {
+  height: auto;
+  align-items: stretch;
+  padding: 10px 12px 10px 14px;
+}
+.ui-consola-area textarea {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+}
+.ui-consola-area textarea.is-mono {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 21px;
+}
+
+/* Listas (banco y registro) */
+.ui-consola-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+.ui-consola-barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.ui-consola-vacio {
+  margin: 24px 0;
+  text-align: center;
+}
+.ui-consola-cuenta {
+  font-size: 12px;
+}
+.ui-consola-filas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ui-consola-fila {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 4px;
+  border-top: 1px solid var(--border);
+}
+.ui-consola-fila.is-apagada .ui-consola-fila__texto {
+  opacity: 0.55;
+}
+.ui-consola-fila__texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ui-consola-fila__texto strong {
+  font-size: 15px;
+  line-height: 22px;
+}
+.ui-consola-fila__texto p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+}
+.ui-consola-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Herramientas */
+.ui-consola-herramientas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  align-content: start;
+  overflow: auto;
+  padding-bottom: 4px;
+}
+.ui-consola-herramienta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ui-consola-herramienta p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+}
+.ui-consola-herramienta.is-apagada > :not(.ui-consola-herramienta__cabeza) {
+  opacity: 0.5;
+}
+.ui-consola-herramienta__cabeza {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ui-consola-herramienta__cabeza strong {
+  font-size: 16px;
+}
+.ui-consola-herramienta code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.ui-consola-herramienta__pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.ui-consola-ejemplo {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* Documentos */
+.ui-consola-docs {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+}
+.ui-consola-docs__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+}
+.ui-consola-docs__lista ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ui-consola-doc {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.ui-consola-doc:hover {
+  background: var(--surface-muted);
+}
+.ui-consola-doc.is-activo {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+.ui-consola-doc > span:first-of-type {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ui-consola-doc strong {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.ui-consola-doc small {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-consola-punto {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.ui-consola-punto.is-on {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.ui-consola-presupuesto {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ui-consola-presupuesto small {
+  color: var(--text-muted);
+  line-height: 17px;
+}
+.ui-consola-presupuesto__barra {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+.ui-consola-presupuesto__barra > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--duration-base) var(--ease-standard);
+}
+.ui-consola-presupuesto.is-excede .ui-consola-presupuesto__barra > span {
+  background: var(--danger);
+}
+.ui-consola-presupuesto.is-excede small {
+  color: var(--danger);
+}
+.ui-consola-docs__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+}
+.ui-consola-docs__cabeza,
+.ui-consola-docs__acciones {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-consola-doc,
+  .ui-consola-presupuesto__barra > span {
+    transition: none;
+  }
+}
