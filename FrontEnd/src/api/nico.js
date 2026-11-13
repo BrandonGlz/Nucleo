@@ -1,6 +1,9 @@
 // Consola de Nico AI (nicoai.bynucleo.com): solo el superusuario (administrador de plataforma).
 export const NICO_CHAT = '/nico/chat/' // POST, igual que AGENTE pero con cualquier dispositivo
 export const NICO_CALIFICAR = '/nico/calificar/' // POST {registro, voto}
+export const NICO_CHAT_SUGERENCIAS = '/nico/chat/sugerencias/' // GET ?dispositivo= → igual que /agente/sugerencias/
+// GET [?dispositivo=] → {ajuste, candidatas: [{texto, tipo, etiqueta, clave, oculta}]}; PATCH {activas, maximo, usar_*, fijadas, ocultas}
+export const NICO_SUGERENCIAS = '/nico/sugerencias/'
 export const NICO_ESTADO = '/nico/estado/' // GET → {puente, activos, fisicos} de todas las empresas
 export const NICO_ARBOL = '/nico/arbol/' // GET → {puente, empresas: [{num, nombre, areas: [{num, nombre, dispositivos}]}]}
 export const NICO_RESUMEN = '/nico/resumen/' // GET → cifras y series del dashboard de inicio

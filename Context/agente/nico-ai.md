@@ -106,6 +106,27 @@ cambiar código. Es la misma web compilada: `main.jsx` abre `src/consola/` cuand
   todas las empresas y se contestan al instante, sin IA. El documento viene apagado; si se activa,
   además va en las instrucciones de cada respuesta de la IA (hasta 2 400 caracteres), lo que la
   hace más lenta. Las cifras siempre salen de las herramientas; el ESP no cambia.
+- **Sugerencias**: al escribir en el chat (web y consola) aparece arriba de la caja una lista con
+  lo que coincide (cada palabra escrita es el inicio de una palabra de la sugerencia, sin importar
+  acentos). Flechas para moverse, Enter pregunta la elegida, Tab la completa y Esc cierra. El
+  servidor manda la lista una vez por dispositivo (`agente/sugerencias/`, `nico/sugerencias.py`):
+  destacadas, respuestas fijas del banco de la empresa, ejemplos de las herramientas activas (las
+  acciones solo a quien puede usarlas), explicaciones y «¿Qué puedes hacer?», y las preguntas
+  frecuentes de 60 días sin calificación negativa. La página «Sugerencias» de la consola
+  (`AjusteSugerencias`, una fila) las apaga, fija cuántas se ven (3-10), qué fuentes usan, cuáles
+  van primero y cuáles nunca salen; se prueba ahí mismo. La app móvil todavía no las muestra.
+
+**Protecciones de la configuración** (para que un cambio en la consola no rompa al agente):
+
+- El banco no acepta una respuesta fija para una pregunta que pide datos en vivo (última medición,
+  gráfica, comparativa, alertas, estado, una variable con periodo o el ejemplo de una herramienta
+  activa; `conocimiento.pide_datos`): taparía la lectura del momento con un texto fijo. Las que
+  reemplazan a una respuesta incluida se guardan, marcadas «Reemplaza una incluida».
+- El documento siempre conserva sus seis secciones base, sin títulos repetidos; no se crea otro ni
+  se borra. Si está activo y pasa del límite, a la IA solo llega lo que cabe.
+- Con todas las herramientas apagadas, Nico sigue respondiendo la charla, el banco y las
+  explicaciones; si la IA tarda o falla, responde con la predefinida.
+- Cambiar el banco, una herramienta o el ajuste de sugerencias limpia sus cachés.
 
 Los ajustes se guardan en caché 5 minutos y se limpian al editar.
 

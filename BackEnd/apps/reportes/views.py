@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.dispositivos.models import Dispositivo
-from apps.nico import configuracion
+from apps.nico import configuracion, sugerencias
 from apps.reportes import (
     agente,
     aprendizaje,
@@ -725,6 +725,25 @@ class EstadoAgenteView(APIView):
                 "fisicos": [d.num for d in visibles if puente.con_puente(d)],
             }
         )
+
+
+class SugerenciasAgenteView(APIView):
+    """Sugerencias para el chat de un dispositivo: la web las filtra mientras se escribe."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.rol_id not in roles.TODOS or not request.user.puede_usar_agente:
+            raise PermissionDenied("No tienes acceso a Nico AI.")
+        num = request.query_params.get("dispositivo", "")
+        dispositivo = (
+            dispositivos_visibles(request.user).select_related("area").filter(pk=num).first()
+            if num.isdigit()
+            else None
+        )
+        if dispositivo is None:
+            raise NotFound("Dispositivo no encontrado.")
+        return Response(sugerencias.para(request.user, dispositivo))
 
 
 class _PuenteBase(APIView):

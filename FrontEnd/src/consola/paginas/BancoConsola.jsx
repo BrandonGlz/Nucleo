@@ -203,6 +203,11 @@ export default function BancoConsola() {
                         </span>
                         <strong>{r.pregunta}</strong>
                       </div>
+                      {r.reemplaza && (
+                        <Badge tone="warning" title={`Nico ya traía una respuesta para «${r.reemplaza}»; esta la reemplaza mientras esté activa.`}>
+                          Reemplaza una incluida
+                        </Badge>
+                      )}
                       <span style={{ flex: 1 }} />
                       <Toggle checked={r.activa} ariaLabel={r.activa ? 'Desactivar' : 'Activar'} onChange={() => alternar(r)} />
                       <MenuAcciones

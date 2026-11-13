@@ -135,6 +135,10 @@ Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
     │                                       propositos: [{clave, nombre}]};
     │                                       PATCH {descripcion?, proposito?, ejemplo?, activa?,
     │                                       restaurar?}
+    ├── chat/sugerencias/                   GET ?dispositivo= → como /agente/sugerencias/
+    ├── sugerencias/                        GET [?dispositivo=] → {ajuste, candidatas}; PATCH
+    │                                       {activas, maximo (3-10), usar_banco, usar_incluidas,
+    │                                       usar_herramientas, usar_frecuentes, fijadas, ocultas}
     └── documentos/                         GET {documentos: [NICO], secciones, limite, usados};
         ├── {num}/                          PATCH {contenido, activo, descripcion}; un solo
         │                                   documento: no hay POST ni DELETE (405)
@@ -142,6 +146,8 @@ Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
                                             plano; GET ?seccion= → {estado, propuestas, error}
 
 Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
+├── GET /agente/sugerencias/               ?dispositivo= → {activas, maximo, sugerencias:
+│                                           [{texto, tipo, etiqueta}]}; la web las filtra al escribir
 └── POST /agente/                           {"pregunta", "dispositivo"}; un agente por dispositivo;
                                             {"accion"?} confirma una acción preparada;
                                             responde {"texto", "via", "registro", "pasos"}

@@ -25,6 +25,7 @@ import { asignarFormato, useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
 import * as agenteApi from '../../services/agente'
 import { esReporte, planDe, respuestaRapida, siguientes } from './proceso'
+import { filtrar, normalizar, resaltar } from './sugerenciasEscritura'
 import { aplicar, interpretar, plantillas } from './edicion'
 import { Archivos, Comparativa, Edicion, ElegirPlantilla, GraficaChat } from './Piezas'
 import { periodo } from '../../utils/formato'
@@ -417,9 +418,50 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
   )
 }
 
+// Lista que aparece arriba de la caja mientras se escribe: flechas para moverse, Enter para
+// preguntar la elegida, Tab para solo completarla y Esc para cerrarla.
+function SugerenciasEscritura({ lista, escrito, elegida, elegir, resaltarEn }) {
+  return (
+    <ul className="ui-ia-sugiere" role="listbox" id="nico-sugerencias" aria-label="Sugerencias">
+      {lista.map((s, i) => (
+        <li key={s.texto} role="option" id={`nico-sugerencia-${i}`} aria-selected={i === elegida}>
+          <button
+            type="button"
+            tabIndex={-1}
+            className={i === elegida ? 'is-elegida' : undefined}
+            onMouseDown={(e) => e.preventDefault()}
+            onMouseEnter={() => resaltarEn(i)}
+            onClick={() => elegir(s)}
+          >
+            <Icon name={s.tipo === 'consulta' ? 'activity' : s.tipo === 'frecuente' ? 'history' : 'message-square-text'} size={15} />
+            <span className="ui-ia-sugiere__texto">
+              {resaltar(s.texto, escrito).map((p, j) => (p.marca ? <strong key={j}>{p.texto}</strong> : <span key={j}>{p.texto}</span>))}
+            </span>
+            <span className={`ui-ia-sugiere__tipo is-${s.tipo}`}>{s.etiqueta}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 // Caja para escribir: crece con el texto, Enter envía y Shift+Enter hace un salto de línea.
-function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, enfocar, alcance, aviso }) {
+function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, enfocar, alcance, aviso, sugerencias }) {
   const area = useRef(null)
+  const [elegida, setElegida] = useState(-1)
+  const [cerradaEn, setCerradaEn] = useState(null)
+  const lista = sugerencias?.activas && cerradaEn !== valor && !pensando ? filtrar(sugerencias.lista, valor, sugerencias.maximo) : []
+  const abierta = lista.length > 0
+  // Al cambiar lo escrito, ninguna queda elegida.
+  const [escritoAntes, setEscritoAntes] = useState(valor)
+  if (escritoAntes !== valor) {
+    setEscritoAntes(valor)
+    setElegida(-1)
+  }
+  const elegir = (s) => {
+    setCerradaEn(s.texto)
+    enviar(s.texto)
+  }
   useLayoutEffect(() => {
     const el = area.current
     el.style.height = 'auto'
@@ -436,6 +478,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
         enviar()
       }}
     >
+      {abierta && <SugerenciasEscritura lista={lista} escrito={valor} elegida={elegida} elegir={elegir} resaltarEn={setElegida} />}
       <textarea
         ref={area}
         rows={1}
@@ -444,10 +487,33 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
         placeholder={aviso ?? 'Pregunta sobre tus sensores, alertas o lecturas…'}
         aria-label="Pregunta para Nico AI"
         onChange={(e) => cambiar(e.target.value)}
+        role="combobox"
+        aria-expanded={abierta}
+        aria-controls={abierta ? 'nico-sugerencias' : undefined}
+        aria-autocomplete="list"
+        aria-activedescendant={abierta && elegida >= 0 ? `nico-sugerencia-${elegida}` : undefined}
         onKeyDown={(e) => {
+          if (abierta && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+            e.preventDefault()
+            const n = lista.length
+            setElegida((i) => (e.key === 'ArrowDown' ? (i + 1) % n : (i <= 0 ? n : i) - 1))
+            return
+          }
+          if (abierta && e.key === 'Escape') {
+            e.preventDefault()
+            setCerradaEn(valor)
+            return
+          }
+          if (abierta && e.key === 'Tab' && !e.shiftKey && elegida >= 0) {
+            e.preventDefault()
+            setCerradaEn(lista[elegida].texto)
+            cambiar(lista[elegida].texto)
+            return
+          }
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault()
-            enviar()
+            if (abierta && elegida >= 0) elegir(lista[elegida])
+            else enviar()
           }
         }}
       />
@@ -478,6 +544,20 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   const { conversaciones, actual, conv, pensando, animada, dispositivos, dispositivoAgente } = ag
   const [texto, setTexto] = useState('')
   const [panel, setPanel] = useState(true)
+  // Sugerencias mientras se escribe: se piden una vez por dispositivo y se filtran aquí.
+  const [escritura, setEscritura] = useState(null)
+  const numAgente = dispositivoAgente?.num
+  useEffect(() => {
+    if (!numAgente) return undefined
+    let vivo = true
+    agenteApi
+      .sugerenciasEscritura(numAgente)
+      .then((r) => vivo && setEscritura({ activas: r.activas, maximo: r.maximo, lista: r.sugerencias.map((x) => ({ ...x, normal: normalizar(x.texto) })), num: numAgente }))
+      .catch(() => vivo && setEscritura(null))
+    return () => {
+      vivo = false
+    }
+  }, [numAgente])
   const [visor, setVisor] = useState(null)
   const [ampliado, setAmpliado] = useState(false)
   const cerrarVisor = useCallback(() => {
@@ -633,8 +713,9 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     <Compositor
       valor={texto}
       cambiar={setTexto}
-      enviar={() => preguntar(texto)}
+      enviar={(elegido) => preguntar(typeof elegido === 'string' ? elegido : texto)}
       detener={detener}
+      sugerencias={escritura?.num === numAgente ? escritura : null}
       pensando={pensando}
       enfocar={actual}
       alcance={`Sensores de ${nombreAgente}`}

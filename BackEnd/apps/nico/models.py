@@ -1,9 +1,10 @@
 """Configuración de Nico AI que se edita desde la consola (nicoai.bynucleo.com).
 
-- ``DocumentoNico``: los archivos del agente (SOUL, IDENTITY, AGENTS…). Los activos se agregan a
-  las instrucciones de la IA local en cada redacción.
+- ``DocumentoNico``: el documento del agente (``NICO.md``, por secciones). Si está activo se
+  agrega a las instrucciones de la IA local en cada redacción.
 - ``AjusteHerramienta``: descripción, propósito y ejemplo de cada herramienta del catálogo, y si
   está activa. Sin ajuste guardado, la herramienta usa lo que dice el código.
+- ``AjusteSugerencias``: las sugerencias que aparecen al escribir en el chat (una sola fila).
 """
 
 from django.conf import settings
@@ -61,3 +62,36 @@ class AjusteHerramienta(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+class AjusteSugerencias(models.Model):
+    """Sugerencias del chat mientras se escribe: si se muestran, cuántas, de qué fuentes salen,
+    cuáles van siempre primero (fijadas) y cuáles nunca (ocultas, por pregunta normalizada)."""
+
+    num = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    activas = models.BooleanField(default=True)
+    maximo = models.PositiveSmallIntegerField(default=6)
+    usar_banco = models.BooleanField(default=True)
+    usar_incluidas = models.BooleanField(default=True)
+    usar_herramientas = models.BooleanField(default=True)
+    usar_frecuentes = models.BooleanField(default=True)
+    fijadas = models.JSONField(default=list, blank=True)
+    ocultas = models.JSONField(default=list, blank=True)
+    actualizado = models.DateTimeField(auto_now=True)
+    actualizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column="actualizado_por_num",
+        related_name="+",
+    )
+
+    class Meta:
+        db_table = "ajuste_sugerencias"
+        verbose_name = "ajuste de sugerencias"
+        verbose_name_plural = "ajustes de sugerencias"
+
+    @classmethod
+    def actual(cls):
+        return cls.objects.get_or_create(num=1)[0]

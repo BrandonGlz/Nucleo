@@ -3,6 +3,7 @@ import {
   NICO_BANCO,
   NICO_DOCUMENTO,
   NICO_DOCUMENTO_GENERAR,
+  NICO_SUGERENCIAS,
   NICO_DOCUMENTOS,
   NICO_HERRAMIENTA,
   NICO_HERRAMIENTAS,
@@ -34,3 +35,5 @@ export const documentos = () => pedir(NICO_DOCUMENTOS)
 export const editarDocumento = (num, datos) => pedir(NICO_DOCUMENTO(num), { metodo: 'PATCH', cuerpo: datos })
 export const generarRespuestas = (num, seccion) => pedir(NICO_DOCUMENTO_GENERAR(num), { metodo: 'POST', cuerpo: { seccion } })
 export const estadoGenerar = (num, seccion) => pedir(`${NICO_DOCUMENTO_GENERAR(num)}?seccion=${encodeURIComponent(seccion)}`)
+export const ajusteSugerencias = (dispositivo) => pedir(NICO_SUGERENCIAS, { params: dispositivo ? { dispositivo } : {} })
+export const guardarSugerencias = (datos) => pedir(NICO_SUGERENCIAS, { metodo: 'PATCH', cuerpo: datos })

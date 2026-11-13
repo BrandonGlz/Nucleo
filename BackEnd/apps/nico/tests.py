@@ -3,7 +3,7 @@ from django.core.cache import cache
 from apps.reportes.models import PreguntaAgente, RespuestaAprendida
 from common.testing import Escenario, PruebaBase, cliente_de
 
-from . import configuracion
+from . import configuracion, conocimiento
 from .models import DocumentoNico
 
 
@@ -150,13 +150,103 @@ class ConsolaNicoTests(PruebaBase):
         self.assertEqual(r["usados"], 0)
         self.assertEqual(configuracion.instrucciones("Base"), "Base")
         ruta = f"/api/v1/nico/documentos/{doc['num']}/"
-        r = self.su.patch(ruta, {"contenido": "## Personalidad\nEres paciente.", "activo": True})
+        nuevo = doc["contenido"].replace("## Personalidad\n", "## Personalidad\nEres paciente.\n")
+        r = self.su.patch(ruta, {"contenido": nuevo, "activo": True})
         self.assertEqual(r.status_code, 200, r.content)
         self.assertIn("Eres paciente.", configuracion.instrucciones("Base"))
         self.assertEqual(configuracion.contexto(), configuracion.CONTEXTO)
         # No se crean ni se borran documentos.
         self.assertEqual(self.su.post("/api/v1/nico/documentos/", {"clave": "X"}).status_code, 405)
         self.assertEqual(self.su.delete(ruta).status_code, 405)
+
+    def test_documento_protegido(self):
+        doc = self.su.get("/api/v1/nico/documentos/").json()["documentos"][0]
+        ruta = f"/api/v1/nico/documentos/{doc['num']}/"
+        sin_memoria = doc["contenido"].split("## Memoria")[0]
+        repetida = doc["contenido"] + "\n\n## Memoria\nOtra vez."
+        for contenido in ("", "Texto sin secciones", sin_memoria, repetida):
+            r = self.su.patch(ruta, {"contenido": contenido})
+            self.assertEqual(r.status_code, 400, contenido[:40])
+        # Una sección extra sí se puede agregar.
+        extra = doc["contenido"] + "\n\n## Preguntas frecuentes\nNico no apaga equipos."
+        self.assertEqual(self.su.patch(ruta, {"contenido": extra}).status_code, 200)
+
+    def test_banco_no_tapa_datos_en_vivo(self):
+        def fija(pregunta):
+            return self.su.post(
+                "/api/v1/nico/banco/",
+                {"todas": True, "tema": "FIJA", "pregunta": pregunta, "plantilla": "Texto fijo."},
+                format="json",
+            )
+
+        for pregunta in ("la última medición del aire", "temperatura de ayer", "hubo alertas ayer"):
+            self.assertEqual(fija(pregunta).status_code, 400, pregunta)
+        # El ejemplo de una herramienta activa tampoco.
+        self.assertEqual(fija("¿cómo estuvo la humedad la semana pasada?").status_code, 400)
+        self.assertEqual(fija("¿Qué niveles hay?").status_code, 201)
+        # Una que reemplaza a una incluida se guarda, y se marca.
+        r = fija("¿Quién eres?")
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.json()["reemplaza"], "¿Quién eres?")
+        # La lectura del momento sigue saliendo de los datos.
+        self.assertNotEqual(self.chat("la última medición del aire")["via"], "BANCO")
+
+    def test_sin_herramientas_nico_sigue_respondiendo(self):
+        nombres = [
+            h["nombre"] for h in self.su.get("/api/v1/nico/herramientas/").json()["herramientas"]
+        ]
+        for n in nombres:
+            self.su.patch(f"/api/v1/nico/herramientas/{n}/", {"activa": False}, format="json")
+        for pregunta in ("hola", "cómo está la temperatura", "¿qué significa nivel?"):
+            self.assertTrue(self.chat(pregunta).get("texto"), pregunta)
+
+    def test_sugerencias_del_chat(self):
+        RespuestaAprendida.objects.create(
+            organizacion=self.e.organizacion,
+            pregunta="¿Qué niveles hay?",
+            pregunta_normalizada="que niveles hay",
+            tema="FIJA",
+            plantilla="Tres.",
+        )
+        ruta = f"/api/v1/agente/sugerencias/?dispositivo={self.disp.num}"
+        # Un operador sin acceso al agente no las recibe.
+        self.assertEqual(cliente_de(self.e.operador).get(ruta).status_code, 403)
+        self.e.operador.acceso_agente = True
+        self.e.operador.save()
+        r = cliente_de(self.e.operador).get(ruta).json()
+        self.assertTrue(r["activas"])
+        textos = {x["texto"]: x["tipo"] for x in r["sugerencias"]}
+        self.assertEqual(textos.get("¿Qué niveles hay?"), "respuesta")
+        self.assertIn("consulta", textos.values())
+        # El operador no ve las acciones (reportes); el administrador sí.
+        acciones = [h["ejemplo"] for h in configuracion.catalogo() if h["accion"]]
+        admin = cliente_de(self.e.admin).get(ruta).json()["sugerencias"]
+        accion = conocimiento.con_mayuscula(acciones[0])
+        self.assertNotIn(accion, textos)
+        self.assertIn(accion, [x["texto"] for x in admin])
+        # De otra empresa no.
+        otro = cliente_de(self.otra.admin).get(ruta)
+        self.assertEqual(otro.status_code, 404)
+
+        # Configurable desde la consola: fijar, ocultar, máximo y apagar.
+        ajuste = "/api/v1/nico/sugerencias/"
+        self.assertEqual(self.su.patch(ajuste, {"maximo": 50}, format="json").status_code, 400)
+        r = self.su.patch(
+            ajuste,
+            {"fijadas": ["¿Cómo va todo?"], "ocultas": ["Qué niveles hay"], "maximo": 4},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        consola = self.su.get(f"/api/v1/nico/chat/sugerencias/?dispositivo={self.disp.num}").json()
+        self.assertEqual(consola["maximo"], 4)
+        self.assertEqual(consola["sugerencias"][0]["texto"], "¿Cómo va todo?")
+        self.assertNotIn("¿Qué niveles hay?", [x["texto"] for x in consola["sugerencias"]])
+        revision = self.su.get(f"{ajuste}?dispositivo={self.disp.num}").json()
+        ocultas = [x["texto"] for x in revision["candidatas"] if x["oculta"]]
+        self.assertEqual(ocultas, ["¿Qué niveles hay?"])
+        self.su.patch(ajuste, {"activas": False}, format="json")
+        r = cliente_de(self.e.operador).get(ruta).json()
+        self.assertEqual((r["activas"], r["sugerencias"]), (False, []))
 
     def test_convertir_documento_en_respuestas(self):
         import json

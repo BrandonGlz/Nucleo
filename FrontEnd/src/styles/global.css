@@ -2928,6 +2928,7 @@ article.ui-hoja,
   margin: 0 auto;
 }
 .ui-ia-compositor {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -4712,4 +4713,82 @@ button.ui-menuitem:not(:disabled):hover svg {
 /* Mientras se descarga una sección (carga diferida) */
 .ui-cargando-seccion {
   min-height: 40vh;
+}
+
+/* Sugerencias mientras se escribe en el chat de Nico AI (arriba de la caja) */
+.ui-ia-sugiere {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg, var(--shadow-md));
+  max-height: 320px;
+  overflow: auto;
+  animation: ui-ia-sugiere-entra 0.14s var(--ease-standard, ease-out);
+}
+.ui-ia-sugiere button {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.ui-ia-sugiere button > svg {
+  flex: none;
+  color: var(--text-muted, var(--text-secondary));
+}
+.ui-ia-sugiere button.is-elegida {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+.ui-ia-sugiere__texto {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-ia-sugiere__texto strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.ui-ia-sugiere__tipo {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-muted, var(--text-secondary));
+}
+.ui-ia-sugiere__tipo.is-fijada {
+  color: var(--accent);
+  font-weight: 600;
+}
+@keyframes ui-ia-sugiere-entra {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ia-sugiere {
+    animation: none;
+  }
+}
+@media (max-width: 560px) {
+  .ui-ia-sugiere__tipo {
+    display: none;
+  }
 }

@@ -2,11 +2,13 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AjusteSugerenciasView,
     ArbolView,
     BancoViewSet,
     ConsolaAgenteView,
     ConsolaCalificarView,
     ConsolaEstadoView,
+    ConsolaSugerenciasView,
     DocumentoViewSet,
     HerramientasView,
     HerramientaView,
@@ -24,6 +26,8 @@ urlpatterns = [
     path("chat/", ConsolaAgenteView.as_view(), name="nico-chat"),
     path("calificar/", ConsolaCalificarView.as_view(), name="nico-calificar"),
     path("estado/", ConsolaEstadoView.as_view(), name="nico-estado"),
+    path("chat/sugerencias/", ConsolaSugerenciasView.as_view(), name="nico-chat-sugerencias"),
+    path("sugerencias/", AjusteSugerenciasView.as_view(), name="nico-sugerencias"),
     path("incluidas/", IncluidasView.as_view(), name="nico-incluidas"),
     path("arbol/", ArbolView.as_view(), name="nico-arbol"),
     path("resumen/", ResumenView.as_view(), name="nico-resumen"),

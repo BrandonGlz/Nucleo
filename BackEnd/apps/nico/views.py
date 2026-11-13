@@ -5,7 +5,7 @@ preguntas, herramientas y documentos del agente."""
 from django.db.models import Avg, Count, Max, Q
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import MethodNotAllowed, ValidationError
+from rest_framework.exceptions import MethodNotAllowed, NotFound, ValidationError
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,8 +18,8 @@ from apps.reportes.views import AgenteView, CalificarAgenteView
 from apps.usuarios.models import Usuario
 from common import roles
 
-from . import configuracion, generador
-from .models import AjusteHerramienta, DocumentoNico
+from . import configuracion, conocimiento, generador, sugerencias
+from .models import AjusteHerramienta, AjusteSugerencias, DocumentoNico
 
 
 class EsSuperusuario(BasePermission):
@@ -145,6 +145,7 @@ TEMAS = {
 class RespuestaSerializer(serializers.ModelSerializer):
     organizacion_nombre = serializers.CharField(source="organizacion.nombre", read_only=True)
     usos = serializers.SerializerMethodField()
+    reemplaza = serializers.SerializerMethodField()
     # Crear la misma respuesta en todas las empresas.
     todas = serializers.BooleanField(write_only=True, required=False, default=False)
 
@@ -162,6 +163,7 @@ class RespuestaSerializer(serializers.ModelSerializer):
             "activa",
             "fecha_creacion",
             "usos",
+            "reemplaza",
             "todas",
         ]
         read_only_fields = ["num", "votos_si", "votos_no", "fecha_creacion"]
@@ -170,6 +172,20 @@ class RespuestaSerializer(serializers.ModelSerializer):
 
     def get_usos(self, r):
         return getattr(r, "num_usos", 0)
+
+    def get_reemplaza(self, r):
+        """Pregunta incluida en Nico que esta respuesta fija reemplaza (o None)."""
+        if r.tema != "FIJA":
+            return None
+        incluidas = self.context.setdefault(
+            "_incluidas",
+            {
+                aprendizaje.normalizar(x["pregunta"]): x["pregunta"]
+                for x in conocimiento.incluidas()
+                if x["tipo"] != "consulta"
+            },
+        )
+        return incluidas.get(r.pregunta_normalizada)
 
     def validate(self, datos):
         pregunta = datos.get("pregunta", getattr(self.instance, "pregunta", ""))
@@ -186,6 +202,9 @@ class RespuestaSerializer(serializers.ModelSerializer):
         tema = datos.get("tema", getattr(self.instance, "tema", ""))
         if tema and tema not in TEMAS:
             raise ValidationError({"tema": "Tema no válido."})
+        cambia_pregunta = self.instance is None or "pregunta" in datos
+        if tema == "FIJA" and cambia_pregunta and (motivo := conocimiento.pide_datos(pregunta)):
+            raise ValidationError({"pregunta": motivo})
         if not datos.get("todas"):
             org = datos.get("organizacion") or getattr(self.instance, "organizacion", None)
             repetida = RespuestaAprendida.objects.filter(
@@ -223,6 +242,19 @@ class RespuestaSerializer(serializers.ModelSerializer):
 class BancoViewSet(viewsets.ModelViewSet):
     permission_classes = [EsSuperusuario]
     serializer_class = RespuestaSerializer
+
+    # Un cambio en el banco cambia también las sugerencias del chat.
+    def perform_create(self, serializer):
+        serializer.save()
+        sugerencias.limpiar_cache()
+
+    def perform_update(self, serializer):
+        serializer.save()
+        sugerencias.limpiar_cache()
+
+    def perform_destroy(self, instancia):
+        instancia.delete()
+        sugerencias.limpiar_cache()
 
     def get_queryset(self):
         qs = RespuestaAprendida.objects.select_related("organizacion")
@@ -348,7 +380,124 @@ class HerramientaView(APIView):
         ajuste.actualizado_por = request.user
         ajuste.save()
         configuracion.limpiar_cache()
+        sugerencias.limpiar_cache()
         return Response(next(h for h in configuracion.catalogo() if h["nombre"] == nombre))
+
+
+# ── Sugerencias del chat ───────────────────────────────────────────────────────────────────
+
+
+def _dispositivo(num):
+    num = str(num or "")
+    return (
+        Dispositivo.objects.select_related("area").filter(pk=num).first() if num.isdigit() else None
+    )
+
+
+class ConsolaSugerenciasView(APIView):
+    """Las sugerencias del chat de la consola (como administrador de la empresa del
+    dispositivo, igual que el chat)."""
+
+    permission_classes = [EsSuperusuario]
+
+    def get(self, request):
+        dispositivo = _dispositivo(request.query_params.get("dispositivo"))
+        if dispositivo is None:
+            raise NotFound("Dispositivo no encontrado.")
+        return Response(sugerencias.para(como_admin_de(request.user, dispositivo), dispositivo))
+
+
+class AjusteSugerenciasSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AjusteSugerencias
+        fields = [
+            "activas",
+            "maximo",
+            "usar_banco",
+            "usar_incluidas",
+            "usar_herramientas",
+            "usar_frecuentes",
+            "fijadas",
+            "ocultas",
+            "actualizado",
+        ]
+        read_only_fields = ["actualizado"]
+
+    def validate_maximo(self, valor):
+        if not 3 <= valor <= 10:
+            raise ValidationError("Entre 3 y 10.")
+        return valor
+
+    def _textos(self, valor, normalizar):
+        if not isinstance(valor, list) or len(valor) > 200:
+            raise ValidationError("Debe ser una lista (máximo 200).")
+        limpios, vistos = [], set()
+        for t in valor:
+            t = " ".join(str(t).split())[:200]
+            clave = aprendizaje.normalizar(t)
+            if clave and clave not in vistos:
+                vistos.add(clave)
+                limpios.append(clave if normalizar else t)
+        return limpios
+
+    def validate_fijadas(self, valor):
+        return self._textos(valor, normalizar=False)
+
+    def validate_ocultas(self, valor):
+        return self._textos(valor, normalizar=True)
+
+
+class AjusteSugerenciasView(APIView):
+    """GET: el ajuste y, con ?dispositivo=, todas las candidatas de su chat (con las ocultas
+    marcadas) para revisarlas. PATCH: cambia el ajuste."""
+
+    permission_classes = [EsSuperusuario]
+
+    def get(self, request):
+        ajuste = AjusteSugerencias.actual()
+        datos = {"ajuste": AjusteSugerenciasSerializer(ajuste).data, "candidatas": []}
+        dispositivo = _dispositivo(request.query_params.get("dispositivo"))
+        if dispositivo is not None:
+            usuario = como_admin_de(request.user, dispositivo)
+            todas = AjusteSugerencias(
+                **{
+                    **{
+                        f: True
+                        for f in (
+                            "usar_banco",
+                            "usar_incluidas",
+                            "usar_herramientas",
+                            "usar_frecuentes",
+                        )
+                    },
+                    "fijadas": ajuste.fijadas,
+                }
+            )
+            ocultas, vistas = set(ajuste.ocultas), set()
+            for texto, tipo in sugerencias.candidatas(
+                usuario, dispositivo.area.organizacion_id, todas
+            ):
+                clave = aprendizaje.normalizar(texto)
+                if clave and clave not in vistas:
+                    vistas.add(clave)
+                    datos["candidatas"].append(
+                        {
+                            "texto": texto,
+                            "tipo": tipo,
+                            "etiqueta": sugerencias.TIPOS[tipo],
+                            "clave": clave,
+                            "oculta": clave in ocultas,
+                        }
+                    )
+        return Response(datos)
+
+    def patch(self, request):
+        ajuste = AjusteSugerencias.actual()
+        entrada = AjusteSugerenciasSerializer(ajuste, data=request.data, partial=True)
+        entrada.is_valid(raise_exception=True)
+        entrada.save(actualizado_por=request.user)
+        sugerencias.limpiar_cache()
+        return Response(entrada.data)
 
 
 # ── Documentos del agente (SOUL, IDENTITY…) ────────────────────────────────────────────────
@@ -378,6 +527,19 @@ class DocumentoSerializer(serializers.ModelSerializer):
 
     def get_actualizado_por_nombre(self, d):
         return d.actualizado_por.get_full_name() if d.actualizado_por else None
+
+    def validate_contenido(self, valor):
+        """El documento se guarda siempre con sus secciones base («## Título»): sin ellas la
+        consola no podría dividirlo ni convertir sus secciones en respuestas."""
+        titulos = [t.lower() for t, _ in configuracion.secciones(valor)]
+        if not titulos:
+            raise ValidationError("El documento necesita al menos una sección «## Título».")
+        faltan = [t for _, t, _ in configuracion.SECCIONES if t.lower() not in titulos]
+        if faltan:
+            raise ValidationError(f"Faltan secciones base: {', '.join(faltan)}.")
+        if len(titulos) != len(set(titulos)):
+            raise ValidationError("Hay dos secciones con el mismo título.")
+        return valor
 
     def validate_clave(self, valor):
         clave = valor.strip().upper().removesuffix(".MD").replace(" ", "_")
@@ -440,33 +602,6 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         self._aplicar()
 
 
-# Preguntas de ejemplo de la charla que Nico ya trae (``reportes/social.py``).
-EJEMPLOS_CHARLA = {
-    "identidad": "¿Quién eres?",
-    "ayuda": "¿Me ayudas?",
-    "gracias": "Gracias",
-    "despedida": "Adiós",
-    "hora": "¿Qué hora es?",
-    "fecha": "¿Qué día es hoy?",
-    "control": "Enciende el aire acondicionado",
-    "clima_exterior": "¿Va a llover?",
-    "emocion_mal": "Me siento cansado",
-    "emocion_bien": "Estoy contento",
-    "afecto": "Eres el mejor",
-    "molestia": "No sirves",
-    "risa": "jajaja",
-    "acuse": "Ok",
-    "idioma": "¿Hablas inglés?",
-    "general": "Cuéntame un chiste",
-}
-NOMBRES_ROL = {
-    "ADMIN": "Administrador",
-    "SUPER": "Supervisor",
-    "ANALISTA": "Analista",
-    "OPER": "Operador",
-}
-
-
 class IncluidasView(APIView):
     """Respuestas que Nico ya trae en su código: explicaciones fijas, charla, capacidades por rol
     y consultas con datos. Se muestran en el banco y se pueden reemplazar con una respuesta
@@ -475,56 +610,12 @@ class IncluidasView(APIView):
     permission_classes = [EsSuperusuario]
 
     def get(self, request):
-        from types import SimpleNamespace
-
-        from apps.reportes import herramientas, social
-
-        ejemplo = SimpleNamespace(nombre="{dispositivo}", area=SimpleNamespace(nombre="{área}"))
-        fijas = set(
+        fijas = frozenset(
             RespuestaAprendida.objects.filter(tema="FIJA").values_list(
                 "pregunta_normalizada", flat=True
             )
         )
-        lista = []
-
-        def agregar(tipo, tema, pregunta, respuesta, otras=()):
-            lista.append(
-                {
-                    "id": f"{tipo}:{tema}",
-                    "tipo": tipo,
-                    "tema": tema,
-                    "pregunta": pregunta,
-                    "otras": list(otras),
-                    "respuesta": respuesta,
-                    "personalizada": aprendizaje.normalizar(pregunta) in fijas,
-                }
-            )
-
-        banco = herramientas.banco()
-        for e in banco["explicaciones"]:
-            palabras = e["palabras"]
-            agregar(
-                "explicacion",
-                e["clave"],
-                f"¿Qué significa «{palabras[0]}»?",
-                e["texto"],
-                palabras[1:],
-            )
-        for cat, pregunta in EJEMPLOS_CHARLA.items():
-            r = social.responder(ejemplo, pregunta)
-            if r is not None:
-                agregar("charla", cat, pregunta, r["texto"])
-        for rol, texto in banco["capacidades"].items():
-            agregar("capacidades", NOMBRES_ROL.get(rol, rol), "¿Qué puedes hacer?", texto)
-        for h in configuracion.catalogo():
-            if h["activa"]:
-                agregar(
-                    "consulta",
-                    h["nombre"],
-                    h["ejemplo"][:1].upper() + h["ejemplo"][1:],
-                    "Se responde con los datos del momento: " + h["descripcion"],
-                )
-        return Response(lista)
+        return Response(conocimiento.incluidas(fijas))
 
 
 class ResumenView(APIView):

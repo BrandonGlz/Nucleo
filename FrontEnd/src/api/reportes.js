@@ -11,3 +11,5 @@ export const AGENTE = '/agente/'
 export const AGENTE_CALIFICAR = '/agente/calificar/'
 // GET → {puente, activos: [num]}: agentes cuyo ESP32 puente está conectado (sin puente, todos)
 export const AGENTE_ESTADO = '/agente/estado/'
+// GET ?dispositivo= → {activas, maximo, sugerencias: [{texto, tipo, etiqueta}]}: la web las filtra mientras se escribe
+export const AGENTE_SUGERENCIAS = '/agente/sugerencias/'

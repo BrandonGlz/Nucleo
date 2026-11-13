@@ -67,3 +67,14 @@ export const NOMBRES_CHARLA = {
   idioma: 'Otro idioma',
   general: 'Tema ajeno',
 }
+
+// Empresa, área y dispositivo del ESP conectado (el primero con `fisico`): lo que se elige por defecto.
+export function delEsp(empresas) {
+  for (const e of empresas) {
+    for (const a of e.areas) {
+      const d = a.dispositivos.find((x) => x.fisico)
+      if (d) return { empresa: e.num, area: a.num, dispositivo: d.num }
+    }
+  }
+  return { empresa: empresas[0]?.num, area: 'todas', dispositivo: null }
+}

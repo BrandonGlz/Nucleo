@@ -1,12 +1,12 @@
-import { AGENTE, AGENTE_CALIFICAR, AGENTE_ESTADO, NICO_CALIFICAR, NICO_CHAT, NICO_ESTADO } from '../api'
+import { AGENTE, AGENTE_CALIFICAR, AGENTE_ESTADO, AGENTE_SUGERENCIAS, NICO_CALIFICAR, NICO_CHAT, NICO_CHAT_SUGERENCIAS, NICO_ESTADO } from '../api'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
 
 // La web usa el agente de su organización; la consola de Nico AI (nicoai.bynucleo.com) el de
 // cualquier dispositivo. `usarConsola()` cambia las rutas para toda la página.
-let rutas = { preguntar: AGENTE, calificar: AGENTE_CALIFICAR, estado: AGENTE_ESTADO }
+let rutas = { preguntar: AGENTE, calificar: AGENTE_CALIFICAR, estado: AGENTE_ESTADO, sugerencias: AGENTE_SUGERENCIAS }
 export function usarConsola() {
-  rutas = { preguntar: NICO_CHAT, calificar: NICO_CALIFICAR, estado: NICO_ESTADO }
+  rutas = { preguntar: NICO_CHAT, calificar: NICO_CALIFICAR, estado: NICO_ESTADO, sugerencias: NICO_CHAT_SUGERENCIAS }
 }
 
 // Hay un agente por dispositivo: la pregunta va al del dispositivo elegido.
@@ -26,4 +26,10 @@ export async function calificar(registro, voto) {
 export async function estado() {
   if (USAR_MOCKS) return { puente: false, activos: [] }
   return pedir(rutas.estado)
+}
+
+// Sugerencias para filtrar mientras se escribe (se piden una vez por dispositivo).
+export async function sugerenciasEscritura(dispositivo) {
+  if (USAR_MOCKS) return { activas: false, maximo: 6, sugerencias: [] }
+  return pedir(rutas.sugerencias, { params: { dispositivo } })
 }

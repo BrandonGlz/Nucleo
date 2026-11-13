@@ -7,17 +7,7 @@ import { AgenteProvider } from '../../context/AgenteContext'
 import { AgentePage } from '../../features/agente/AgentePage'
 import { useDatos } from '../../hooks/useDatos'
 import * as nicoApi from '../../services/nico'
-
-// Empresa, área y dispositivo del ESP físico (el agente con IA): con ellos abre siempre el chat.
-function delEsp(empresas) {
-  for (const e of empresas) {
-    for (const a of e.areas) {
-      const d = a.dispositivos.find((x) => x.fisico)
-      if (d) return { empresa: e.num, area: a.num, dispositivo: d.num }
-    }
-  }
-  return { empresa: empresas[0]?.num, area: 'todas', dispositivo: null }
-}
+import { delEsp } from '../catalogos'
 
 function Chat({ empresas }) {
   const inicial = useMemo(() => delEsp(empresas), [empresas])
