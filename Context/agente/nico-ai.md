@@ -97,20 +97,27 @@ cambiar código. Es la misma web compilada: `main.jsx` abre `src/consola/` cuand
 - **Herramientas**: cada una tiene un propósito de una lista fija (`configuracion.PROPOSITOS`), una
   descripción y un ejemplo editables (modelo `AjusteHerramienta`; «Restaurar» vuelve al original) y
   se puede apagar: Nico contesta que esa consulta está desactivada.
-- **Documentos**: SOUL, IDENTITY, AGENTS, USER, TOOLS, MEMORY y los que se agreguen (modelo
-  `DocumentoNico`). Los base traen contenido de ejemplo (`configuracion.CONTENIDO_BASE`) y están
-  activos. Los activos se suman a las instrucciones de la IA local, hasta 2 400 caracteres entre
-  todos. El contexto de Ollama es fijo (2048): si cambiara con los documentos, el modelo se
-  recargaría y perdería su caché. Las cifras siempre salen de las herramientas; el ESP no cambia.
+- **Documento**: uno solo, `NICO.md` (modelo `DocumentoNico`), dividido en secciones `## Título`:
+  Personalidad, Identidad, Reglas, Usuarios, Herramientas y Memoria (`configuracion.SECCIONES`,
+  con contenido de ejemplo) y las que se agreguen. No se crean ni se borran documentos. Cada
+  sección se convierte **una vez** en respuestas del banco («Convertir sección en respuestas del
+  banco», `nico/generador.py`): la IA la lee en segundo plano (~1 min, sin el límite del chat) y
+  propone hasta 8 preguntas con su respuesta; las elegidas quedan como respuestas fijas para
+  todas las empresas y se contestan al instante, sin IA. El documento viene apagado; si se activa,
+  además va en las instrucciones de cada respuesta de la IA (hasta 2 400 caracteres), lo que la
+  hace más lenta. Las cifras siempre salen de las herramientas; el ESP no cambia.
 
 Los ajustes se guardan en caché 5 minutos y se limpian al editar.
 
 **Tiempo de respuesta.** La firma del ESP tarda menos de 1 s; lo que cuesta es que Ollama procese
-las instrucciones. En la CPU del servidor, en frío, va a ~22 tokens/s (las instrucciones con
-documentos son ~720 tokens: ~30 s), y ya en su caché tarda menos de 1 s. Por eso `puente.calentar`
-deja en caché los dos prefijos (instrucciones con documentos y clasificador; hay un espacio por
-prefijo con `OLLAMA_NUM_PARALLEL=2`) al abrir el chat y cada 10 min, y `puente.recalentar` lo repite
-al guardar un documento en la consola.
+el texto. En la CPU del servidor (i5-3230M, sin AVX2) va a ~18-22 tokens/s. La caché de Ollama
+solo ahorra el inicio idéntico de la petición: las instrucciones sí, pero el texto base, las cifras
+y la pregunta cambian cada vez y se procesan siempre, y cada token cuesta más cuanto más largo es
+lo que va antes. Medido en producción: sin documento, una respuesta de la IA tarda 4-11 s; con el
+documento completo en las instrucciones (~1 000 tokens), 15-20 s y a veces pasa el límite de 20 s
+del chat. Por eso el documento no va en cada respuesta: se convierte en respuestas del banco.
+`puente.calentar` deja en caché los prefijos (redactor y clasificador) al abrir el chat y cada
+10 min, y `puente.recalentar` lo repite al guardar el documento.
 
 ## Relacionado
 

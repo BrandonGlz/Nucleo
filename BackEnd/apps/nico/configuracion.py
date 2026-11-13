@@ -4,6 +4,8 @@ Se consulta en cada respuesta, así que se guarda en la caché (Redis) y se borr
 la consola. Si la tabla aún no existe (migraciones pendientes), Nico funciona como antes.
 """
 
+import re
+
 from django.core.cache import cache
 from django.db import DatabaseError
 
@@ -20,17 +22,23 @@ CONTEXTO = 2048
 
 # Los archivos típicos de un agente. Se crean vacíos de contenido útil e inactivos: hasta que se
 # activan, Nico responde igual que siempre.
-DOCUMENTOS_BASE = (
-    ("SOUL", "Personalidad y valores: cómo se comporta y qué le importa."),
-    ("IDENTITY", "Quién es: nombre, rol, de qué dispositivo y empresa habla."),
-    ("AGENTS", "Reglas de trabajo: qué hace siempre, qué nunca, cómo responde."),
-    ("USER", "Quiénes le escriben y qué necesitan."),
-    ("TOOLS", "Notas sobre sus herramientas: cuándo usar cada una."),
-    ("MEMORY", "Hechos que debe recordar: nombres, acuerdos, contexto del negocio."),
+# Un solo documento del agente, dividido en secciones (cada una era antes un .md aparte).
+DOCUMENTO = "NICO"
+DESCRIPCION_DOCUMENTO = "Manual de Nico: cómo es, quién es, cómo trabaja y qué debe recordar."
+SECCIONES = (
+    ("SOUL", "Personalidad", "Cómo se comporta y qué le importa."),
+    ("IDENTITY", "Identidad", "Quién es: nombre, rol, de qué dispositivo y empresa habla."),
+    ("AGENTS", "Reglas", "Qué hace siempre, qué nunca y cómo responde."),
+    ("USER", "Usuarios", "Quiénes le escriben y qué necesitan."),
+    ("TOOLS", "Herramientas", "Cuándo usar cada herramienta."),
+    ("MEMORY", "Memoria", "Hechos que debe recordar: nombres, acuerdos, contexto del negocio."),
 )
+# Compatibilidad con la migración 0002 (cuando había un documento por sección).
+DOCUMENTOS_BASE = tuple((clave, descripcion) for clave, _, descripcion in SECCIONES)
 
-# Contenido de ejemplo de los documentos base (breve: la IA local tiene poco contexto). Se crean
-# activos; desde la consola se editan o se apagan.
+# Contenido de ejemplo de los documentos base. Se crean apagados: mandarlos en cada petición
+# hace más lenta cada respuesta (~3-4 s); lo normal es convertirlos una vez en respuestas del
+# banco (``generador.py``) y activarlos solo si hace falta que la IA los lea siempre.
 CONTENIDO_BASE = {
     "SOUL": (
         "- Cuidas el ambiente de los espacios que monitoreas como si fueran tuyos.\n"
@@ -152,22 +160,30 @@ def limpiar_cache():
     cache.delete_many([CACHE_DOCUMENTOS, CACHE_INACTIVAS])
 
 
+def componer(secciones):
+    """Markdown del documento: ``## Título`` y el texto de cada sección, en orden."""
+    return "\n\n".join(f"## {titulo}\n{texto.strip()}" for titulo, texto in secciones).strip()
+
+
+def secciones(contenido):
+    """[(título, texto)] a partir de los ``## Título`` del documento."""
+    partes = re.split(r"^##[ \t]+(.+?)[ \t]*$", contenido or "", flags=re.M)
+    return [(partes[i].strip(), partes[i + 1].strip()) for i in range(1, len(partes) - 1, 2)]
+
+
+def contenido_inicial():
+    return componer((titulo, CONTENIDO_BASE.get(clave, "")) for clave, titulo, _ in SECCIONES)
+
+
 def asegurar_documentos():
-    """Crea los documentos base que falten, con su contenido de ejemplo."""
-    existentes = set(DocumentoNico.objects.values_list("clave", flat=True))
-    nuevos = [
-        DocumentoNico(
-            clave=clave,
-            descripcion=descripcion,
-            contenido=CONTENIDO_BASE.get(clave, ""),
-            activo=bool(CONTENIDO_BASE.get(clave)),
-            orden=i,
+    """Crea el documento del agente si falta, con contenido de ejemplo y apagado."""
+    if not DocumentoNico.objects.filter(clave=DOCUMENTO).exists():
+        DocumentoNico.objects.create(
+            clave=DOCUMENTO,
+            descripcion=DESCRIPCION_DOCUMENTO,
+            contenido=contenido_inicial(),
+            activo=False,
         )
-        for i, (clave, descripcion) in enumerate(DOCUMENTOS_BASE)
-        if clave not in existentes
-    ]
-    if nuevos:
-        DocumentoNico.objects.bulk_create(nuevos)
 
 
 def documentos_activos():
@@ -177,7 +193,7 @@ def documentos_activos():
 
         def leer():
             partes = [
-                f"## {d.clave}\n{d.contenido.strip()}"
+                d.contenido.strip()
                 for d in DocumentoNico.objects.filter(activo=True).exclude(contenido="")
             ]
             return "\n\n".join(partes)[:LIMITE_CARACTERES]

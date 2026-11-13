@@ -21,7 +21,7 @@ export default function InicioConsola() {
           { etiqueta: 'Respuestas en el banco', valor: d.banco, tono: 'verde' },
           { etiqueta: 'Útiles / no útiles', valor: `${d.positivas} / ${d.negativas}` },
           { etiqueta: 'Herramientas apagadas', valor: d.herramientas_inactivas },
-          { etiqueta: 'Documentos activos', valor: d.documentos_activos },
+          { etiqueta: 'Documento en cada respuesta', valor: d.documentos_activos ? 'Sí' : 'No' },
         ],
       }
     : { principal: { etiqueta: 'Preguntas a Nico', valor: '—', tonoValor: 'apagado' } }

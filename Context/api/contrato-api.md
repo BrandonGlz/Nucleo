@@ -135,8 +135,11 @@ Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
     │                                       propositos: [{clave, nombre}]};
     │                                       PATCH {descripcion?, proposito?, ejemplo?, activa?,
     │                                       restaurar?}
-    └── documentos/                         GET {documentos, limite, usados}; POST {clave,
-                                            descripcion, contenido}; PATCH; DELETE (no los base)
+    └── documentos/                         GET {documentos: [NICO], secciones, limite, usados};
+        ├── {num}/                          PATCH {contenido, activo, descripcion}; un solo
+        │                                   documento: no hay POST ni DELETE (405)
+        └── {num}/generar/                  POST {seccion}: la IA propone respuestas en segundo
+                                            plano; GET ?seccion= → {estado, propuestas, error}
 
 Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
 └── POST /agente/                           {"pregunta", "dispositivo"}; un agente por dispositivo;

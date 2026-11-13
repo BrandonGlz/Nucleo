@@ -140,29 +140,72 @@ class ConsolaNicoTests(PruebaBase):
         r = self.su.get("/api/v1/nico/incluidas/").json()
         self.assertTrue(next(x for x in r if x["tema"] == "identidad")["personalizada"])
 
-    def test_documentos(self):
+    def test_documento_unico_con_secciones(self):
         r = self.su.get("/api/v1/nico/documentos/").json()
-        claves = [d["clave"] for d in r["documentos"]]
-        self.assertEqual(claves[:2], ["SOUL", "IDENTITY"])
-        # Los base traen contenido de ejemplo, activo y dentro del límite.
-        self.assertGreater(r["usados"], 0)
-        self.assertLessEqual(r["usados"], r["limite"])
-        self.assertIn("Nico AI", configuracion.instrucciones("Base"))
-        soul = DocumentoNico.objects.get(clave="SOUL")
-        r = self.su.patch(
-            f"/api/v1/nico/documentos/{soul.num}/",
-            {"contenido": "Eres paciente y amable.", "activo": True},
-        )
+        self.assertEqual([d["clave"] for d in r["documentos"]], ["NICO"])
+        doc = r["documentos"][0]
+        titulos = [t for t, _ in configuracion.secciones(doc["contenido"])]
+        self.assertEqual(titulos, [x["titulo"] for x in r["secciones"]])
+        # Trae contenido de ejemplo, pero apagado: no va en cada petición a la IA.
+        self.assertEqual(r["usados"], 0)
+        self.assertEqual(configuracion.instrucciones("Base"), "Base")
+        ruta = f"/api/v1/nico/documentos/{doc['num']}/"
+        r = self.su.patch(ruta, {"contenido": "## Personalidad\nEres paciente.", "activo": True})
         self.assertEqual(r.status_code, 200, r.content)
-        self.assertIn("Eres paciente y amable.", configuracion.instrucciones("Base"))
-        # El contexto no cambia con los documentos (cambiarlo recargaría el modelo).
+        self.assertIn("Eres paciente.", configuracion.instrucciones("Base"))
         self.assertEqual(configuracion.contexto(), configuracion.CONTEXTO)
-        # Uno nuevo, con la clave normalizada; los base no se borran.
-        r = self.su.post("/api/v1/nico/documentos/", {"clave": "heartbeat.md", "contenido": "x"})
-        self.assertEqual(r.json()["clave"], "HEARTBEAT")
-        self.assertEqual(self.su.delete(f"/api/v1/nico/documentos/{soul.num}/").status_code, 400)
-        nuevo = r.json()["num"]
-        self.assertEqual(self.su.delete(f"/api/v1/nico/documentos/{nuevo}/").status_code, 204)
+        # No se crean ni se borran documentos.
+        self.assertEqual(self.su.post("/api/v1/nico/documentos/", {"clave": "X"}).status_code, 405)
+        self.assertEqual(self.su.delete(ruta).status_code, 405)
+
+    def test_convertir_documento_en_respuestas(self):
+        import json
+        from unittest import mock
+
+        from apps.nico import generador
+
+        self.su.get("/api/v1/nico/documentos/")  # crea los documentos base
+        doc = DocumentoNico.objects.get(clave="NICO")
+        ruta = f"/api/v1/nico/documentos/{doc.num}/generar/"
+        self.assertEqual(
+            self.su.get(ruta, {"seccion": "Identidad"}).json()["estado"], "sin_generar"
+        )
+        vacia = self.su.post(ruta, {"seccion": "No existe"}, format="json").json()
+        self.assertEqual(vacia["estado"], "error")
+        # Sin ESP conectado no se usa la IA.
+        with mock.patch.object(generador, "_agente", return_value=None):
+            r = self.su.post(ruta, {"seccion": "Identidad"}, format="json").json()
+            self.assertEqual(r["estado"], "error")
+        salida = {
+            "texto": json.dumps(
+                {
+                    "pares": [
+                        {"pregunta": "¿Quién eres?", "respuesta": "Soy Nico AI."},
+                        {"pregunta": "¿quién eres?", "respuesta": "Repetida"},
+                        {"pregunta": "", "respuesta": "x"},
+                    ]
+                }
+            )
+        }
+
+        class Hilo:  # corre en el momento, sin hilo aparte
+            def __init__(self, target, daemon):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        with (
+            mock.patch.object(generador, "_agente", return_value=self.disp),
+            mock.patch.object(generador.puente, "_ejecutar", return_value=salida),
+            mock.patch.object(generador.threading, "Thread", Hilo),
+        ):
+            self.su.post(ruta, {"seccion": "Identidad"}, format="json")
+        r = self.su.get(ruta, {"seccion": "identidad"}).json()
+        self.assertEqual(r["estado"], "listo")
+        self.assertEqual(
+            r["propuestas"], [{"pregunta": "¿Quién eres?", "respuesta": "Soy Nico AI."}]
+        )
 
     def test_registro_y_resumen(self):
         self.chat("¿cuál es el límite de temperatura?")

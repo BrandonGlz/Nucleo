@@ -2,6 +2,7 @@ import {
   NICO_ARBOL,
   NICO_BANCO,
   NICO_DOCUMENTO,
+  NICO_DOCUMENTO_GENERAR,
   NICO_DOCUMENTOS,
   NICO_HERRAMIENTA,
   NICO_HERRAMIENTAS,
@@ -30,6 +31,6 @@ export const herramientas = () => pedir(NICO_HERRAMIENTAS)
 export const ajustarHerramienta = (nombre, datos) => pedir(NICO_HERRAMIENTA(nombre), { metodo: 'PATCH', cuerpo: datos })
 
 export const documentos = () => pedir(NICO_DOCUMENTOS)
-export const crearDocumento = (datos) => pedir(NICO_DOCUMENTOS, { metodo: 'POST', cuerpo: datos })
 export const editarDocumento = (num, datos) => pedir(NICO_DOCUMENTO(num), { metodo: 'PATCH', cuerpo: datos })
-export const borrarDocumento = (num) => pedir(NICO_DOCUMENTO(num), { metodo: 'DELETE' })
+export const generarRespuestas = (num, seccion) => pedir(NICO_DOCUMENTO_GENERAR(num), { metodo: 'POST', cuerpo: { seccion } })
+export const estadoGenerar = (num, seccion) => pedir(`${NICO_DOCUMENTO_GENERAR(num)}?seccion=${encodeURIComponent(seccion)}`)

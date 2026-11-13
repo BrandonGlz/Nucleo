@@ -5,7 +5,7 @@ preguntas, herramientas y documentos del agente."""
 from django.db.models import Avg, Count, Max, Q
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,7 +18,7 @@ from apps.reportes.views import AgenteView, CalificarAgenteView
 from apps.usuarios.models import Usuario
 from common import roles
 
-from . import configuracion
+from . import configuracion, generador
 from .models import AjusteHerramienta, DocumentoNico
 
 
@@ -374,7 +374,7 @@ class DocumentoSerializer(serializers.ModelSerializer):
         read_only_fields = ["num", "actualizado"]
 
     def get_base(self, d):
-        return d.clave in dict(configuracion.DOCUMENTOS_BASE)
+        return d.clave == configuracion.DOCUMENTO
 
     def get_actualizado_por_nombre(self, d):
         return d.actualizado_por.get_full_name() if d.actualizado_por else None
@@ -393,7 +393,11 @@ class DocumentoSerializer(serializers.ModelSerializer):
 
 
 class DocumentoViewSet(viewsets.ModelViewSet):
+    """Un único documento del agente (``NICO.md``), dividido en secciones: no se crean ni se
+    borran documentos, solo se edita ese."""
+
     permission_classes = [EsSuperusuario]
+    http_method_names = ["get", "post", "patch", "head", "options"]
     serializer_class = DocumentoSerializer
     pagination_class = None
     queryset = DocumentoNico.objects.select_related("actualizado_por")
@@ -403,10 +407,27 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         respuesta = super().list(request, *args, **kwargs)
         respuesta.data = {
             "documentos": respuesta.data,
+            "secciones": [
+                {"titulo": titulo, "descripcion": descripcion}
+                for _, titulo, descripcion in configuracion.SECCIONES
+            ],
             "limite": configuracion.LIMITE_CARACTERES,
             "usados": len(configuracion.documentos_activos()),
         }
         return respuesta
+
+    @action(detail=True, methods=["get", "post"])
+    def generar(self, request, pk=None):
+        """POST {seccion}: la IA lee esa sección una vez y propone respuestas para el banco (en
+        segundo plano). GET ?seccion=: cómo va {estado: sin_generar|generando|listo|error,
+        propuestas, error}."""
+        documento = self.get_object()
+        if request.method == "POST":
+            return Response(generador.iniciar(documento, request.data.get("seccion") or ""))
+        return Response(generador.estado(documento.num, request.query_params.get("seccion") or ""))
+
+    def create(self, request, *args, **kwargs):
+        raise MethodNotAllowed("POST", "Hay un solo documento: agrega una sección dentro de él.")
 
     def _aplicar(self):
         # Instrucciones nuevas: la caché de Ollama se recalienta en segundo plano para que la
@@ -414,20 +435,8 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         configuracion.limpiar_cache()
         puente.recalentar()
 
-    def perform_create(self, serializer):
-        serializer.save(actualizado_por=self.request.user)
-        self._aplicar()
-
     def perform_update(self, serializer):
         serializer.save(actualizado_por=self.request.user)
-        self._aplicar()
-
-    def perform_destroy(self, instancia):
-        if instancia.clave in dict(configuracion.DOCUMENTOS_BASE):
-            raise ValidationError(
-                {"detail": "Los documentos base no se borran; vacíalos o desactívalos."}
-            )
-        instancia.delete()
         self._aplicar()
 
 
