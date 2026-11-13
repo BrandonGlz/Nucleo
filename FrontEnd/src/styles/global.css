@@ -47,6 +47,13 @@ button.ui-link {
 .app > .nc-sidebar .nc-navitem {
   text-decoration: none;
 }
+/* Modo claro: el menú lateral en grafito suave para que no pese tanto junto al fondo claro
+   (en oscuro ya va parejo con lo demás y conserva su color) */
+:root:not([data-theme='dark']) .app > .nc-sidebar {
+  --sidebar: #303532;
+  --sidebar-hover: #3d433f;
+  --sidebar-text-muted: #b6bcb7;
+}
 /* Logo del menú: botón que contrae el menú a la mitad (solo íconos) y lo vuelve a expandir */
 .app > .nc-sidebar {
   transition: width var(--duration-slow) var(--ease-standard), padding var(--duration-slow) var(--ease-standard);
