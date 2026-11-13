@@ -4722,7 +4722,8 @@ button.ui-menuitem:not(:disabled):hover svg {
 /* Versión de la web desplegada, bajo la tarjeta del usuario */
 .ui-version {
   margin: 6px 0 0;
-  padding: 0 var(--space-3);
+  padding: 0;
+  text-align: center;
   font-size: 11px;
   line-height: 16px;
   color: var(--sidebar-text-muted);
