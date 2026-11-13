@@ -3155,7 +3155,16 @@ button.ui-menuitem:not(:disabled):hover svg {
   color: var(--text-secondary);
 }
 .acceso__app .nc-btn {
+  height: 48px;
+  border-color: #121413;
+  background: #121413;
+  color: #f3f5f2;
   text-decoration: none;
+  transition: background 0.15s;
+}
+.acceso__app .nc-btn:hover {
+  border-color: #23262a;
+  background: #23262a;
 }
 .acceso__demo {
   display: flex;
@@ -3166,7 +3175,7 @@ button.ui-menuitem:not(:disabled):hover svg {
 }
 .acceso__demo-lista {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 .acceso__demo-cuenta {

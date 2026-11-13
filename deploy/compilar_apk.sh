@@ -8,7 +8,7 @@
 #   bash deploy/compilar_apk.sh            compila si Mobile/ cambió desde el último APK publicado
 #   bash deploy/compilar_apk.sh --forzar   compila aunque no haya cambios
 #   bash deploy/compilar_apk.sh --limpio   borra node_modules y android/ y compila todo desde cero
-#   bash deploy/compilar_apk.sh --indice   solo apunta la descarga al APK ya compilado de la versión actual
+#   bash deploy/compilar_apk.sh --indice   solo regenera la página de descarga con el APK ya compilado (sin compilar)
 set -euo pipefail
 
 forzar=0; limpio=0; solo_indice=0
@@ -24,31 +24,25 @@ done
 raiz="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 descargas="$raiz/deploy/descargas"
 
-# La raíz de app.bynucleo.com (index.html) lleva al APK de la versión, que se descarga como nucleo-<versión>.apk
+# La raíz de app.bynucleo.com (index.html, desde la plantilla deploy/descarga.html) lleva al APK de la
+# versión, que se descarga como nucleo-<versión>.apk
 publicar_indice() {
-  local v="$1" tmp="$descargas/.index.html.tmp"
-  cat > "$tmp" <<HTML
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="0; url=nucleo-$v.apk">
-<title>Núcleo $v para Android</title>
-</head>
-<body style="font-family: system-ui, sans-serif; padding: 32px; text-align: center">
-<p>La descarga de Núcleo $v comienza en un momento.</p>
-<p><a href="nucleo-$v.apk">Descargar nucleo-$v.apk</a></p>
-</body>
-</html>
-HTML
-  mv -f "$tmp" "$descargas/index.html"
+  local v="$1" tamano
+  tamano="$(du -m "$descargas/nucleo-$v.apk" | cut -f1) MB"
+  install -d "$descargas/fuentes"
+  cp "$raiz"/FrontEnd/src/design-system/fuentes/PlusJakartaSans-{400,600,700}.woff2 "$descargas/fuentes/"
+  sed -e "s/__VERSION__/$v/g" -e "s/__TAMANO__/$tamano/g" "$raiz/deploy/descarga.html" > "$descargas/.index.html.tmp"
+  mv -f "$descargas/.index.html.tmp" "$descargas/index.html"
 }
 
 if (( solo_indice )); then
   version="$(node -p 'require(process.argv[1]).expo.version' "$raiz/Mobile/app.json" 2>/dev/null \
     || python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["expo"]["version"])' "$raiz/Mobile/app.json")"
-  [[ -f "$descargas/nucleo-$version.apk" ]] || { echo "No existe deploy/descargas/nucleo-$version.apk; compílalo primero" >&2; exit 1; }
+  # Si la versión de app.json aún no se compila, se queda la más reciente ya compilada
+  if [[ ! -f "$descargas/nucleo-$version.apk" ]]; then
+    version="$(find "$descargas" -maxdepth 1 -name 'nucleo-*.apk' -printf '%f\n' | sed 's/^nucleo-//; s/\.apk$//' | sort -V | tail -1)"
+    [[ -n "$version" ]] || { echo "No hay ningún APK compilado en deploy/descargas" >&2; exit 1; }
+  fi
   publicar_indice "$version"
   rm -f "$descargas/nucleo.apk"  # nombre fijo anterior: ahora /nucleo.apk lleva a la raíz
   echo "Descarga apuntada a nucleo-$version.apk"

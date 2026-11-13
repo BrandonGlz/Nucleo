@@ -145,7 +145,7 @@ export function AccesoPage() {
           <div className="acceso__app">
             <p>¿Prefieres el celular? Descarga la app móvil de Núcleo para Android.</p>
             <a
-              className="nc-btn nc-btn--secondary nc-btn--md nc-btn--block"
+              className="nc-btn nc-btn--md nc-btn--block"
               href={DESCARGA_APP}
               rel="noopener"
             >

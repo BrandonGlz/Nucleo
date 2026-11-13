@@ -72,8 +72,8 @@ sudo systemctl enable "${servicios[@]}" nucleo-reportes.timer nucleo-respaldo.ti
 sudo systemctl restart "${servicios[@]}"
 sudo systemctl start nucleo-reportes.timer nucleo-respaldo.timer
 sudo systemctl reload-or-restart caddy
-# Descarga del APK: si ya hay uno compilado pero aún no hay página que lleve a él, se crea
-if [[ ! -f "$raiz/deploy/descargas/index.html" ]] && compgen -G "$raiz/deploy/descargas/nucleo-*.apk" >/dev/null; then
+# Página de descarga del APK (app.bynucleo.com): se regenera por si cambió la plantilla deploy/descarga.html
+if compgen -G "$raiz/deploy/descargas/nucleo-*.apk" >/dev/null; then
   bash "$raiz/deploy/compilar_apk.sh" --indice || true
 fi
 

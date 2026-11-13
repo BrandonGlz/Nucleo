@@ -70,9 +70,9 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 
 El APK se descarga en `https://app.bynucleo.com`. Caddy entrega la carpeta
 `deploy/descargas/` del proyecto (no va a git), donde queda un APK por versión (`nucleo-<versión>.apk`). La raíz
-(`index.html`, lo escribe el script) lleva al de la versión publicada, así que se descarga con la versión en el
+(`index.html`, sale de la plantilla `deploy/descarga.html`; el script y cada deploy la regeneran) lleva al de la versión publicada, así que se descarga con la versión en el
 nombre; el enlace anterior `/nucleo.apk` lleva a la raíz. El login de la web tiene un botón a este enlace.
-`bash deploy/compilar_apk.sh --indice` solo vuelve a apuntar la raíz al APK ya compilado de la versión de `Mobile/app.json`.
+`bash deploy/compilar_apk.sh --indice` solo regenera esa página con el APK ya compilado de la versión de `Mobile/app.json` (o el más reciente, si esa aún no se compila).
 
 Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.json` y correr
 `bash deploy/compilar_apk.sh` (mejor en tmux). Compila en la laptop con la API del perfil `piloto` de
