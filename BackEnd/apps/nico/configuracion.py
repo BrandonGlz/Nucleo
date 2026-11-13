@@ -16,8 +16,7 @@ CACHE_SEGUNDOS = 300
 # La IA local es pequeña (qwen2.5:1.5b, contexto corto): los documentos activos juntos no deben
 # pasar de este tamaño o ya no cabe la pregunta. Con documentos, el contexto sube a lo necesario.
 LIMITE_CARACTERES = 2400
-CONTEXTO_BASE = 1024
-CONTEXTO_MAXIMO = 2048
+CONTEXTO = 2048
 
 # Los archivos típicos de un agente. Se crean vacíos de contenido útil e inactivos: hasta que se
 # activan, Nico responde igual que siempre.
@@ -200,12 +199,11 @@ def instrucciones(base):
 
 
 def contexto():
-    """Tamaño de contexto para Ollama: el de siempre, más lo que ocupan los documentos."""
-    extra = len(documentos_activos())
-    if not extra:
-        return CONTEXTO_BASE
-    # ~3.5 caracteres por token en español
-    return min(CONTEXTO_MAXIMO, CONTEXTO_BASE + 256 * (1 + int(extra / 3.5) // 256))
+    """Tamaño de contexto para Ollama: fijo. Si cambiara al activar o editar documentos,
+    Ollama recargaría el modelo y perdería la caché de las instrucciones (cada pregunta
+    tardaría ~30 s en vez de 2-3 s). Alcanza para las instrucciones con todos los documentos
+    (``LIMITE_CARACTERES``), la pregunta y la respuesta."""
+    return CONTEXTO
 
 
 def inactivas():

@@ -32,7 +32,8 @@ export function Campo({ label, ...resto }) {
 }
 
 
-// Barras horizontales sencillas: [{clave, etiqueta, valor, color?, nota?}].
+// Barras horizontales sencillas: [{clave, etiqueta, valor, texto?, color?, nota?}] (`texto`: cómo
+// se muestra el valor, p. ej. «4.2 s»).
 export function BarrasHorizontales({ filas }) {
   const max = Math.max(1, ...filas.map((f) => f.valor))
   if (!filas.length) return <p className="ui-muted ui-consola-vacio">Sin datos todavía.</p>
@@ -45,7 +46,7 @@ export function BarrasHorizontales({ filas }) {
             <span style={{ width: `${(f.valor / max) * 100}%`, background: f.color }} />
           </span>
           <span className="ui-consola-barras__valor">
-            {f.valor.toLocaleString('es-MX')}
+            {f.texto ?? f.valor.toLocaleString('es-MX')}
             {f.nota && <small>{f.nota}</small>}
           </span>
         </li>

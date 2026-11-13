@@ -155,7 +155,8 @@ class ConsolaNicoTests(PruebaBase):
         )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertIn("Eres paciente y amable.", configuracion.instrucciones("Base"))
-        self.assertGreater(configuracion.contexto(), configuracion.CONTEXTO_BASE - 1)
+        # El contexto no cambia con los documentos (cambiarlo recargaría el modelo).
+        self.assertEqual(configuracion.contexto(), configuracion.CONTEXTO)
         # Uno nuevo, con la clave normalizada; los base no se borran.
         r = self.su.post("/api/v1/nico/documentos/", {"clave": "heartbeat.md", "contenido": "x"})
         self.assertEqual(r.json()["clave"], "HEARTBEAT")
@@ -174,3 +175,4 @@ class ConsolaNicoTests(PruebaBase):
         self.assertEqual(resumen["por_dia"][-1]["total"], 1)
         self.assertEqual(sum(h["total"] for h in resumen["por_hora"]), 1)
         self.assertEqual(resumen["por_empresa"][0]["empresa"], self.e.organizacion.nombre)
+        self.assertEqual(len(resumen["tiempo_por_via"]), 1)

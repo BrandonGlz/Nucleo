@@ -32,9 +32,6 @@
   overflow: auto;
   padding-bottom: 4px;
 }
-.ui-consola-dash__completa {
-  grid-column: 1 / -1;
-}
 .ui-consola-dash .nc-card {
   display: flex;
   flex-direction: column;
@@ -89,47 +86,6 @@
   font-weight: 500;
   color: var(--text-muted);
 }
-.ui-consola-ranking {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 8px 24px;
-}
-.ui-consola-ranking li {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--border);
-  font-size: 14px;
-}
-.ui-consola-ranking__pos {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: 12px;
-  font-weight: 700;
-}
-.ui-consola-ranking__texto {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ui-consola-ranking__n {
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
 /* Texto largo con el aspecto de los campos */
 .ui-consola-area.nc-input {
   height: auto;

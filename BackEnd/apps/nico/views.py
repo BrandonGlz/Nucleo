@@ -2,7 +2,7 @@
 administrador de plataforma): chat con cualquier dispositivo, banco de respuestas, registro de
 preguntas, herramientas y documentos del agente."""
 
-from django.db.models import Count, Max, Q
+from django.db.models import Avg, Count, Max, Q
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -408,13 +408,19 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         }
         return respuesta
 
+    def _aplicar(self):
+        # Instrucciones nuevas: la caché de Ollama se recalienta en segundo plano para que la
+        # siguiente pregunta no las procese en frío.
+        configuracion.limpiar_cache()
+        puente.recalentar()
+
     def perform_create(self, serializer):
         serializer.save(actualizado_por=self.request.user)
-        configuracion.limpiar_cache()
+        self._aplicar()
 
     def perform_update(self, serializer):
         serializer.save(actualizado_por=self.request.user)
-        configuracion.limpiar_cache()
+        self._aplicar()
 
     def perform_destroy(self, instancia):
         if instancia.clave in dict(configuracion.DOCUMENTOS_BASE):
@@ -422,7 +428,7 @@ class DocumentoViewSet(viewsets.ModelViewSet):
                 {"detail": "Los documentos base no se borran; vacíalos o desactívalos."}
             )
         instancia.delete()
-        configuracion.limpiar_cache()
+        self._aplicar()
 
 
 # Preguntas de ejemplo de la charla que Nico ya trae (``reportes/social.py``).
@@ -537,6 +543,7 @@ class ResumenView(APIView):
             preguntas.annotate(h=ExtractHour("fecha")).values_list("h").annotate(n=Count("num"))
         )
         por_via = dict(preguntas.values_list("via").annotate(n=Count("num")))
+        tiempos = dict(preguntas.values_list("via").annotate(ms=Avg("milisegundos")))
         por_empresa = (
             preguntas.values("dispositivo__area__organizacion__nombre")
             .annotate(n=Count("num"))
@@ -568,6 +575,12 @@ class ResumenView(APIView):
                 ],
                 "por_hora": [{"hora": h, "total": horas.get(h, 0)} for h in range(24)],
                 "por_via": [{"via": v, "total": por_via.get(v, 0)} for v in Via.values],
+                # Tiempo promedio de respuesta (segundos) por cómo se resolvió.
+                "tiempo_por_via": [
+                    {"via": v, "segundos": round(tiempos[v] / 1000, 1)}
+                    for v in Via.values
+                    if tiempos.get(v) is not None
+                ],
                 "por_empresa": [
                     {"empresa": e["dispositivo__area__organizacion__nombre"], "total": e["n"]}
                     for e in por_empresa

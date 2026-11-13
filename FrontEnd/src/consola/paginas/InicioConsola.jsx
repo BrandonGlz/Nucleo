@@ -67,23 +67,18 @@ export default function InicioConsola() {
               activeIndex={mayor(d.por_hora)}
             />
           </Card>
-          <Card title="Preguntas por empresa" subtitle="Las seis con más uso.">
-            <BarrasHorizontales filas={d.por_empresa.map((x) => ({ clave: x.empresa, etiqueta: x.empresa, valor: x.total }))} />
-          </Card>
-          <Card className="ui-consola-dash__completa" title="Lo que más no entiende" subtitle="Preguntas sin respuesta que más se repiten: buenas candidatas para el banco.">
-            {d.no_entendidas_frecuentes.length === 0 ? (
-              <p className="ui-muted ui-consola-vacio">Nico entendió todo lo que le preguntaron.</p>
-            ) : (
-              <ol className="ui-consola-ranking">
-                {d.no_entendidas_frecuentes.map((x, i) => (
-                  <li key={x.pregunta}>
-                    <span className="ui-consola-ranking__pos">{i + 1}</span>
-                    <span className="ui-consola-ranking__texto">{x.pregunta}</span>
-                    <span className="ui-consola-ranking__n">{x.total === 1 ? '1 vez' : `${x.total} veces`}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
+          <Card title="Tiempo de respuesta" subtitle="Promedio por tipo de petición, de la más lenta a la más rápida.">
+            <BarrasHorizontales
+              filas={[...d.tiempo_por_via]
+                .sort((a, b) => b.segundos - a.segundos)
+                .map((x) => ({
+                  clave: x.via,
+                  etiqueta: VIAS[x.via]?.label ?? x.via,
+                  valor: x.segundos,
+                  texto: `${x.segundos.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`,
+                  color: VIAS[x.via]?.color,
+                }))}
+            />
           </Card>
         </div>
       )}

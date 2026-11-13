@@ -39,6 +39,7 @@ from collections import defaultdict, deque
 from django.conf import settings
 
 from apps.nico import configuracion
+from common import roles
 
 from . import agente
 
@@ -393,8 +394,8 @@ def _cuerpo(dispositivo, mensajes, num_predict, formato=None):
         # 3 hilos de 4 para que la API y MQTT sigan atendiendo mientras la IA trabaja.
         "options": {
             "num_predict": num_predict,
-            # Igual en todas las peticiones (cambiarlo recarga el modelo); crece con los
-            # documentos activos de la consola de Nico AI.
+            # Igual en todas las peticiones y fijo aunque cambien los documentos de la consola:
+            # cambiarlo recarga el modelo y se pierde la caché de las instrucciones.
             "num_ctx": configuracion.contexto(),
             "temperature": 0.2,
             "top_p": 0.9,
@@ -443,18 +444,46 @@ def _ejecutar(codigo, trabajo, espera):
     return r
 
 
-def calentar(dispositivo):
-    """Carga el modelo antes de la primera pregunta (al abrir el chat), una vez cada 10 min.
+def calentar(dispositivo, forzar=False):
+    """Deja listos el modelo y sus dos prefijos (instrucciones con los documentos y el
+    clasificador) antes de la primera pregunta: al abrir el chat, una vez cada 10 min, o al
+    cambiar los documentos (``forzar``). En frío, la CPU procesa ~22 tokens/s y las
+    instrucciones con documentos tardarían ~30 s; ya en la caché de Ollama, menos de 1 s (hay
+    un espacio por prefijo: ``OLLAMA_NUM_PARALLEL=2``).
     Solo con el ESP vivo; no hace falta su firma porque no responde nada a nadie."""
     if not con_puente(dispositivo) or not activo(dispositivo):
         return
-    if not cola().una_vez("calentar", CALENTAR_CADA):
+    if not forzar and not cola().una_vez("calentar", CALENTAR_CADA):
         return
-    trabajo = {
-        "ruta": "/api/chat",
-        "cuerpo": _cuerpo(dispositivo, [{"role": "user", "content": "hola"}], 1),
-    }
-    threading.Thread(target=_llamar_ia, args=(trabajo, 60), daemon=True).start()
+    trabajos = [
+        {
+            "ruta": "/api/chat",
+            "cuerpo": _cuerpo(
+                dispositivo,
+                [{"role": "system", "content": system}, {"role": "user", "content": "hola"}],
+                1,
+            ),
+        }
+        for system in (_sistema(dispositivo), CLASIFICAR)
+    ]
+
+    def cargar():
+        for trabajo in trabajos:  # uno tras otro: dos a la vez se estorban en la CPU
+            _llamar_ia(trabajo, 90)
+
+    threading.Thread(target=cargar, daemon=True).start()
+
+
+def recalentar():
+    """Tras cambiar los documentos de la consola: precalienta los agentes con ESP conectado
+    para que la siguiente pregunta no procese en frío las instrucciones nuevas."""
+    from apps.dispositivos.models import Dispositivo
+
+    for d in Dispositivo.objects.select_related("area").exclude(
+        estado_dispositivo_id=roles.DISPOSITIVO_BAJA
+    ):
+        if con_puente(d):
+            calentar(d, forzar=True)
 
 
 def _limpiar(texto, permitidos, base=""):

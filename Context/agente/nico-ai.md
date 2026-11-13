@@ -100,10 +100,17 @@ cambiar código. Es la misma web compilada: `main.jsx` abre `src/consola/` cuand
 - **Documentos**: SOUL, IDENTITY, AGENTS, USER, TOOLS, MEMORY y los que se agreguen (modelo
   `DocumentoNico`). Los base traen contenido de ejemplo (`configuracion.CONTENIDO_BASE`) y están
   activos. Los activos se suman a las instrucciones de la IA local, hasta 2 400 caracteres entre
-  todos; con documentos el contexto de Ollama sube de 1024 a 2048 (igual en todas las llamadas para
-  no recargar el modelo). Las cifras siempre salen de las herramientas; el ESP no cambia.
+  todos. El contexto de Ollama es fijo (2048): si cambiara con los documentos, el modelo se
+  recargaría y perdería su caché. Las cifras siempre salen de las herramientas; el ESP no cambia.
 
 Los ajustes se guardan en caché 5 minutos y se limpian al editar.
+
+**Tiempo de respuesta.** La firma del ESP tarda menos de 1 s; lo que cuesta es que Ollama procese
+las instrucciones. En la CPU del servidor, en frío, va a ~22 tokens/s (las instrucciones con
+documentos son ~720 tokens: ~30 s), y ya en su caché tarda menos de 1 s. Por eso `puente.calentar`
+deja en caché los dos prefijos (instrucciones con documentos y clasificador; hay un espacio por
+prefijo con `OLLAMA_NUM_PARALLEL=2`) al abrir el chat y cada 10 min, y `puente.recalentar` lo repite
+al guardar un documento en la consola.
 
 ## Relacionado
 
