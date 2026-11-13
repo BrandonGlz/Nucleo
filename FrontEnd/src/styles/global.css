@@ -47,31 +47,6 @@ button.ui-link {
 .app > .nc-sidebar .nc-navitem {
   text-decoration: none;
 }
-/* Modo claro: las superficies oscuras van en verde bosque (--bosque, el verde de la marca en su tono más
-   profundo) en lugar de casi negro: menú lateral (por --sidebar), tarjetas de cifras, pestañas y chips
-   activos, burbujas, íconos oscuros y el acceso. En oscuro no cambia nada. */
-:root:not([data-theme='dark']) .nc-ink.nc-ink,
-:root:not([data-theme='dark']) .nc-tone--ink,
-:root:not([data-theme='dark']) :not(.nc-period) > .nc-chip.is-selected,
-:root:not([data-theme='dark']) .nc-tabs:not(.con-indicador):not(.nc-tabs--underline) .nc-tab.is-active,
-:root:not([data-theme='dark']) .nc-tabs__indicador,
-:root:not([data-theme='dark']) .nc-device.is-on,
-:root:not([data-theme='dark']) .ui-burbuja,
-:root:not([data-theme='dark']) .ui-editor__etiqueta,
-:root:not([data-theme='dark']) .ui-editor__chip.is-activo,
-:root:not([data-theme='dark']) .ui-ia-enviar.is-detener,
-:root:not([data-theme='dark']) .acceso,
-:root:not([data-theme='dark']) .acceso__app .nc-btn {
-  border-color: var(--bosque);
-  background: var(--bosque);
-}
-:root:not([data-theme='dark']) .acceso__app .nc-btn:hover {
-  border-color: var(--bosque-hover);
-  background: var(--bosque-hover);
-}
-:root:not([data-theme='dark']) .ui-ia-marca--grande {
-  background: radial-gradient(circle at 30% 25%, #1f5a40, var(--bosque) 70%);
-}
 /* Logo del menú: botón que contrae el menú a la mitad (solo íconos) y lo vuelve a expandir */
 .app > .nc-sidebar {
   transition: width var(--duration-slow) var(--ease-standard), padding var(--duration-slow) var(--ease-standard);
