@@ -47,6 +47,95 @@ button.ui-link {
 .app > .nc-sidebar .nc-navitem {
   text-decoration: none;
 }
+/* Logo del menú: botón que contrae el menú a la mitad (solo íconos) y lo vuelve a expandir */
+.app > .nc-sidebar {
+  transition: width var(--duration-slow) var(--ease-standard), padding var(--duration-slow) var(--ease-standard);
+}
+.ui-menu-logo {
+  align-items: center;
+  min-height: 46px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+}
+.ui-menu-logo > * {
+  transition: transform var(--duration-base) var(--ease-emphasized), opacity var(--duration-base) var(--ease-standard);
+}
+.ui-menu-logo:hover > * {
+  transform: scale(1.05);
+}
+.ui-menu-logo:active > * {
+  transform: scale(0.95);
+}
+.ui-menu-logo:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.nc-sidebar.is-compacto {
+  width: 124px;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+.nc-sidebar.is-compacto .nc-sidebar__brand {
+  padding-left: 0;
+  padding-right: 0;
+}
+.nc-sidebar.is-compacto .ui-menu-logo > svg {
+  animation: ui-activa var(--duration-slow) var(--ease-emphasized);
+}
+@media (prefers-reduced-motion: reduce) {
+  .app > .nc-sidebar,
+  .ui-menu-logo > * {
+    transition: none;
+  }
+  .nc-sidebar.is-compacto .ui-menu-logo > svg {
+    animation: none;
+  }
+}
+/* Sin títulos de sección: una línea fina separa los grupos */
+.nc-sidebar.is-compacto .nc-sidebar__section {
+  height: 1px;
+  margin: 2px 14px 6px;
+  padding: 0;
+  background: rgba(243, 245, 242, 0.1);
+}
+.nc-sidebar.is-compacto .app__nav-group:first-of-type .nc-sidebar__section {
+  display: none;
+}
+.nc-sidebar.is-compacto .nc-navitem {
+  position: relative;
+  justify-content: center;
+  padding: 0;
+}
+.nc-sidebar.is-compacto .nc-navitem > span:not(.nc-navitem__count) {
+  display: none;
+}
+.nc-sidebar.is-compacto .nc-navitem__count {
+  position: absolute;
+  top: 2px;
+  right: 14px;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  padding: 0 4px;
+  font-size: 10px;
+}
+.nc-sidebar.is-compacto .nc-sidebar__user {
+  justify-content: center;
+  padding: 8px;
+}
+.nc-sidebar.is-compacto .nc-sidebar__user > div,
+.nc-sidebar.is-compacto .ui-version,
+.nc-sidebar.is-compacto .ui-critica__texto,
+.nc-sidebar.is-compacto .ui-critica > svg {
+  display: none;
+}
+.nc-sidebar.is-compacto .ui-critica {
+  justify-content: center;
+  padding: 10px 0;
+}
 .app__nav-group {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Avatar, Icon, Logo } from '../design-system/componentes/index.js'
+import { Avatar, Icon, Logo, LogoApp } from '../design-system/componentes/index.js'
 import { AgenteProvider } from '../context/AgenteContext'
 import { AvisosProvider, useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
@@ -10,8 +11,25 @@ import { haceCuanto, hora } from '../utils/formato'
 
 const SECCIONES = ['Plataforma', 'Monitoreo', 'Análisis', 'Áreas', 'Configuración']
 
+// Menú compacto (solo íconos): se alterna con el logo y se recuerda en este navegador.
+const CLAVE_COMPACTO = 'nucleo.menu-compacto'
+function leerCompacto() {
+  try {
+    return localStorage.getItem(CLAVE_COMPACTO) === '1'
+  } catch {
+    return false
+  }
+}
+function guardarCompacto(v) {
+  try {
+    localStorage.setItem(CLAVE_COMPACTO, v ? '1' : '0')
+  } catch {
+    // sin almacenamiento (modo privado): solo dura esta visita
+  }
+}
+
 // Alerta crítica pendiente más reciente: se ve en todas las pantallas, sobre la tarjeta del usuario.
-function AlertaCritica() {
+function AlertaCritica({ compacto }) {
   const { pendientes } = useAvisos()
   const navegar = useNavigate()
   const criticas = pendientes.filter((a) => a.nivel === 'PELIGRO').sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1))
@@ -22,6 +40,7 @@ function AlertaCritica() {
       type="button"
       className="ui-critica"
       role="alert"
+      aria-label={compacto ? `${tituloAlerta(a)} · ${a.dispositivo_nombre}` : undefined}
       title={`${tituloAlerta(a)} · ${a.dispositivo_nombre} · ${valorAlerta(a)} (${limiteAlerta(a)}) · ${haceCuanto(a.fecha_hora)}`}
       onClick={() => navegar('/alertas')}
     >
@@ -43,22 +62,38 @@ function AlertaCritica() {
 function MenuLateral() {
   const { usuario, rol } = useSesion()
   const { pendientes } = useAvisos()
+  const [compacto, setCompacto] = useState(leerCompacto)
   const visibles = modulos.filter((m) => m.seccion && puedeVer(m, rol))
+  const alternar = () => {
+    guardarCompacto(!compacto)
+    setCompacto(!compacto)
+  }
   return (
-    <nav className="nc-sidebar" aria-label="Navegación principal">
-      <div className="nc-sidebar__brand">
-        <Logo size={32} inverse />
-      </div>
+    <nav className={`nc-sidebar${compacto ? ' is-compacto' : ''}`} aria-label="Navegación principal">
+      <button
+        type="button"
+        className="nc-sidebar__brand ui-menu-logo"
+        onClick={alternar}
+        aria-expanded={!compacto}
+        title={compacto ? 'Expandir menú' : 'Contraer menú'}
+      >
+        {compacto ? <LogoApp size={48} label="Núcleo" /> : <Logo size={32} inverse />}
+      </button>
       {SECCIONES.map((seccion) => {
         const items = visibles.filter((m) => m.seccion === seccion)
         if (!items.length) return null
         return (
           <div key={seccion} className="app__nav-group">
-            <span className="nc-sidebar__section">{seccion}</span>
+            <span className="nc-sidebar__section">{compacto ? '' : seccion}</span>
             <ul>
               {items.map((m) => (
                 <li key={m.ruta}>
-                  <NavLink to={m.ruta} className={({ isActive }) => `nc-navitem${isActive ? ' is-active' : ''}`}>
+                  <NavLink
+                    to={m.ruta}
+                    title={compacto ? m.titulo : undefined}
+                    aria-label={compacto ? m.titulo : undefined}
+                    className={({ isActive }) => `nc-navitem${isActive ? ' is-active' : ''}`}
+                  >
                     <Icon name={m.icono} size={20} />
                     <span>{m.titulo}</span>
                     {m.ruta === '/alertas' && pendientes.length > 0 && (
@@ -72,8 +107,8 @@ function MenuLateral() {
         )
       })}
       <div className="nc-sidebar__foot">
-        <AlertaCritica />
-        <div className="nc-sidebar__user">
+        <AlertaCritica compacto={compacto} />
+        <div className="nc-sidebar__user" title={compacto ? `${nombreCompleto(usuario)} · ${ROL[rol]}` : undefined}>
           <Avatar name={nombreCompleto(usuario)} size={36} />
           <div>
             <strong>{nombreCompleto(usuario)}</strong>

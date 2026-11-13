@@ -38,4 +38,20 @@ function Logo(p) {
   }, h('path', { d: LOGO_D, fill: relleno(p), fillRule: 'evenodd' })));
 }
 
-export { LogoMark, Logo }
+// Ícono de la app (favicon y APK): el ícono verde dentro de un círculo oscuro. size es el diámetro.
+function LogoApp(p) {
+  var s = p.size || 40;
+  return h('svg', {
+    width: s,
+    height: s,
+    viewBox: '0 0 64 64',
+    role: p.label ? 'img' : undefined,
+    'aria-label': p.label,
+    'aria-hidden': p.label ? undefined : true,
+    className: cx('nc-logoapp', p.className)
+  }, h('circle', { cx: 32, cy: 32, r: 32, fill: '#1A1C1C' }), h('g', {
+    transform: 'translate(12 15.57) scale(0.1878) translate(-24 -8)'
+  }, h('path', { d: ICONO_D, fill: TONOS.verde, fillRule: 'evenodd' })));
+}
+
+export { LogoMark, Logo, LogoApp }
