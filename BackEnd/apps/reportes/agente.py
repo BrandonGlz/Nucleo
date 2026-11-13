@@ -953,9 +953,10 @@ def responder(dispositivo, pregunta, usuario=None):
         return {"texto": personalidad.cortesia(usuario, dispositivo, pregunta, saludo)}
     if tema is None and es_comentario(pregunta):
         return {
-            "texto": "Entendido, gracias por avisar. Dale 👎 a la respuesta que no te sirvió para "
-            "que no se repita, y pídeme justo lo que necesitas, por ejemplo: «la última medición "
-            "del aire», «la temperatura de ayer» o «gráfica de la humedad de esta semana»."
+            "texto": "Entendido, gracias por avisar. Marca como no útil la respuesta que no te "
+            "sirvió para que no se repita, y pídeme justo lo que necesitas, por ejemplo: «la "
+            "última medición del aire», «la temperatura de ayer» o «gráfica de la humedad de esta "
+            "semana»."
         }
     if tema is None:
         return {

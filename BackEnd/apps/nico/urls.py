@@ -10,6 +10,7 @@ from .views import (
     DocumentoViewSet,
     HerramientasView,
     HerramientaView,
+    IncluidasView,
     RegistroViewSet,
     ResumenView,
 )
@@ -23,6 +24,7 @@ urlpatterns = [
     path("chat/", ConsolaAgenteView.as_view(), name="nico-chat"),
     path("calificar/", ConsolaCalificarView.as_view(), name="nico-calificar"),
     path("estado/", ConsolaEstadoView.as_view(), name="nico-estado"),
+    path("incluidas/", IncluidasView.as_view(), name="nico-incluidas"),
     path("arbol/", ArbolView.as_view(), name="nico-arbol"),
     path("resumen/", ResumenView.as_view(), name="nico-resumen"),
     path("herramientas/", HerramientasView.as_view(), name="nico-herramientas"),

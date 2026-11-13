@@ -170,7 +170,7 @@ def acuse(dispositivo):
 def risa(dispositivo):
     return elegir(
         (
-            f"😄 Me alegra el ánimo. ¿Revisamos algo de {dispositivo.nombre}?",
-            f"😄 ¡Así da gusto trabajar! ¿Te reviso algo de {dispositivo.nombre}?",
+            f"Me alegra el ánimo. ¿Revisamos algo de {dispositivo.nombre}?",
+            f"¡Así da gusto trabajar! ¿Te reviso algo de {dispositivo.nombre}?",
         )
     )

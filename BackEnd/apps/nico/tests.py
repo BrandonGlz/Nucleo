@@ -111,20 +111,43 @@ class ConsolaNicoTests(PruebaBase):
         )
 
     def test_editar_y_restaurar_herramienta(self):
+        r = self.su.get("/api/v1/nico/herramientas/").json()
+        self.assertIn("lecturas", [p["clave"] for p in r["propositos"]])
+        sensores = next(h for h in r["herramientas"] if h["nombre"] == "sensores")
+        self.assertEqual(sensores["proposito"], "dispositivo")
         ruta = "/api/v1/nico/herramientas/sensores/"
-        r = self.su.patch(ruta, {"proposito": "Saber qué tiene instalado."})
-        self.assertEqual(r.json()["proposito"], "Saber qué tiene instalado.")
+        r = self.su.patch(ruta, {"proposito": "configuracion"})
+        self.assertEqual(r.json()["proposito"], "configuracion")
         self.assertTrue(r.json()["editada"])
+        # Solo propósitos de la lista.
+        self.assertEqual(self.su.patch(ruta, {"proposito": "otro"}).status_code, 400)
         r = self.su.patch(ruta, {"restaurar": True})
         self.assertFalse(r.json()["editada"])
+        self.assertEqual(r.json()["proposito"], "dispositivo")
         self.assertEqual(self.su.patch("/api/v1/nico/herramientas/nada/", {}).status_code, 404)
+
+    def test_respuestas_incluidas(self):
+        r = self.su.get("/api/v1/nico/incluidas/").json()
+        tipos = {x["tipo"] for x in r}
+        self.assertEqual(tipos, {"explicacion", "charla", "capacidades", "consulta"})
+        identidad = next(x for x in r if x["tema"] == "identidad")
+        self.assertIn("{dispositivo}", identidad["respuesta"])
+        self.assertFalse(identidad["personalizada"])
+        self.su.post(
+            "/api/v1/nico/banco/",
+            {"todas": True, "pregunta": "¿Quién eres?", "plantilla": "Soy Nico."},
+        )
+        r = self.su.get("/api/v1/nico/incluidas/").json()
+        self.assertTrue(next(x for x in r if x["tema"] == "identidad")["personalizada"])
 
     def test_documentos(self):
         r = self.su.get("/api/v1/nico/documentos/").json()
         claves = [d["clave"] for d in r["documentos"]]
         self.assertEqual(claves[:2], ["SOUL", "IDENTITY"])
-        self.assertEqual(r["usados"], 0)
-        self.assertEqual(configuracion.instrucciones("Base"), "Base")
+        # Los base traen contenido de ejemplo, activo y dentro del límite.
+        self.assertGreater(r["usados"], 0)
+        self.assertLessEqual(r["usados"], r["limite"])
+        self.assertIn("Nico AI", configuracion.instrucciones("Base"))
         soul = DocumentoNico.objects.get(clave="SOUL")
         r = self.su.patch(
             f"/api/v1/nico/documentos/{soul.num}/",
@@ -145,4 +168,9 @@ class ConsolaNicoTests(PruebaBase):
         r = self.su.get("/api/v1/nico/registro/").json()
         self.assertEqual(r["count"], 1)
         self.assertEqual(r["results"][0]["organizacion_nombre"], self.e.organizacion.nombre)
-        self.assertEqual(self.su.get("/api/v1/nico/resumen/").json()["preguntas"], 1)
+        resumen = self.su.get("/api/v1/nico/resumen/").json()
+        self.assertEqual(resumen["preguntas"], 1)
+        self.assertEqual(len(resumen["por_dia"]), 14)
+        self.assertEqual(resumen["por_dia"][-1]["total"], 1)
+        self.assertEqual(sum(h["total"] for h in resumen["por_hora"]), 1)
+        self.assertEqual(resumen["por_empresa"][0]["empresa"], self.e.organizacion.nombre)

@@ -2,7 +2,7 @@
 administrador de plataforma): chat con cualquier dispositivo, banco de respuestas, registro de
 preguntas, herramientas y documentos del agente."""
 
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -311,7 +311,9 @@ class RegistroViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 class AjusteSerializer(serializers.Serializer):
     descripcion = serializers.CharField(required=False, allow_blank=True)
-    proposito = serializers.CharField(required=False, allow_blank=True)
+    proposito = serializers.ChoiceField(
+        choices=[*configuracion.CLAVES_PROPOSITO, ""], required=False, allow_blank=True
+    )
     ejemplo = serializers.CharField(required=False, allow_blank=True, max_length=200)
     activa = serializers.BooleanField(required=False)
     restaurar = serializers.BooleanField(required=False, default=False)
@@ -321,7 +323,12 @@ class HerramientasView(APIView):
     permission_classes = [EsSuperusuario]
 
     def get(self, request):
-        return Response(configuracion.catalogo())
+        return Response(
+            {
+                "herramientas": configuracion.catalogo(),
+                "propositos": [{"clave": c, "nombre": n} for c, n in configuracion.PROPOSITOS],
+            }
+        )
 
 
 class HerramientaView(APIView):
@@ -418,18 +425,133 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         configuracion.limpiar_cache()
 
 
+# Preguntas de ejemplo de la charla que Nico ya trae (``reportes/social.py``).
+EJEMPLOS_CHARLA = {
+    "identidad": "¿Quién eres?",
+    "ayuda": "¿Me ayudas?",
+    "gracias": "Gracias",
+    "despedida": "Adiós",
+    "hora": "¿Qué hora es?",
+    "fecha": "¿Qué día es hoy?",
+    "control": "Enciende el aire acondicionado",
+    "clima_exterior": "¿Va a llover?",
+    "emocion_mal": "Me siento cansado",
+    "emocion_bien": "Estoy contento",
+    "afecto": "Eres el mejor",
+    "molestia": "No sirves",
+    "risa": "jajaja",
+    "acuse": "Ok",
+    "idioma": "¿Hablas inglés?",
+    "general": "Cuéntame un chiste",
+}
+NOMBRES_ROL = {
+    "ADMIN": "Administrador",
+    "SUPER": "Supervisor",
+    "ANALISTA": "Analista",
+    "OPER": "Operador",
+}
+
+
+class IncluidasView(APIView):
+    """Respuestas que Nico ya trae en su código: explicaciones fijas, charla, capacidades por rol
+    y consultas con datos. Se muestran en el banco y se pueden reemplazar con una respuesta
+    fija. ``{dispositivo}`` y ``{área}`` se rellenan con el dispositivo de cada chat."""
+
+    permission_classes = [EsSuperusuario]
+
+    def get(self, request):
+        from types import SimpleNamespace
+
+        from apps.reportes import herramientas, social
+
+        ejemplo = SimpleNamespace(nombre="{dispositivo}", area=SimpleNamespace(nombre="{área}"))
+        fijas = set(
+            RespuestaAprendida.objects.filter(tema="FIJA").values_list(
+                "pregunta_normalizada", flat=True
+            )
+        )
+        lista = []
+
+        def agregar(tipo, tema, pregunta, respuesta, otras=()):
+            lista.append(
+                {
+                    "id": f"{tipo}:{tema}",
+                    "tipo": tipo,
+                    "tema": tema,
+                    "pregunta": pregunta,
+                    "otras": list(otras),
+                    "respuesta": respuesta,
+                    "personalizada": aprendizaje.normalizar(pregunta) in fijas,
+                }
+            )
+
+        banco = herramientas.banco()
+        for e in banco["explicaciones"]:
+            palabras = e["palabras"]
+            agregar(
+                "explicacion",
+                e["clave"],
+                f"¿Qué significa «{palabras[0]}»?",
+                e["texto"],
+                palabras[1:],
+            )
+        for cat, pregunta in EJEMPLOS_CHARLA.items():
+            r = social.responder(ejemplo, pregunta)
+            if r is not None:
+                agregar("charla", cat, pregunta, r["texto"])
+        for rol, texto in banco["capacidades"].items():
+            agregar("capacidades", NOMBRES_ROL.get(rol, rol), "¿Qué puedes hacer?", texto)
+        for h in configuracion.catalogo():
+            if h["activa"]:
+                agregar(
+                    "consulta",
+                    h["nombre"],
+                    h["ejemplo"][:1].upper() + h["ejemplo"][1:],
+                    "Se responde con los datos del momento: " + h["descripcion"],
+                )
+        return Response(lista)
+
+
 class ResumenView(APIView):
     """Cifras para el inicio de la consola."""
 
     permission_classes = [EsSuperusuario]
 
     def get(self, request):
+        from datetime import timedelta
+
+        from django.db.models.functions import ExtractHour, TruncDate
+        from django.utils import timezone
+
         preguntas = PreguntaAgente.objects.exclude(datos__contains={"precarga": True})
         Via = PreguntaAgente.Via
+        hoy = timezone.localdate()
+        desde = hoy - timedelta(days=13)
+        dias = dict(
+            preguntas.filter(fecha__date__gte=desde)
+            .annotate(dia=TruncDate("fecha"))
+            .values_list("dia")
+            .annotate(n=Count("num"))
+        )
+        horas = dict(
+            preguntas.annotate(h=ExtractHour("fecha")).values_list("h").annotate(n=Count("num"))
+        )
+        por_via = dict(preguntas.values_list("via").annotate(n=Count("num")))
+        por_empresa = (
+            preguntas.values("dispositivo__area__organizacion__nombre")
+            .annotate(n=Count("num"))
+            .order_by("-n")[:6]
+        )
+        no_entendidas = (
+            preguntas.filter(via=Via.NO_ENTENDIDA)
+            .values("pregunta_normalizada")
+            .annotate(n=Count("num"), ejemplo=Max("pregunta"))
+            .order_by("-n")[:6]
+        )
         return Response(
             {
                 "preguntas": preguntas.count(),
-                "no_entendidas": preguntas.filter(via=Via.NO_ENTENDIDA).count(),
+                "no_entendidas": por_via.get(Via.NO_ENTENDIDA, 0),
                 "negativas": preguntas.filter(calificacion=-1).count(),
                 "positivas": preguntas.filter(calificacion=1).count(),
                 "banco": RespuestaAprendida.objects.filter(activa=True).count(),
@@ -437,6 +559,22 @@ class ResumenView(APIView):
                 "documentos_activos": DocumentoNico.objects.filter(activo=True)
                 .exclude(contenido="")
                 .count(),
+                "por_dia": [
+                    {
+                        "fecha": (desde + timedelta(days=i)).isoformat(),
+                        "total": dias.get(desde + timedelta(days=i), 0),
+                    }
+                    for i in range(14)
+                ],
+                "por_hora": [{"hora": h, "total": horas.get(h, 0)} for h in range(24)],
+                "por_via": [{"via": v, "total": por_via.get(v, 0)} for v in Via.values],
+                "por_empresa": [
+                    {"empresa": e["dispositivo__area__organizacion__nombre"], "total": e["n"]}
+                    for e in por_empresa
+                ],
+                "no_entendidas_frecuentes": [
+                    {"pregunta": e["ejemplo"], "total": e["n"]} for e in no_entendidas
+                ],
             },
             status=status.HTTP_200_OK,
         )

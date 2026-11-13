@@ -121,14 +121,18 @@ Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
     ├── GET estado/                         Agentes activos de todas las empresas
     ├── GET arbol/                          {puente, empresas: [{num, nombre, areas: [{num, nombre,
     │                                       dispositivos: [{num, nombre, activo, fisico}]}]}]}
-    ├── GET resumen/                        Cifras de inicio
+    ├── GET resumen/                        Cifras y series del dashboard (por_dia, por_hora,
+    │                                       por_via, por_empresa, no_entendidas_frecuentes)
+    ├── GET incluidas/                      Respuestas que Nico trae en código (explicación, charla,
+    │                                       capacidades, consulta)
     ├── banco/                              CRUD de respuestas: {organizacion | todas, pregunta,
     │                                       tema FIJA|RUTA (TEMP/HUM/AIRE aprendidas), plantilla,
     │                                       activa}; filtros organizacion, tema, activa, q
     ├── GET registro/                       Preguntas registradas; filtros organizacion, via,
     │                                       calificacion si|no, q
-    ├── GET herramientas/                   Catálogo con ajustes {nombre, descripcion, proposito,
-    │   PATCH herramientas/{nombre}/        ejemplo, activa, accion, editada, original};
+    ├── GET herramientas/                   {herramientas: [{nombre, descripcion, proposito,
+    │   PATCH herramientas/{nombre}/        ejemplo, activa, accion, editada, original}],
+    │                                       propositos: [{clave, nombre}]};
     │                                       PATCH {descripcion?, proposito?, ejemplo?, activa?,
     │                                       restaurar?}
     └── documentos/                         GET {documentos, limite, usados}; POST {clave,

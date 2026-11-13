@@ -5,6 +5,7 @@ import {
   NICO_DOCUMENTOS,
   NICO_HERRAMIENTA,
   NICO_HERRAMIENTAS,
+  NICO_INCLUIDAS,
   NICO_REGISTRO,
   NICO_RESPUESTA,
   NICO_RESUMEN,
@@ -16,6 +17,7 @@ const limpio = (params) => Object.fromEntries(Object.entries(params).filter(([, 
 
 export const arbol = () => pedir(NICO_ARBOL)
 export const resumen = () => pedir(NICO_RESUMEN)
+export const incluidas = () => pedir(NICO_INCLUIDAS)
 
 export const banco = (params = {}) => pedir(NICO_BANCO, { params: { page_size: 200, ...limpio(params) } })
 export const crearRespuesta = (datos) => pedir(NICO_BANCO, { metodo: 'POST', cuerpo: datos })

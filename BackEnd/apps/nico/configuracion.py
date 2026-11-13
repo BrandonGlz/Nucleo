@@ -30,6 +30,82 @@ DOCUMENTOS_BASE = (
     ("MEMORY", "Hechos que debe recordar: nombres, acuerdos, contexto del negocio."),
 )
 
+# Contenido de ejemplo de los documentos base (breve: la IA local tiene poco contexto). Se crean
+# activos; desde la consola se editan o se apagan.
+CONTENIDO_BASE = {
+    "SOUL": (
+        "- Cuidas el ambiente de los espacios que monitoreas como si fueran tuyos.\n"
+        "- Eres cálido y cercano, pero directo y serio cuando algo está fuera de rango.\n"
+        "- Prefieres la claridad a la cortesía larga: primero el dato, luego lo demás.\n"
+        "- Si no sabes algo o los datos no alcanzan, lo dices sin rodeos."
+    ),
+    "IDENTITY": (
+        "- Te llamas Nico AI y eres el asistente de Núcleo, una plataforma de monitoreo "
+        "ambiental.\n"
+        "- Cada dispositivo tiene su propio Nico: hablas solo del dispositivo elegido y de su "
+        "área.\n"
+        "- No eres una persona ni controlas equipos: lees sensores de temperatura, humedad y "
+        "calidad del aire."
+    ),
+    "AGENTS": (
+        "- Responde en español de México, de tú, en una o dos frases.\n"
+        "- Usa solo las cifras que te dan; nunca inventes datos, fechas ni causas.\n"
+        "- Si algo está en advertencia o peligro, dilo primero y sugiere revisar el área.\n"
+        "- No hagas pronósticos ni hables de temas ajenos al monitoreo."
+    ),
+    "USER": (
+        "- Te escriben administradores, supervisores, analistas y operadores de la empresa.\n"
+        "- Casi siempre quieren saber si todo está bien, qué pasó y qué tienen que atender.\n"
+        "- Muchos preguntan desde el celular y con prisa: ve al punto."
+    ),
+    "TOOLS": (
+        "- Las cifras ya vienen calculadas por las herramientas de Núcleo; tú solo las "
+        "explicas.\n"
+        "- Para detalle invita a pedir una gráfica, una comparativa o un reporte.\n"
+        "- Reportes, envíos y programaciones siempre se confirman con «sí» antes de hacerse."
+    ),
+    "MEMORY": (
+        "- Las lecturas se guardan cada pocos minutos; el sensor de aire tarda 20 min en "
+        "calentar al encender.\n"
+        "- Niveles: Normal, Advertencia y Peligro según los umbrales del dispositivo.\n"
+        "- Horario de referencia: Tijuana (hora del Pacífico)."
+    ),
+}
+
+# Para qué sirve cada herramienta: una lista corta para elegir en la consola.
+PROPOSITOS = (
+    ("lecturas", "Consultar lecturas"),
+    ("alertas", "Revisar alertas"),
+    ("dispositivo", "Estado del dispositivo"),
+    ("configuracion", "Consultar configuración"),
+    ("reportes", "Reportes"),
+    ("acciones", "Acciones con confirmación"),
+    ("conocimiento", "Explicar y orientar"),
+)
+CLAVES_PROPOSITO = {clave for clave, _ in PROPOSITOS}
+PROPOSITO_DE = {
+    "variable": "lecturas",
+    "ultima": "lecturas",
+    "resumen": "lecturas",
+    "grafica": "lecturas",
+    "comparativa": "lecturas",
+    "alertas": "alertas",
+    "detalle_alerta": "alertas",
+    "pendientes": "alertas",
+    "conexion": "dispositivo",
+    "sensores": "dispositivo",
+    "umbrales": "configuracion",
+    "areas": "configuracion",
+    "reportes": "reportes",
+    "reporte": "reportes",
+    "programaciones": "reportes",
+    "programar": "acciones",
+    "editar_programacion": "acciones",
+    "cancelar_programacion": "acciones",
+    "enviar": "acciones",
+    "banco": "conocimiento",
+}
+
 # Acciones de dos pasos que no están en ``herramientas.CATALOGO`` (escriben al confirmar).
 ACCIONES = (
     (
@@ -78,10 +154,16 @@ def limpiar_cache():
 
 
 def asegurar_documentos():
-    """Crea los documentos base que falten (inactivos)."""
+    """Crea los documentos base que falten, con su contenido de ejemplo."""
     existentes = set(DocumentoNico.objects.values_list("clave", flat=True))
     nuevos = [
-        DocumentoNico(clave=clave, descripcion=descripcion, orden=i)
+        DocumentoNico(
+            clave=clave,
+            descripcion=descripcion,
+            contenido=CONTENIDO_BASE.get(clave, ""),
+            activo=bool(CONTENIDO_BASE.get(clave)),
+            orden=i,
+        )
         for i, (clave, descripcion) in enumerate(DOCUMENTOS_BASE)
         if clave not in existentes
     ]
@@ -147,21 +229,25 @@ def catalogo():
     """Herramientas del código con sus ajustes de la consola."""
     from apps.reportes import herramientas
 
-    base = [(h.nombre, h.descripcion, h.srs, h.ejemplo) for h in herramientas.CATALOGO.values()]
-    base += list(ACCIONES)
+    base = [(h.nombre, h.descripcion, h.ejemplo) for h in herramientas.CATALOGO.values()]
+    base += [(nombre, descripcion, ejemplo) for nombre, descripcion, _, ejemplo in ACCIONES]
     ajustes = {a.nombre: a for a in AjusteHerramienta.objects.all()}
     lista = []
-    for nombre, descripcion, proposito, ejemplo in base:
+    for nombre, descripcion, ejemplo in base:
         a = ajustes.get(nombre)
+        proposito = PROPOSITO_DE.get(nombre, "conocimiento")
+        elegido = a.proposito if a and a.proposito in CLAVES_PROPOSITO else proposito
         lista.append(
             {
                 "nombre": nombre,
                 "descripcion": (a.descripcion if a and a.descripcion else descripcion),
-                "proposito": (a.proposito if a and a.proposito else proposito),
+                "proposito": elegido,
                 "ejemplo": (a.ejemplo if a and a.ejemplo else ejemplo),
                 "activa": a.activa if a else True,
                 "accion": nombre in NOMBRES_ACCIONES,
-                "editada": bool(a and (a.descripcion or a.proposito or a.ejemplo)),
+                "editada": bool(
+                    a and (a.descripcion or a.ejemplo or (a.proposito and elegido != proposito))
+                ),
                 "original": {
                     "descripcion": descripcion,
                     "proposito": proposito,

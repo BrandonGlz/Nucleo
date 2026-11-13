@@ -150,7 +150,7 @@ def responder(dispositivo, pregunta, usuario=None):
             )
         ),
         "molestia": "Lamento no haberte ayudado como esperabas. Dime con tus palabras qué "
-        f"necesitas de {d} y lo reviso; si una respuesta estuvo mal, márcala con 👎 para "
+        f"necesitas de {d} y lo reviso; si una respuesta estuvo mal, márcala como no útil para "
         "corregirla.",
         "risa": p.risa(dispositivo),
         "acuse": p.acuse(dispositivo),

@@ -31,3 +31,25 @@ export function Campo({ label, ...resto }) {
   )
 }
 
+
+// Barras horizontales sencillas: [{clave, etiqueta, valor, color?, nota?}].
+export function BarrasHorizontales({ filas }) {
+  const max = Math.max(1, ...filas.map((f) => f.valor))
+  if (!filas.length) return <p className="ui-muted ui-consola-vacio">Sin datos todavía.</p>
+  return (
+    <ul className="ui-consola-barras">
+      {filas.map((f) => (
+        <li key={f.clave}>
+          <span className="ui-consola-barras__etiqueta">{f.etiqueta}</span>
+          <span className="ui-consola-barras__pista">
+            <span style={{ width: `${(f.valor / max) * 100}%`, background: f.color }} />
+          </span>
+          <span className="ui-consola-barras__valor">
+            {f.valor.toLocaleString('es-MX')}
+            {f.nota && <small>{f.nota}</small>}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}

@@ -6,11 +6,14 @@ const baseConfigurada = (configuredBaseUrl || 'http://localhost:8000/api/v1').re
 // se usa la API de su propio host (Caddy la sirve igual), así el navegador no la bloquea por CORS.
 function baseDelHost(base) {
   if (typeof window === 'undefined') return base
-  const { hostname, origin } = window.location
+  const { hostname, origin, port } = window.location
   if (!hostname.startsWith('nicoai.')) return base
   try {
     const url = new URL(base)
-    return url.hostname === hostname.slice('nicoai.'.length) ? origin + url.pathname.replace(/\/+$/, '') : base
+    // Mismo dominio y puerto (producción): la API de su propio host. En desarrollo la API va
+    // en otro puerto y se deja como está.
+    const mismo = url.hostname === hostname.slice('nicoai.'.length) && url.port === port
+    return mismo ? origin + url.pathname.replace(/\/+$/, '') : base
   } catch {
     return base
   }

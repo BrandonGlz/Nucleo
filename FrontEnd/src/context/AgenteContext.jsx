@@ -80,14 +80,15 @@ function consultar(pregunta, agente, anterior = '', { precarga = false, sinCache
 
 // `dispositivos`: lista dada desde fuera (la consola de Nico AI la arma con empresa y área); sin
 // ella se usan los dispositivos de la organización del usuario.
-export function AgenteProvider({ children, dispositivos: externos }) {
+export function AgenteProvider({ children, dispositivos: externos, agenteInicial }) {
   const [conversaciones, setConversaciones] = useState(() => leer(CLAVE, []))
   const [actual, setActual] = useState(null)
   const [estado, setEstado] = useState('listo')
   const [animada, setAnimada] = useState(null)
   const [propios, setDispositivos] = useState([])
   const dispositivos = externos ?? propios
-  const [agente, setAgenteEstado] = useState(() => leer(CLAVE_AGENTE, null))
+  // `agenteInicial`: con qué agente abre (la consola siempre empieza con el del ESP físico).
+  const [agente, setAgenteEstado] = useState(() => agenteInicial ?? leer(CLAVE_AGENTE, null))
   const turno = useRef(0)
   const { usuario } = useSesion()
   const conOrganizacion = Boolean(usuario?.organizacion)
