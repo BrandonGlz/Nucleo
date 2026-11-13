@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Genera el APK de la app móvil en la laptop y lo publica en deploy/descargas/ (lo entrega Caddy en /app/).
+# Genera el APK de la app móvil en la laptop y lo publica en deploy/descargas/ (lo entrega Caddy en app.bynucleo.com).
 # Usa la configuración del perfil "piloto" de Mobile/eas.json (API de producción) y firma con la llave
 # de ~/nucleo-app, que no va a git y entra en el respaldo diario. La primera vez crea la llave.
 # Solo consume memoria mientras compila; al terminar no queda nada corriendo.
@@ -8,18 +8,52 @@
 #   bash deploy/compilar_apk.sh            compila si Mobile/ cambió desde el último APK publicado
 #   bash deploy/compilar_apk.sh --forzar   compila aunque no haya cambios
 #   bash deploy/compilar_apk.sh --limpio   borra node_modules y android/ y compila todo desde cero
+#   bash deploy/compilar_apk.sh --indice   solo apunta la descarga al APK ya compilado de la versión actual
 set -euo pipefail
 
-forzar=0; limpio=0
+forzar=0; limpio=0; solo_indice=0
 for a in "$@"; do
   case $a in
     --forzar) forzar=1 ;;
     --limpio) limpio=1; forzar=1 ;;
-    *) echo "Opción desconocida: $a (usa --forzar o --limpio)" >&2; exit 2 ;;
+    --indice) solo_indice=1 ;;
+    *) echo "Opción desconocida: $a (usa --forzar, --limpio o --indice)" >&2; exit 2 ;;
   esac
 done
 
 raiz="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+descargas="$raiz/deploy/descargas"
+
+# La raíz de app.bynucleo.com (index.html) lleva al APK de la versión, que se descarga como nucleo-<versión>.apk
+publicar_indice() {
+  local v="$1" tmp="$descargas/.index.html.tmp"
+  cat > "$tmp" <<HTML
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="0; url=nucleo-$v.apk">
+<title>Núcleo $v para Android</title>
+</head>
+<body style="font-family: system-ui, sans-serif; padding: 32px; text-align: center">
+<p>La descarga de Núcleo $v comienza en un momento.</p>
+<p><a href="nucleo-$v.apk">Descargar nucleo-$v.apk</a></p>
+</body>
+</html>
+HTML
+  mv -f "$tmp" "$descargas/index.html"
+}
+
+if (( solo_indice )); then
+  version="$(node -p 'require(process.argv[1]).expo.version' "$raiz/Mobile/app.json" 2>/dev/null \
+    || python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["expo"]["version"])' "$raiz/Mobile/app.json")"
+  [[ -f "$descargas/nucleo-$version.apk" ]] || { echo "No existe deploy/descargas/nucleo-$version.apk; compílalo primero" >&2; exit 1; }
+  publicar_indice "$version"
+  rm -f "$descargas/nucleo.apk"  # nombre fijo anterior: ahora /nucleo.apk lleva a la raíz
+  echo "Descarga apuntada a nucleo-$version.apk"
+  exit 0
+fi
 firma="${NUCLEO_FIRMA:-$HOME/nucleo-app}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}" ANDROID_SDK_ROOT="${ANDROID_HOME:-$HOME/android-sdk}"
 export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}"
@@ -47,9 +81,9 @@ huella() { sha256sum | cut -c1-16; }
 h_npm=$(huella < package-lock.json)
 h_nativo=$({ git ls-files -s -- . ':!src' ':!App.js' ':!index.js' ':!README.md' ':!package.json'; sha256sum google-services.json 2>/dev/null; } | huella)
 h_apk=$({ git rev-parse HEAD:Mobile; git status --porcelain -- .; echo "$abis"; sha256sum "$raiz/deploy/compilar_apk.sh"; sha256sum google-services.json 2>/dev/null; } | huella)
-ultima="$raiz/deploy/descargas/.huella"
+ultima="$descargas/.huella"
 
-if (( ! forzar )) && [[ -f "$raiz/deploy/descargas/nucleo.apk" && "$(cat "$ultima" 2>/dev/null)" == "$h_apk" ]]; then
+if (( ! forzar )) && [[ -f "$descargas/index.html" && "$(cat "$ultima" 2>/dev/null)" == "$h_apk" ]]; then
   echo "Sin cambios en Mobile/ desde el último APK publicado; no se compila (usa --forzar para compilar igual)."
   exit 0
 fi
@@ -103,11 +137,13 @@ bajo ./gradlew assembleRelease --no-daemon --build-cache -Dorg.gradle.workers.ma
   -Pandroid.injected.signing.key.password="$FIRMA_CLAVE"
 pkill -u "$(id -u)" -f KotlinCompileDaemon || true  # que no quede memoria ocupada después
 
-# Se publica con nombre fijo (enlace que no cambia) y se guarda una copia por versión
-install -d "$raiz/deploy/descargas"
-cp app/build/outputs/apk/release/app-release.apk "$raiz/deploy/descargas/nucleo-$version.apk"
-cp "$raiz/deploy/descargas/nucleo-$version.apk" "$raiz/deploy/descargas/.nucleo.apk.tmp"
-mv -f "$raiz/deploy/descargas/.nucleo.apk.tmp" "$raiz/deploy/descargas/nucleo.apk"
+# Se guarda con la versión en el nombre (así se descarga) y la raíz del subdominio pasa a apuntarle;
+# el enlace https://app.bynucleo.com no cambia
+install -d "$descargas"
+cp app/build/outputs/apk/release/app-release.apk "$descargas/.nucleo-$version.apk.tmp"
+mv -f "$descargas/.nucleo-$version.apk.tmp" "$descargas/nucleo-$version.apk"
+publicar_indice "$version"
+rm -f "$descargas/nucleo.apk"
 echo "$h_apk" > "$ultima"
-ls -lh "$raiz/deploy/descargas"
+ls -lh "$descargas"
 echo "Listo: versión $version publicada en https://app.bynucleo.com y guardada como deploy/descargas/nucleo-$version.apk"

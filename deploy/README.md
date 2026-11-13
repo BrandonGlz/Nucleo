@@ -43,7 +43,7 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
   `deploy/cloudflared.yml` → `/etc/cloudflared/config.yml`):
   - `bynucleo.com` y `www.` → Caddy (`127.0.0.1:8081`), que manda `http://` a `https://` y `www`
     al dominio principal.
-  - `app.bynucleo.com` → Caddy, que entrega `deploy/descargas/` (la raíz lleva a `nucleo.apk`).
+  - `app.bynucleo.com` → Caddy, que entrega `deploy/descargas/` (la raíz lleva a `nucleo-<versión>.apk`).
   - `dispositivos.bynucleo.com/mqtt` → directo al listener WebSocket de Mosquitto
     (`127.0.0.1:51884`). El resto de ese subdominio pasa por Caddy, que solo deja el respaldo
     HTTPS de Nico y la hora (`/api/v1/puente/`, `/api/v1/health/`) y lo demás lo manda a la web.
@@ -69,7 +69,10 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 ### App móvil (APK)
 
 El APK se descarga en `https://app.bynucleo.com`. Caddy entrega la carpeta
-`deploy/descargas/` del proyecto (no va a git), donde también queda una copia por versión (`nucleo-<versión>.apk`).
+`deploy/descargas/` del proyecto (no va a git), donde queda un APK por versión (`nucleo-<versión>.apk`). La raíz
+(`index.html`, lo escribe el script) lleva al de la versión publicada, así que se descarga con la versión en el
+nombre; el enlace anterior `/nucleo.apk` lleva a la raíz. El login de la web tiene un botón a este enlace.
+`bash deploy/compilar_apk.sh --indice` solo vuelve a apuntar la raíz al APK ya compilado de la versión de `Mobile/app.json`.
 
 Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.json` y correr
 `bash deploy/compilar_apk.sh` (mejor en tmux). Compila en la laptop con la API del perfil `piloto` de

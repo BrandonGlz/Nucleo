@@ -19,10 +19,11 @@ http://:8081 {
 	@www header_regexp www Host ^www\.(.+)$
 	redir @www https://{re.www.1}{uri} permanent
 
-	# app.bynucleo.com: solo la descarga del APK (la raíz lleva al archivo)
+	# app.bynucleo.com: solo la descarga del APK. La raíz (index.html, lo escribe compilar_apk.sh) lleva a
+	# nucleo-<versión>.apk; el enlace fijo anterior /nucleo.apk lleva a la raíz.
 	@app host app.bynucleo.com
 	handle @app {
-		redir / /nucleo.apk
+		redir /nucleo.apk / 302
 		root * __RAIZ__/deploy/descargas
 		@apk path *.apk
 		header @apk Content-Type application/vnd.android.package-archive

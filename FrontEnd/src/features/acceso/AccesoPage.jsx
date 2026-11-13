@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Avatar, Button, Input, Logo, LogoMark } from '../../design-system/componentes/index.js'
+import { Avatar, Button, Icon, Input, Logo, LogoMark } from '../../design-system/componentes/index.js'
 import { useSesion } from '../../context/SesionContext'
 import { inicioDe } from '../index'
 import { cuentasDemo, PASSWORD_DEMO } from '../../services/auth'
@@ -8,6 +8,8 @@ import { USAR_MOCKS } from '../../services/config'
 import { nombreCompleto, ROL } from '../../utils/convertir'
 
 const ORDEN_ROL = ['ADMIN', 'SUPER', 'ANALISTA', 'OPER']
+// Subdominio que entrega el APK más reciente (lo publica deploy/compilar_apk.sh)
+const DESCARGA_APP = 'https://app.bynucleo.com'
 
 // En modo simulado: una tarjeta por cuenta para entrar con un clic y revisar cada rol.
 function CuentasDemo({ entrar, enviando }) {
@@ -140,6 +142,17 @@ export function AccesoPage() {
           <p style={{ margin: 0, fontSize: 14, lineHeight: '22px', color: 'var(--text-muted)' }}>
             ¿Necesitas acceso? Pídelo al administrador de tu organización.
           </p>
+          <div className="acceso__app">
+            <p>¿Prefieres el celular? Descarga la app móvil de Núcleo para Android.</p>
+            <a
+              className="nc-btn nc-btn--secondary nc-btn--md nc-btn--block"
+              href={DESCARGA_APP}
+              rel="noopener"
+            >
+              <Icon name="smartphone" size={18} />
+              <span>Descargar la app móvil</span>
+            </a>
+          </div>
           <CuentasDemo entrar={entrarDemo} enviando={enviando} />
         </form>
         <span className="acceso__pie">Núcleo · Monitoreo ambiental</span>

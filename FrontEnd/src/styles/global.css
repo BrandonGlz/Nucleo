@@ -3141,6 +3141,22 @@ button.ui-menuitem:not(:disabled):hover svg {
 .acceso__panel {
   overflow-y: auto;
 }
+.acceso__app {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.acceso__app p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-secondary);
+}
+.acceso__app .nc-btn {
+  text-decoration: none;
+}
 .acceso__demo {
   display: flex;
   flex-direction: column;
