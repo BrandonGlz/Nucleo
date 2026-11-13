@@ -10,6 +10,7 @@ import './styles/global.css'
 // con otro marco, solo para el superusuario. Se descarga aparte, así que no pesa en la web normal.
 const ES_CONSOLA = window.location.hostname.startsWith('nicoai.')
 const ConsolaApp = lazy(() => import('./consola/ConsolaApp.jsx'))
+if (ES_CONSOLA) document.title = 'Nico AI'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
