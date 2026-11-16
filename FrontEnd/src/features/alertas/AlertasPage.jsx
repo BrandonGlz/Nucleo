@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   ActivityFeed, Badge, Button, Card, IconCircle, Input, Skeleton, StatusBadge, Tabs,
 } from '../../design-system/componentes/index.js'
@@ -7,6 +7,7 @@ import { Pantalla } from '../../components/Pantalla'
 import { useAvisos } from '../../context/AvisosContext'
 import { useSesion } from '../../context/SesionContext'
 import { useDatos } from '../../hooks/useDatos'
+import { CONSULTA_MOVIL } from '../../hooks/useMenuMovil'
 import * as alertasApi from '../../services/alertas'
 import * as usuariosApi from '../../services/usuarios'
 import * as seguridad from '../../services/seguridad'
@@ -131,6 +132,7 @@ export function AlertasPage() {
   const { estado, datos, reintentar, actualizar } = useDatos(() => cargar(rol), [rol])
   const [pestana, setPestana] = useState('PENDIENTE')
   const [elegida, setElegida] = useState(null)
+  const detalle = useRef(null)
   const [exportando, setExportando] = useState(false)
   // CSV de la pestaña actual (GET /alertas/exportar/ con el mismo filtro de estado).
   const exportar = async () => {
@@ -217,7 +219,13 @@ export function AlertasPage() {
                     key={a.num}
                     type="button"
                     className={`ui-alerta${seleccion?.num === a.num ? ' is-selected' : ''}`}
-                    onClick={() => setElegida(a.num)}
+                    onClick={() => {
+                      setElegida(a.num)
+                      // En el celular el detalle queda debajo de la lista: se lleva a la vista.
+                      if (window.matchMedia?.(CONSULTA_MOVIL).matches) {
+                        requestAnimationFrame(() => detalle.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+                      }
+                    }}
                   >
                     <IconCircle name={n.icon} tone={n.tone} size="md" />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
@@ -255,7 +263,7 @@ export function AlertasPage() {
               {estado === 'listo' && filas.length === 0 && <ActivityFeed items={[]} />}
             </div>
           </Card>
-          <Card className="nc-grow">
+          <Card className="nc-grow ui-detalle-alerta" ref={detalle}>
             {seleccion ? (
               <Detalle key={seleccion.num} a={seleccion} usuarios={datos.usuarios} editable={puedeEditar(rol)} alResolver={alResolver} />
             ) : (
