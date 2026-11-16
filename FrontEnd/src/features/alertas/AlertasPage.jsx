@@ -263,7 +263,7 @@ export function AlertasPage() {
               {estado === 'listo' && filas.length === 0 && <ActivityFeed items={[]} />}
             </div>
           </Card>
-          <Card className="nc-grow ui-detalle-alerta" ref={detalle}>
+          <Card className={`nc-grow ui-detalle-alerta${seleccion ? '' : ' is-vacio'}`} ref={detalle}>
             {seleccion ? (
               <Detalle key={seleccion.num} a={seleccion} usuarios={datos.usuarios} editable={puedeEditar(rol)} alResolver={alResolver} />
             ) : (

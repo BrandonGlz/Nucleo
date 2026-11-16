@@ -173,6 +173,7 @@ export function ReportesPage() {
   // ?reporte=<num> abre ese reporte (lo usa Nico AI al generar uno).
   const [params] = useSearchParams()
   const [elegido, setElegido] = useState(() => Number(params.get('reporte')) || null)
+  const [verTodos, setVerTodos] = useState(false)
   const [modal, setModal] = useState(false)
   const reportes = datos?.reportes ?? []
   const actual = reportes.find((r) => r.num === elegido) ?? reportes[0]
@@ -254,7 +255,7 @@ export function ReportesPage() {
               </Card>
             ) : (
               <Card className="nc-grow">
-                <div className="nc-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div className={`nc-scroll ui-recientes${verTodos ? ' is-todos' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span className="ui-eyebrow" style={{ padding: '12px 12px 6px' }}>
                     Recientes
                   </span>
@@ -262,7 +263,7 @@ export function ReportesPage() {
                     <button
                       key={r.num}
                       type="button"
-                      className={`ui-item ui-item--boton${actual?.num === r.num ? ' is-selected' : ''}`}
+                      className={`ui-item ui-item--boton ui-reciente${actual?.num === r.num ? ' is-selected' : ''}`}
                       style={{ alignItems: 'flex-start', gap: 12, padding: 12 }}
                       onClick={() => setElegido(r.num)}
                     >
@@ -283,6 +284,14 @@ export function ReportesPage() {
                       </div>
                     </button>
                   ))}
+                  {/* En el celular solo se ven los 5 más recientes, para que el reporte no quede hasta abajo. */}
+                  {reportes.length > 5 && (
+                    <div className="ui-solo-movil" style={{ padding: '4px 12px' }}>
+                      <Button variant="ghost" size="sm" onClick={() => setVerTodos((v) => !v)}>
+                        {verTodos ? 'Ver menos' : `Ver todos (${reportes.length})`}
+                      </Button>
+                    </div>
+                  )}
                   <span className="ui-eyebrow" style={{ padding: '12px 12px 6px' }}>
                     Programados por correo
                   </span>

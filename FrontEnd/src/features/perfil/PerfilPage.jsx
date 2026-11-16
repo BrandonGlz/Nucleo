@@ -168,7 +168,7 @@ export function PerfilPage() {
                 <p className="nc-card__sub">Se guardan en este navegador</p>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div className="ui-fila-tema" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <strong style={{ fontSize: 14 }}>Tema</strong>
                 <span className="ui-muted" style={{ fontSize: 13 }}>

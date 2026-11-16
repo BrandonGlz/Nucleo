@@ -51,7 +51,7 @@ export function NotificacionesPage() {
       }}
     >
       <Card className="nc-grow">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 8, flexWrap: 'wrap' }}>
           <Tabs
             items={[
               { id: 'todas', label: 'Todas', count: notificaciones.length },

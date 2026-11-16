@@ -20,7 +20,7 @@ function Tabs(p) {
     if (!el) return undefined;
     function medir() {
       var b = el.querySelector('.nc-tab.is-active');
-      setMedida(b ? { x: b.offsetLeft, w: b.offsetWidth } : null);
+      setMedida(b ? { x: b.offsetLeft, y: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight } : null);
     }
     medir();
     if (typeof ResizeObserver === 'undefined') return undefined;
@@ -43,7 +43,8 @@ function Tabs(p) {
   }, m ? h('span', {
     className: cx('nc-tabs__indicador', deslizar && 'is-deslizando'),
     'aria-hidden': true,
-    style: { width: m.w, transform: 'translateX(' + m.x + 'px)' }
+    // En celular las pestañas pueden ocupar dos renglones: el indicador sigue también la posición vertical.
+    style: p.variant === 'underline' ? { width: m.w, transform: 'translateX(' + m.x + 'px)' } : { width: m.w, height: m.h, top: 0, bottom: 'auto', transform: 'translate(' + m.x + 'px, ' + m.y + 'px)' }
   }) : null, items.map(function (it) {
     return h('button', {
       key: it.id,

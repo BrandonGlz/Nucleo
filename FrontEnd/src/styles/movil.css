@@ -707,3 +707,53 @@
 .ui-detalle-alerta {
   scroll-margin-top: 72px;
 }
+
+/* Celular: las pestañas que no caben bajan de renglón (sin cortarse) y ocupan el ancho */
+@media (max-width: 560px) {
+  .nc-tabs:not(.nc-tabs--underline) {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    overflow: visible;
+    border-radius: 20px;
+  }
+  .nc-tabs:not(.nc-tabs--underline) .nc-tab {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0 12px;
+  }
+  .ui-fila-tema > .nc-tabs {
+    flex-basis: 100%;
+  }
+  /* Alertas: sin alerta elegida no se repite el «Sin alertas» del detalle */
+  .ui-detalle-alerta.is-vacio {
+    display: none;
+  }
+  /* Correos largos en tarjetas: en una línea con puntos suspensivos, no partidos */
+  .nc-table__device,
+  .nc-table__device > div {
+    min-width: 0;
+  }
+  .nc-table__device > div > span {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}
+
+/* Elementos que solo existen en el celular */
+.ui-solo-movil {
+  display: none;
+}
+@media (max-width: 560px) {
+  .ui-solo-movil {
+    display: block;
+  }
+  /* Reportes: solo los 5 más recientes hasta pulsar «Ver todos» */
+  .ui-recientes:not(.is-todos) .ui-reciente:nth-of-type(n + 6) {
+    display: none;
+  }
+}
