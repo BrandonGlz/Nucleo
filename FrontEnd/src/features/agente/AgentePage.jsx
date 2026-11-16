@@ -16,6 +16,7 @@ import {
 import { Button, Icon, Skeleton, TrendChart } from '../../design-system/componentes/index.js'
 import { Desplegable } from '../../components/Desplegable'
 import { useCierre } from '../../hooks/useSalida'
+import { CONSULTA_MOVIL, useEsMovil } from '../../hooks/useMenuMovil'
 import { Pantalla } from '../../components/Pantalla'
 import { useAgente } from '../../context/AgenteContext'
 import { useSesion } from '../../context/SesionContext'
@@ -543,7 +544,9 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   const ag = useAgente()
   const { conversaciones, actual, conv, pensando, animada, dispositivos, dispositivoAgente } = ag
   const [texto, setTexto] = useState('')
-  const [panel, setPanel] = useState(true)
+  // En el celular las conversaciones se abren encima del chat, así que empiezan ocultas.
+  const movil = useEsMovil()
+  const [panel, setPanel] = useState(() => !window.matchMedia?.(CONSULTA_MOVIL).matches)
   // Sugerencias mientras se escribe: se piden una vez por dispositivo y se filtran aquí.
   const [escritura, setEscritura] = useState(null)
   const numAgente = dispositivoAgente?.num
@@ -729,7 +732,14 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
       <div className={`ui-ia${panel && !visor ? '' : ' is-sin-panel'}${visor ? ' con-visor' : ''}`}>
         {panel && !visor && (
           <aside className="ui-ia-panel" aria-label="Conversaciones">
-            <button type="button" className="ui-ia-nueva" onClick={nueva}>
+            <button
+              type="button"
+              className="ui-ia-nueva"
+              onClick={() => {
+                nueva()
+                if (movil) setPanel(false)
+              }}
+            >
               <SquarePen size={16} /> Nueva conversación
             </button>
             <span className="ui-eyebrow ui-ia-panel__titulo">Recientes</span>
@@ -737,7 +747,14 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
               {conversaciones.length === 0 && <p className="ui-muted ui-ia-panel__vacio">Tus conversaciones aparecerán aquí.</p>}
               {conversaciones.map((c) => (
                 <div key={c.id} className={`ui-ia-conv${c.id === actual ? ' is-actual' : ''}`}>
-                  <button type="button" onClick={() => ag.abrir(c.id)} title={c.titulo}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      ag.abrir(c.id)
+                      if (movil) setPanel(false)
+                    }}
+                    title={c.titulo}
+                  >
                     <MessageSquare size={14} />
                     <span className="ui-ia-conv__texto">
                       <span>{c.titulo}</span>
