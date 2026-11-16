@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
@@ -11,13 +12,21 @@ import { useOperador } from '../../hooks/useOperador'
 import * as agenteApi from '../../services/agente'
 import { planDe, respuestaRapida, siguientes } from './proceso'
 import { ComparativaChat, GraficaChat } from './Piezas'
-import { hora } from '../../utils/formato'
+import { diaCorto, hora } from '../../utils/formato'
 import { font, marca } from '../../theme'
 
-const SUGERENCIAS = ['¿Cómo está la temperatura ahora?', '¿Hubo picos de humedad hoy?', '¿Cómo está la calidad del aire?']
-// Quienes generan reportes también pueden pedírselos al agente.
-const SUGERENCIA_REPORTE = 'Genera el reporte de esta semana'
+// Tarjetas de inicio (como en la web). Quienes generan reportes también pueden pedírselos al agente.
+const SUGERENCIAS = [
+  { icono: 'thermometer', titulo: 'Temperatura', texto: '¿Cómo está la temperatura ahora?' },
+  { icono: 'droplets', titulo: 'Picos de humedad', texto: '¿Hubo picos de humedad hoy?' },
+  { icono: 'wind', titulo: 'Calidad del aire', texto: '¿Cómo está la calidad del aire?' },
+]
+const SUGERENCIA_ALERTAS = { icono: 'bell', titulo: 'Alertas', texto: '¿Cuántas alertas hubo esta semana?' }
+const SUGERENCIA_REPORTE = { icono: 'file-text', titulo: 'Reporte', texto: 'Genera el reporte de esta semana', destacada: true }
 const ROLES_REPORTE = ['ADMIN', 'SUPER', 'ANALISTA']
+// Conversaciones recientes: se guardan en el teléfono (las 12 últimas de la cuenta).
+const MAX_CONVERSACIONES = 12
+const claveConversaciones = (usuario) => `nucleo.conversaciones.${usuario}`
 
 // Nico AI en la app: hay un agente por dispositivo. El operador habla con el de su dispositivo;
 // las demás cuentas lo eligen en un select. Solo aparece para las cuentas autorizadas.
@@ -31,6 +40,9 @@ export function AgenteScreen() {
   const [texto, setTexto] = useState('')
   const [mensajes, setMensajes] = useState({})
   const [pensando, setPensando] = useState(false)
+  // Conversación abierta por dispositivo (su id) y las guardadas.
+  const [abierta, setAbierta] = useState({})
+  const [guardadas, setGuardadas] = useState([])
 
   const [teclado, setTeclado] = useState(false)
   // Pasos que se muestran mientras responde (como en la web) y el que va.
@@ -58,6 +70,42 @@ export function AgenteScreen() {
       clearInterval(t)
     }
   }, [])
+
+  useEffect(() => {
+    AsyncStorage.getItem(claveConversaciones(usuario.num))
+      .then((t) => t && setGuardadas(JSON.parse(t)))
+      .catch(() => {})
+  }, [usuario.num])
+
+  // Cada respuesta guarda la conversación abierta (su título es la primera pregunta).
+  const guardar = (num, lista_) => {
+    if (!lista_.length) return
+    const id = abierta[num] ?? `${num}-${Date.now()}`
+    if (!abierta[num]) setAbierta((x) => ({ ...x, [num]: id }))
+    setGuardadas((todas) => {
+      const conv = { id, dispositivo: num, titulo: lista_.find((m) => m.de === 'yo')?.texto ?? 'Conversación', fecha: new Date().toISOString(), mensajes: lista_ }
+      const nuevas = [conv, ...todas.filter((x) => x.id !== id)].slice(0, MAX_CONVERSACIONES)
+      AsyncStorage.setItem(claveConversaciones(usuario.num), JSON.stringify(nuevas)).catch(() => {})
+      return nuevas
+    })
+  }
+  useEffect(() => {
+    if (d && !pensando && lista.length && lista.at(-1).de !== 'yo') guardar(d.num, lista)
+    // Solo al terminar cada respuesta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lista.length, pensando])
+
+  const nuevaConversacion = () => {
+    if (!d || pensando) return
+    setMensajes((x) => ({ ...x, [d.num]: [] }))
+    setAbierta((x) => ({ ...x, [d.num]: null }))
+  }
+  const abrirConversacion = (conv) => {
+    setElegido(conv.dispositivo)
+    setMensajes((x) => ({ ...x, [conv.dispositivo]: conv.mensajes }))
+    setAbierta((x) => ({ ...x, [conv.dispositivo]: conv.id }))
+  }
+  const recientes = guardadas.filter((x) => x.dispositivo === d?.num && x.id !== abierta[d?.num]).slice(0, 4)
 
   useEffect(() => {
     if (!plan) return undefined
@@ -165,6 +213,18 @@ export function AgenteScreen() {
                 {d ? `Responde con los datos de ${d.nombre}` : 'Cargando tu dispositivo…'}
               </T>
             </View>
+            {lista.length > 0 && (
+              <Pressable
+                onPress={nuevaConversacion}
+                disabled={pensando}
+                accessibilityRole="button"
+                accessibilityLabel="Nueva conversación"
+                hitSlop={6}
+                style={({ pressed }) => [s.nueva, (pressed || pensando) && { opacity: 0.6 }]}
+              >
+                <Icon name="square-pen" size={18} color={marca.tinta} />
+              </Pressable>
+            )}
           </View>
           {dispositivos.length > 1 && !teclado && (
             <SelectorDispositivo dispositivos={dispositivos} valor={d?.num} onElegir={setElegido} etiqueta="Preguntar sobre" />
@@ -174,21 +234,63 @@ export function AgenteScreen() {
       <View style={[s.hoja, { backgroundColor: c.background }]}>
         <ScrollView ref={hilo} style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           {lista.length === 0 && !pensando ? (
-            <View style={{ flex: 1, justifyContent: 'center', gap: 10 }}>
-              <T peso={700} size={18} style={{ textAlign: 'center' }}>
-                {`Hola, ${usuario.nombre}`}
-              </T>
-              <T size={14} lh={20} color={c.textMuted} style={{ textAlign: 'center', marginBottom: 8 }}>
-                {d ? `Pregunta lo que necesites sobre ${d.nombre}.` : ' '}
-              </T>
-              {(ROLES_REPORTE.includes(usuario.rol) ? [...SUGERENCIAS, SUGERENCIA_REPORTE] : SUGERENCIAS).map((p) => (
-                <Pressable key={p} onPress={() => preguntar(p)} style={({ pressed }) => [s.sugerencia, { backgroundColor: c.surface, borderColor: c.border }, pressed && { opacity: 0.7 }]}>
-                  <Icon name="sparkles" size={14} color={c.textSecondary} />
-                  <T size={14} style={{ flex: 1 }}>
-                    {p}
+            <View style={{ flex: 1, justifyContent: 'center', gap: 14 }}>
+              <View style={{ alignItems: 'center', gap: 6 }}>
+                <View style={s.insignia}>
+                  <Icon name="sparkles" size={24} color={marca.verde} />
+                </View>
+                <T peso={800} size={24} lh={30} style={{ textAlign: 'center', letterSpacing: -0.6 }}>
+                  Hola, <T peso={800} size={24} color={c.success}>{usuario.nombre}</T>
+                </T>
+                <T size={14} lh={20} color={c.textMuted} style={{ textAlign: 'center' }}>
+                  {d ? `¿Qué quieres saber hoy de ${d.nombre}?` : ' '}
+                </T>
+              </View>
+              <View style={s.rejilla}>
+                {[...SUGERENCIAS, ROLES_REPORTE.includes(usuario.rol) ? SUGERENCIA_REPORTE : SUGERENCIA_ALERTAS].map((x, i) => (
+                  <Aparece key={x.texto} indice={i} style={s.celda}>
+                    <Pressable
+                      onPress={() => preguntar(x.texto)}
+                      accessibilityRole="button"
+                      accessibilityLabel={x.texto}
+                      style={({ pressed }) => [s.tarjeta, { backgroundColor: x.destacada ? marca.tinta : c.surface, borderColor: x.destacada ? marca.tinta : c.border }, pressed && { opacity: 0.75 }]}
+                    >
+                      <View style={[s.icono, { backgroundColor: x.destacada ? marca.verde : c.accentSoft }]}>
+                        <Icon name={x.icono} size={15} color={x.destacada ? marca.tinta : c.success} />
+                      </View>
+                      <T peso={700} size={13} color={x.destacada ? marca.claro : undefined}>
+                        {x.titulo}
+                      </T>
+                      <T size={12} lh={16} color={x.destacada ? marca.tenue : c.textMuted}>
+                        {x.texto}
+                      </T>
+                    </Pressable>
+                  </Aparece>
+                ))}
+              </View>
+              {recientes.length > 0 && (
+                <View style={{ gap: 8 }}>
+                  <T mayus color={c.textMuted}>
+                    Recientes
                   </T>
-                </Pressable>
-              ))}
+                  {recientes.map((conv) => (
+                    <Pressable
+                      key={conv.id}
+                      onPress={() => abrirConversacion(conv)}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [s.reciente, { backgroundColor: c.surface }, pressed && { opacity: 0.7 }]}
+                    >
+                      <Icon name="message-square" size={15} color={c.textMuted} />
+                      <T peso={600} size={13} numberOfLines={1} style={{ flex: 1 }}>
+                        {conv.titulo}
+                      </T>
+                      <T size={11} color={c.textMuted}>
+                        {diaCorto(conv.fecha)}
+                      </T>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
           ) : (
             lista.map((m, i) =>
@@ -331,7 +433,13 @@ const s = StyleSheet.create({
   fila12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   marca: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(43,196,122,0.14)' },
   hoja: { flex: 1, marginTop: -4, borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden' },
-  sugerencia: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 18, borderWidth: 1 },
+  nueva: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: marca.verde },
+  insignia: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: marca.tinta },
+  rejilla: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+  celda: { width: '48.5%' },
+  tarjeta: { gap: 6, padding: 12, borderRadius: 18, borderWidth: 1, minHeight: 112 },
+  icono: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  reciente: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16 },
   mio: { alignSelf: 'flex-end', maxWidth: '85%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderBottomRightRadius: 6 },
   conReporte: { alignSelf: 'stretch', maxWidth: '100%' },
   suyo: { alignSelf: 'flex-start', maxWidth: '90%', gap: 6, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 20, borderBottomLeftRadius: 6, borderWidth: 1 },

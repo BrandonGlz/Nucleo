@@ -1,4 +1,4 @@
-import { ALERTA, ALERTAS, NOTIFICACIONES } from '../api'
+import { ALERTA, ALERTA_ATENDER, ALERTA_DESCARTAR, ALERTAS, NOTIFICACIONES } from '../api'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
 
@@ -13,4 +13,10 @@ export async function detalle(num) {
 export async function notificaciones() {
   if (USAR_MOCKS) return mock.notificaciones()
   return pedir(NOTIFICACIONES)
+}
+
+// Atender o descartar (ADMIN y SUPER). accion: 'atender' | 'descartar'.
+export async function resolver(num, accion, observaciones = '') {
+  if (USAR_MOCKS) return mock.resolverAlerta(num, accion, observaciones)
+  return pedir(accion === 'atender' ? ALERTA_ATENDER(num) : ALERTA_DESCARTAR(num), { metodo: 'POST', cuerpo: { observaciones } })
 }

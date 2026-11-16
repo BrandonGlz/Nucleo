@@ -1,4 +1,4 @@
-import { AUTH_LOGIN, AUTH_LOGOUT, AUTH_RECUPERAR, AUTH_YO } from '../api'
+import { AUTH_CAMBIAR_PASSWORD, AUTH_LOGIN, AUTH_LOGOUT, AUTH_RECUPERAR, AUTH_SESION, AUTH_SESIONES, AUTH_YO } from '../api'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
 import { telefono } from './notificaciones'
@@ -48,4 +48,20 @@ const SEMILLA = [
 export function cuentasDemo() {
   if (USAR_MOCKS) return mock.cuentasDemo()
   return PASSWORD_DEMO ? SEMILLA.map((c) => ({ ...c })) : []
+}
+
+// Sesiones abiertas de la propia cuenta (`actual` = este teléfono) y cierre de otra.
+export async function sesiones() {
+  if (USAR_MOCKS) return mock.sesiones()
+  return pedir(AUTH_SESIONES)
+}
+export async function cerrarSesion(num) {
+  if (USAR_MOCKS) return mock.cerrarSesion(num)
+  return pedir(AUTH_SESION(num), { metodo: 'DELETE' })
+}
+
+// Cambia la contraseña. La API cierra entonces todas las sesiones, también esta.
+export async function cambiarPassword(actual, nueva) {
+  if (USAR_MOCKS) return mock.cambiarPassword(actual, nueva)
+  return pedir(AUTH_CAMBIAR_PASSWORD, { metodo: 'POST', cuerpo: { password_actual: actual, password_nueva: nueva } })
 }

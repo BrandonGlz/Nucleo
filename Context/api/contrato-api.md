@@ -52,6 +52,9 @@ POST /auth/telefono/           {"token_expo", "plataforma"}; activa los push en 
 DELETE /auth/telefono/         {"token_expo"}; los desactiva
 GET  /auth/yo/                 Usuario autenticado
 POST /auth/cambiar-password/   {"password_actual", "password_nueva"}; cierra todas sus sesiones
+GET  /auth/sesiones/           Sus sesiones abiertas (cliente, agente, IP, creada, último uso;
+                               `actual` = la de esta petición)
+DELETE /auth/sesiones/{num}/   Cierra otra de sus sesiones (la actual: 400, usar logout)
 ```
 
 Cada inicio de sesión abre una **sesión** propia (tabla `sesion`: navegador o teléfono, IP,

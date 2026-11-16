@@ -243,3 +243,36 @@ class SesionWebCookieTests(PruebaBase):
         self.assertEqual(r.cookies["nucleo_sesion"].value, "")
         self.cliente.cookies["nucleo_sesion"] = r.cookies["nucleo_sesion"].value
         self.assertEqual(self.cliente.get("/api/v1/auth/yo/").status_code, 401)
+
+
+class MisSesionesTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+
+    def test_lista_solo_las_propias_y_marca_la_actual(self):
+        from common.autenticacion import crear_sesion
+
+        crear_sesion(self.e.operador)
+        crear_sesion(self.e.supervisor)
+        r = cliente_de(self.e.operador).get("/api/v1/auth/sesiones/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data), 2)
+        self.assertEqual(sum(1 for s in r.data if s["actual"]), 1)
+
+    def test_cierra_otra_sesion_pero_no_la_actual(self):
+        from apps.usuarios.models import Sesion
+        from common.autenticacion import crear_sesion
+
+        otra, _ = crear_sesion(self.e.operador)
+        cliente = cliente_de(self.e.operador)
+        actual = next(s for s in cliente.get("/api/v1/auth/sesiones/").data if s["actual"])
+        self.assertEqual(cliente.delete(f"/api/v1/auth/sesiones/{actual['num']}/").status_code, 400)
+        self.assertEqual(cliente.delete(f"/api/v1/auth/sesiones/{otra.num}/").status_code, 204)
+        self.assertFalse(Sesion.objects.filter(pk=otra.num).exists())
+
+    def test_no_cierra_sesiones_ajenas(self):
+        from common.autenticacion import crear_sesion
+
+        ajena, _ = crear_sesion(self.e.supervisor)
+        r = cliente_de(self.e.operador).delete(f"/api/v1/auth/sesiones/{ajena.num}/")
+        self.assertEqual(r.status_code, 404)

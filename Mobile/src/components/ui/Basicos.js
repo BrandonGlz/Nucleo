@@ -149,6 +149,7 @@ export function Button({ variant = 'primary', size = 'md', icon, block, disabled
     secondary: [c.surface, c.textPrimary, c.borderStrong],
     ghost: ['transparent', c.textPrimary, 'transparent'],
     destructive: [c.danger, c.dangerContrast, 'transparent'],
+    danger: [c.dangerSoft, c.danger, 'transparent'],
   }[variant]
   const [bg, fg, borde] = disabled ? [c.surfaceMuted, c.textMuted, 'transparent'] : colores
   return (
@@ -266,7 +267,8 @@ export function Chip({ selected, count, onPress, children }) {
 }
 
 // La pastilla oscura se desliza hasta la pestaña elegida (posición y ancho medidos de cada pestaña).
-export function Tabs({ items, value, onChange }) {
+// `compacto`: más bajo y con letra menor, para ponerlo dentro de una tarjeta.
+export function Tabs({ items, value, onChange, compacto }) {
   const { c } = useTema()
   const [medidas, setMedidas] = useState({})
   const m = medidas[value]
@@ -282,8 +284,8 @@ export function Tabs({ items, value, onChange }) {
     }
   }, [m, x, ancho])
   return (
-    <View style={[s.tabs, { backgroundColor: c.surfaceMuted }]}>
-      {m && <Animated.View pointerEvents="none" style={[s.tabPastilla, { backgroundColor: c.seleccion, width: ancho, transform: [{ translateX: x }] }]} />}
+    <View style={[s.tabs, compacto && { padding: 3, gap: 2 }, { backgroundColor: c.surfaceMuted }]}>
+      {m && <Animated.View pointerEvents="none" style={[s.tabPastilla, compacto && { top: 3, bottom: 3 }, { backgroundColor: c.seleccion, width: ancho, transform: [{ translateX: x }] }]} />}
       {items.map((it) => {
         const activo = it.id === value
         return (
@@ -296,9 +298,9 @@ export function Tabs({ items, value, onChange }) {
               const { x: px, width } = e.nativeEvent.layout
               setMedidas((ant) => (ant[it.id]?.x === px && ant[it.id]?.w === width ? ant : { ...ant, [it.id]: { x: px, w: width } }))
             }}
-            style={({ pressed }) => [s.tab, !m && activo && { backgroundColor: c.seleccion }, pressed && { transform: [{ scale: 0.96 }] }]}
+            style={({ pressed }) => [s.tab, compacto && s.tabCompacto, !m && activo && { backgroundColor: c.seleccion }, pressed && { transform: [{ scale: 0.96 }] }]}
           >
-            <T peso={600} size={14} color={activo ? c.seleccionTexto : c.textSecondary}>
+            <T peso={600} size={compacto ? 12 : 14} color={activo ? c.seleccionTexto : c.textSecondary}>
               {it.label}
             </T>
           </Pressable>
@@ -396,6 +398,7 @@ const s = StyleSheet.create({
   cuenta: { minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, alignItems: 'center' },
   tabs: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 999 },
   tabPastilla: { position: 'absolute', top: 4, bottom: 4, left: 0, borderRadius: 999 },
+  tabCompacto: { height: 28, paddingHorizontal: 10 },
   tab: { height: 36, paddingHorizontal: 16, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   toggleFila: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 28 },
   toggle: { width: 48, height: 28, borderRadius: 14 },

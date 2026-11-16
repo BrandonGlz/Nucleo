@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import { Pantalla } from '../../components/Pantalla'
-import { Avatar, Button, Icon, T, Tabs, Toggle } from '../../components/ui'
+import { Avatar, Button, Icon, IconCircle, T, Tabs, Toggle } from '../../components/ui'
 import { usePreferencias } from '../../context/PreferenciasContext'
 import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
@@ -14,9 +14,10 @@ import { nombreCompleto, pagina, ROL } from '../../utils/convertir'
 import { marca } from '../../theme'
 import app from '../../../app.json'
 
-// Perfil del operador: datos de su cuenta, preferencias del teléfono, tema y cierre de sesión.
+// Mi perfil: datos de la cuenta, preferencias del teléfono (tema incluido), seguridad (sesiones
+// abiertas y contraseña), diagnóstico de la API y cierre de sesión.
 export function PerfilScreen({ navigation }) {
-  const { c, tema, setTema } = useTema()
+  const { c, setTema } = useTema()
   const { usuario, logout } = useSesion()
   const { datos: op } = useOperador()
   const { prefs, cambiar } = usePreferencias()
@@ -37,10 +38,10 @@ export function PerfilScreen({ navigation }) {
   const area = op?.area?.nombre ?? '—'
   const d = op?.dispositivo
   const filas = [
-    { k: 'Correo', v: usuario.correo, ancho: true },
+    { k: 'Correo', v: usuario.correo },
     { k: 'Área', v: area },
-    { k: 'Dispositivo asignado', v: d ? `${d.nombre} · ${d.codigo_mqtt}` : '—' },
-    { k: 'Supervisor', v: supers?.[0] ? nombreCompleto(supers[0]) : '—', ancho: true, verde: true },
+    { k: 'Dispositivo', v: d ? `${d.nombre} · ${d.codigo_mqtt}` : '—' },
+    { k: 'Supervisor', v: supers?.[0] ? nombreCompleto(supers[0]) : '—', verde: true },
   ]
   const nombre = nombreCompleto(usuario)
 
@@ -63,69 +64,106 @@ export function PerfilScreen({ navigation }) {
     </View>
   )
 
+  const enlaces = [
+    { icono: 'smartphone', titulo: 'Sesiones abiertas', texto: 'Dónde está abierta tu cuenta', ir: 'Sesiones' },
+    { icono: 'key-round', titulo: 'Cambiar contraseña', texto: 'Cierra tus otras sesiones', ir: 'Contrasena' },
+    { icono: 'activity', titulo: 'Estado de la API', texto: 'Diagnóstico de la conexión', ir: 'Estado' },
+  ]
+
   return (
     <Pantalla zona={zona} deco="perfil">
-      <View style={s.rejilla}>
-        {filas.map((f) => (
-          <View key={f.k} style={[s.dato, { backgroundColor: f.verde ? marca.verde : c.surface, width: f.ancho ? '100%' : '48.5%' }]}>
-            <T mayus color={f.verde ? 'rgba(18,20,19,0.6)' : c.textMuted}>
-              {f.k}
-            </T>
-            <T peso={700} size={14} lh={20} color={f.verde ? marca.tinta : undefined}>
-              {f.v}
-            </T>
-          </View>
-        ))}
-      </View>
-      <View style={[s.tarjeta, { backgroundColor: c.surface }]}>
-        {/* Quita los movimientos de pantallas, pestañas y menús. Las preferencias se guardan en el teléfono. */}
-        <Toggle label="Reducir animaciones" value={prefs.reducirAnimaciones} onChange={(v) => cambiar({ reducirAnimaciones: v })} />
-        <Toggle
-          label="Notificaciones push"
-          value={prefs.push}
-          onChange={(v) => {
-            cambiar({ push: v })
-            activarPush(v)
-          }}
-        />
-        <Toggle label="Sonido en alertas críticas" value={prefs.sonido} onChange={(v) => cambiar({ sonido: v })} />
-        <View style={s.entre}>
-          <T peso={600} size={14}>
-            Tema
-          </T>
-          <Tabs
-            items={[
-              { id: 'light', label: 'Claro' },
-              { id: 'dark', label: 'Oscuro' },
-            ]}
-            value={tema}
-            onChange={setTema}
-          />
+      <View style={s.seccion}>
+        <T mayus color={c.textMuted}>
+          Cuenta
+        </T>
+        <View style={[s.tarjeta, { backgroundColor: c.surface }]}>
+          {filas.map((f, i) => (
+            <View key={f.k} style={[s.dato, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }]}>
+              <T size={13} color={c.textMuted} style={{ width: 96 }}>
+                {f.k}
+              </T>
+              <T peso={600} size={13} lh={18} style={{ flex: 1, textAlign: 'right' }} color={f.verde ? c.success : undefined}>
+                {f.v}
+              </T>
+            </View>
+          ))}
         </View>
       </View>
-      <Pressable onPress={() => navigation.navigate('Estado')} style={[s.tarjeta, s.enlace, { backgroundColor: c.surface }]} accessibilityRole="button">
-        <Icon name="activity" size={18} color={c.textSecondary} />
-        <T peso={600} size={14} style={{ flex: 1 }}>
-          Estado de la API
+      <View style={s.seccion}>
+        <T mayus color={c.textMuted}>
+          Preferencias
         </T>
-        <Icon name="chevron-right" size={18} color={c.textMuted} />
-      </Pressable>
-      <T size={12} color={c.textMuted} style={{ textAlign: 'center' }}>
-        {`Versión ${app.expo.version} (build ${app.expo.android?.versionCode ?? '—'})`}
-      </T>
+        <View style={[s.tarjeta, s.relleno, { backgroundColor: c.surface }]}>
+          {/* Quita los movimientos de pantallas, pestañas y menús. Las preferencias se guardan en el teléfono. */}
+          <Toggle label="Reducir animaciones" value={prefs.reducirAnimaciones} onChange={(v) => cambiar({ reducirAnimaciones: v })} />
+          <Toggle
+            label="Notificaciones push"
+            value={prefs.push}
+            onChange={(v) => {
+              cambiar({ push: v })
+              activarPush(v)
+            }}
+          />
+          <Toggle label="Sonido en alertas críticas" value={prefs.sonido} onChange={(v) => cambiar({ sonido: v })} />
+          <View style={s.entre}>
+            <T peso={600} size={14}>
+              Tema
+            </T>
+            <Tabs
+              items={[
+                { id: 'light', label: 'Claro' },
+                { id: 'dark', label: 'Oscuro' },
+                { id: 'sistema', label: 'Sistema' },
+              ]}
+              value={prefs.tema ?? 'sistema'}
+              onChange={(id) => (id === 'sistema' ? cambiar({ tema: null }) : setTema(id))}
+              compacto
+            />
+          </View>
+        </View>
+      </View>
+      <View style={s.seccion}>
+        <T mayus color={c.textMuted}>
+          Seguridad
+        </T>
+        <View style={[s.tarjeta, { backgroundColor: c.surface }]}>
+          {enlaces.map((x, i) => (
+            <Pressable
+              key={x.ir}
+              onPress={() => navigation.navigate(x.ir)}
+              accessibilityRole="button"
+              style={({ pressed }) => [s.enlace, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }, pressed && { opacity: 0.7 }]}
+            >
+              <IconCircle name={x.icono} size="sm" />
+              <View style={{ flex: 1 }}>
+                <T peso={600} size={14}>
+                  {x.titulo}
+                </T>
+                <T size={12} color={c.textMuted}>
+                  {x.texto}
+                </T>
+              </View>
+              <Icon name="chevron-right" size={18} color={c.textMuted} />
+            </Pressable>
+          ))}
+        </View>
+      </View>
       <Button
-        variant="secondary"
+        variant="danger"
         size="lg"
         icon="log-out"
         block
         disabled={saliendo}
         onPress={() => {
           setSaliendo(true)
-          logout()
+          logout().catch(() => {})
         }}
       >
         Cerrar sesión
       </Button>
+      <T size={12} color={c.textMuted} style={{ textAlign: 'center' }}>
+        {`Versión ${app.expo.version} (build ${app.expo.android?.versionCode ?? '—'})`}
+      </T>
     </Pantalla>
   )
 }
@@ -134,9 +172,10 @@ const s = StyleSheet.create({
   centro: { alignItems: 'center', gap: 8, paddingTop: 8, paddingBottom: 6 },
   aro: { padding: 5, borderRadius: 999, borderWidth: 3, borderColor: marca.verde },
   area: { marginTop: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: marca.verde },
-  rejilla: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
-  dato: { gap: 4, padding: 14, borderRadius: 20 },
-  tarjeta: { gap: 16, padding: 18, borderRadius: 24 },
-  enlace: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16 },
+  seccion: { gap: 8 },
+  dato: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, paddingHorizontal: 16 },
+  tarjeta: { borderRadius: 22, overflow: 'hidden' },
+  relleno: { gap: 16, padding: 16 },
+  enlace: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16 },
   entre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
 })

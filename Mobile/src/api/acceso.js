@@ -3,6 +3,8 @@ export const AUTH_LOGIN = '/auth/login/' // POST {correo, password, codigo?, tok
 export const AUTH_LOGOUT = '/auth/logout/' // POST {token_expo?}
 export const AUTH_YO = '/auth/yo/' // GET: usuario autenticado
 export const AUTH_TELEFONO = '/auth/telefono/' // POST {token_expo, plataforma} activa los push; DELETE {token_expo} los quita
+export const AUTH_SESIONES = '/auth/sesiones/' // GET: sesiones abiertas de la propia cuenta (`actual` = esta)
+export const AUTH_SESION = (num) => `/auth/sesiones/${num}/` // DELETE: cierra otra de sus sesiones
 export const AUTH_CAMBIAR_PASSWORD = '/auth/cambiar-password/' // POST {password_actual, password_nueva}
 // Recuperar contraseña (sin sesión): manda un enlace de un solo uso al correo
 export const AUTH_RECUPERAR = '/auth/recuperar/' // POST {correo} → 204 siempre

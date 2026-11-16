@@ -1,6 +1,13 @@
 // Íconos de Lucide (https://lucide.dev/icons/). Es la única fuente de íconos del front.
 // Para agregar uno: búscalo en lucide.dev, impórtalo aquí y regístralo con su nombre en kebab-case.
 import {
+  Share2,
+  Monitor,
+  Check,
+  KeyRound,
+  MessageSquare,
+  SquarePen,
+  ChartLine,
   Activity,
   ArrowDownRight,
   ArrowUpRight,
@@ -120,6 +127,13 @@ const ICONS = {
   'thumbs-up': ThumbsUp,
   'wrench': Wrench,
   'x': X,
+  'share-2': Share2,
+  'monitor': Monitor,
+  'check': Check,
+  'key-round': KeyRound,
+  'message-square': MessageSquare,
+  'square-pen': SquarePen,
+  'chart-line': ChartLine,
 }
 
 export { ICONS }

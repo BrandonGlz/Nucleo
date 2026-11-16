@@ -11,32 +11,44 @@ simulados.
 ## Qué hace
 
 - **Acceso:** inicio de sesión con validación y mensaje de credenciales incorrectas.
-- **Inicio:** temperatura en vivo con su rango, humedad y aire con su tendencia, las
-  barras de las últimas 24 h y el estado y batería del dispositivo. Tiene variantes
-  para cargando y sin conexión.
+- **Panel:** temperatura en vivo con su rango (el número cuenta hasta su valor y el punto «en
+  vivo» late), humedad y aire con su tendencia, el estado del equipo (conexión, última lectura y
+  batería), las barras de temperatura de 24 h o 7 días y las alertas recientes. La campana abre
+  las notificaciones. Tiene variantes para cargando y sin conexión.
 - **Detalle de variable:** medidor en vivo, mínimo, promedio y máximo, y la gráfica de
-  24 h con el umbral (solo lectura). Se abre al tocar cualquier variable del Inicio.
-- **Alertas:** pendientes, atendidas y descartadas del dispositivo, con filtros. El
-  operador solo las consulta; las atiende su supervisor.
+  24 h con el umbral (solo lectura). Se abre al tocar cualquier variable del Panel.
+- **Alertas:** cuántas hay pendientes (críticas y advertencias), buscador, filtros y la lista
+  agrupada por día. El administrador y el supervisor atienden una alerta deslizándola a la
+  izquierda o la descartan deslizándola a la derecha (también desde su detalle); el operador
+  solo las consulta.
 - **Detalle de alerta:** valor que la disparó, cuánto superó el límite, la curva
-  alrededor del evento y su línea de tiempo.
-- **Nico AI:** preguntas sobre el dispositivo elegido. Supervisores, analistas y
+  alrededor del evento, su línea de tiempo y, para quien puede, «Atender» y «Descartar».
+- **Histórico:** una variable del dispositivo en 24 h, 7 o 30 días con su umbral, mínimo,
+  promedio, máximo y el tiempo en rango; el botón CSV comparte las lecturas.
+- **Nico AI:** preguntas sobre el dispositivo elegido, con tarjetas de inicio y las
+  conversaciones recientes (guardadas en el teléfono). Supervisores, analistas y
   administradores también le piden reportes: el resumen aparece en el chat, con el PDF
   (se abre con el menú de compartir del teléfono) y el enlace al reporte en la web.
-- **Perfil:** datos de la cuenta y del supervisor, preferencias guardadas en el teléfono
-  (reducir animaciones, push, sonido en alertas de peligro, tema claro u oscuro), diagnóstico
-  de la API y cierre de sesión.
+- **Notificaciones:** cada alerta nueva y cada alerta atendida o descartada, con «sin leer» y
+  «Marcar todo como leído» (lo leído se guarda en el teléfono).
+- **Mi perfil:** cuenta y supervisor; preferencias guardadas en el teléfono (reducir
+  animaciones, push, sonido en alertas de peligro y tema claro, oscuro o del sistema);
+  seguridad (sesiones abiertas, que se pueden cerrar, y cambio de contraseña); diagnóstico de
+  la API y cierre de sesión.
 - **Avisos:** con la app al frente, cada alerta nueva llega por el canal en vivo y se
   muestra como notificación (las de peligro con sonido y vibración si el perfil lo
   permite); al tocarla se abre su detalle. Con la app cerrada llegan por push.
+- **Movimiento:** pantallas y bloques que entran escalonados, pestañas y filtros con pastilla
+  que se desliza, barras que crecen, números que cuentan y «jalar para actualizar». Todo respeta
+  «Reducir animaciones» y el ajuste del teléfono.
 
 ## Cómo funciona
 
 1. Sin sesión, la app abre en Acceso. Al entrar, `SesionContext` guarda el token y el
    usuario mientras la app está abierta.
 2. `AppNavigator` crea las pantallas a partir de `src/modules/index.js`: las que tienen
-   `pestana` van en la barra inferior flotante (Inicio, Alertas, Perfil) y las demás
-   se apilan encima (detalles y diagnóstico).
+   `pestana` van en la barra inferior flotante (Panel, Alertas, Histórico, Nico AI y Mi perfil)
+   y las demás se apilan encima (detalles, notificaciones, sesiones, contraseña y diagnóstico).
 3. `OperadorProvider` (`hooks/useOperador.js`) pide el dispositivo a la vista, sus
    últimas lecturas, sus umbrales y las alertas; todas las pestañas leen de ahí. Con la
    app al frente abre el canal en vivo (`services/tiempoReal.js`) y consulta cada 30 s de

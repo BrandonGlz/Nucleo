@@ -10,6 +10,7 @@ from .seguridad import (
     RestablecerPasswordView,
     SegundoFactorView,
 )
+from .sesiones import MiSesionView, MisSesionesView
 from .views import (
     CambiarPasswordView,
     LoginView,
@@ -27,6 +28,8 @@ urlpatterns = [
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("auth/yo/", MeView.as_view(), name="auth-yo"),
     path("auth/telefono/", TelefonoView.as_view(), name="auth-telefono"),
+    path("auth/sesiones/", MisSesionesView.as_view(), name="auth-sesiones"),
+    path("auth/sesiones/<int:num>/", MiSesionView.as_view(), name="auth-sesion"),
     path("auth/cambiar-password/", CambiarPasswordView.as_view(), name="auth-cambiar-password"),
     path("auth/recuperar/", RecuperarPasswordView.as_view(), name="auth-recuperar"),
     path("auth/restablecer/", RestablecerPasswordView.as_view(), name="auth-restablecer"),

@@ -60,6 +60,27 @@ export async function logout() {
   return null
 }
 
+// Sesiones abiertas de la cuenta y cambio de contraseña.
+let sesionesMock = null
+export async function sesiones() {
+  await esperar()
+  sesionesMock ??= [
+    { num: 1, cliente: 'app', agente: 'Núcleo para Android', ip: '187.190.12.4', creada: db.hace(3 * 3600), ultimo_uso: new Date().toISOString(), actual: true },
+    { num: 2, cliente: 'web', agente: 'Chrome · Windows', ip: '187.190.12.4', creada: db.hace(2 * 86400), ultimo_uso: db.hace(40 * 60), actual: false },
+  ]
+  return copia(sesionesMock)
+}
+export async function cerrarSesion(num) {
+  await esperar()
+  sesionesMock = (sesionesMock ?? []).filter((x) => x.num !== Number(num))
+  return null
+}
+export async function cambiarPassword(actual) {
+  await esperar()
+  if (actual === 'error') throw new ApiError('La API respondió con el estado 400.', 400, { password_actual: ['La contraseña actual no es correcta.'] })
+  return null
+}
+
 // Organizaciones y usuarios
 export async function organizacion(num) {
   await esperar()
@@ -136,6 +157,15 @@ export async function alertas() {
 export async function alerta(num) {
   await esperar()
   return copia(db.alertas.find((a) => a.num === Number(num)) ?? noEncontrado())
+}
+export async function resolverAlerta(num, accion, observaciones) {
+  await esperar()
+  const a = db.alertas.find((x) => x.num === Number(num)) ?? noEncontrado()
+  a.estado = accion === 'atender' ? 'ATENDIDA' : 'DESCARTADA'
+  a.fecha_atencion = new Date().toISOString()
+  a.atendida_por = db.USUARIO_SESION
+  a.observaciones = observaciones
+  return copia(a)
 }
 export async function notificaciones() {
   await esperar()

@@ -3,7 +3,8 @@ import { BarraRango } from '../../components/BarraRango'
 import { Cabecera } from '../../components/Cabecera'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
-import { ActivityFeed, Badge, Card, Skeleton, StatusBadge, T, TrendChart } from '../../components/ui'
+import { ActivityFeed, Badge, Button, Card, Skeleton, StatusBadge, T, TrendChart } from '../../components/ui'
+import { confirmarResolver, puedeResolver } from './AlertasScreen'
 import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
@@ -35,9 +36,11 @@ async function cargarDetalle(num_) {
 // Detalle de una alerta: valor que la disparó, curva alrededor del evento y línea de tiempo.
 export function DetalleAlertaScreen({ navigation, route }) {
   const { c } = useTema()
-  const { datos: op } = useOperador()
-  const oper = useSesion().usuario?.rol === 'OPER'
-  const { estado, datos, reintentar } = useDatos(() => cargarDetalle(route.params.num), [route.params.num])
+  const { datos: op, refrescar: refrescarOp } = useOperador()
+  const { usuario } = useSesion()
+  const oper = usuario?.rol === 'OPER'
+  const resolver = puedeResolver(usuario)
+  const { estado, datos, reintentar, refrescar } = useDatos(() => cargarDetalle(route.params.num), [route.params.num])
   const a = datos?.a
   const volver = <Cabecera titulo="Alerta" onVolver={() => navigation.goBack()} />
 
@@ -65,7 +68,7 @@ export function DetalleAlertaScreen({ navigation, route }) {
       time: hora(notif.fecha_envio),
     },
     a.estado === 'PENDIENTE'
-      ? { level: 'info', icon: 'clock', title: 'Pendiente', meta: oper ? 'Tu supervisor la atenderá' : 'Se atiende desde la web', time: '' }
+      ? { level: 'info', icon: 'clock', title: 'Pendiente', meta: oper ? 'Tu supervisor la atenderá' : resolver ? 'Atiéndela o descártala aquí abajo' : 'La atiende el supervisor', time: '' }
       : {
           level: a.estado === 'ATENDIDA' ? 'normal' : 'offline', icon: a.estado === 'ATENDIDA' ? undefined : 'circle-x',
           title: `${a.estado === 'ATENDIDA' ? 'Atendida' : 'Descartada'} por ${nombreCorto(datos.quien) || (oper ? 'tu supervisor' : 'el supervisor')}`,
@@ -126,6 +129,20 @@ export function DetalleAlertaScreen({ navigation, route }) {
         </T>
         <ActivityFeed items={linea} />
       </View>
+      {resolver && a.estado === 'PENDIENTE' && (
+        <View style={s.botones}>
+          <View style={{ flex: 1 }}>
+            <Button variant="secondary" size="lg" icon="circle-x" block onPress={() => confirmarResolver(a, 'descartar', () => (refrescar(), refrescarOp()))}>
+              Descartar
+            </Button>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button size="lg" icon="check" block onPress={() => confirmarResolver(a, 'atender', () => (refrescar(), refrescarOp()))}>
+              Atender
+            </Button>
+          </View>
+        </View>
+      )}
     </Pantalla>
   )
 }
@@ -133,5 +150,6 @@ export function DetalleAlertaScreen({ navigation, route }) {
 const s = StyleSheet.create({
   badges: { flexDirection: 'row', gap: 6 },
   entre: { flexDirection: 'row', justifyContent: 'space-between' },
+  botones: { flexDirection: 'row', gap: 10 },
   linea: { gap: 4, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 24 },
 })
