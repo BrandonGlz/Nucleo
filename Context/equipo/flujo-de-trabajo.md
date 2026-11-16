@@ -5,8 +5,8 @@ Cómo se organizan las ramas y cómo se escriben los commits en Núcleo.
 ## Ramas
 
 ```text
-main       Solo entregas estables, con un tag por etapa
-dev        Integración; siempre debe funcionar
+main       Producción: lo que corre en el servidor (deploy/desplegar.sh)
+dev        Integración y pruebas locales; pasa a main cuando funciona
 backend    Trabajo del backend (BackEnd/)
 frontend   Trabajo de la web (FrontEnd/)
 mobile     Trabajo de la app móvil (Mobile/)
@@ -21,9 +21,10 @@ iot        Trabajo del firmware y del broker (IoT/ y Mosquitto/)
 - Si dos personas trabajan a la vez dentro de una misma área, cada una usa una rama corta
   (`feature/<tarea>` o `fix/<tarea>`) que sale de la rama del área y vuelve a ella.
 - Cada área se integra a `dev` con un pull request y las pruebas pasando.
-- `dev` pasa a `main` solo al cerrar una etapa; esa versión lleva un tag con el nombre de la
-  etapa (por ejemplo `etapa-1` o `v0.1.0`).
-- Nadie trabaja directo sobre `main` ni sobre `dev`.
+- `dev` pasa a `main` (avance rápido, sin commits propios en `main`) cuando está probada en
+  local; con eso queda lista para desplegar. Al cerrar una etapa, esa versión lleva un tag
+  (por ejemplo `etapa-1` o `v0.1.0`).
+- Nadie trabaja directo sobre `main`.
 
 ## Commits
 

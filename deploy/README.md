@@ -65,7 +65,8 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
 
 Todos desde la laptop, en `/var/www/html/Nucleo`:
 
-- `bash deploy/desplegar.sh` — trae los cambios de `dev` y reinstala; se puede repetir.
+- `bash deploy/desplegar.sh` — trae `main` y reinstala; se puede repetir. Producción solo corre
+  `main`; `dev` es para probar en local y se une a `main` cuando está lista.
 - `systemctl status nucleo-daphne nucleo-mqtt caddy --no-pager` — estado de los servicios.
 - `journalctl -u nucleo-daphne -n 50 --no-pager` — últimos mensajes de la API.
 - `docker ps` — contenedores: postgres, timescaledb, redis, mosquitto y ollama.
@@ -152,7 +153,7 @@ No actives Bot Fight Mode: bloquearía a los ESP32, a la app y al vigía de GitH
   (`NUCLEO_AVISO_MINUTOS`).
 - `.github/workflows/vigia.yml`: cada 15 min revisa desde fuera la web, la API, la app y el
   subdominio de los ESP32. GitHub solo ejecuta los flujos programados de la rama principal, así
-  que empieza a correr cuando `dev` se une a `main`; las fallas llegan por correo de GitHub.
+  así que vigila desde `main`; las fallas llegan por correo de GitHub.
 - En **Settings → Code security** del repositorio activa *Dependabot alerts* y *security
   updates*; `seguridad.yml` corre CodeQL, ruff y `npm audit` en cada push.
 
@@ -179,7 +180,7 @@ cable, además de `PUENTE_HOST` y `PUENTE_CLAVE` en `secrets.py`.
 Si la laptop se pierde, cualquier equipo con Debian y 8 GB sirve:
 
 1. Instala Docker, git, Caddy, rclone y cloudflared; clona el repositorio en `/var/www/html/Nucleo`
-   (rama `dev`).
+   (rama `main`).
 2. Crea los remotos `gdrive-nucleo` y `gdrive-nucleo-cifrado` (mismas contraseñas), baja el último
    respaldo y sigue [Instalación desde cero](#instalación-desde-cero). Pon en `BackEnd/.env` la
    misma `NUCLEO_CLAVE_CIFRADO`.

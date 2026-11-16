@@ -100,8 +100,9 @@ flowchart LR
 
 ## Actualizar
 
-Después de subir cambios a `dev`: desde el servidor,
-`bash deploy/desplegar.sh` (trae `dev`, migra, recompila y reinicia).
+Producción corre la rama `main`. Cuando `dev` está probada en local, se une a `main`
+(avance rápido) y desde el servidor se ejecuta `bash deploy/desplegar.sh` (trae `main`, migra,
+recompila y reinicia).
 
 El acceso por SSH desde cualquier red, los comandos de operación y la instalación desde cero
 están en [`deploy/README.md`](../../deploy/README.md).
