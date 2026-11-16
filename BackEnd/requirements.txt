@@ -5,7 +5,7 @@ django-environ==0.14.0
 psycopg[binary]==3.3.6
 channels==4.3.2
 channels-redis==4.3.0
-redis==6.4.0
+redis==8.1.0
 daphne==4.2.3
 paho-mqtt==2.1.0
 reportlab==4.4.4
