@@ -1,9 +1,9 @@
 /* Núcleo — color tokens. Light (Claro) on :root, Oscuro via [data-theme="dark"]. Same names in both. */
 :root{
---background:#EAECE6;--surface:#FFFFFF;--surface-elevated:#FFFFFF;--surface-muted:#F3F4F0;
+--background:#EAECE6;--surface:#FFFFFF;--surface-elevated:#FFFFFF;--surface-muted:#EAF5EE;
 --border:#DEE1D8;--border-strong:#7D8279;
 --text-primary:#121413;--text-secondary:#4A4F4B;--text-muted:#62675F;
---accent:#2BC47A;--accent-hover:#24AD6B;--accent-soft:#DFF5EA;--accent-contrast:#FFFFFF;--accent-contrast-muted:#0B4128;--accent-contrast-soft:rgba(255,255,255,0.82);
+--accent:#2BC47A;--accent-hover:#24AD6B;--accent-soft:#D3F1E1;--accent-contrast:#FFFFFF;--accent-contrast-muted:#0B4128;--accent-contrast-soft:rgba(255,255,255,0.82);
 --accent-secondary:#1FA463;
 --success:#0F7A45;--success-soft:#E3F4E8;
 --warning:#9A5B00;--warning-soft:#FDF0D5;
@@ -11,7 +11,7 @@
 --offline:#62675F;--offline-soft:#ECEDEA;
 --sidebar:#121413;--sidebar-text:#F3F5F2;--sidebar-text-muted:#9DA39E;--sidebar-hover:#23262A;
 --focus-ring:#0F6E3F;
---chart-line:#1E9A5E;--chart-area:#2BC47A;--chart-glow:#2BC47A00;--chart-grid:#E6E9E2;--chart-bar:#D5D9CF;--chart-bar-active:#121413;
+--chart-line:#1E9A5E;--chart-area:#2BC47A;--chart-glow:#2BC47A00;--chart-grid:#E6E9E2;--chart-bar:#B9E5CD;--chart-bar-active:#1E9A5E;
 --scrim:#12141366;
 --logo-color:#2BC47A;
 /* semantic aliases */
