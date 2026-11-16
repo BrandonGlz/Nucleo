@@ -136,7 +136,8 @@ En un servidor sin ufw, `deploy/firewall.nft` hace lo mismo con nftables:
 
 ### Reglas de Cloudflare (panel)
 
-En **Security → WAF** de `bynucleo.com` (plan Free):
+Ya creadas en `bynucleo.com` (plan Free) con la API de Cloudflare; se ven y editan en
+**Security → WAF** (*Custom rules* y *Rate limiting rules*). Si se pierden, se recrean así:
 
 | Regla | Expresión | Acción |
 | --- | --- | --- |
