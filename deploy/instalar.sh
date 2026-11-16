@@ -77,7 +77,7 @@ if ! grep -q 'import /etc/caddy/sitios/\*.caddy' /etc/caddy/Caddyfile 2>/dev/nul
 fi
 plantilla nucleo.caddy /etc/caddy/sitios/nucleo.caddy
 servicios=(nucleo-daphne nucleo-mqtt nucleo-sin-conexion)
-temporizados=(nucleo-reportes nucleo-respaldo nucleo-prueba-restauracion)
+temporizados=(nucleo-reportes nucleo-respaldo nucleo-prueba-restauracion nucleo-recursos)
 for unidad in "${servicios[@]}" "${temporizados[@]}" nucleo-aviso@; do
   plantilla "$unidad.service" "/etc/systemd/system/$unidad.service"
 done
