@@ -681,3 +681,30 @@
   flex: 1;
   min-width: 0;
 }
+.ui-consola-ensenada {
+  flex: none;
+}
+
+/* Notificaciones: preferencias por tipo (campana y correo) */
+.ui-consola-preferencias {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.ui-consola-preferencias li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 4px;
+  border-top: 1px solid var(--border);
+}
+.ui-consola-preferencias li:first-child {
+  border-top: 0;
+}
+@media (max-width: 560px) {
+  .ui-consola-preferencias li {
+    flex-wrap: wrap;
+  }
+}

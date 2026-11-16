@@ -107,5 +107,11 @@ export function AvisosProvider({ children }) {
   return <AvisosContext.Provider value={valor}>{children}</AvisosContext.Provider>
 }
 
+// Otro origen de avisos con la misma forma (la consola de administración da los de seguridad).
+// `campana: true` muestra la campana aunque la sesión sea del administrador de plataforma.
+export function ProveedorAvisos({ valor, children }) {
+  return <AvisosContext.Provider value={valor}>{children}</AvisosContext.Provider>
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const useAvisos = () => useContext(AvisosContext)

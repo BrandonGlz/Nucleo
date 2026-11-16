@@ -1,9 +1,9 @@
 import { Suspense, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { Avatar, Icon, Logo, LogoApp } from '../design-system/componentes/index.js'
-import { AvisosProvider } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
-import { nombreCompleto } from '../utils/convertir'
+import { nombreCompleto, ROL } from '../utils/convertir'
+import { AvisosNicoProvider } from './AvisosNico'
 import { GRUPOS, SECCIONES } from './secciones'
 
 // Mismo marco que la web (menú lateral oscuro contraíble con el logo) con las secciones de la consola.
@@ -17,7 +17,7 @@ function leerCompacto() {
 }
 
 function MenuConsola() {
-  const { usuario } = useSesion()
+  const { usuario, rol } = useSesion()
   const [compacto, setCompacto] = useState(leerCompacto)
   const alternar = () => {
     try {
@@ -65,7 +65,7 @@ function MenuConsola() {
           <Avatar name={nombreCompleto(usuario)} size={36} />
           <div>
             <strong>{nombreCompleto(usuario)}</strong>
-            <span>Superusuario</span>
+            <span>{ROL[rol]}</span>
           </div>
         </div>
       </div>
@@ -75,7 +75,7 @@ function MenuConsola() {
 
 export function ConsolaLayout() {
   return (
-    <AvisosProvider>
+    <AvisosNicoProvider>
       <div className="app">
         <MenuConsola />
         <main className="app__main">
@@ -84,6 +84,6 @@ export function ConsolaLayout() {
           </Suspense>
         </main>
       </div>
-    </AvisosProvider>
+    </AvisosNicoProvider>
   )
 }

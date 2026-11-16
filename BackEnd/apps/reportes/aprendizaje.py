@@ -97,7 +97,7 @@ def ruta_aprendida(dispositivo, pregunta):
 
 
 def registrar(usuario, dispositivo, pregunta, via, respuesta, tema="", datos=None, **extra):
-    return PreguntaAgente.objects.create(
+    registro = PreguntaAgente.objects.create(
         usuario=usuario,
         dispositivo=dispositivo,
         pregunta=pregunta[:1000],
@@ -107,6 +107,37 @@ def registrar(usuario, dispositivo, pregunta, via, respuesta, tema="", datos=Non
         respuesta=respuesta or "",
         datos=datos or {},
         **extra,
+    )
+    if via == PreguntaAgente.Via.NO_ENTENDIDA:
+        from apps.nico import avisos  # la consola de Nico avisa al superusuario
+
+        avisos.pregunta_no_entendida(registro)
+    return registro
+
+
+def marcar_ensenadas(respuesta, registro=None):
+    """Marca como enseñadas con ``respuesta`` las preguntas que quedan por atender: el registro
+    desde el que se enseñó (aunque la pregunta se haya reescrito; si es de la misma
+    organización) y las preguntas iguales
+    (normalizadas) de la misma organización que no salieron del banco. Las que solo se
+    parecen al registro no cuentan: si la pregunta se reescribió, esas seguirán sin respuesta.
+    Devuelve cuántas se marcaron."""
+    from django.db.models import Q
+    from django.utils import timezone
+
+    iguales = Q(
+        pregunta_normalizada=respuesta.pregunta_normalizada,
+        dispositivo__area__organizacion_id=respuesta.organizacion_id,
+    )
+    misma = registro is not None and (
+        registro.dispositivo.area.organizacion_id == respuesta.organizacion_id
+    )
+    if misma:
+        iguales |= Q(pk=registro.pk)
+    return (
+        PreguntaAgente.objects.filter(iguales, ensenada__isnull=True)
+        .exclude(via=PreguntaAgente.Via.BANCO)
+        .update(ensenada=respuesta, fecha_ensenada=timezone.now())
     )
 
 
@@ -150,6 +181,10 @@ def calificar(registro, valor):
     registro.save(update_fields=["calificacion"])
     if valor == anterior:
         return False
+    if valor == -1:
+        from apps.nico import avisos
+
+        avisos.calificacion_negativa(registro)
     organizacion = registro.dispositivo.area.organizacion_id
     aprendida = registro.aprendida
     if aprendida is not None and registro.via != PreguntaAgente.Via.BANCO:
@@ -191,6 +226,7 @@ def calificar(registro, valor):
                     "activa": necesarios <= 1,
                 },
             )
+            ya_activa = not creada and nueva.activa
             if not creada:
                 if nueva.plantilla != plantilla:
                     # Otra respuesta aprobada: la candidata cambia y la cuenta vuelve a empezar.
@@ -201,6 +237,10 @@ def calificar(registro, valor):
                 nueva.save(update_fields=["plantilla", "votos_si", "activa"])
     except IntegrityError:
         return False
+    if nueva.activa and not ya_activa:
+        from apps.nico import avisos
+
+        avisos.respuesta_aprendida(nueva)
     registro.aprendida = nueva
     registro.save(update_fields=["aprendida"])
     return nueva.activa

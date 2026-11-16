@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.auditoria.models import RegistroAuditoria
+from apps.consola.models import AlertaSeguridad
 from apps.dispositivos import firmware
 from apps.usuarios.models import SegundoFactor, Sesion, Usuario
 from common import roles
@@ -29,11 +30,18 @@ class AccesoConsolaTests(PruebaBase):
             cliente_de(self.e.plataforma).get("/api/v1/consola/resumen/").status_code, 200
         )
 
-    def test_resumen_trae_cifras_serie_y_alertas(self):
+    def test_resumen_trae_cifras_y_series_sin_lista_de_alertas(self):
+        crear_sesion(self.e.analista)
         r = cliente_de(self.e.plataforma).get("/api/v1/consola/resumen/")
         self.assertEqual(len(r.data["serie_accesos"]), 14)
-        for clave in ("sesiones_activas", "usuarios", "accesos", "dispositivos", "alertas"):
+        self.assertEqual(len(r.data["accesos_por_hora"]), 24)
+        for clave in ("sesiones_activas", "sesiones", "usuarios", "accesos", "dispositivos"):
             self.assertIn(clave, r.data)
+        self.assertEqual(
+            r.data["sesiones_activas"], r.data["sesiones"]["web"] + r.data["sesiones"]["app"]
+        )
+        self.assertEqual(r.data["alertas_seguridad"], {"nuevas": 0, "criticas": 0})
+        self.assertNotIn("alertas", r.data)
 
 
 class UsuariosConsolaTests(PruebaBase):
@@ -254,26 +262,40 @@ class PoliticasConsolaTests(PruebaBase):
         ]
         self.assertEqual(codigos, [401, 401, 401, 429])
 
-    def test_exigir_2fa_se_ve_en_el_resumen(self):
+    def test_exigir_2fa_se_ve_en_el_resumen_y_en_alertas(self):
         ajustar_politica(roles_2fa_obligatorio=[roles.ADMIN])
         r = self.c.get("/api/v1/consola/resumen/")
         self.assertGreaterEqual(r.data["usuarios"]["sin_2fa_obligatorio"], 1)
-        self.assertTrue(any(a["tipo"] == "sin_2fa" for a in r.data["alertas"]))
+        r = self.c.get("/api/v1/consola/alertas/resumen/")
+        self.assertGreaterEqual(r.data["sin_2fa"], 1)
 
 
 class AlertasSeguridadTests(PruebaBase):
     def setUp(self):
         self.e = Escenario()
+        self.c = cliente_de(self.e.plataforma)
 
-    def test_intentos_fallidos_desde_una_ip(self):
-        for _ in range(6):
+    def _fallidos(self, n, ip="198.51.100.7", usuario=None):
+        for _ in range(n):
             RegistroAuditoria.objects.create(
-                accion=Accion.LOGIN_FALLIDO, usuario=self.e.analista, ip="198.51.100.7"
+                accion=Accion.LOGIN_FALLIDO, usuario=usuario or self.e.analista, ip=ip
             )
-        r = cliente_de(self.e.plataforma).get("/api/v1/consola/resumen/")
-        tipos = {(a["tipo"], a["ip"]) for a in r.data["alertas"]}
-        self.assertIn(("ip_fallidos", "198.51.100.7"), tipos)
-        self.assertTrue(any(a["tipo"] == "cuenta_fallidos" for a in r.data["alertas"]))
+
+    def test_intentos_fallidos_abren_una_sola_alerta_por_caso(self):
+        self._fallidos(6)
+        ip = AlertaSeguridad.objects.get(tipo="ip_fallidos")
+        self.assertEqual((ip.ip, ip.nivel, ip.eventos), ("198.51.100.7", "advertencia", 6))
+        cuenta = AlertaSeguridad.objects.get(tipo="cuenta_fallidos")
+        self.assertEqual(cuenta.usuario, self.e.analista)
+        self._fallidos(5)
+        # Sin duplicar: la misma alerta abierta sube a crítica y cuenta los eventos.
+        ip.refresh_from_db()
+        self.assertEqual((ip.nivel, ip.eventos), ("critico", 11))
+        self.assertEqual(AlertaSeguridad.objects.filter(tipo="ip_fallidos").count(), 1)
+
+    def test_pocos_intentos_no_abren_alerta(self):
+        self._fallidos(2)
+        self.assertFalse(AlertaSeguridad.objects.exists())
 
     def test_acceso_desde_ip_nueva(self):
         viejo = RegistroAuditoria.objects.create(
@@ -283,9 +305,150 @@ class AlertasSeguridadTests(PruebaBase):
             fecha_hora=timezone.now() - timedelta(days=10)
         )
         RegistroAuditoria.objects.create(
+            accion=Accion.LOGIN, usuario=self.e.analista, ip="192.0.2.1"
+        )
+        self.assertFalse(AlertaSeguridad.objects.exists())
+        RegistroAuditoria.objects.create(
             accion=Accion.LOGIN, usuario=self.e.analista, ip="192.0.2.99"
         )
-        r = cliente_de(self.e.plataforma).get("/api/v1/consola/resumen/")
-        self.assertTrue(
-            any(a["tipo"] == "ip_nueva" and a["ip"] == "192.0.2.99" for a in r.data["alertas"])
+        RegistroAuditoria.objects.create(
+            accion=Accion.LOGIN, usuario=self.e.analista, ip="192.0.2.99"
         )
+        alerta = AlertaSeguridad.objects.get(tipo="ip_nueva")
+        self.assertEqual(alerta.ip, "192.0.2.99")
+
+    def test_primer_acceso_no_es_ip_nueva(self):
+        RegistroAuditoria.objects.create(
+            accion=Accion.LOGIN, usuario=self.e.analista, ip="192.0.2.5"
+        )
+        self.assertFalse(AlertaSeguridad.objects.exists())
+
+    def test_el_login_real_genera_la_alerta(self):
+        cliente = APIClient()
+        for _ in range(3):
+            cliente.post(
+                "/api/v1/auth/login/",
+                {"correo": self.e.analista.correo, "password": "mala"},
+                format="json",
+            )
+        self.assertTrue(AlertaSeguridad.objects.filter(tipo="cuenta_fallidos").exists())
+
+    def test_bloquear_abre_y_desbloquear_la_cierra(self):
+        self.c.patch(
+            f"/api/v1/consola/usuarios/{self.e.analista.pk}/",
+            {"estado_usuario": roles.USUARIO_BLOQUEADO},
+            format="json",
+        )
+        alerta = AlertaSeguridad.objects.get(tipo="cuenta_bloqueada")
+        self.assertEqual(alerta.estado, "nueva")
+        self.assertIn(self.e.plataforma.get_full_name(), alerta.detalle)
+        self.c.patch(
+            f"/api/v1/consola/usuarios/{self.e.analista.pk}/",
+            {"estado_usuario": roles.USUARIO_ACTIVO},
+            format="json",
+        )
+        alerta.refresh_from_db()
+        self.assertEqual(alerta.estado, "revisada")
+
+    def test_lista_filtra_y_revisa_o_descarta(self):
+        self._fallidos(6)
+        r = self.c.get("/api/v1/consola/alertas/?estado=nueva&tipo=ip_fallidos")
+        self.assertEqual(r.data["count"], 1)
+        num = r.data["results"][0]["num"]
+        self.assertEqual(self.c.get("/api/v1/consola/alertas/?nivel=critico").data["count"], 0)
+        r = self.c.post(f"/api/v1/consola/alertas/{num}/revisar/", {"nota": "Era yo"})
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual((r.data["estado"], r.data["nota"]), ("revisada", "Era yo"))
+        self.assertEqual(r.data["revisada_por"], self.e.plataforma.get_full_name())
+        r = self.c.post(f"/api/v1/consola/alertas/{num}/descartar/")
+        self.assertEqual(r.status_code, 400)
+        otra = AlertaSeguridad.objects.get(tipo="cuenta_fallidos")
+        r = self.c.post(f"/api/v1/consola/alertas/{otra.num}/descartar/")
+        self.assertEqual(r.data["estado"], "descartada")
+        r = self.c.get("/api/v1/consola/alertas/resumen/")
+        self.assertEqual((r.data["nuevas"], r.data["criticas"]), (0, 0))
+        self.assertEqual(r.data["ultimos_30_dias"], 2)
+
+    def test_tras_revisarla_los_mismos_intentos_no_la_reabren(self):
+        self._fallidos(6)
+        alerta = AlertaSeguridad.objects.get(tipo="ip_fallidos")
+        self.c.post(f"/api/v1/consola/alertas/{alerta.num}/revisar/")
+        self._fallidos(1)
+        self.assertEqual(AlertaSeguridad.objects.filter(tipo="ip_fallidos").count(), 1)
+        self._fallidos(5)
+        self.assertEqual(
+            AlertaSeguridad.objects.filter(tipo="ip_fallidos", estado="nueva").count(), 1
+        )
+
+    def test_revisar_todas(self):
+        self._fallidos(6)
+        r = self.c.post("/api/v1/consola/alertas/revisar-todas/")
+        self.assertEqual(r.data["revisadas"], 2)
+        self.assertFalse(AlertaSeguridad.objects.filter(estado="nueva").exists())
+
+    def test_solo_el_superusuario(self):
+        for ruta in ("alertas/", "alertas/resumen/", "notificaciones/"):
+            r = cliente_de(self.e.admin).get(f"/api/v1/consola/{ruta}")
+            self.assertEqual(r.status_code, 403, ruta)
+
+
+class AvisosSeguridadTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        self.c = cliente_de(self.e.plataforma)
+
+    def _fallidos(self, n):
+        with self.captureOnCommitCallbacks(execute=True):
+            for _ in range(n):
+                RegistroAuditoria.objects.create(
+                    accion=Accion.LOGIN_FALLIDO, usuario_correo="x@y.z", ip="203.0.113.50"
+                )
+
+    def test_avisa_en_la_campana_y_por_correo_a_las_criticas(self):
+        self._fallidos(5)
+        # Advertencia: campana sí, correo no (por omisión solo las críticas).
+        self.assertEqual(len(mail.outbox), 0)
+        r = self.c.get("/api/v1/consola/notificaciones/")
+        self.assertEqual((r.data["count"], r.data["no_leidas"]), (1, 1))
+        self.assertIsNone(r.data["results"][0]["correo_enviado"])
+        self._fallidos(5)
+        # Sube a crítica: nuevo aviso y correo.
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Crítico", mail.outbox[0].subject)
+        self.assertEqual(mail.outbox[0].to, [self.e.plataforma.correo])
+        r = self.c.get("/api/v1/consola/notificaciones/")
+        self.assertEqual(r.data["count"], 2)
+        self.assertTrue(r.data["results"][0]["correo_enviado"])
+        # Más intentos sobre la misma alerta crítica no vuelven a avisar.
+        self._fallidos(3)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_preferencias_y_leer(self):
+        r = self.c.get("/api/v1/consola/notificaciones/preferencias/")
+        self.assertEqual(r.data["niveles_correo"], ["critico"])
+        r = self.c.patch(
+            "/api/v1/consola/notificaciones/preferencias/",
+            {"niveles_correo": ["advertencia", "critico"], "niveles_consola": ["critico"]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self._fallidos(5)
+        self.assertEqual(len(mail.outbox), 1)
+        # La campana solo muestra las críticas.
+        self.assertEqual(self.c.get("/api/v1/consola/notificaciones/").data["count"], 0)
+        self.c.patch(
+            "/api/v1/consola/notificaciones/preferencias/",
+            {"niveles_consola": ["critico", "advertencia"]},
+            format="json",
+        )
+        r = self.c.get("/api/v1/consola/notificaciones/")
+        self.assertEqual(r.data["no_leidas"], 1)
+        r = self.c.post("/api/v1/consola/notificaciones/leer/", {}, format="json")
+        self.assertEqual(r.data["leidas"], 1)
+        self.assertEqual(self.c.get("/api/v1/consola/notificaciones/").data["no_leidas"], 0)
+        r = self.c.patch(
+            "/api/v1/consola/notificaciones/preferencias/",
+            {"niveles_correo": ["urgente"]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)

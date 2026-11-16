@@ -11,12 +11,12 @@ const porcentaje = (n, total) => (total ? Math.round((n / total) * 100) : 0)
 // La barra resaltada al abrir: la de más preguntas.
 const mayor = (serie) => serie.reduce((m, x, i) => (x.total > serie[m].total ? i : m), 0)
 
-// Inicio de la consola: dashboard de uso de Nico (cifras y gráficas).
-export default function InicioConsola() {
+// Panel de la consola: dashboard de uso de Nico (cifras y gráficas).
+export default function PanelConsola() {
   const { estado, datos: d, reintentar } = useDatos(nicoApi.resumen, [])
   const cifras = d
     ? {
-        principal: { etiqueta: 'Preguntas a Nico', valor: d.preguntas.toLocaleString('es-MX'), unidad: 'registradas', sub: `${d.no_entendidas} no entendidas` },
+        principal: { etiqueta: 'Preguntas a Nico', valor: d.preguntas.toLocaleString('es-MX'), unidad: 'registradas', sub: `${d.no_entendidas} no entendidas por enseñar · ${d.ensenadas ?? 0} enseñadas` },
         cifras: [
           { etiqueta: 'Respuestas en el banco', valor: d.banco, tono: 'verde' },
           { etiqueta: 'Útiles / no útiles', valor: `${d.positivas} / ${d.negativas}` },
@@ -26,9 +26,10 @@ export default function InicioConsola() {
       }
     : { principal: { etiqueta: 'Preguntas a Nico', valor: '—', tonoValor: 'apagado' } }
 
+  // Las no entendidas que ya se enseñaron cuentan como atendidas.
   const resueltas = d ? d.preguntas - d.no_entendidas : 0
   return (
-    <Pantalla eyebrow="Consola de Nico AI" titulo="Inicio" cifras={cifras}>
+    <Pantalla eyebrow="Consola de Nico AI" titulo="Panel" cifras={cifras}>
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {d && (

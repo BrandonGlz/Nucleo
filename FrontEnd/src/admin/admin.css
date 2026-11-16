@@ -257,6 +257,46 @@
   color: var(--text-secondary);
 }
 
+/* Panel: barras de intentos fallidos en rojo */
+.ui-admin-barras-fallidos .nc-bars__bar {
+  fill: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+.ui-admin-barras-fallidos .nc-bars__bar.is-active {
+  fill: var(--danger);
+}
+
+/* Alertas */
+.ui-admin-alertas--pagina {
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+}
+.ui-admin-alerta.is-cerrada {
+  --nivel: var(--border-strong, var(--text-muted));
+  opacity: 0.85;
+}
+.ui-admin-alerta__insignias {
+  display: inline-flex;
+  gap: 6px;
+}
+.ui-admin-alerta__acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: none;
+}
+.ui-admin-alerta__revision {
+  font-style: italic;
+}
+.ui-admin-aviso-2fa {
+  margin-bottom: 16px;
+  background: var(--surface);
+}
+.ui-admin-aviso-2fa p a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* Políticas */
 .ui-admin-politicas {
   display: flex;
@@ -307,6 +347,13 @@
 }
 
 @media (max-width: 560px) {
+  .ui-admin-alerta {
+    flex-wrap: wrap;
+  }
+  .ui-admin-alerta__acciones {
+    flex-direction: row;
+    width: 100%;
+  }
   .ui-admin-filtros .ui-desplegable {
     min-width: 0;
   }
@@ -326,4 +373,42 @@
   .ui-admin-firmware {
     padding: 4px 10px;
   }
+}
+
+/* Cargar firmware (FirmwareAdmin) */
+.ui-flasheo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: start; }
+.ui-flasheo > :last-child:nth-child(3) { grid-column: 1 / -1; }
+.ui-flasheo .nc-alert { margin-top: 12px; }
+.ui-flasheo-placa { display: grid; gap: 8px; margin: 0; }
+.ui-flasheo-placa > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--nc-border, rgba(127,127,127,.18)); }
+.ui-flasheo-placa dt { color: var(--nc-text-muted, inherit); opacity: .8; }
+.ui-flasheo-placa dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.ui-flasheo-nota { margin: 0; font-size: .875rem; opacity: .75; }
+.ui-flasheo-pasos { margin: 0; padding-left: 20px; display: grid; gap: 8px; line-height: 1.5; }
+.ui-flasheo-form { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 16px; }
+.ui-flasheo-form:disabled { opacity: .55; }
+.ui-flasheo-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ui-flasheo-modos button {
+  display: grid; gap: 4px; text-align: left; padding: 14px 16px; border-radius: 14px; cursor: pointer;
+  border: 1.5px solid var(--nc-border, rgba(127,127,127,.25)); background: transparent; color: inherit; font: inherit;
+  transition: border-color .15s, background-color .15s;
+}
+.ui-flasheo-modos button span { font-size: .85rem; opacity: .75; }
+.ui-flasheo-modos button.is-activo { border-color: var(--nc-green, #2ec27e); background: color-mix(in srgb, var(--nc-green, #2ec27e) 10%, transparent); }
+.ui-flasheo-modos button:disabled { cursor: not-allowed; opacity: .5; }
+.ui-flasheo-acciones { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ui-flasheo-avance { margin-top: 16px; display: grid; gap: 6px; }
+.ui-flasheo-avance__texto { display: flex; justify-content: space-between; font-size: .875rem; font-weight: 600; }
+.ui-flasheo-avance__barra { height: 8px; border-radius: 99px; overflow: hidden; background: var(--nc-border, rgba(127,127,127,.2)); }
+.ui-flasheo-avance__barra span { display: block; height: 100%; background: var(--nc-green, #2ec27e); transition: width .2s; }
+.ui-flasheo-avance__barra span.is-indeterminada { width: 35%; animation: ui-flasheo-ir 1.2s ease-in-out infinite; }
+@keyframes ui-flasheo-ir { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+@media (prefers-reduced-motion: reduce) { .ui-flasheo-avance__barra span.is-indeterminada { animation: none; width: 100%; opacity: .5; } }
+.ui-flasheo-registro {
+  margin: 0; max-height: 260px; overflow: auto; padding: 12px; border-radius: 12px; font-size: .78rem; line-height: 1.5;
+  background: rgba(0,0,0,.25); white-space: pre-wrap; word-break: break-word;
+}
+@media (max-width: 900px) {
+  .ui-flasheo { grid-template-columns: 1fr; }
+  .ui-flasheo-modos { grid-template-columns: 1fr; }
 }

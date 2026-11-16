@@ -25,9 +25,10 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
   const cuenta = useSalida(menu === 'usuario')
   const navegar = useNavigate()
   const { usuario, rol, logout, temaAplicado, setTema } = useSesion()
-  // El administrador de plataforma no tiene alertas, notificaciones ni perfil de organización.
+  // El administrador de plataforma no tiene perfil de organización; la campana solo la tiene
+  // donde su proveedor de avisos la pide (la consola de administración, con las de seguridad).
   const plataforma = rol === 'ADMINPLAT'
-  const { notificaciones, noLeidas, marcarLeidas } = useAvisos()
+  const { notificaciones, noLeidas, marcarLeidas, campana = !plataforma } = useAvisos()
   const menuMovil = useMenuMovil()
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
         </div>
         <div className="nc-header__actions">
           {acciones && <div className="nc-header__extra">{acciones}</div>}
-          {!plataforma && (
+          {campana && (
             <IconButton
               icon="bell"
               label="Notificaciones"
@@ -120,7 +121,7 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
               className={`ui-item ui-item--boton${n.leida ? '' : ' is-unread'}`}
               onClick={() => {
                 marcarLeidas([n.num])
-                ir('/alertas')
+                ir(n.ruta || '/alertas')
               }}
             >
               <IconCircle name={n.icon} tone={n.tone} size="sm" />
@@ -153,11 +154,13 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
           </div>
           <div className="ui-divisor" style={{ marginTop: 0 }} />
           {!plataforma && (
+            <button type="button" role="menuitem" className="ui-menuitem" onClick={() => ir('/perfil')}>
+              <Icon name="user" size={18} />
+              Mi perfil
+            </button>
+          )}
+          {campana && (
             <>
-              <button type="button" role="menuitem" className="ui-menuitem" onClick={() => ir('/perfil')}>
-                <Icon name="user" size={18} />
-                Ver perfil
-              </button>
               <button type="button" role="menuitem" className="ui-menuitem" onClick={() => ir('/notificaciones')}>
                 <Icon name="bell" size={18} />
                 Notificaciones

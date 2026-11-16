@@ -52,6 +52,9 @@ class Dispositivo(models.Model):
     ultimo_arranque = models.DateTimeField(null=True, blank=True)
     # La consola de administración elige qué equipos reciben la actualización remota (OTA).
     recibe_ota = models.BooleanField(db_default=False, default=False)
+    # ESP32 físico que es la llave de Nico AI (se marca al cargarle firmware desde la consola);
+    # se suma a IA_PUENTE_DISPOSITIVOS.
+    puente_ia = models.BooleanField(db_default=False, default=False)
     fecha_alta = models.DateTimeField(db_default=Now(), editable=False)
 
     class Meta:

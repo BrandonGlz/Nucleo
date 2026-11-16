@@ -21,3 +21,9 @@ export const NICO_DOCUMENTO = (num) => `/nico/documentos/${num}/` // PATCH {cont
 // POST {seccion}: la IA lee esa sección una vez y propone respuestas para el banco (en segundo plano).
 // GET ?seccion= → {estado: sin_generar|generando|listo|error, propuestas: [{pregunta, respuesta}], error}
 export const NICO_DOCUMENTO_GENERAR = (num) => `/nico/documentos/${num}/generar/`
+// Notificaciones del superusuario en la consola (campana y /notificaciones).
+// GET [?tipo&leida=true|false] → {no_leidas, results: [{num, tipo, nivel, titulo, texto, enlace, leida, fecha}]}
+export const NICO_NOTIFICACIONES = '/nico/notificaciones/'
+export const NICO_NOTIFICACIONES_LEER = '/nico/notificaciones/leer/' // POST {nums?} → {marcadas, no_leidas}; sin nums, todas
+// GET → {correo, tipos: [{tipo, etiqueta, descripcion, consola, correo}]}; PATCH {tipos: {TIPO: {consola, correo}}}
+export const NICO_NOTIFICACIONES_PREFERENCIAS = '/nico/notificaciones/preferencias/'

@@ -2,7 +2,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useSesion } from '../context/SesionContext'
 import { AccesoConsola } from '../consola/AccesoConsola'
 import { AdminLayout } from './AdminLayout'
-import { SECCIONES } from './secciones'
+import { OCULTAS, SECCIONES } from './secciones'
 import '../consola/consola.css'
 import './admin.css'
 
@@ -28,7 +28,7 @@ export default function AdminApp() {
             <Navigate to="/" replace />
           ) : (
             <AccesoConsola
-              nombre="Núcleo Admin"
+              nombre="Consola de administración"
               lema="Seguridad, accesos y equipos de todas las organizaciones."
               soloSuper="Esta consola es solo para el superusuario de Núcleo."
             />
@@ -42,7 +42,7 @@ export default function AdminApp() {
           </Protegida>
         }
       >
-        {SECCIONES.map((s) => (
+        {[...SECCIONES, ...OCULTAS].map((s) => (
           <Route key={s.ruta} path={s.ruta} element={<s.Pagina />} />
         ))}
       </Route>

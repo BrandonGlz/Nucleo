@@ -89,6 +89,109 @@ const politicas = {
   ota_todos: false, actualizado: hace(4 * DIA), actualizado_por: 'Plataforma Núcleo',
 }
 
+// Alertas de seguridad (módulo «Alertas») y notificaciones de la campana de la consola.
+const usuarioCorto = (num) => {
+  const c = aContrato(usuarios.find((u) => u.num === num))
+  return { num: c.num, nombre: c.nombre_completo, correo: c.correo }
+}
+const A = (num, tipo, nivel, estado, titulo, detalle, usuario, ip, eventos, seg, extra = {}) => ({
+  num, tipo, nivel, estado, titulo, detalle, usuario: usuario ? usuarioCorto(usuario) : null, ip, eventos,
+  creada: hace(seg + 20 * MIN), ultimo_evento: hace(seg), revisada_por: null, fecha_revision: null, nota: '', ...extra,
+})
+const alertasSeguridad = [
+  A(6, 'ip_nueva', 'advertencia', 'nueva', 'Sofía Treviño Lara entró desde una IP nueva', 'No había usado esa dirección en los 30 días anteriores.', 20, '177.230.9.140', 1, 5 * HORA),
+  A(5, 'ip_fallidos', 'critico', 'nueva', '12 intentos fallidos desde una misma IP', 'En las últimas 24 horas, con 4 cuentas. Puede ser un intento de adivinar contraseñas.', null, '45.83.12.201', 12, 9 * HORA),
+  A(4, 'cuenta_fallidos', 'advertencia', 'nueva', '4 intentos fallidos en la cuenta de Iván Delgado', 'En las últimas 24 horas.', 22, '187.190.60.4', 4, 20 * HORA),
+  A(3, 'cuenta_bloqueada', 'advertencia', 'revisada', 'Cuenta bloqueada: Iván Delgado', 'La bloqueó Sofía Treviño Lara. No puede entrar hasta que se desbloquee en Usuarios.', 22, null, 1, 6 * DIA,
+    { revisada_por: 'Plataforma Núcleo', fecha_revision: hace(5 * DIA), nota: 'Confirmado con la organización.' }),
+  A(2, 'ip_fallidos', 'advertencia', 'descartada', '6 intentos fallidos desde una misma IP', 'En las últimas 24 horas, con una sola cuenta. Puede ser un intento de adivinar contraseñas.', null, '189.203.11.3', 6, 9 * DIA,
+    { revisada_por: 'Plataforma Núcleo', fecha_revision: hace(9 * DIA), nota: 'Olvidó su contraseña.' }),
+]
+let notificacionesSeguridad = alertasSeguridad
+  .filter((a) => a.estado === 'nueva' || a.num === 3)
+  .map((a, i) => ({ num: 50 - i, alerta: a.num, nivel: a.nivel, fecha: a.creada, leida: a.estado !== 'nueva', correo_enviado: a.nivel === 'critico' ? true : null }))
+const prefsAvisos = { niveles_consola: ['advertencia', 'critico'], niveles_correo: ['critico'] }
+
+export async function listaAlertas({ estado, nivel, tipo, q } = {}) {
+  await esperar()
+  const t = sinAcentos(q)
+  return pagina(
+    copia(
+      alertasSeguridad.filter(
+        (a) =>
+          (!estado || a.estado === estado) &&
+          (!nivel || a.nivel === nivel) &&
+          (!tipo || a.tipo === tipo) &&
+          (!t || sinAcentos(`${a.titulo} ${a.ip ?? ''} ${a.usuario?.correo ?? ''}`).includes(t)),
+      ),
+    ),
+  )
+}
+
+export async function resumenAlertas() {
+  await esperar()
+  const nuevas = alertasSeguridad.filter((a) => a.estado === 'nueva')
+  const tipos = ['ip_fallidos', 'cuenta_fallidos', 'ip_nueva', 'cuenta_bloqueada']
+  return {
+    nuevas: nuevas.length,
+    criticas: nuevas.filter((a) => a.nivel === 'critico').length,
+    ultimos_30_dias: alertasSeguridad.length,
+    por_tipo: tipos.map((tipo) => ({ tipo, total: alertasSeguridad.filter((a) => a.tipo === tipo).length })),
+    sin_2fa: usuarios.filter((u) => politicas.roles_2fa_obligatorio.includes(u.rol) && !u.segundo_factor && u.estado_usuario === 'ACT').length,
+  }
+}
+
+export async function cerrarAlerta(num, estado, nota = '') {
+  await esperar()
+  const a = alertasSeguridad.find((x) => x.num === Number(num))
+  if (!a) noEncontrado()
+  if (a.estado !== 'nueva') invalido({ detail: 'La alerta ya se había revisado o descartado.' })
+  Object.assign(a, { estado, nota, revisada_por: 'Plataforma Núcleo', fecha_revision: new Date().toISOString() })
+  return copia(a)
+}
+
+export async function revisarTodas() {
+  await esperar()
+  const nuevas = alertasSeguridad.filter((a) => a.estado === 'nueva')
+  for (const a of nuevas) Object.assign(a, { estado: 'revisada', revisada_por: 'Plataforma Núcleo', fecha_revision: new Date().toISOString() })
+  return { revisadas: nuevas.length }
+}
+
+export async function listaNotificaciones() {
+  await esperar()
+  const visibles = notificacionesSeguridad
+    .filter((n) => prefsAvisos.niveles_consola.includes(n.nivel))
+    .map((n) => ({ ...n, alerta: copia(alertasSeguridad.find((a) => a.num === n.alerta)) }))
+  return { ...pagina(visibles), no_leidas: visibles.filter((n) => !n.leida).length }
+}
+
+export async function leerNotificaciones(nums) {
+  await esperar()
+  let leidas = 0
+  notificacionesSeguridad = notificacionesSeguridad.map((n) => {
+    if (n.leida || (nums && !nums.includes(n.num))) return n
+    leidas += 1
+    return { ...n, leida: true }
+  })
+  return { leidas }
+}
+
+export async function leerPreferencias() {
+  await esperar()
+  return copia(prefsAvisos)
+}
+
+export async function guardarPreferencias(cambios) {
+  await esperar()
+  for (const k of ['niveles_consola', 'niveles_correo']) {
+    if (k in cambios) {
+      if (cambios[k].some((n) => !['critico', 'advertencia'].includes(n))) invalido({ [k]: ['Nivel no válido.'] })
+      prefsAvisos[k] = [...new Set(cambios[k])].sort()
+    }
+  }
+  return copia(prefsAvisos)
+}
+
 export async function organizacionesConsola() {
   await esperar()
   return copia(organizaciones)
@@ -104,6 +207,7 @@ export async function resumen() {
   const visibles = dispositivos.map(dispositivoAContrato)
   return {
     sesiones_activas: sesiones.length,
+    sesiones: { web: sesiones.filter((x) => x.cliente === 'web').length, app: sesiones.filter((x) => x.cliente === 'app').length },
     usuarios: {
       total: lista.length,
       activos: lista.filter((u) => u.estado_usuario === 'ACT').length,
@@ -119,13 +223,12 @@ export async function resumen() {
       mantenimiento: visibles.filter((d) => d.estado === 'MANT').length,
       baja: visibles.filter((d) => d.estado === 'BAJA').length,
     },
-    alertas: [
-      { tipo: 'ip_fallidos', nivel: 'critico', titulo: '9 intentos fallidos desde una misma IP', detalle: 'Probó 4 cuentas distintas de Grupo Altamira en 3 minutos.', fecha: hace(5 * DIA), usuario: null, ip: '45.83.12.201' },
-      { tipo: 'cuenta_bloqueada', nivel: 'critico', titulo: 'Cuenta bloqueada', detalle: 'Se bloqueó tras varios intentos fallidos seguidos.', fecha: hace(6 * DIA), usuario: { num: 22, nombre: 'Iván Delgado', correo: 'ivan.delgado@cedros.mx' }, ip: '187.190.60.4' },
-      { tipo: 'ip_nueva', nivel: 'advertencia', titulo: 'Entrada desde una IP nueva', detalle: 'Primer acceso de esta cuenta desde esa dirección.', fecha: hace(5 * HORA), usuario: { num: 20, nombre: 'Sofía Treviño', correo: 'sofia.trevino@cedros.mx' }, ip: '177.230.9.140' },
-      { tipo: 'sin_2fa', nivel: 'advertencia', titulo: 'Sin verificación en dos pasos', detalle: 'Su rol la exige y aún no la configura.', fecha: null, usuario: { num: 4, nombre: 'Rubén Castillo', correo: 'ruben.castillo@grupoaltamira.mx' }, ip: null },
-    ],
+    alertas_seguridad: {
+      nuevas: alertasSeguridad.filter((a) => a.estado === 'nueva').length,
+      criticas: alertasSeguridad.filter((a) => a.estado === 'nueva' && a.nivel === 'critico').length,
+    },
     serie_accesos: serie,
+    accesos_por_hora: Array.from({ length: 24 }, (_, h) => ({ hora: h, total: h < 6 ? h % 2 : h < 9 ? 4 + h : h < 19 ? 14 + ((h * 5) % 9) : 22 - h })),
   }
 }
 

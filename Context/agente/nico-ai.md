@@ -93,7 +93,28 @@ cambiar código. Es la misma web compilada: `main.jsx` abre `src/consola/` cuand
   charla y a las reglas), *rutas* (`RUTA`: responder como si hubieran hecho otra pregunta) y las
   aprendidas de las respuestas útiles. Se crean para una empresa o para todas.
 - **Registro de preguntas**: lo que preguntan los usuarios, filtrado por cómo se resolvió, empresa y
-  calificación; «Enseñar» crea la respuesta correcta en el banco.
+  calificación; «Enseñar» crea la respuesta correcta en el banco y marca la pregunta como
+  enseñada (`PreguntaAgente.ensenada` → la respuesta, y `fecha_ensenada`), aunque se haya
+  reescrito al enseñarla, junto con las preguntas iguales (normalizadas) de la misma empresa que
+  no salieron del banco. La vía con que se resolvió no cambia (es historial): el filtro «No
+  entendida» muestra solo las que siguen sin enseñar y «Enseñadas», las atendidas. Crear o
+  editar una respuesta desde el banco también marca las preguntas iguales. Si la respuesta se
+  borra, sus preguntas vuelven a quedar por atender. `ensenada` es aparte de `aprendida` (que
+  cuenta los usos y los votos del banco, y a la que un 👎 desactiva). La migración
+  `reportes.0006_marcar_ensenadas` enlazó las no entendidas que ya tenían respuesta fija o ruta.
+- **Notificaciones**: campana en el encabezado (la misma de la web, con `ProveedorAvisos`) y página
+  `/notificaciones` con la bandeja y las preferencias. Modelo `NotificacionNico` (por
+  superusuario, con leída), preferencias en `PreferenciaAvisosNico` y servicio
+  `apps/nico/avisos.py`. Eventos: pregunta no entendida nueva (una vez al día por pregunta y
+  empresa; las del superusuario no avisan), respuesta con 👎, respuesta que el banco activó por
+  los 👍, ESP puente que deja de latir o vuelve e IA suspendida por carga o reanudada. Los dos
+  últimos los revisa `avisos.vigilar()` en el ciclo de `marcar_sin_conexion` (servicio
+  `nucleo-sin-conexion`, cada 60 s); el último estado se guarda en `MarcaAvisoNico`, así que la
+  primera revisión solo lo anota. Cada tipo se activa por separado para la campana y para el
+  correo (por defecto, correo solo del puente y de la carga); el correo sale en un hilo aparte
+  para no retrasar al agente y enlaza a `nicoai.` + el dominio de `NUCLEO_URL_WEB`. El canal en
+  vivo es por organización, así que la consola pregunta cada minuto. No se reutiliza
+  `alertas.Notificacion`: es el registro de envío de una alerta de sensores y siempre lleva una.
 - **Herramientas**: cada una tiene un propósito de una lista fija (`configuracion.PROPOSITOS`), una
   descripción y un ejemplo editables (modelo `AjusteHerramienta`; «Restaurar» vuelve al original) y
   se puede apagar: Nico contesta que esa consulta está desactivada.

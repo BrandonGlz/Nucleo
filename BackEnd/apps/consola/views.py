@@ -1,6 +1,7 @@
 """API de la consola de administración (admin.bynucleo.com). Solo para el superusuario (el
-administrador de plataforma), con alcance sobre todas las organizaciones: resumen y alertas de
-seguridad, usuarios y roles, sesiones abiertas, equipos ESP32, firmware y política de seguridad.
+administrador de plataforma), con alcance sobre todas las organizaciones: panel en gráficas,
+usuarios y roles, sesiones abiertas, equipos ESP32, firmware y política de seguridad. Las alertas
+de seguridad están en ``alertas.py`` (reglas) y ``vistas_alertas.py`` (API).
 Contrato en ``Context/api/contrato-api.md``."""
 
 from collections import Counter, defaultdict
@@ -10,7 +11,7 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.mail import send_mail
 from django.db.models import Count, Q
-from django.db.models.functions import TruncDate
+from django.db.models.functions import ExtractHour, TruncDate
 from django.utils import timezone
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -29,7 +30,8 @@ from apps.usuarios.seguridad import enlace_recuperacion
 from common import roles
 from common.autenticacion import cerrar_sesiones
 
-from .models import PoliticaSeguridad
+from .alertas import cuentas_sin_2fa
+from .models import AlertaSeguridad, PoliticaSeguridad
 from .politicas import olvidar, politica
 
 Accion = RegistroAuditoria.Accion
@@ -64,136 +66,8 @@ def _entero(valor):
         return None
 
 
-# ── Resumen y alertas de seguridad ──────────────────────────────────────────────────────────
-
-
-def _alertas_seguridad(ahora):
-    alertas = []
-    hace_24h = ahora - timedelta(hours=24)
-    fallidos = RegistroAuditoria.objects.filter(
-        accion=Accion.LOGIN_FALLIDO, fecha_hora__gte=hace_24h
-    )
-
-    for fila in (
-        fallidos.exclude(ip=None)
-        .values("ip")
-        .annotate(n=Count("num"))
-        .filter(n__gte=5)
-        .order_by("-n")[:10]
-    ):
-        ultimo = fallidos.filter(ip=fila["ip"]).order_by("-fecha_hora").first()
-        alertas.append(
-            {
-                "tipo": "ip_fallidos",
-                "nivel": "critico" if fila["n"] >= 10 else "advertencia",
-                "titulo": f"{fila['n']} intentos fallidos desde una misma IP",
-                "detalle": "En las últimas 24 horas. Puede ser un intento de adivinar contraseñas.",
-                "fecha": ultimo.fecha_hora if ultimo else None,
-                "usuario": None,
-                "ip": fila["ip"],
-            }
-        )
-
-    for fila in (
-        fallidos.exclude(usuario=None)
-        .values("usuario")
-        .annotate(n=Count("num"))
-        .filter(n__gte=3)
-        .order_by("-n")[:10]
-    ):
-        u = Usuario.objects.filter(pk=fila["usuario"]).first()
-        if u is None:
-            continue
-        ultimo = fallidos.filter(usuario=u).order_by("-fecha_hora").first()
-        alertas.append(
-            {
-                "tipo": "cuenta_fallidos",
-                "nivel": "critico" if fila["n"] >= 10 else "advertencia",
-                "titulo": f"{fila['n']} intentos fallidos en la cuenta de {u.get_full_name()}",
-                "detalle": "En las últimas 24 horas.",
-                "fecha": ultimo.fecha_hora if ultimo else None,
-                "usuario": {"num": u.num, "nombre": u.get_full_name(), "correo": u.correo},
-                "ip": ultimo.ip if ultimo else None,
-            }
-        )
-
-    # Accesos desde una IP que la persona no había usado en los 30 días anteriores.
-    hace_7d = ahora - timedelta(days=7)
-    vistas = set()
-    for r in (
-        RegistroAuditoria.objects.filter(accion=Accion.LOGIN, fecha_hora__gte=hace_7d)
-        .exclude(ip=None)
-        .exclude(usuario=None)
-        .select_related("usuario")
-        .order_by("-fecha_hora")
-    ):
-        clave = (r.usuario_id, r.ip)
-        if clave in vistas:
-            continue
-        vistas.add(clave)
-        conocida = RegistroAuditoria.objects.filter(
-            accion=Accion.LOGIN,
-            usuario_id=r.usuario_id,
-            ip=r.ip,
-            fecha_hora__lt=r.fecha_hora,
-            fecha_hora__gte=r.fecha_hora - timedelta(days=30),
-        ).exists()
-        tiene_historial = RegistroAuditoria.objects.filter(
-            accion=Accion.LOGIN, usuario_id=r.usuario_id, fecha_hora__lt=r.fecha_hora
-        ).exists()
-        if conocida or not tiene_historial:
-            continue
-        u = r.usuario
-        alertas.append(
-            {
-                "tipo": "ip_nueva",
-                "nivel": "advertencia",
-                "titulo": f"{u.get_full_name()} entró desde una IP nueva",
-                "detalle": "No había usado esa dirección en los 30 días anteriores.",
-                "fecha": r.fecha_hora,
-                "usuario": {"num": u.num, "nombre": u.get_full_name(), "correo": u.correo},
-                "ip": r.ip,
-            }
-        )
-        if sum(a["tipo"] == "ip_nueva" for a in alertas) >= 15:
-            break
-
-    exigidos = politica().roles_2fa_obligatorio
-    if exigidos:
-        sin_2fa = (
-            Usuario.objects.filter(rol_id__in=exigidos, estado_usuario_id=roles.USUARIO_ACTIVO)
-            .exclude(segundo_factor__activo=True)
-            .count()
-        )
-        if sin_2fa:
-            alertas.append(
-                {
-                    "tipo": "sin_2fa",
-                    "nivel": "advertencia",
-                    "titulo": f"{sin_2fa} cuentas sin la verificación en dos pasos obligatoria",
-                    "detalle": "Se les pedirá configurarla la próxima vez que entren.",
-                    "fecha": None,
-                    "usuario": None,
-                    "ip": None,
-                }
-            )
-
-    for u in Usuario.objects.filter(estado_usuario_id=roles.USUARIO_BLOQUEADO)[:10]:
-        alertas.append(
-            {
-                "tipo": "cuenta_bloqueada",
-                "nivel": "advertencia",
-                "titulo": f"Cuenta bloqueada: {u.get_full_name()}",
-                "detalle": "No puede entrar hasta que se desbloquee en Usuarios y roles.",
-                "fecha": None,
-                "usuario": {"num": u.num, "nombre": u.get_full_name(), "correo": u.correo},
-                "ip": None,
-            }
-        )
-
-    orden = {"critico": 0, "advertencia": 1}
-    alertas.sort(key=lambda a: (orden[a["nivel"]], -(a["fecha"].timestamp() if a["fecha"] else 0)))
-    return alertas
+# ── Panel (resumen en gráficas) ─────────────────────────────────────────────────────────────
+# Las alertas de seguridad tienen su propio módulo: alertas.py y vistas_alertas.py.
 
 
 def sesiones_vigentes():
@@ -207,9 +81,10 @@ class ResumenView(ConsolaMixin, APIView):
         hoy = timezone.localdate()
         usuarios = Usuario.objects.exclude(rol_id=roles.ADMIN_PLATAFORMA)
         por_estado = Counter(usuarios.values_list("estado_usuario_id", flat=True))
-        exigidos = politica().roles_2fa_obligatorio
         dispositivos = Counter(Dispositivo.objects.values_list("estado_dispositivo_id", flat=True))
         accesos = RegistroAuditoria.objects.filter(accion__in=(Accion.LOGIN, Accion.LOGIN_FALLIDO))
+        vigentes = sesiones_vigentes()
+        por_cliente = Counter(vigentes.values_list("cliente", flat=True))
 
         desde = hoy - timedelta(days=13)
         serie = defaultdict(lambda: {"exitosos": 0, "fallidos": 0})
@@ -222,23 +97,30 @@ class ResumenView(ConsolaMixin, APIView):
             clave = "exitosos" if fila["accion"] == Accion.LOGIN else "fallidos"
             serie[fila["dia"]][clave] = fila["n"]
 
+        # Accesos exitosos por hora del día (hora local) en los mismos 14 días.
+        por_hora = Counter(
+            dict(
+                accesos.filter(accion=Accion.LOGIN, fecha_hora__date__gte=desde)
+                .annotate(hora=ExtractHour("fecha_hora"))
+                .values_list("hora")
+                .annotate(n=Count("num"))
+            )
+        )
+        nuevas = AlertaSeguridad.objects.filter(estado=AlertaSeguridad.Estado.NUEVA)
+
         return Response(
             {
-                "sesiones_activas": sesiones_vigentes().count(),
+                "sesiones_activas": sum(por_cliente.values()),
+                "sesiones": {
+                    "web": por_cliente[Sesion.Cliente.WEB],
+                    "app": por_cliente[Sesion.Cliente.APP],
+                },
                 "usuarios": {
                     "total": usuarios.count(),
                     "activos": por_estado[roles.USUARIO_ACTIVO],
                     "inactivos": por_estado[roles.USUARIO_INACTIVO],
                     "bloqueados": por_estado[roles.USUARIO_BLOQUEADO],
-                    "sin_2fa_obligatorio": (
-                        Usuario.objects.filter(
-                            rol_id__in=exigidos, estado_usuario_id=roles.USUARIO_ACTIVO
-                        )
-                        .exclude(segundo_factor__activo=True)
-                        .count()
-                        if exigidos
-                        else 0
-                    ),
+                    "sin_2fa_obligatorio": cuentas_sin_2fa(),
                 },
                 "accesos": {
                     "hoy": accesos.filter(accion=Accion.LOGIN, fecha_hora__date=hoy).count(),
@@ -256,7 +138,10 @@ class ResumenView(ConsolaMixin, APIView):
                     "mantenimiento": dispositivos[roles.DISPOSITIVO_MANTENIMIENTO],
                     "baja": dispositivos[roles.DISPOSITIVO_BAJA],
                 },
-                "alertas": _alertas_seguridad(ahora),
+                "alertas_seguridad": {
+                    "nuevas": nuevas.count(),
+                    "criticas": nuevas.filter(nivel=AlertaSeguridad.Nivel.CRITICO).count(),
+                },
                 "serie_accesos": [
                     {
                         "dia": (desde + timedelta(days=i)).isoformat(),
@@ -264,6 +149,7 @@ class ResumenView(ConsolaMixin, APIView):
                     }
                     for i in range(14)
                 ],
+                "accesos_por_hora": [{"hora": h, "total": por_hora[h]} for h in range(24)],
             }
         )
 

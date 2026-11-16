@@ -263,7 +263,10 @@ def con_puente(dispositivo):
 
     return (
         habilitado()
-        and dispositivo.codigo_mqtt in settings.IA_PUENTE_DISPOSITIVOS
+        and (
+            dispositivo.codigo_mqtt in settings.IA_PUENTE_DISPOSITIVOS
+            or getattr(dispositivo, "puente_ia", False)
+        )
         and not carga.ia_suspendida()
     )
 

@@ -3,6 +3,7 @@ import time
 from django.core.management.base import BaseCommand
 
 from apps.dispositivos.services import marcar_sin_conexion
+from apps.nico import avisos
 
 
 class Command(BaseCommand):
@@ -21,6 +22,9 @@ class Command(BaseCommand):
         while True:
             marcados = marcar_sin_conexion()
             self.stdout.write(f"Dispositivos marcados sin conexión: {len(marcados)}")
+            # Avisos de la consola de Nico AI: ESP puente que deja de latir o vuelve e IA
+            # suspendida por carga.
+            avisos.vigilar()
             if not cada:
                 return
             time.sleep(cada)

@@ -172,14 +172,31 @@ Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
     ├── GET arbol/                          {puente, empresas: [{num, nombre, areas: [{num, nombre,
     │                                       dispositivos: [{num, nombre, activo, fisico}]}]}]}
     ├── GET resumen/                        Cifras y series del dashboard (por_dia, por_hora,
-    │                                       por_via, por_empresa, no_entendidas_frecuentes)
+    │                                       por_via, por_empresa, no_entendidas_frecuentes);
+    │                                       no_entendidas = las que siguen sin enseñar,
+    │                                       ensenadas = las enseñadas desde la consola
     ├── GET incluidas/                      Respuestas que Nico trae en código (explicación, charla,
     │                                       capacidades, consulta)
     ├── banco/                              CRUD de respuestas: {organizacion | todas, pregunta,
     │                                       tema FIJA|RUTA (TEMP/HUM/AIRE aprendidas), plantilla,
-    │                                       activa}; filtros organizacion, tema, activa, q
-    ├── GET registro/                       Preguntas registradas; filtros organizacion, via,
+    │                                       activa, registro?}; filtros organizacion, tema,
+    │                                       activa, q. Con registro (num de la pregunta desde
+    │                                       la que se enseña) esa pregunta y las iguales de la
+    │                                       empresa quedan enseñadas (también al editar)
+    ├── GET registro/                       Preguntas registradas con ensenada (num de la
+    │                                       respuesta) y fecha_ensenada; filtros organizacion,
+    │                                       via (NO_ENTENDIDA = solo sin enseñar; ENSENADA =
+    │                                       las enseñadas), ensenada true|false,
     │                                       calificacion si|no, q
+    ├── GET notificaciones/                 Campana del superusuario: {no_leidas, results:
+    │                                       [{num, tipo, nivel, titulo, texto, enlace, leida,
+    │                                       fecha}]} (100 más recientes); filtros tipo, leida.
+    │                                       tipo NO_ENTENDIDA|NEGATIVA|APRENDIDA|PUENTE|CARGA,
+    │                                       nivel INFO|OK|ADVERTENCIA|PELIGRO
+    ├── POST notificaciones/leer/           {nums?} → {marcadas, no_leidas}; sin nums, todas
+    ├── notificaciones/preferencias/        GET {correo, tipos: [{tipo, etiqueta, descripcion,
+    │                                       consola, correo}]}; PATCH {tipos: {TIPO: {consola?,
+    │                                       correo?}}}
     ├── GET herramientas/                   {herramientas: [{nombre, descripcion, proposito,
     │   PATCH herramientas/{nombre}/        ejemplo, activa, accion, editada, original}],
     │                                       propositos: [{clave, nombre}]};
@@ -239,12 +256,11 @@ Solo el administrador de plataforma (superusuario), desde https://admin.bynucleo
 otro rol recibe 403. Ve y gestiona todas las organizaciones.
 
 ```text
-GET   /consola/resumen/                 Cifras (sesiones activas, usuarios por estado y sin la 2FA
-                                        obligatoria, accesos de hoy y fallidos 24 h/7 días, equipos
-                                        por estado), serie de accesos de 14 días y alertas de
-                                        seguridad: ≥5 fallos desde una IP o ≥3 en una cuenta en
-                                        24 h, acceso desde una IP no usada en los 30 días previos,
-                                        cuentas sin la 2FA obligatoria y cuentas bloqueadas
+GET   /consola/resumen/                 Panel en gráficas: sesiones_activas y sesiones {web, app},
+                                        usuarios por estado y sin la 2FA obligatoria, accesos de
+                                        hoy y fallidos 24 h/7 días, equipos por estado,
+                                        alertas_seguridad {nuevas, criticas}, serie_accesos (14
+                                        días: exitosos/fallidos) y accesos_por_hora (24 h, 14 días)
 GET   /consola/organizaciones/          [{num, nombre, areas: [{num, nombre}]}]
 GET   /consola/usuarios/                ?organizacion&rol&estado&q (paginada); incluye
                                         segundo_factor y sesiones abiertas
@@ -268,6 +284,46 @@ GET   /consola/firmware/                {version, publicada, ota_todos, disposit
 GET/PATCH /consola/politicas/           {dias_sesion 1–90, intentos_login_por_minuto 3–60,
                                         roles_2fa_obligatorio, dias_auditoria 30–3650, ota_todos}
 ```
+
+### Alertas de seguridad (módulo «Alertas» de la consola)
+
+Se guardan en `alerta_seguridad` y se abren solas al ocurrir el evento (no al consultar):
+
+| tipo | Cuándo | Nivel |
+|---|---|---|
+| `ip_fallidos` | ≥5 inicios de sesión fallidos desde una IP en 24 h | crítico desde 10 |
+| `cuenta_fallidos` | ≥3 fallidos en una misma cuenta en 24 h | crítico desde 10 |
+| `ip_nueva` | acceso desde una IP que la cuenta no usó en los 30 días previos (si ya tenía accesos) | advertencia |
+| `cuenta_bloqueada` | la cuenta pasa a `BLQ`; al desbloquearla la alerta queda revisada sola | advertencia |
+
+No se duplica una alerta abierta (`estado = nueva` con la misma `clave`, índice único parcial): los
+eventos siguientes actualizan `eventos`, `ultimo_evento` y suben el nivel. Tras revisar o descartar,
+los intentos anteriores ya no cuentan para reabrirla. Las cuentas sin la 2FA obligatoria no son un
+evento: se calculan al vuelo (`sin_2fa` de `/alertas/resumen/`).
+
+```text
+GET   /consola/alertas/                 ?estado=nueva|revisada|descartada&nivel=critico|advertencia
+                                        &tipo&q (cuenta, IP o título) (paginada): {num, tipo,
+                                        nivel, estado, titulo, detalle, usuario {num, nombre,
+                                        correo}|null, ip, eventos, creada, ultimo_evento,
+                                        revisada_por, fecha_revision, nota}
+GET   /consola/alertas/resumen/         {nuevas, criticas, ultimos_30_dias, por_tipo: [{tipo,
+                                        total}], sin_2fa}
+POST  /consola/alertas/{num}/revisar/   {nota?} → alerta (400 si ya no es nueva)
+POST  /consola/alertas/{num}/descartar/ {nota?} → alerta (400 si ya no es nueva)
+POST  /consola/alertas/revisar-todas/   → {revisadas}
+GET   /consola/notificaciones/          ?leida=true|false (paginada) + no_leidas: avisos del
+                                        superusuario que consulta, con los niveles de su campana:
+                                        {num, alerta, nivel, fecha, leida, correo_enviado}
+POST  /consola/notificaciones/leer/     {nums?} → {leidas} (sin nums marca todas)
+GET/PATCH /consola/notificaciones/preferencias/  {niveles_consola, niveles_correo} (listas de
+                                        critico/advertencia; por omisión campana con ambos y
+                                        correo solo con las críticas)
+```
+
+Una alerta nueva, o una que sube de advertencia a crítica, crea una notificación para cada
+superusuario activo y le manda correo si el nivel está en sus `niveles_correo`
+(`correo_enviado`: `null` si no tocaba, `true`/`false` según salió). No hay push a la app.
 
 La bitácora (`/auditoria/`, con `?organizacion=`) y las integraciones (`/integraciones/…`, con
 `?organizacion=` obligatorio para listar y crear) también son solo del administrador de

@@ -90,7 +90,7 @@ function Formulario({ inicial, guardado, avisar }) {
           onChange={(v) => setF({ ...f, ota_todos: v })}
         />
         <p className="ui-muted ui-consola-ayuda" style={{ marginTop: 8 }}>
-          Apagado, solo la reciben los equipos marcados con OTA en «Equipos ESP32».
+          Apagado, solo la reciben los equipos marcados con OTA en «Dispositivos».
         </p>
         {errores.ota_todos && <p className="ui-admin-error">{errores.ota_todos}</p>}
       </Card>

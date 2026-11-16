@@ -1,14 +1,15 @@
-import { Badge, Card, EmptyState, Icon, Skeleton } from '../../design-system/componentes/index.js'
+import { BarChart, Card, Skeleton } from '../../design-system/componentes/index.js'
 import { Pantalla } from '../../components/Pantalla'
 import { useDatos } from '../../hooks/useDatos'
 import * as adminApi from '../../services/admin'
 import { BarrasHorizontales } from '../../consola/comunes'
-import { fecha } from '../../consola/utilidades'
-import { NIVEL_ALERTA, TIPO_ALERTA } from '../catalogos'
 import { ErrorCarga } from '../comunes'
 
 const dia = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }).replace('.', '')
 const miles = (n) => Number(n ?? 0).toLocaleString('es-MX')
+const porcentaje = (n, total) => (total ? `${Math.round((n / total) * 100)} %` : '0 %')
+// La barra resaltada al abrir: la de mayor valor.
+const mayor = (serie, campo) => serie.reduce((m, x, i) => (x[campo] > serie[m][campo] ? i : m), 0)
 
 // Accesos por día: barra de exitosos con los fallidos encima (rojo).
 function SerieAccesos({ serie }) {
@@ -38,54 +39,11 @@ function SerieAccesos({ serie }) {
   )
 }
 
-function AlertasSeguridad({ alertas }) {
-  if (!alertas.length)
-    return <EmptyState compact icon="shield-check" title="Sin alertas de seguridad" message="No hay nada que revisar por ahora." />
-  const orden = [...alertas].sort((a, b) => (a.nivel === b.nivel ? 0 : a.nivel === 'critico' ? -1 : 1))
-  return (
-    <ul className="ui-admin-alertas">
-      {orden.map((a, i) => {
-        const nivel = NIVEL_ALERTA[a.nivel] ?? NIVEL_ALERTA.advertencia
-        return (
-          <li key={`${a.tipo}-${i}`} className={`ui-admin-alerta is-${a.nivel}`}>
-            <span className="ui-admin-alerta__icono">
-              <Icon name={TIPO_ALERTA[a.tipo]?.icon ?? nivel.icon} size={18} />
-            </span>
-            <div className="ui-admin-alerta__cuerpo">
-              <div className="ui-admin-alerta__cabeza">
-                <strong>{a.titulo}</strong>
-                <Badge tone={nivel.tone}>{nivel.label}</Badge>
-              </div>
-              {a.detalle && <p>{a.detalle}</p>}
-              <span className="ui-consola-meta">
-                {a.usuario && (
-                  <span title={a.usuario.correo}>
-                    <Icon name="user" size={12} /> {a.usuario.nombre}
-                  </span>
-                )}
-                {a.ip && (
-                  <span className="ui-admin-mono">
-                    <Icon name="signal" size={12} /> {a.ip}
-                  </span>
-                )}
-                {a.fecha && (
-                  <span>
-                    <Icon name="clock" size={12} /> {fecha(a.fecha)}
-                  </span>
-                )}
-              </span>
-            </div>
-          </li>
-        )
-      })}
-    </ul>
-  )
-}
-
-// Inicio de la consola: cifras de seguridad, accesos de 14 días y alertas.
-export default function ResumenAdmin() {
+// Panel de la consola de administración: solo cifras y gráficas. Las alertas de seguridad
+// tienen su propio módulo («Alertas»).
+export default function PanelAdmin() {
   const { estado, datos: d, error, reintentar } = useDatos(adminApi.resumen, [], { cadaMs: 60000 })
-  const criticas = d?.alertas.filter((a) => a.nivel === 'critico').length ?? 0
+  const alertas = d?.alertas_seguridad
   const cifras = d
     ? {
         principal: {
@@ -96,15 +54,20 @@ export default function ResumenAdmin() {
         },
         cifras: [
           { etiqueta: 'Usuarios activos', valor: `${miles(d.usuarios.activos)} / ${miles(d.usuarios.total)}`, tono: 'verde' },
-          { etiqueta: 'Bloqueados', valor: miles(d.usuarios.bloqueados), tono: d.usuarios.bloqueados ? 'peligro' : undefined },
           { etiqueta: 'Fallidos 24 h', valor: miles(d.accesos.fallidos_24h), tono: d.accesos.fallidos_24h ? 'peligro' : undefined },
-          { etiqueta: 'Equipos en línea', valor: `${miles(d.dispositivos.en_linea)} / ${miles(d.dispositivos.total)}` },
+          {
+            etiqueta: 'Alertas nuevas',
+            valor: miles(alertas?.nuevas),
+            tono: alertas?.criticas ? 'peligro' : undefined,
+          },
+          { etiqueta: 'Dispositivos en línea', valor: `${miles(d.dispositivos.en_linea)} / ${miles(d.dispositivos.total)}` },
         ],
       }
     : { principal: { etiqueta: 'Sesiones abiertas', valor: '—', tonoValor: 'apagado' } }
 
+  const totalSesiones = d ? d.sesiones.web + d.sesiones.app : 0
   return (
-    <Pantalla eyebrow="Seguridad de todas las organizaciones" titulo="Resumen" cifras={cifras}>
+    <Pantalla eyebrow="Seguridad de todas las organizaciones" titulo="Panel" cifras={cifras}>
       {estado === 'error' && <ErrorCarga error={error} reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {d && (
@@ -112,11 +75,24 @@ export default function ResumenAdmin() {
           <Card title="Accesos" subtitle="Inicios de sesión de los últimos 14 días.">
             <SerieAccesos serie={d.serie_accesos} />
           </Card>
-          <Card
-            title="Alertas de seguridad"
-            subtitle={d.alertas.length ? `${d.alertas.length} por revisar${criticas ? ` · ${criticas} críticas` : ''}` : 'Todo en orden.'}
-          >
-            <AlertasSeguridad alertas={d.alertas} />
+          <Card title="Sesiones abiertas" subtitle={`${miles(totalSesiones)} entre la web y la app.`}>
+            <BarrasHorizontales
+              filas={[
+                { clave: 'web', etiqueta: 'Web', valor: d.sesiones.web, color: 'var(--accent)', nota: porcentaje(d.sesiones.web, totalSesiones) },
+                { clave: 'app', etiqueta: 'App', valor: d.sesiones.app, color: 'var(--success)', nota: porcentaje(d.sesiones.app, totalSesiones) },
+              ]}
+            />
+          </Card>
+          <Card title="Intentos fallidos por día" subtitle="Contraseña o código incorrectos, últimos 14 días.">
+            <BarChart
+              className="ui-admin-barras-fallidos"
+              data={d.serie_accesos.map((x) => ({ label: dia(x.dia), value: x.fallidos }))}
+              decimals={0}
+              unit="fallidos"
+              height={200}
+              label="Intentos fallidos por día"
+              activeIndex={mayor(d.serie_accesos, 'fallidos')}
+            />
           </Card>
           <Card title="Cuentas" subtitle="Usuarios de todas las organizaciones.">
             <BarrasHorizontales
@@ -128,7 +104,17 @@ export default function ResumenAdmin() {
               ]}
             />
           </Card>
-          <Card title="Equipos ESP32" subtitle={`${miles(d.dispositivos.total)} registrados en total.`}>
+          <Card title="Horario de acceso" subtitle="Inicios de sesión por hora del día (hora de Tijuana), últimos 14 días.">
+            <BarChart
+              data={d.accesos_por_hora.map((x) => ({ label: x.hora % 3 === 0 ? `${x.hora} h` : '', value: x.total }))}
+              decimals={0}
+              unit="accesos"
+              height={200}
+              label="Accesos por hora"
+              activeIndex={mayor(d.accesos_por_hora, 'total')}
+            />
+          </Card>
+          <Card title="Dispositivos" subtitle={`${miles(d.dispositivos.total)} equipos ESP32 registrados en total.`}>
             <BarrasHorizontales
               filas={[
                 { clave: 'linea', etiqueta: 'En línea', valor: d.dispositivos.en_linea, color: 'var(--success)' },

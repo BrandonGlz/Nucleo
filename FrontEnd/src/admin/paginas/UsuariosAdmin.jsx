@@ -357,7 +357,7 @@ export default function UsuariosAdmin() {
   return (
     <Pantalla
       eyebrow="Cuentas de todas las organizaciones"
-      titulo="Usuarios y roles"
+      titulo="Usuarios"
       acciones={
         <Button icon="plus" disabled={!organizaciones.length} onClick={() => setModal({ tipo: 'alta' })}>
           Agregar usuario

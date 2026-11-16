@@ -1,9 +1,12 @@
+from django.core import mail
 from django.core.cache import cache
+from django.test import override_settings
 
+from apps.reportes import aprendizaje
 from apps.reportes.models import PreguntaAgente, RespuestaAprendida
 from common.testing import Escenario, PruebaBase, cliente_de
 
-from . import configuracion, conocimiento
+from . import avisos, configuracion, conocimiento
 from .models import DocumentoNico
 
 
@@ -309,3 +312,254 @@ class ConsolaNicoTests(PruebaBase):
         self.assertEqual(sum(h["total"] for h in resumen["por_hora"]), 1)
         self.assertEqual(resumen["por_empresa"][0]["empresa"], self.e.organizacion.nombre)
         self.assertEqual(len(resumen["tiempo_por_via"]), 1)
+
+
+class EnsenarDesdeRegistroTests(PruebaBase):
+    """«Enseñar» una pregunta no entendida la marca como enseñada y la saca del filtro."""
+
+    def setUp(self):
+        cache.clear()
+        self.e = Escenario()
+        self.otra = Escenario("b")
+        self.su = cliente_de(self.e.plataforma)
+
+    def no_entendida(self, pregunta, escenario=None):
+        e = escenario or self.e
+        return aprendizaje.registrar(
+            e.operador, e.dispositivo, pregunta, PreguntaAgente.Via.NO_ENTENDIDA, "No te entendí."
+        )
+
+    def nums(self, **params):
+        r = self.su.get("/api/v1/nico/registro/", params).json()
+        return {x["num"] for x in r["results"]}
+
+    def ensenar(self, registro, pregunta=None, **extra):
+        r = self.su.post(
+            "/api/v1/nico/banco/",
+            {
+                "organizacion": self.e.organizacion.num,
+                "pregunta": pregunta or registro.pregunta,
+                "plantilla": "La garantía del sensor es de un año.",
+                "registro": registro.num,
+                **extra,
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        return r.json()
+
+    def test_ensenar_saca_la_pregunta_de_no_entendidas(self):
+        p = self.no_entendida("¿Cuánto dura la garantía del sensor?")
+        igual = self.no_entendida("cuanto dura la garantia del sensor")
+        otra_empresa = self.no_entendida("¿Cuánto dura la garantía del sensor?", self.otra)
+        distinta = self.no_entendida("¿Quién es el técnico de guardia?")
+        self.assertEqual(
+            self.nums(via="NO_ENTENDIDA"), {p.num, igual.num, otra_empresa.num, distinta.num}
+        )
+        resumen = self.su.get("/api/v1/nico/resumen/").json()
+        self.assertEqual((resumen["no_entendidas"], resumen["ensenadas"]), (4, 0))
+
+        nueva = self.ensenar(p)
+
+        # La pregunta y la igual de la misma empresa quedan enseñadas; las demás, no.
+        self.assertEqual(self.nums(via="NO_ENTENDIDA"), {otra_empresa.num, distinta.num})
+        self.assertEqual(self.nums(via="ENSENADA"), {p.num, igual.num})
+        fila = next(
+            x for x in self.su.get("/api/v1/nico/registro/").json()["results"] if x["num"] == p.num
+        )
+        self.assertEqual(fila["ensenada"], nueva["num"])
+        self.assertIsNotNone(fila["fecha_ensenada"])
+        self.assertEqual(fila["via"], "NO_ENTENDIDA")  # el historial de cómo se resolvió no cambia
+        resumen = self.su.get("/api/v1/nico/resumen/").json()
+        self.assertEqual((resumen["no_entendidas"], resumen["ensenadas"]), (2, 2))
+        # La enseñada ya no sale entre las frecuentes; la de la otra empresa, sí.
+        self.assertEqual(
+            {(x["pregunta"], x["total"]) for x in resumen["no_entendidas_frecuentes"]},
+            {("¿Quién es el técnico de guardia?", 1), ("¿Cuánto dura la garantía del sensor?", 1)},
+        )
+        # Los usos del banco no se inflan con las preguntas enseñadas.
+        self.assertEqual(self.su.get("/api/v1/nico/banco/").json()["results"][0]["usos"], 0)
+
+    def test_ensenar_con_la_pregunta_reescrita(self):
+        p = self.no_entendida("oye y lo de la garantía q onda")
+        self.ensenar(p, pregunta="¿Cuánto dura la garantía del sensor?")
+        p.refresh_from_db()
+        self.assertIsNotNone(p.ensenada_id)
+        self.assertNotIn(p.num, self.nums(via="NO_ENTENDIDA"))
+
+    def test_ensenar_para_todas_las_empresas(self):
+        p = self.no_entendida("¿Cuánto dura la garantía del sensor?")
+        otra = self.no_entendida("¿Cuánto dura la garantía del sensor?", self.otra)
+        self.ensenar(p, todas=True)
+        self.assertEqual(self.nums(via="NO_ENTENDIDA"), set())
+        self.assertEqual(self.nums(via="ENSENADA"), {p.num, otra.num})
+
+    def test_otra_empresa_no_marca_el_registro(self):
+        p = self.no_entendida("¿Cuánto dura la garantía del sensor?", self.otra)
+        self.ensenar(p)  # la respuesta se crea en la empresa «a», la pregunta es de «b»
+        self.assertIn(p.num, self.nums(via="NO_ENTENDIDA"))
+
+    def test_borrar_la_respuesta_la_devuelve_a_pendiente(self):
+        p = self.no_entendida("¿Cuánto dura la garantía del sensor?")
+        nueva = self.ensenar(p)
+        self.assertEqual(self.su.delete(f"/api/v1/nico/banco/{nueva['num']}/").status_code, 204)
+        self.assertIn(p.num, self.nums(via="NO_ENTENDIDA"))
+
+    def test_migracion_corrige_las_ya_ensenadas(self):
+        import importlib
+
+        from django.apps import apps as registro_apps
+
+        migracion = importlib.import_module("apps.reportes.migrations.0006_marcar_ensenadas")
+        p = self.no_entendida("¿Cuánto dura la garantía del sensor?")
+        otra = self.no_entendida("¿Cuánto dura la garantía del sensor?", self.otra)
+        # Como antes del arreglo: la respuesta existe pero la pregunta sigue sin enlazar.
+        RespuestaAprendida.objects.create(
+            organizacion=self.e.organizacion,
+            pregunta="¿Cuánto dura la garantía del sensor?",
+            pregunta_normalizada=aprendizaje.normalizar("¿Cuánto dura la garantía del sensor?"),
+            tema="FIJA",
+            plantilla="Un año.",
+        )
+        migracion.marcar(registro_apps, None)
+        p.refresh_from_db()
+        otra.refresh_from_db()
+        self.assertIsNotNone(p.ensenada_id)
+        self.assertIsNone(otra.ensenada_id)
+
+
+@override_settings(
+    NICO_AVISOS_EN_HILO=False,
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+class AvisosNicoTests(PruebaBase):
+    """Campana de la consola de Nico AI: eventos, preferencias y correo."""
+
+    def setUp(self):
+        cache.clear()
+        self.e = Escenario()
+        self.su = cliente_de(self.e.plataforma)
+
+    def bandeja(self, **params):
+        return self.su.get("/api/v1/nico/notificaciones/", params).json()
+
+    def no_entendida(self, pregunta, usuario=None):
+        return aprendizaje.registrar(
+            usuario or self.e.operador,
+            self.e.dispositivo,
+            pregunta,
+            PreguntaAgente.Via.NO_ENTENDIDA,
+            "No te entendí.",
+        )
+
+    def test_solo_superusuario(self):
+        cliente = cliente_de(self.e.admin)
+        for ruta in ("", "leer/", "preferencias/"):
+            self.assertEqual(
+                cliente.get(f"/api/v1/nico/notificaciones/{ruta}").status_code, 403, ruta
+            )
+
+    def test_pregunta_no_entendida_avisa_una_vez(self):
+        self.no_entendida("¿Cuánto dura la garantía?")
+        self.no_entendida("cuanto dura la garantia")  # la misma: no se repite en el día
+        self.no_entendida("¿Hola?", usuario=self.e.plataforma)  # las del superusuario no
+        self.no_entendida("¿Quién instaló el sensor?")  # otra pregunta sí
+        b = self.bandeja()
+        self.assertEqual(b["no_leidas"], 2)
+        n = b["results"][-1]
+        self.assertEqual((n["tipo"], n["leida"]), ("NO_ENTENDIDA", False))
+        self.assertIn("garantía", n["texto"])
+        self.assertTrue(n["enlace"].startswith("/registro?via=NO_ENTENDIDA"))
+        # Por defecto este tipo no manda correo.
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_marcar_leidas(self):
+        otro = cliente_de(Escenario("b").plataforma)  # otro superusuario, con su bandeja
+        self.no_entendida("¿Cuánto dura la garantía?")
+        self.no_entendida("¿Quién instaló el sensor?")
+        nums = [n["num"] for n in self.bandeja()["results"]]
+        r = self.su.post("/api/v1/nico/notificaciones/leer/", {"nums": nums[:1]}, format="json")
+        self.assertEqual(r.json(), {"marcadas": 1, "no_leidas": 1})
+        r = self.su.post("/api/v1/nico/notificaciones/leer/", {}, format="json")
+        self.assertEqual(r.json()["no_leidas"], 0)
+        # Cada superusuario tiene su bandeja.
+        self.assertEqual(otro.get("/api/v1/nico/notificaciones/").json()["no_leidas"], 2)
+
+    def test_preferencias_y_correo(self):
+        prefs = self.su.get("/api/v1/nico/notificaciones/preferencias/").json()
+        tipos = {t["tipo"]: t for t in prefs["tipos"]}
+        self.assertEqual(set(tipos), {"NO_ENTENDIDA", "NEGATIVA", "PUENTE", "CARGA", "APRENDIDA"})
+        self.assertFalse(tipos["NO_ENTENDIDA"]["correo"])
+        r = self.su.patch(
+            "/api/v1/nico/notificaciones/preferencias/",
+            {"tipos": {"NO_ENTENDIDA": {"correo": True, "consola": False}, "OTRO": {}}},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.no_entendida("¿Cuánto dura la garantía?")
+        self.assertEqual(self.bandeja()["results"], [])  # sin campana para este tipo
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [self.e.plataforma.correo])
+        self.assertIn("garantía", mail.outbox[0].body)
+
+    def test_calificacion_negativa(self):
+        registro = aprendizaje.registrar(
+            self.e.operador, self.e.dispositivo, "¿Cómo está la temperatura?", "IA", "Bien."
+        )
+        aprendizaje.calificar(registro, -1)
+        aprendizaje.calificar(registro, None)
+        aprendizaje.calificar(registro, -1)  # quitar y volver a poner el 👎 no repite
+        tipos = [n["tipo"] for n in self.bandeja()["results"]]
+        self.assertEqual(tipos, ["NEGATIVA"])
+
+    def test_banco_aprende(self):
+        with override_settings(IA_VOTOS_PARA_APRENDER=1):
+            registro = aprendizaje.registrar(
+                self.e.operador,
+                self.e.dispositivo,
+                "¿cómo está la temperatura del almacén hoy?",
+                PreguntaAgente.Via.IA,
+                "Está en 21.5 °C.",
+                tema="TEMP",
+                datos={"actual": 21.5},
+            )
+            self.assertTrue(aprendizaje.calificar(registro, 1))
+        n = self.bandeja()["results"][0]
+        self.assertEqual((n["tipo"], n["nivel"]), ("APRENDIDA", "OK"))
+
+    def test_vigilar_puente_y_carga(self):
+        from unittest import mock
+
+        from apps.reportes import carga, puente
+
+        estado = {"activo": True, "mb": 4000}
+        cola = mock.Mock()
+        cola.activo.side_effect = lambda codigo: estado["activo"]
+        with (
+            override_settings(
+                IA_PUENTE_CLAVE="clave",
+                IA_PUENTE_DISPOSITIVOS=[self.e.dispositivo.codigo_mqtt],
+                NUCLEO_AGENTE_RAM_ALTA_MB=1000,
+            ),
+            mock.patch.object(puente, "cola", return_value=cola),
+            mock.patch.object(carga, "memoria_disponible_mb", side_effect=lambda: estado["mb"]),
+        ):
+            avisos.vigilar()  # primera revisión: solo anota el estado
+            self.assertEqual(self.bandeja()["results"], [])
+            estado["activo"] = False
+            avisos.vigilar()
+            avisos.vigilar()  # sigue caído: no se repite
+            estado["activo"] = True
+            avisos.vigilar()
+            estado["mb"] = 500
+            avisos.vigilar()
+            estado["mb"] = 3000
+            avisos.vigilar()
+        hechos = [(n["tipo"], n["nivel"]) for n in reversed(self.bandeja()["results"])]
+        self.assertEqual(
+            hechos,
+            [("PUENTE", "PELIGRO"), ("PUENTE", "OK"), ("CARGA", "PELIGRO"), ("CARGA", "OK")],
+        )
+        # El puente y la carga mandan correo por defecto.
+        self.assertEqual(len(mail.outbox), 4)
+        self.assertIn("dejó de latir", mail.outbox[0].subject)

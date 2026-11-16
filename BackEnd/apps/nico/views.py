@@ -18,8 +18,8 @@ from apps.reportes.views import AgenteView, CalificarAgenteView
 from apps.usuarios.models import Usuario
 from common import roles
 
-from . import configuracion, conocimiento, generador, sugerencias
-from .models import AjusteHerramienta, AjusteSugerencias, DocumentoNico
+from . import avisos, configuracion, conocimiento, generador, sugerencias
+from .models import AjusteHerramienta, AjusteSugerencias, DocumentoNico, NotificacionNico
 
 
 class EsSuperusuario(BasePermission):
@@ -148,6 +148,13 @@ class RespuestaSerializer(serializers.ModelSerializer):
     reemplaza = serializers.SerializerMethodField()
     # Crear la misma respuesta en todas las empresas.
     todas = serializers.BooleanField(write_only=True, required=False, default=False)
+    # Pregunta del registro desde la que se enseña («Enseñar»): queda marcada como enseñada.
+    registro = serializers.PrimaryKeyRelatedField(
+        queryset=PreguntaAgente.objects.select_related("dispositivo__area"),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = RespuestaAprendida
@@ -165,6 +172,7 @@ class RespuestaSerializer(serializers.ModelSerializer):
             "usos",
             "reemplaza",
             "todas",
+            "registro",
         ]
         read_only_fields = ["num", "votos_si", "votos_no", "fecha_creacion"]
         extra_kwargs = {"organizacion": {"required": False}, "tema": {"required": False}}
@@ -219,8 +227,11 @@ class RespuestaSerializer(serializers.ModelSerializer):
         return datos
 
     def create(self, datos):
+        registro = datos.pop("registro", None)
         if not datos.pop("todas", False):
-            return super().create(datos)
+            nueva = super().create(datos)
+            aprendizaje.marcar_ensenadas(nueva, registro)
+            return nueva
         datos.pop("organizacion", None)
         ultima = None
         for org in Organizacion.objects.all():
@@ -230,13 +241,18 @@ class RespuestaSerializer(serializers.ModelSerializer):
                 tema=datos["tema"],
                 defaults={k: v for k, v in datos.items() if k != "pregunta_normalizada"},
             )
+            aprendizaje.marcar_ensenadas(ultima, registro)
         if ultima is None:
             raise ValidationError({"organizacion": "No hay empresas."})
         return ultima
 
     def update(self, instancia, datos):
         datos.pop("todas", None)
-        return super().update(instancia, datos)
+        registro = datos.pop("registro", None)
+        instancia = super().update(instancia, datos)
+        # Con la pregunta corregida, las iguales que quedaban sin respuesta también se atienden.
+        aprendizaje.marcar_ensenadas(instancia, registro)
+        return instancia
 
 
 class BancoViewSet(viewsets.ModelViewSet):
@@ -309,6 +325,8 @@ class RegistroSerializer(serializers.ModelSerializer):
             "organizacion_nombre",
             "usuario_nombre",
             "aprendida",
+            "ensenada",
+            "fecha_ensenada",
         ]
 
     def get_usuario_nombre(self, r):
@@ -326,8 +344,17 @@ class RegistroViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         p = self.request.query_params
         if p.get("organizacion"):
             qs = qs.filter(dispositivo__area__organizacion_id=p["organizacion"])
-        if p.get("via"):
-            qs = qs.filter(via=p["via"])
+        via = p.get("via")
+        if via == "ENSENADA":
+            # Las que se enseñaron desde la consola (cualquiera que haya sido su vía).
+            qs = qs.filter(ensenada__isnull=False)
+        elif via == PreguntaAgente.Via.NO_ENTENDIDA:
+            # Solo las que siguen por atender: al enseñarlas salen de este filtro.
+            qs = qs.filter(via=via, ensenada__isnull=True)
+        elif via:
+            qs = qs.filter(via=via)
+        if p.get("ensenada") in ("true", "false"):
+            qs = qs.filter(ensenada__isnull=p["ensenada"] == "false")
         filtro = p.get("calificacion")
         if filtro == "si":
             qs = qs.filter(calificacion=1)
@@ -649,16 +676,18 @@ class ResumenView(APIView):
             .annotate(n=Count("num"))
             .order_by("-n")[:6]
         )
+        # Las no entendidas que ya se enseñaron cuentan como atendidas.
+        pendientes = preguntas.filter(via=Via.NO_ENTENDIDA, ensenada__isnull=True)
         no_entendidas = (
-            preguntas.filter(via=Via.NO_ENTENDIDA)
-            .values("pregunta_normalizada")
+            pendientes.values("pregunta_normalizada")
             .annotate(n=Count("num"), ejemplo=Max("pregunta"))
             .order_by("-n")[:6]
         )
         return Response(
             {
                 "preguntas": preguntas.count(),
-                "no_entendidas": por_via.get(Via.NO_ENTENDIDA, 0),
+                "no_entendidas": pendientes.count(),
+                "ensenadas": preguntas.filter(ensenada__isnull=False).count(),
                 "negativas": preguntas.filter(calificacion=-1).count(),
                 "positivas": preguntas.filter(calificacion=1).count(),
                 "banco": RespuestaAprendida.objects.filter(activa=True).count(),
@@ -691,3 +720,90 @@ class ResumenView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+# ── Notificaciones de la consola ───────────────────────────────────────────────────────────
+
+
+class NotificacionNicoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificacionNico
+        fields = ["num", "tipo", "nivel", "titulo", "texto", "enlace", "leida", "fecha"]
+
+
+class NotificacionesView(APIView):
+    """Bandeja del superusuario: las 100 más recientes (``?tipo=``, ``?leida=``) y cuántas
+    quedan sin leer."""
+
+    permission_classes = [EsSuperusuario]
+
+    def get(self, request):
+        qs = NotificacionNico.objects.filter(usuario=request.user)
+        no_leidas = qs.filter(leida=False).count()
+        p = request.query_params
+        if p.get("tipo"):
+            qs = qs.filter(tipo=p["tipo"])
+        if p.get("leida") in ("true", "false"):
+            qs = qs.filter(leida=p["leida"] == "true")
+        return Response(
+            {
+                "no_leidas": no_leidas,
+                "results": NotificacionNicoSerializer(qs[:100], many=True).data,
+            }
+        )
+
+
+class LeerNotificacionesView(APIView):
+    """POST ``{nums: [..]}`` marca esas como leídas; sin ``nums``, todas."""
+
+    permission_classes = [EsSuperusuario]
+
+    def post(self, request):
+        qs = NotificacionNico.objects.filter(usuario=request.user, leida=False)
+        nums = request.data.get("nums")
+        if nums is not None:
+            if not isinstance(nums, list) or not all(str(n).isdigit() for n in nums):
+                raise ValidationError({"nums": "Lista de números de notificación."})
+            qs = qs.filter(num__in=nums)
+        marcadas = qs.update(leida=True)
+        return Response(
+            {
+                "marcadas": marcadas,
+                "no_leidas": NotificacionNico.objects.filter(
+                    usuario=request.user, leida=False
+                ).count(),
+            }
+        )
+
+
+class PreferenciasAvisosView(APIView):
+    """GET → ``{tipos: [{tipo, etiqueta, descripcion, consola, correo}]}``;
+    PATCH ``{tipos: {TIPO: {consola, correo}}}``."""
+
+    permission_classes = [EsSuperusuario]
+
+    def _respuesta(self, prefs):
+        etiquetas = dict(NotificacionNico.Tipo.choices)
+        return Response(
+            {
+                "correo": self.request.user.correo,
+                "tipos": [
+                    {
+                        "tipo": str(t),
+                        "etiqueta": etiquetas[t],
+                        "descripcion": info["descripcion"],
+                        **prefs[str(t)],
+                    }
+                    for t, info in avisos.TIPOS.items()
+                ],
+            }
+        )
+
+    def get(self, request):
+        return self._respuesta(avisos.preferencias(request.user))
+
+    def patch(self, request):
+        cambios = request.data.get("tipos")
+        if not isinstance(cambios, dict):
+            raise ValidationError({"tipos": "Envía {TIPO: {consola, correo}}."})
+        return self._respuesta(avisos.guardar_preferencias(request.user, cambios))

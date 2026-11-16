@@ -8,6 +8,9 @@ import {
   NICO_HERRAMIENTA,
   NICO_HERRAMIENTAS,
   NICO_INCLUIDAS,
+  NICO_NOTIFICACIONES,
+  NICO_NOTIFICACIONES_LEER,
+  NICO_NOTIFICACIONES_PREFERENCIAS,
   NICO_REGISTRO,
   NICO_RESPUESTA,
   NICO_RESUMEN,
@@ -37,3 +40,8 @@ export const generarRespuestas = (num, seccion) => pedir(NICO_DOCUMENTO_GENERAR(
 export const estadoGenerar = (num, seccion) => pedir(`${NICO_DOCUMENTO_GENERAR(num)}?seccion=${encodeURIComponent(seccion)}`)
 export const ajusteSugerencias = (dispositivo) => pedir(NICO_SUGERENCIAS, { params: dispositivo ? { dispositivo } : {} })
 export const guardarSugerencias = (datos) => pedir(NICO_SUGERENCIAS, { metodo: 'PATCH', cuerpo: datos })
+
+export const notificaciones = (params = {}) => pedir(NICO_NOTIFICACIONES, { params: limpio(params) })
+export const leerNotificaciones = (nums) => pedir(NICO_NOTIFICACIONES_LEER, { metodo: 'POST', cuerpo: nums ? { nums } : {} })
+export const preferenciasAvisos = () => pedir(NICO_NOTIFICACIONES_PREFERENCIAS)
+export const guardarPreferenciasAvisos = (tipos) => pedir(NICO_NOTIFICACIONES_PREFERENCIAS, { metodo: 'PATCH', cuerpo: { tipos } })

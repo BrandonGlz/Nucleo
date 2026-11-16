@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, Chip, Icon, Skeleton } from '../../design-system/componentes/index.js'
+import { useSearchParams } from 'react-router-dom'
+import { Badge, Button, Card, Chip, Icon, Skeleton } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { Desplegable } from '../../components/Desplegable'
 import { EstadoError } from '../../components/EstadoError'
@@ -12,8 +13,13 @@ import { fecha, useAviso } from '../utilidades'
 
 const cargarContexto = async () => {
   const [arbol, resumen] = await Promise.all([nicoApi.arbol(), nicoApi.resumen()])
-  return { empresas: arbol.empresas, porVia: Object.fromEntries(resumen.por_via.map((x) => [x.via, x.total])), total: resumen.preguntas }
+  // «No entendida» cuenta solo las que siguen por atender; las enseñadas tienen su propio filtro.
+  const porVia = Object.fromEntries(resumen.por_via.map((x) => [x.via, x.total]))
+  return { empresas: arbol.empresas, porVia: { ...porVia, NO_ENTENDIDA: resumen.no_entendidas, ENSENADA: resumen.ensenadas }, total: resumen.preguntas }
 }
+
+// Filtro extra: preguntas que ya se enseñaron desde aquí (cualquiera que haya sido su vía).
+const ENSENADA = { label: 'Enseñadas', icono: 'lightbulb' }
 
 function Fila({ p, ensenar }) {
   const via = VIAS[p.via] ?? { label: p.via, icono: 'list', color: 'var(--text-muted)' }
@@ -25,6 +31,11 @@ function Fila({ p, ensenar }) {
       <div className="ui-consola-pregunta__cuerpo">
         <div className="ui-consola-pregunta__cabeza">
           <strong>{p.pregunta}</strong>
+          {p.ensenada && (
+            <Badge tone="success" icon="lightbulb" className="ui-consola-ensenada">
+              Enseñada {fecha(p.fecha_ensenada)}
+            </Badge>
+          )}
           {p.calificacion === 1 && (
             <span className="ui-consola-voto is-si" title="Marcada como útil">
               <Icon name="thumbs-up" size={14} />
@@ -54,9 +65,11 @@ function Fila({ p, ensenar }) {
           {p.tokens_salida > 0 && <span>{p.tokens_entrada + p.tokens_salida} tokens</span>}
         </span>
       </div>
-      <Button variant="ghost" size="sm" icon="lightbulb" onClick={ensenar}>
-        Enseñar
-      </Button>
+      {!p.ensenada && (
+        <Button variant="ghost" size="sm" icon="lightbulb" onClick={ensenar}>
+          Enseñar
+        </Button>
+      )}
     </li>
   )
 }
@@ -66,8 +79,10 @@ export default function RegistroConsola() {
   const contexto = useDatos(cargarContexto, [])
   const empresas = contexto.datos?.empresas ?? []
   const porVia = contexto.datos?.porVia ?? {}
-  const [filtros, setFiltros] = useState({ organizacion: '', via: '', calificacion: '', q: '' })
-  const [texto, setTexto] = useState('')
+  // Las notificaciones enlazan aquí con ?via= y ?q= (p. ej. una pregunta no entendida).
+  const [params] = useSearchParams()
+  const [filtros, setFiltros] = useState(() => ({ organizacion: '', via: params.get('via') ?? '', calificacion: params.get('calificacion') ?? '', q: params.get('q') ?? '' }))
+  const [texto, setTexto] = useState(() => params.get('q') ?? '')
   const [paginas, setPaginas] = useState(1)
   const [modal, setModal] = useState(null)
   const [aviso, avisar] = useAviso()
@@ -98,7 +113,7 @@ export default function RegistroConsola() {
           <Chip selected={!filtros.via} count={contexto.datos?.total} onClick={() => filtrar({ via: '' })}>
             Todas
           </Chip>
-          {Object.entries(VIAS).map(([k, v]) => (
+          {[...Object.entries(VIAS), ['ENSENADA', ENSENADA]].map(([k, v]) => (
             <Chip key={k} icon={v.icono} selected={filtros.via === k} count={porVia[k] ?? 0} onClick={() => filtrar({ via: filtros.via === k ? '' : k })}>
               {v.label}
             </Chip>
@@ -140,7 +155,7 @@ export default function RegistroConsola() {
                 <Fila
                   key={p.num}
                   p={p}
-                  ensenar={() => setModal({ organizacion: p.organizacion, pregunta: p.pregunta, plantilla: p.via === 'NO_ENTENDIDA' ? '' : p.respuesta })}
+                  ensenar={() => setModal({ registro: p.num, organizacion: p.organizacion, pregunta: p.pregunta, plantilla: p.via === 'NO_ENTENDIDA' ? '' : p.respuesta })}
                 />
               ))}
             </ul>
@@ -161,7 +176,10 @@ export default function RegistroConsola() {
           cerrar={() => setModal(null)}
           guardada={() => {
             setModal(null)
-            avisar('Agregada al banco: la próxima vez Nico responderá así.')
+            // La pregunta (y las iguales) quedan enseñadas: se vuelven a pedir lista y contadores.
+            reintentar()
+            contexto.reintentar()
+            avisar('Agregada al banco y marcada como enseñada: la próxima vez Nico responderá así.')
           }}
         />
       )}

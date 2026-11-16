@@ -78,3 +78,18 @@ export function delEsp(empresas) {
   }
   return { empresa: empresas[0]?.num, area: 'todas', dispositivo: null }
 }
+
+// Notificaciones de la consola: ícono por tipo y tono por nivel.
+export const TIPOS_AVISO = {
+  NO_ENTENDIDA: { label: 'No entendidas', icon: 'circle-x' },
+  NEGATIVA: { label: 'No útiles', icon: 'thumbs-down' },
+  APRENDIDA: { label: 'Aprendido', icon: 'lightbulb' },
+  PUENTE: { label: 'ESP puente', icon: 'cpu' },
+  CARGA: { label: 'Carga del servidor', icon: 'activity' },
+}
+export const NIVELES_AVISO = {
+  INFO: { tone: 'neutral' },
+  OK: { tone: 'success' },
+  ADVERTENCIA: { tone: 'warning' },
+  PELIGRO: { tone: 'danger' },
+}

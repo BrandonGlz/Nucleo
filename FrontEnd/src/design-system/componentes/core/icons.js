@@ -86,6 +86,7 @@ import {
   RefreshCw,
   MonitorSmartphone,
   CloudDownload,
+  Usb,
 } from 'lucide-react'
 
 const ICONS = {
@@ -174,6 +175,7 @@ const ICONS = {
   'save': Save,
   'moon': Moon,
   'sun': Sun,
+  'usb': Usb,
 }
 
 export { ICONS }

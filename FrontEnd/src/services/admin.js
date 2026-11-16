@@ -1,7 +1,15 @@
 import {
+  CONSOLA_ALERTA_DESCARTAR,
+  CONSOLA_ALERTA_REVISAR,
+  CONSOLA_ALERTAS,
+  CONSOLA_ALERTAS_RESUMEN,
+  CONSOLA_ALERTAS_REVISAR_TODAS,
   CONSOLA_DISPOSITIVO,
   CONSOLA_DISPOSITIVOS,
   CONSOLA_FIRMWARE,
+  CONSOLA_NOTIFICACIONES,
+  CONSOLA_NOTIFICACIONES_LEER,
+  CONSOLA_NOTIFICACIONES_PREFERENCIAS,
   CONSOLA_ORGANIZACIONES,
   CONSOLA_POLITICAS,
   CONSOLA_RESUMEN,
@@ -48,3 +56,19 @@ export const firmware = () => (USAR_MOCKS ? mock.firmware() : pedir(CONSOLA_FIRM
 export const politicas = () => (USAR_MOCKS ? mock.leerPoliticas() : pedir(CONSOLA_POLITICAS))
 export const guardarPoliticas = (cambios) =>
   USAR_MOCKS ? mock.guardarPoliticas(cambios) : pedir(CONSOLA_POLITICAS, { metodo: 'PATCH', cuerpo: cambios })
+
+// Alertas de seguridad y sus notificaciones (campana de la consola)
+export const alertas = (params) => (USAR_MOCKS ? mock.listaAlertas(limpio(params)) : pedir(CONSOLA_ALERTAS, { params: limpio(params) }))
+export const resumenAlertas = () => (USAR_MOCKS ? mock.resumenAlertas() : pedir(CONSOLA_ALERTAS_RESUMEN))
+export const revisarAlerta = (num, nota = '') =>
+  USAR_MOCKS ? mock.cerrarAlerta(num, 'revisada', nota) : pedir(CONSOLA_ALERTA_REVISAR(num), { metodo: 'POST', cuerpo: { nota } })
+export const descartarAlerta = (num, nota = '') =>
+  USAR_MOCKS ? mock.cerrarAlerta(num, 'descartada', nota) : pedir(CONSOLA_ALERTA_DESCARTAR(num), { metodo: 'POST', cuerpo: { nota } })
+export const revisarTodas = () => (USAR_MOCKS ? mock.revisarTodas() : post(CONSOLA_ALERTAS_REVISAR_TODAS))
+export const notificaciones = () =>
+  USAR_MOCKS ? mock.listaNotificaciones() : pedir(CONSOLA_NOTIFICACIONES, { params: { page_size: 100 } })
+export const leerNotificaciones = (nums) =>
+  USAR_MOCKS ? mock.leerNotificaciones(nums) : pedir(CONSOLA_NOTIFICACIONES_LEER, { metodo: 'POST', cuerpo: nums ? { nums } : {} })
+export const preferenciasAvisos = () => (USAR_MOCKS ? mock.leerPreferencias() : pedir(CONSOLA_NOTIFICACIONES_PREFERENCIAS))
+export const guardarPreferenciasAvisos = (cambios) =>
+  USAR_MOCKS ? mock.guardarPreferencias(cambios) : pedir(CONSOLA_NOTIFICACIONES_PREFERENCIAS, { metodo: 'PATCH', cuerpo: cambios })

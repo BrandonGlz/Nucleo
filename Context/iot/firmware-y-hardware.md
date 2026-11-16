@@ -110,6 +110,32 @@ Todas están en `IoT/micropython/lib/` y se copian a `/lib` de la placa.
 Los valores de temperatura y humedad del DHT22 se envían al CCS811 con
 `put_envdata()` para compensar su cálculo.
 
+## Carga desde la consola de administración (recomendado)
+
+`admin.bynucleo.com` → **Cargar firmware** graba la placa desde el navegador por USB (Web Serial,
+con `esptool-js` para MicroPython y el REPL «raw» para copiar archivos). Sirve en Chrome, Edge y
+Brave (en Brave hay que activar «Web Serial» en `brave://flags`); no en Firefox, Safari ni celular.
+
+1. Al conectar un ESP32 ya autorizado se detecta solo (la primera vez se elige el puerto). La página
+   detiene el programa, alarga el watchdog para que no la reinicie y lee chip, versión de
+   MicroPython, versión de Núcleo y `CODIGO_MQTT`. Si no hay MicroPython pregunta el chip al cargador.
+2. **Instalación completa**: borra la memoria, graba MicroPython de `IoT/micropython/firmware`
+   (`0x1000` en ESP32, `0x0` en ESP32-S3), copia Núcleo y su `secrets.py`. En USB nativo la placa
+   cambia de puerto al entrar al modo de grabación; si el navegador no lo tiene autorizado pide elegirlo.
+3. **Solo actualizar Núcleo**: copia los archivos sobre MicroPython y conserva `secrets.py`, salvo
+   que se pida generar una configuración nueva. Borra `ota/`, `anterior/` y `ota_estado.json` para
+   que una actualización remota a medias no regrese a la versión vieja.
+4. La configuración la arma el servidor (`POST /api/v1/consola/flasheo/configuracion/`): con el
+   dispositivo registrado y las redes Wi-Fi crea una contraseña MQTT nueva, la escribe en
+   `Mosquitto/config/passwd` (formato `$7$`) y recarga el broker (`docker kill -s HUP`); el host es
+   `NUCLEO_ESP_HOST` (WebSocket 443 por Cloudflare) y, si hay `IA_PUENTE_CLAVE`, el ESP queda como
+   llave de Nico AI (`dispositivo.puente_ia`). Queda en la auditoría.
+5. Cada archivo se escribe como `.tmp`, se compara su SHA-256 y luego se renombra; al final la
+   placa se reinicia.
+
+Ajustes del backend: `NUCLEO_IOT_DIR`, `NUCLEO_MOSQUITTO_PASSWD`, `NUCLEO_MOSQUITTO_CONTENEDOR`,
+`NUCLEO_ESP_HOST` (los valores por defecto sirven en el servidor).
+
 ## Puesta en marcha
 
 Desde `IoT/`:

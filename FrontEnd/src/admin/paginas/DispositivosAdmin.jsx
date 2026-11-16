@@ -139,7 +139,7 @@ export default function DispositivosAdmin() {
     : { principal: { etiqueta: 'Equipos ESP32', valor: '—', tonoValor: 'apagado' } }
 
   return (
-    <Pantalla eyebrow="Dispositivos de todas las organizaciones" titulo="Equipos ESP32" acciones={<Firmware firmware={fw.datos} />} cifras={cifras}>
+    <Pantalla eyebrow="Dispositivos de todas las organizaciones" titulo="Dispositivos" acciones={<Firmware firmware={fw.datos} />} cifras={cifras}>
       <div className="ui-filtros ui-admin-filtros">
         <FiltroOrganizacion organizaciones={organizaciones} value={organizacion} onChange={setOrganizacion} />
         <Select label="Estado" value={estadoEquipo} options={ESTADOS} onChange={(e) => setEstadoEquipo(e.target.value)} />

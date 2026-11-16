@@ -124,6 +124,20 @@ politica_seguridad
                num (una sola fila), dias_sesion (1–90), intentos_login_por_minuto (3–60),
                roles_2fa_obligatorio JSONB, dias_auditoria (30–3650), ota_todos,
                actualizado, actualizado_por (opcional, SET NULL)
+alerta_seguridad
+               num, tipo (ip_fallidos, cuenta_fallidos, ip_nueva, cuenta_bloqueada), nivel
+               (critico, advertencia), estado (nueva, revisada, descartada; def. nueva), clave
+               (el caso: p. ej. ip_fallidos:<ip>), titulo, detalle, usuario_num (opcional, SET
+               NULL), usuario_correo, ip (INET), eventos, creada (def. now()), ultimo_evento,
+               revisada_por_num (opcional, SET NULL), fecha_revision, nota
+               ÚNICO PARCIAL (clave) WHERE estado = 'nueva'; ÍNDICE (estado, ultimo_evento DESC)
+notificacion_seguridad
+               num, alerta_seguridad_num (CASCADE), usuario_num (CASCADE), nivel, fecha
+               (def. now()), leida, correo_enviado (NULL si no se mandó correo)
+               ÍNDICE (usuario_num, fecha DESC)
+preferencia_avisos_seguridad
+               usuario_num (PK, CASCADE), niveles_consola JSONB (def. ambos), niveles_correo
+               JSONB (def. critico), actualizado
 ```
 
 Además existe `dispositivo (area_num)` como índice propio y las tablas internas de

@@ -1,11 +1,12 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { Avatar, Icon, IconButton, Logo, LogoApp } from '../design-system/componentes/index.js'
-import { AvisosProvider } from '../context/AvisosContext'
+import { useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
 import { MenuMovilContext, useEsMovil, useMenuMovil } from '../hooks/useMenuMovil'
-import { nombreCompleto } from '../utils/convertir'
+import { nombreCompleto, ROL } from '../utils/convertir'
 import { etiquetarTablas } from '../utils/tablasMovil'
+import { AvisosSeguridadProvider } from './AvisosSeguridad'
 import { GRUPOS, SECCIONES } from './secciones'
 
 // Mismo marco que la web (menú lateral oscuro contraíble con el logo) con las secciones de la
@@ -20,7 +21,8 @@ function leerCompacto() {
 }
 
 function MenuAdmin() {
-  const { usuario } = useSesion()
+  const { usuario, rol } = useSesion()
+  const { alertasNuevas } = useAvisos()
   const { abierto, cerrar } = useMenuMovil()
   const movil = useEsMovil()
   const [compactoGuardado, setCompacto] = useState(leerCompacto)
@@ -56,7 +58,7 @@ function MenuAdmin() {
           {compacto ? <LogoApp size={48} label="Núcleo" /> : <Logo size={32} inverse />}
         </button>
       )}
-      {!compacto && <span className="ui-consola-marca">Núcleo Admin</span>}
+      {!compacto && <span className="ui-consola-marca">Consola de administración</span>}
       {GRUPOS.map((grupo) => (
         <div key={grupo} className="app__nav-group">
           <span className="nc-sidebar__section">{compacto ? '' : grupo}</span>
@@ -73,6 +75,7 @@ function MenuAdmin() {
                 >
                   <Icon name={s.icono} size={20} />
                   <span>{s.titulo}</span>
+                  {s.ruta === '/alertas' && alertasNuevas > 0 && <span className="nc-navitem__count">{alertasNuevas}</span>}
                 </NavLink>
               </li>
             ))}
@@ -84,7 +87,7 @@ function MenuAdmin() {
           <Avatar name={nombreCompleto(usuario)} size={36} />
           <div>
             <strong>{nombreCompleto(usuario)}</strong>
-            <span>Superusuario</span>
+            <span>{ROL[rol]}</span>
           </div>
         </div>
       </div>
@@ -118,7 +121,7 @@ export function AdminLayout() {
   }, [abierto])
 
   return (
-    <AvisosProvider>
+    <AvisosSeguridadProvider>
       <MenuMovilContext.Provider value={menu}>
         <div className="app">
           <MenuAdmin />
@@ -136,6 +139,6 @@ export function AdminLayout() {
           </main>
         </div>
       </MenuMovilContext.Provider>
-    </AvisosProvider>
+    </AvisosSeguridadProvider>
   )
 }

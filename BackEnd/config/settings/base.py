@@ -274,6 +274,14 @@ NUCLEO_EXPORTAR_MAX_FILAS = env.int("NUCLEO_EXPORTAR_MAX_FILAS", default=100000)
 # publicadas y códigos MQTT que la reciben (* = todos; vacío = ninguno).
 NUCLEO_FIRMWARE_DIR = env("NUCLEO_FIRMWARE_DIR", default=str(BASE_DIR / "firmware"))
 NUCLEO_FIRMWARE_DISPOSITIVOS = env.list("NUCLEO_FIRMWARE_DISPOSITIVOS", default=[])
+# Carga de firmware por USB desde la consola de administración (apps/consola/flasheo.py): código
+# y MicroPython de IoT/micropython, alta del usuario MQTT en Mosquitto y host que usa la placa.
+NUCLEO_IOT_DIR = env("NUCLEO_IOT_DIR", default=str(BASE_DIR.parent / "IoT" / "micropython"))
+NUCLEO_MOSQUITTO_PASSWD = env(
+    "NUCLEO_MOSQUITTO_PASSWD", default=str(BASE_DIR.parent / "Mosquitto" / "config" / "passwd")
+)
+NUCLEO_MOSQUITTO_CONTENEDOR = env("NUCLEO_MOSQUITTO_CONTENEDOR", default="nucleo_mosquitto")
+NUCLEO_ESP_HOST = env("NUCLEO_ESP_HOST", default="dispositivos.bynucleo.com")
 # Días que se guardan las lecturas (manage.py retencion_lecturas). 0 = todas; de todos modos las
 # de más de 30 días se comprimen (migración mediciones 0002).
 NUCLEO_LECTURAS_RETENCION_DIAS = env.int("NUCLEO_LECTURAS_RETENCION_DIAS", default=0)

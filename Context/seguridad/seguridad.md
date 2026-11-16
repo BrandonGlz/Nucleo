@@ -49,11 +49,19 @@ documento de su componente, enlazado en cada sección.
   pasos obligatoria, días que se guarda la bitácora (365) y si la actualización del firmware
   llega a todos los equipos. Los cambios aplican en menos de 15 segundos sin reiniciar.
 - **Consola de administración** (https://admin.bynucleo.com, solo el administrador de
-  plataforma): resumen y alertas de seguridad (intentos fallidos por IP o cuenta, accesos desde
-  IP nuevas, cuentas sin la 2FA obligatoria o bloqueadas), usuarios y roles de todas las
+  plataforma): panel en gráficas (accesos, fallidos, horario, sesiones web/app, cuentas y
+  equipos), alertas de seguridad (ver abajo), usuarios y roles de todas las
   organizaciones (alta, cambio de rol, desbloqueo, baja, restablecer contraseña, quitar la 2FA,
   cerrar sesiones), sesiones abiertas, equipos ESP32 (mantenimiento, baja, OTA), bitácora,
   integraciones y política.
+- **Alertas de seguridad** (tabla `alerta_seguridad`, sección «Alertas» de la consola): se abren
+  al ocurrir el evento, desde las señales de la bitácora y del usuario (`apps/consola/alertas.py`):
+  ≥5 inicios de sesión fallidos desde una IP o ≥3 en una cuenta en 24 h (críticas desde 10),
+  acceso desde una IP no usada en los 30 días previos y cuenta bloqueada (se cierra sola al
+  desbloquearla). No se duplica la misma alerta abierta; se marca revisada o descartada con una
+  nota y queda en la bitácora. Las cuentas sin la 2FA obligatoria se muestran calculadas al vuelo.
+  Cada alerta nueva o que sube a crítica avisa a los superusuarios en la campana de la consola y
+  por correo según sus preferencias (por omisión, correo solo con las críticas); no hay push.
 - **Verificación en dos pasos (TOTP, RFC 6238)** en Mi perfil: QR para la app de autenticación,
   10 códigos de recuperación de un solo uso (se guarda solo su SHA-256) y el secreto cifrado. Un
   código ya usado no vale dos veces. La política de seguridad la vuelve obligatoria por rol:

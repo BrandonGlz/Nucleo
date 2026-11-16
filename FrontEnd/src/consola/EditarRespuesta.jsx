@@ -25,6 +25,8 @@ export function EditarRespuesta({ r, inicial, empresas, cerrar, guardada }) {
     setError(null)
     const cuerpo = { ...f, todas: f.organizacion === 'todas' }
     if (cuerpo.todas) delete cuerpo.organizacion
+    // Enseñada desde el registro: la API marca esa pregunta (y las iguales) como enseñada.
+    if (nueva && inicial?.registro) cuerpo.registro = inicial.registro
     try {
       guardada(await (nueva ? nicoApi.crearRespuesta(cuerpo) : nicoApi.editarRespuesta(r.num, cuerpo)), nueva)
     } catch (e) {

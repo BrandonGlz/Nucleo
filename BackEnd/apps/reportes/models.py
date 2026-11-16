@@ -214,6 +214,19 @@ class PreguntaAgente(models.Model):
         null=True,
         blank=True,
     )
+    # Respuesta que el superusuario enseñó en la consola de Nico AI para esta pregunta (o una
+    # igual de la misma organización). Es aparte de ``aprendida``: esa cuenta los usos y los
+    # votos del banco, y un 👎 sobre ella la desactiva. Si la respuesta se borra, la pregunta
+    # vuelve a quedar por atender.
+    ensenada = models.ForeignKey(
+        RespuestaAprendida,
+        on_delete=models.SET_NULL,
+        db_column="ensenada_num",
+        related_name="ensenanzas",
+        null=True,
+        blank=True,
+    )
+    fecha_ensenada = models.DateTimeField(null=True, blank=True)
     calificacion = models.SmallIntegerField(null=True, blank=True)  # 1 = 👍, -1 = 👎
     milisegundos = models.PositiveIntegerField(default=0)
     # Tokens de la IA local (Ollama) que usó la respuesta: entrada (prompt) y salida.

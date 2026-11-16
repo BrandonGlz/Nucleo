@@ -13,6 +13,9 @@ from .views import (
     HerramientasView,
     HerramientaView,
     IncluidasView,
+    LeerNotificacionesView,
+    NotificacionesView,
+    PreferenciasAvisosView,
     RegistroViewSet,
     ResumenView,
 )
@@ -33,5 +36,12 @@ urlpatterns = [
     path("resumen/", ResumenView.as_view(), name="nico-resumen"),
     path("herramientas/", HerramientasView.as_view(), name="nico-herramientas"),
     path("herramientas/<str:nombre>/", HerramientaView.as_view(), name="nico-herramienta"),
+    path("notificaciones/", NotificacionesView.as_view(), name="nico-notificaciones"),
+    path("notificaciones/leer/", LeerNotificacionesView.as_view(), name="nico-notificaciones-leer"),
+    path(
+        "notificaciones/preferencias/",
+        PreferenciasAvisosView.as_view(),
+        name="nico-notificaciones-preferencias",
+    ),
     path("", include(router.urls)),
 ]

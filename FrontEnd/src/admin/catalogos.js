@@ -29,9 +29,14 @@ export const NIVEL_ALERTA = {
 export const TIPO_ALERTA = {
   ip_fallidos: { label: 'Intentos fallidos por IP', icon: 'shield-alert' },
   cuenta_fallidos: { label: 'Intentos fallidos en una cuenta', icon: 'lock' },
-  ip_nueva: { label: 'IP nueva', icon: 'signal' },
-  sin_2fa: { label: 'Sin verificación en dos pasos', icon: 'shield-off' },
+  ip_nueva: { label: 'Acceso desde una IP nueva', icon: 'signal' },
   cuenta_bloqueada: { label: 'Cuenta bloqueada', icon: 'user-x' },
+  sin_2fa: { label: 'Sin verificación en dos pasos', icon: 'shield-off' },
+}
+export const ESTADO_ALERTA = {
+  nueva: { label: 'Nueva', tone: 'danger', icon: 'bell' },
+  revisada: { label: 'Revisada', tone: 'success', icon: 'circle-check' },
+  descartada: { label: 'Descartada', tone: 'offline', icon: 'circle-x' },
 }
 
 export const CLIENTE = {
