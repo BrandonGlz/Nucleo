@@ -9,3 +9,5 @@ redis==8.1.0
 daphne==4.2.3
 paho-mqtt==2.2.0
 reportlab==5.1.0
+drf-spectacular==0.30.0
+drf-spectacular-sidecar==2026.10.1

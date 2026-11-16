@@ -88,9 +88,12 @@ responde 403.
 ## Endpoints
 
 ```text
-Salud y catálogos
+Salud, catálogos y documentación
 ├── GET  /health/                           Público
-└── GET  /catalogos/                        Roles, estados y variables ambientales
+├── GET  /catalogos/                        Roles, estados y variables ambientales
+├── GET  /esquema/                          Esquema OpenAPI 3 (YAML; JSON con Accept
+│                                           application/vnd.oai.openapi+json); con sesión o ApiKey
+└── GET  /docs/                             Swagger UI del esquema, servido sin CDN; con sesión
 
 Organizaciones y usuarios
 ├── /organizaciones/                        Todos: la organización propia; PATCH: ADMIN

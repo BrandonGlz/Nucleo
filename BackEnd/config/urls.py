@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -21,6 +22,8 @@ urlpatterns = [
                 path("nico/", include("apps.nico.urls")),
                 path("", include("apps.auditoria.urls")),
                 path("", include("apps.integraciones.urls")),
+                path("esquema/", SpectacularAPIView.as_view(), name="esquema"),
+                path("docs/", SpectacularSwaggerView.as_view(url_name="esquema"), name="docs"),
             ]
         ),
     ),

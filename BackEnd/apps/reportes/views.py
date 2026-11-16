@@ -752,6 +752,7 @@ class _PuenteBase(APIView):
 
     authentication_classes = []
     permission_classes = []
+    schema = None  # rutas internas del ESP: fuera del esquema OpenAPI
 
     def _dispositivo(self, request, codigo):
         clave = request.headers.get("X-Puente-Clave", "")

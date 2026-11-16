@@ -11,6 +11,7 @@ import secrets
 from datetime import timedelta
 
 from django.utils import timezone
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -92,3 +93,18 @@ def con_token_api():
     from common.autenticacion import TokenCaducable
 
     return [TokenCaducable, SessionAuthentication, TokenAPIAutenticacion]
+
+
+class EsquemaTokenAPI(OpenApiAuthenticationExtension):
+    """Cómo aparece el token de API en el esquema OpenAPI (/api/v1/docs/)."""
+
+    target_class = "apps.integraciones.autenticacion.TokenAPIAutenticacion"
+    name = "TokenAPI"
+
+    def get_security_definition(self, auto_schema):
+        return {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "`ApiKey nuc_<prefijo>_<secreto>` (Integraciones, solo lectura)",
+        }

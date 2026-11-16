@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "channels",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",
@@ -168,6 +170,31 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# Esquema OpenAPI (/api/v1/esquema/) y Swagger (/api/v1/docs/), solo con sesión o token de API.
+# Los archivos de Swagger se sirven desde el servidor (sidecar), sin CDN.
+SPECTACULAR_SETTINGS = {
+    "TITLE": "API de Núcleo",
+    "DESCRIPTION": (
+        "Monitoreo ambiental IoT. Autenticación: `Authorization: Token <token>` (web y app), "
+        "`Authorization: ApiKey nuc_…` (integraciones, solo lectura) o la sesión de la web. "
+        "Contrato completo en Context/api/contrato-api.md."
+    ),
+    "VERSION": "1",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
+    "SERVE_AUTHENTICATION": [
+        "common.autenticacion.TokenCaducable",
+        "rest_framework.authentication.SessionAuthentication",
+        "apps.integraciones.autenticacion.TokenAPIAutenticacion",
+    ],
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
 }
 
 # Correo para alertas y reportes programados. El proveedor está por definir; en

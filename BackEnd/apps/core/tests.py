@@ -26,3 +26,23 @@ class AvisarServidorTests(PruebaBase):
         call_command("avisar_servidor", asunto="nucleo-mqtt falló", mensaje="detalle")
         self.assertEqual(mail.outbox[-1].to, [e.plataforma.correo])
         self.assertIn("nucleo-mqtt falló", mail.outbox[-1].subject)
+
+
+class EsquemaOpenAPITests(PruebaBase):
+    """El esquema y Swagger solo se ven con sesión; las rutas del ESP no aparecen."""
+
+    def test_solo_con_sesion_y_sin_rutas_internas(self):
+        from rest_framework.test import APIClient
+
+        from common.testing import Escenario, cliente_de
+
+        anonimo = APIClient()
+        self.assertEqual(anonimo.get("/api/v1/esquema/").status_code, 401)
+        self.assertEqual(anonimo.get("/api/v1/docs/").status_code, 401)
+        cliente = cliente_de(Escenario().admin)
+        r = cliente.get("/api/v1/esquema/", HTTP_ACCEPT="application/vnd.oai.openapi+json")
+        self.assertEqual(r.status_code, 200)
+        rutas = r.json()["paths"]
+        self.assertIn("/api/v1/lecturas/", rutas)
+        self.assertFalse(any("/puente/" in ruta for ruta in rutas))
+        self.assertEqual(cliente.get("/api/v1/docs/").status_code, 200)
