@@ -380,11 +380,9 @@ input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
    oscuro se quedan como estaban. */
 :root:not([data-theme="dark"]) .nc-tab.is-active { background: var(--success); color: var(--accent-contrast); }
 :root:not([data-theme="dark"]) .nc-tab.is-active .nc-tab__count { background: var(--accent-contrast); color: var(--success); }
-:root:not([data-theme="dark"]) .nc-table thead th { background: var(--accent-soft); color: var(--accent-contrast-muted); padding-top: var(--space-3); border-bottom-color: transparent; }
-:root:not([data-theme="dark"]) .nc-table thead th:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
-:root:not([data-theme="dark"]) .nc-table thead th:last-child { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
 :root:not([data-theme="dark"]) .nc-iconcircle.nc-tone--neutral { background: var(--accent-soft); color: var(--success); }
 :root:not([data-theme="dark"]) .nc-chip.is-selected { background: var(--success); border-color: var(--success); color: var(--accent-contrast); }
 :root:not([data-theme="dark"]) .nc-tabs__indicador { background: var(--success); }
 :root:not([data-theme="dark"]) .nc-empty__icon { background: var(--accent-soft); color: var(--success); }
 :root:not([data-theme="dark"]) .nc-trend stop:first-child { stop-opacity: 0.5 !important; }
+:root:not([data-theme="dark"]) .nc-table thead th { color: var(--success); border-bottom: 2px solid var(--accent); }

@@ -1,6 +1,6 @@
 /* Núcleo — color tokens. Light (Claro) on :root, Oscuro via [data-theme="dark"]. Same names in both. */
 :root{
---background:#EAECE6;--surface:#FFFFFF;--surface-elevated:#FFFFFF;--surface-muted:#EAF5EE;
+--background:#EAECE6;--surface:#FFFFFF;--surface-elevated:#FFFFFF;--surface-muted:#F3F4F0;
 --border:#DEE1D8;--border-strong:#7D8279;
 --text-primary:#121413;--text-secondary:#4A4F4B;--text-muted:#62675F;
 --accent:#2BC47A;--accent-hover:#24AD6B;--accent-soft:#D3F1E1;--accent-contrast:#FFFFFF;--accent-contrast-muted:#0B4128;--accent-contrast-soft:rgba(255,255,255,0.82);
