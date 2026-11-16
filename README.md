@@ -21,9 +21,6 @@ Stack
 Las versiones exactas están fijadas en los `requirements.txt` de backend e IoT y
 en los `package-lock.json` de web y móvil.
 
-Las versiones exactas están fijadas en los `requirements.txt` de backend e IoT y
-en los `package-lock.json` de web y móvil.
-
 ```text
 Nucleo/
 ├── BackEnd/               Django, API compartida, pruebas y README
@@ -41,10 +38,6 @@ Nucleo/
 ├── .gitignore             Archivos que Git debe ignorar
 └── README.md              Este documento
 ```
-
-Cada parte tiene su README con sus comandos: [BackEnd](BackEnd/README.md),
-[Web](FrontEnd/README.md), [Mobile](Mobile/README.md), [IoT](IoT/README.md) y
-[Base de datos](Database/README.md).
 
 Cada parte tiene su README con sus comandos: [BackEnd](BackEnd/README.md),
 [Web](FrontEnd/README.md), [Mobile](Mobile/README.md), [IoT](IoT/README.md) y
