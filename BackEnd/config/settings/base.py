@@ -246,6 +246,9 @@ NUCLEO_EXPORTAR_MAX_FILAS = env.int("NUCLEO_EXPORTAR_MAX_FILAS", default=100000)
 # publicadas y códigos MQTT que la reciben (* = todos; vacío = ninguno).
 NUCLEO_FIRMWARE_DIR = env("NUCLEO_FIRMWARE_DIR", default=str(BASE_DIR / "firmware"))
 NUCLEO_FIRMWARE_DISPOSITIVOS = env.list("NUCLEO_FIRMWARE_DISPOSITIVOS", default=[])
+# Días que se guardan las lecturas (manage.py retencion_lecturas). 0 = todas; de todos modos las
+# de más de 30 días se comprimen (migración mediciones 0002).
+NUCLEO_LECTURAS_RETENCION_DIAS = env.int("NUCLEO_LECTURAS_RETENCION_DIAS", default=0)
 
 # Servicio externo de IA para redactar reportes; el proveedor está por definir.
 IA_PROVEEDOR = env("IA_PROVEEDOR", default="")

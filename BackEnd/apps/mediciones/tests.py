@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from io import StringIO
 
 from django.core import mail
 from django.db import IntegrityError, connections, transaction
@@ -364,3 +365,31 @@ class ConsultaDeLecturasTests(PruebaBase):
         porvariable = {x["variable"]: Decimal(x["valor"]) for x in r.json()}
         self.assertEqual(porvariable, {"TEMP": 24, "HUM": 45})
         self.assertEqual({x["sensor_modelo"] for x in r.json()}, {"DHT22"})
+
+
+class CompresionYRetencionTests(PruebaBase):
+    """Las lecturas viejas se comprimen solas y la retención es opcional."""
+
+    databases = {"default", "iot"}
+
+    def _politicas(self):
+        from django.db import connections
+
+        with connections["iot"].cursor() as cursor:
+            cursor.execute(
+                "SELECT proc_name FROM timescaledb_information.jobs "
+                "WHERE hypertable_name = 'lectura' ORDER BY proc_name"
+            )
+            return [fila[0] for fila in cursor.fetchall()]
+
+    def test_compresion_activa_y_retencion_configurable(self):
+        from django.core.management import call_command
+        from django.test import override_settings
+
+        self.assertIn("policy_compression", self._politicas())
+        with override_settings(NUCLEO_LECTURAS_RETENCION_DIAS=730):
+            call_command("retencion_lecturas", stdout=StringIO())
+        self.assertIn("policy_retention", self._politicas())
+        with override_settings(NUCLEO_LECTURAS_RETENCION_DIAS=0):
+            call_command("retencion_lecturas", stdout=StringIO())
+        self.assertNotIn("policy_retention", self._politicas())

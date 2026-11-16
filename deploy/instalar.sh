@@ -51,6 +51,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python manage.py check
 .venv/bin/python manage.py migrate --noinput
 .venv/bin/python manage.py migrate --database=iot --noinput
+.venv/bin/python manage.py retencion_lecturas
 .venv/bin/python manage.py collectstatic --noinput
 mkdir -p media
 
