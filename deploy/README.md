@@ -147,6 +147,21 @@ Ya creadas en `bynucleo.com` (plan Free) con la API de Cloudflare; se ven y edit
 
 No actives Bot Fight Mode: bloquearía a los ESP32, a la app y al vigía de GitHub.
 
+**Correo del dominio.** Núcleo envía desde Gmail, no desde `@bynucleo.com`, así que el DNS declara
+que el dominio no manda correo y los servidores rechazan cualquiera que lo suplante:
+
+| Registro TXT | Valor |
+| --- | --- |
+| `bynucleo.com` | `v=spf1 -all` |
+| `_dmarc.bynucleo.com` | `v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s` |
+| `*._domainkey.bynucleo.com` | `v=DKIM1; p=` |
+
+Si algún día se envía desde `@bynucleo.com`, primero hay que cambiar el SPF y publicar la llave DKIM
+del proveedor de correo.
+
+Tras un deploy que cambie encabezados, vacía la caché en **Caching → Configuration → Purge Everything**
+(o por API con `purge_cache`).
+
 ### Avisos y vigilancia
 
 - `nucleo-aviso@.service`: correo a `NUCLEO_CORREOS_AVISOS` (o a los administradores de
