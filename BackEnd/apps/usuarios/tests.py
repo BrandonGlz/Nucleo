@@ -73,9 +73,17 @@ class GestionDeUsuariosTests(PruebaBase):
             "/api/v1/usuarios/", self.datos(rol=roles.ANALISTA), format="json"
         )
         self.assertEqual(r.status_code, 201, r.content)
-        self.assertEqual(
-            Usuario.objects.get(correo="nuevo@prueba.local").organizacion, self.e.organizacion
+        nuevo = Usuario.objects.get(correo="nuevo@prueba.local")
+        self.assertEqual(nuevo.organizacion, self.e.organizacion)
+        # El rol elegido se respeta (antes se guardaba siempre como operador).
+        self.assertEqual(nuevo.rol_id, roles.ANALISTA)
+
+    def test_administrador_crea_un_supervisor_con_ese_rol(self):
+        r = cliente_de(self.e.admin).post(
+            "/api/v1/usuarios/", self.datos(rol=roles.SUPERVISOR), format="json"
         )
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Usuario.objects.get(correo="nuevo@prueba.local").rol_id, roles.SUPERVISOR)
 
     def test_supervisor_solo_crea_operadores_de_su_area(self):
         cliente = cliente_de(self.e.supervisor)

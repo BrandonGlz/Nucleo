@@ -16,8 +16,11 @@ class UsuarioManager(BaseUserManager):
     def create_user(self, correo, password=None, **campos):
         if not correo:
             raise ValueError("El correo es obligatorio.")
-        campos.setdefault("estado_usuario_id", roles.USUARIO_ACTIVO)
-        campos.setdefault("rol_id", roles.OPERADOR)
+        # Valores por defecto solo si no llegan ni el objeto ni el id (si no, el id pisa al objeto).
+        if "estado_usuario" not in campos:
+            campos.setdefault("estado_usuario_id", roles.USUARIO_ACTIVO)
+        if "rol" not in campos:
+            campos.setdefault("rol_id", roles.OPERADOR)
         usuario = self.model(correo=self.normalize_email(correo), **campos)
         usuario.set_password(password)
         usuario.save(using=self._db)
