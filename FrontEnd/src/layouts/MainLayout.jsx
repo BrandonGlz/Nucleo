@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Avatar, Icon, Logo, LogoApp } from '../design-system/componentes/index.js'
+import { Avatar, Icon, IconButton, Logo, LogoApp } from '../design-system/componentes/index.js'
 import { AgenteProvider } from '../context/AgenteContext'
 import { AvisosProvider, useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
 import { useLatido } from '../hooks/useLatido'
+import { MenuMovilContext, useEsMovil, useMenuMovil } from '../hooks/useMenuMovil'
 import { modulos, puedeVer } from '../features'
 import { limiteAlerta, nombreCompleto, ROL, tituloAlerta, valorAlerta } from '../utils/convertir'
 import { haceCuanto, hora } from '../utils/formato'
+import { etiquetarTablas } from '../utils/tablasMovil'
 
 const SECCIONES = ['Plataforma', 'Monitoreo', 'Análisis', 'Áreas', 'Configuración']
 
@@ -31,6 +33,7 @@ function guardarCompacto(v) {
 // Alerta crítica pendiente más reciente: se ve en todas las pantallas, sobre la tarjeta del usuario.
 function AlertaCritica({ compacto }) {
   const { pendientes } = useAvisos()
+  const { cerrar } = useMenuMovil()
   const navegar = useNavigate()
   const criticas = pendientes.filter((a) => a.nivel === 'PELIGRO').sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1))
   const a = criticas[0]
@@ -42,7 +45,10 @@ function AlertaCritica({ compacto }) {
       role="alert"
       aria-label={compacto ? `${tituloAlerta(a)} · ${a.dispositivo_nombre}` : undefined}
       title={`${tituloAlerta(a)} · ${a.dispositivo_nombre} · ${valorAlerta(a)} (${limiteAlerta(a)}) · ${haceCuanto(a.fecha_hora)}`}
-      onClick={() => navegar('/alertas')}
+      onClick={() => {
+        cerrar()
+        navegar('/alertas')
+      }}
     >
       <span className="ui-critica__pulso">
         <Icon name="octagon-alert" size={16} />
@@ -59,26 +65,43 @@ function AlertaCritica({ compacto }) {
   )
 }
 
+// En pantallas chicas el mismo menú es un cajón que entra desde la izquierda (botón ☰ del
+// encabezado): siempre expandido, se cierra al elegir una sección, con Escape o tocando el fondo.
 function MenuLateral() {
   const { usuario, rol } = useSesion()
   const { pendientes } = useAvisos()
-  const [compacto, setCompacto] = useState(leerCompacto)
+  const { abierto, cerrar } = useMenuMovil()
+  const movil = useEsMovil()
+  const [compactoGuardado, setCompacto] = useState(leerCompacto)
+  const compacto = compactoGuardado && !movil
   const visibles = modulos.filter((m) => m.seccion && puedeVer(m, rol))
   const alternar = () => {
     guardarCompacto(!compacto)
     setCompacto(!compacto)
   }
   return (
-    <nav className={`nc-sidebar${compacto ? ' is-compacto' : ''}`} aria-label="Navegación principal">
-      <button
-        type="button"
-        className="nc-sidebar__brand ui-menu-logo"
-        onClick={alternar}
-        aria-expanded={!compacto}
-        title={compacto ? 'Expandir menú' : 'Contraer menú'}
-      >
-        {compacto ? <LogoApp size={48} label="Núcleo" /> : <Logo size={32} inverse />}
-      </button>
+    <nav
+      id="menu-principal"
+      className={`nc-sidebar${compacto ? ' is-compacto' : ''}${abierto ? ' is-abierto' : ''}`}
+      aria-label="Navegación principal"
+      inert={movil && !abierto}
+    >
+      {movil ? (
+        <div className="nc-sidebar__brand ui-menu-logo">
+          <Logo size={32} inverse />
+          <IconButton icon="x" label="Cerrar menú" variant="ghost" className="ui-menu-movil__cerrar" onClick={cerrar} />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="nc-sidebar__brand ui-menu-logo"
+          onClick={alternar}
+          aria-expanded={!compacto}
+          title={compacto ? 'Expandir menú' : 'Contraer menú'}
+        >
+          {compacto ? <LogoApp size={48} label="Núcleo" /> : <Logo size={32} inverse />}
+        </button>
+      )}
       {SECCIONES.map((seccion) => {
         const items = visibles.filter((m) => m.seccion === seccion)
         if (!items.length) return null
@@ -90,6 +113,7 @@ function MenuLateral() {
                 <li key={m.ruta}>
                   <NavLink
                     to={m.ruta}
+                    onClick={cerrar}
                     title={compacto ? m.titulo : undefined}
                     aria-label={compacto ? m.titulo : undefined}
                     className={({ isActive }) => `nc-navitem${isActive ? ' is-active' : ''}`}
@@ -131,15 +155,48 @@ function Version() {
 // Marco de las pantallas con sesión: menú lateral y columna de contenido que llena la ventana.
 export function MainLayout() {
   useLatido()
+  const movil = useEsMovil()
+  const principal = useRef(null)
+  const [abiertoMenu, setAbiertoMenu] = useState(false)
+  const abierto = abiertoMenu && movil
+  const menu = useMemo(
+    () => ({ abierto, abrir: () => setAbiertoMenu(true), cerrar: () => setAbiertoMenu(false) }),
+    [abierto],
+  )
+
+  // Tablas que en el celular se ven como tarjetas: cada celda lleva el nombre de su columna.
+  useEffect(() => etiquetarTablas(principal.current), [])
+
+  // Con el cajón abierto: Escape lo cierra y la página de atrás no se desplaza.
+  useEffect(() => {
+    if (!abierto) return undefined
+    const tecla = (e) => e.key === 'Escape' && setAbiertoMenu(false)
+    document.addEventListener('keydown', tecla)
+    document.documentElement.classList.add('ui-sin-scroll')
+    return () => {
+      document.removeEventListener('keydown', tecla)
+      document.documentElement.classList.remove('ui-sin-scroll')
+    }
+  }, [abierto])
+
   return (
     <AvisosProvider>
       <AgenteProvider>
-        <div className="app">
-          <MenuLateral />
-          <main className="app__main">
-            <Outlet />
-          </main>
-        </div>
+        <MenuMovilContext.Provider value={menu}>
+          <div className="app">
+            <MenuLateral />
+            {movil && (
+              <div
+                className={`ui-menu-movil__fondo${abierto ? ' is-visible' : ''}`}
+                aria-hidden="true"
+                onClick={() => setAbiertoMenu(false)}
+              />
+            )}
+            <main ref={principal} className="app__main">
+              <Outlet />
+            </main>
+          </div>
+        </MenuMovilContext.Provider>
       </AgenteProvider>
     </AvisosProvider>
   )

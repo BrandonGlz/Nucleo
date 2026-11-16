@@ -4,6 +4,7 @@ import { useSalida } from '../hooks/useSalida'
 import { Avatar, Badge, Button, Icon, IconButton, IconCircle, Tabs } from '../design-system/componentes/index.js'
 import { useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
+import { useMenuMovil } from '../hooks/useMenuMovil'
 import { esHoy, hora } from '../utils/formato'
 import { nombreCompleto } from '../utils/convertir'
 
@@ -27,6 +28,7 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
   // El administrador de plataforma no tiene alertas, notificaciones ni perfil de organización.
   const plataforma = rol === 'ADMINPLAT'
   const { notificaciones, noLeidas, marcarLeidas } = useAvisos()
+  const menuMovil = useMenuMovil()
 
   useEffect(() => {
     if (!menu) return undefined
@@ -53,14 +55,23 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
   const nombre = nombreCompleto(usuario)
 
   return (
-    <div ref={ref}>
+    <div ref={ref} className={`ui-encabezado${acciones ? ' ui-encabezado--acciones' : ''}`}>
       <header className="nc-header">
+        {/* Solo en pantallas chicas (estilos/movil.css): abre el menú como cajón */}
+        <IconButton
+          icon="menu"
+          label="Abrir menú"
+          className="ui-menu-movil__boton"
+          aria-controls="menu-principal"
+          aria-expanded={menuMovil.abierto}
+          onClick={menuMovil.abrir}
+        />
         <div className="nc-header__titles">
           {eyebrow && <span className="nc-header__eyebrow">{eyebrow}</span>}
           <h1 className="nc-header__title">{titulo}</h1>
         </div>
         <div className="nc-header__actions">
-          {acciones}
+          {acciones && <div className="nc-header__extra">{acciones}</div>}
           {!plataforma && (
             <IconButton
               icon="bell"

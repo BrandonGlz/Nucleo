@@ -5,6 +5,7 @@ import App from './App.jsx'
 import { SesionProvider } from './context/SesionContext'
 import './design-system/estilos/index.css'
 import './styles/global.css'
+import './styles/movil.css'
 
 // nicoai.bynucleo.com (o nicoai.localhost en desarrollo) abre la consola de Nico AI: la misma web
 // con otro marco, solo para el superusuario. Se descarga aparte, así que no pesa en la web normal.

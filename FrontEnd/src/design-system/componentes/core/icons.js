@@ -78,6 +78,7 @@ import {
   ScrollText,
   Copy,
   X,
+  Menu,
 } from 'lucide-react'
 
 const ICONS = {
@@ -148,6 +149,7 @@ const ICONS = {
   'user-check': UserCheck,
   'key-round': KeyRound,
   'x': X,
+  'menu': Menu,
   'book-open': BookOpen,
   'message-square-text': MessageSquareText,
   'file-code': FileCode,

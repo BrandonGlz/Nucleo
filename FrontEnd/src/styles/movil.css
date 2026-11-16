@@ -1,0 +1,709 @@
+/* Pantallas chicas. Se carga después de global.css y solo cambia la composición:
+   - hasta 900 px (tableta vertical y celular): el menú lateral es un cajón con ☰, la página hace
+     scroll completo (sin alturas fijas ni scroll interno) y las filas de tarjetas se apilan;
+   - hasta 560 px (celular): formularios y filtros en una columna, tablas como tarjetas y modales
+     casi a pantalla completa. */
+
+/* Piezas que solo existen en pantallas chicas */
+.ui-menu-movil__boton,
+.ui-menu-movil__cerrar {
+  display: none;
+}
+.nc-header__extra {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  /* Marco: una sola columna que hace scroll con la página */
+  .app {
+    display: block;
+    height: auto;
+    min-height: 100dvh;
+    min-width: 0;
+    padding: 0 16px 24px;
+  }
+  .app__main {
+    overflow: visible;
+    padding: 0;
+    gap: 16px;
+  }
+  .ui-sin-scroll,
+  .ui-sin-scroll body {
+    overflow: hidden;
+  }
+
+  /* Menú lateral → cajón desde la izquierda */
+  .app > .nc-sidebar {
+    position: fixed;
+    z-index: 20;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(300px, 86vw);
+    height: auto;
+    padding: 12px 16px 16px;
+    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateX(-104%);
+    visibility: hidden;
+    box-shadow: none;
+    transition:
+      transform var(--duration-slow) var(--ease-emphasized),
+      visibility 0s linear var(--duration-slow),
+      box-shadow var(--duration-slow) var(--ease-standard);
+  }
+  .app > .nc-sidebar.is-abierto {
+    transform: none;
+    visibility: visible;
+    box-shadow: var(--shadow-lg);
+    transition:
+      transform var(--duration-slow) var(--ease-emphasized),
+      visibility 0s,
+      box-shadow var(--duration-slow) var(--ease-standard);
+  }
+  .app > .nc-sidebar .nc-sidebar__brand {
+    justify-content: space-between;
+    padding: 4px 0 12px 8px;
+    cursor: default;
+  }
+  .app > .nc-sidebar .nc-navitem {
+    height: 44px;
+  }
+  .app__nav-group {
+    margin-bottom: 10px;
+  }
+  .ui-menu-movil__cerrar.ui-menu-movil__cerrar {
+    display: inline-flex;
+    color: var(--sidebar-text);
+  }
+  .ui-menu-movil__cerrar:hover {
+    background: var(--sidebar-hover);
+  }
+  .ui-menu-movil__fondo {
+    position: fixed;
+    z-index: 19;
+    inset: 0;
+    background: var(--scrim);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-slow) var(--ease-standard);
+  }
+  .ui-menu-movil__fondo.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Encabezado compacto y fijo arriba: ☰, título y la campana con el avatar */
+  .ui-encabezado {
+    position: sticky;
+    z-index: 8;
+    top: 0;
+    margin: 0 -16px;
+    padding: 8px 16px;
+    background: var(--background);
+  }
+  /* Con acciones propias de la pantalla ocupa dos renglones: mejor que se vaya con el scroll */
+  .ui-encabezado--acciones {
+    position: relative;
+  }
+  .ui-encabezado .nc-header {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .ui-menu-movil__boton.ui-menu-movil__boton {
+    display: inline-flex;
+    flex: none;
+    margin-left: -4px;
+  }
+  .ui-encabezado .nc-header__titles {
+    flex: 1;
+    min-width: 0;
+  }
+  .ui-encabezado .nc-header__title {
+    font-size: 22px;
+    line-height: 28px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ui-encabezado .nc-header__eyebrow {
+    display: block;
+    font-size: 12px;
+    line-height: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ui-encabezado .nc-header__actions {
+    flex: none;
+    gap: 8px;
+  }
+  .ui-avatar-btn .nc-avatar {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  /* Menús de la campana y del avatar: bajo el encabezado, a lo ancho disponible */
+  .ui-encabezado .ui-popover {
+    top: calc(100% - 2px);
+    max-height: calc(100dvh - 88px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .ui-encabezado .ui-popover--notif {
+    right: 16px;
+    width: min(420px, calc(100vw - 32px));
+  }
+  .ui-encabezado .ui-popover--usuario {
+    right: 16px;
+    width: min(320px, calc(100vw - 32px));
+  }
+
+  /* Contenido: sin alturas fijas, las filas se apilan y cada tarjeta mide lo que su contenido */
+  .ui-fila {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    gap: 16px;
+  }
+  .ui-col {
+    flex: none;
+    gap: 16px;
+  }
+  .app__main > .nc-grow,
+  .app__main > .ui-fila,
+  .ui-col > .nc-grow {
+    min-height: 0;
+  }
+  .nc-grow.nc-grow,
+  .ui-panel,
+  .ui-cede,
+  .ui-col > .ui-tendencia,
+  .ui-col > .ui-tendencia + .nc-grow {
+    flex: none;
+    min-height: 0;
+  }
+  .nc-scroll,
+  .ui-panel {
+    flex: none;
+    overflow: visible;
+  }
+  .ui-col > .ui-tendencia + .nc-grow .nc-scroll {
+    max-height: none;
+  }
+  .nc-scroll thead th {
+    position: static;
+  }
+  /* Las tablas que no caben se desplazan dentro de su tarjeta, nunca la página */
+  .nc-table-wrap,
+  .nc-table-wrap.nc-scroll {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  .ui-centro {
+    flex: none;
+    padding: 24px 0;
+  }
+
+  /* Gráficas: alto fijo cómodo; el ancho lo mide la propia gráfica */
+  .ui-grafica {
+    flex: none;
+    height: 240px;
+  }
+
+  /* Tarjeta de cifras clave: la cifra principal arriba y las demás en rejilla */
+  .nc-ink.nc-ink {
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 16px 0;
+    padding: 20px;
+    border-radius: 24px;
+  }
+  .nc-ink > div[style*='flex: 1'] {
+    display: none;
+  }
+  .nc-ink__principal {
+    flex: 1 1 100%;
+  }
+  .nc-ink__valor {
+    font-size: 48px;
+    line-height: 52px;
+  }
+  .nc-ink__unidad {
+    font-size: 20px;
+  }
+  .nc-ink__titulo {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  .nc-ink__barra {
+    width: min(320px, 100%);
+  }
+  .nc-ink__cifra {
+    flex: 1 1 25%;
+    min-width: 0;
+    padding: 0 12px 0 12px;
+  }
+  .nc-ink__cifra-valor {
+    font-size: 28px;
+    line-height: 32px;
+  }
+  .nc-ink__cifra-unidad {
+    font-size: 14px;
+  }
+
+  /* Tarjetas más compactas */
+  .nc-card {
+    padding: 16px;
+  }
+  .nc-card__head {
+    flex-wrap: wrap;
+  }
+
+  /* Tamaños táctiles cómodos */
+  .nc-btn--sm {
+    height: 40px;
+  }
+  .nc-iconbtn {
+    width: 44px;
+    height: 44px;
+  }
+  .nc-iconbtn--sm {
+    width: 40px;
+    height: 40px;
+  }
+  .nc-chip,
+  .nc-tab {
+    height: 40px;
+  }
+  .nc-period .nc-chip {
+    height: 36px;
+  }
+  .nc-input,
+  .nc-search,
+  .nc-btn--md {
+    height: 44px;
+  }
+  /* Sin zoom automático de iOS al enfocar un campo */
+  .nc-input input,
+  .nc-input select,
+  .nc-search input,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Pestañas y filtros de periodo que no caben: scroll horizontal dentro de su barra */
+  .nc-tabs,
+  .nc-period {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nc-tab,
+  .nc-period .nc-chip {
+    flex: none;
+  }
+
+  /* Modales: casi a pantalla completa, con scroll propio */
+  .ui-modal {
+    align-items: flex-end;
+    padding: 12px;
+  }
+  .ui-modal__caja {
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100dvh - 24px);
+    margin: 0 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 24px 20px;
+    gap: 16px;
+  }
+  .ui-modal__caja h2 {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  /* Avisos flotantes dentro de la pantalla */
+  .nc-toast {
+    min-width: 0;
+    max-width: calc(100vw - 32px);
+  }
+}
+
+@media (max-width: 560px) {
+  .app {
+    padding: 0 12px 20px;
+  }
+  .ui-encabezado {
+    margin: 0 -12px;
+    padding: 6px 12px;
+  }
+  .ui-encabezado .nc-header__title {
+    font-size: 20px;
+    line-height: 26px;
+  }
+  .ui-encabezado .ui-popover--notif,
+  .ui-encabezado .ui-popover--usuario {
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+  /* Las acciones de la pantalla pasan a su propio renglón, a todo lo ancho */
+  .ui-encabezado--acciones .nc-header {
+    flex-wrap: wrap;
+  }
+  .ui-encabezado--acciones .nc-header__actions {
+    display: contents;
+  }
+  .ui-encabezado--acciones .nc-header__extra {
+    order: 5;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ui-encabezado--acciones .nc-header__extra > * {
+    flex: 1 1 auto;
+  }
+
+  .nc-ink.nc-ink {
+    padding: 18px 16px;
+  }
+  .nc-ink__valor {
+    font-size: 40px;
+    line-height: 44px;
+  }
+  .nc-ink__cifra {
+    flex: 1 1 calc(50% - 1px);
+    padding: 8px 12px 0;
+    border-left: 0;
+    border-top: 1px solid rgba(243, 245, 242, 0.1);
+  }
+  .nc-ink__cifra-valor {
+    font-size: 24px;
+    line-height: 28px;
+  }
+  .nc-ink__sub {
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  .nc-card {
+    padding: 14px;
+    border-radius: 20px;
+  }
+  .ui-grafica {
+    height: 200px;
+  }
+
+  /* Formularios en una columna */
+  .ui-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ui-acciones {
+    flex-wrap: wrap;
+  }
+
+  /* Modales: hoja inferior a todo lo ancho */
+  .ui-modal {
+    padding: 8px 0 0;
+  }
+  .ui-modal__caja {
+    max-height: calc(100dvh - 8px);
+    border-radius: 24px 24px 0 0;
+    padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .ui-modal__caja .ui-acciones > .nc-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Piezas de cada pantalla. Algunas llevan la composición de escritorio en style={{…}}, por eso
+   aquí se sobrescribe con !important solo dentro de los breakpoints. */
+@media (max-width: 900px) {
+  /* Encabezado de tarjeta: el título no se aprieta, las acciones bajan de renglón */
+  .nc-card__head > [style*='flex: 1'] {
+    flex-basis: 200px !important;
+  }
+  .nc-card__sub {
+    overflow-wrap: anywhere;
+  }
+
+  /* Barras de filtros (Dispositivos, Usuarios, Umbrales, Auditoría) */
+  .ui-filtros {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+  .ui-filtros > div:empty {
+    display: none;
+  }
+  .ui-filtros > [style*='width'] {
+    width: auto !important;
+    flex: 1 1 260px;
+  }
+  .ui-filtros > .ui-filtros__chips {
+    order: 3;
+    flex: 1 1 100% !important;
+    flex-wrap: wrap !important;
+  }
+  .ui-filtros > div:has(> .ui-buscador),
+  .ui-filtros > .ui-buscador {
+    flex: 1 1 240px;
+  }
+  .ui-filtros .ui-buscador {
+    width: 100% !important;
+  }
+  .ui-filtros > .ui-buscador {
+    order: 4;
+  }
+  .ui-rejilla-filtros {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+  .ui-rejilla-umbrales {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  /* Ficha del dispositivo: nombre arriba y sus datos en rejilla */
+  .ui-ficha {
+    flex-wrap: wrap;
+    gap: 16px !important;
+  }
+  .ui-ficha > [style*='flex: 1'] {
+    display: none;
+  }
+  .ui-ficha > :nth-child(2) {
+    flex: 1 1 200px;
+  }
+  .ui-ficha__datos {
+    flex: 1 1 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px !important;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .ui-ficha__datos > .ui-dato > div {
+    flex-wrap: wrap;
+  }
+
+  /* Alertas: sin cabecera de columnas; la hora va bajo el título */
+  .ui-alerta--cabecera {
+    display: none;
+  }
+  .ui-alerta,
+  button.ui-alerta {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    padding: 12px 8px;
+  }
+  .ui-alerta > :nth-child(4) {
+    grid-column: 2 / -1;
+    flex-direction: row !important;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .ui-alerta .ui-valor {
+    font-size: 17px;
+    line-height: 22px;
+    text-align: right;
+  }
+}
+
+@media (max-width: 560px) {
+  .ui-filtros > *,
+  .ui-filtros > [style*='width'] {
+    flex: 1 1 100% !important;
+    width: auto !important;
+  }
+  .ui-filtros > .nc-field {
+    flex: 1 1 40% !important;
+  }
+  .ui-filtros .ui-buscador {
+    width: 100% !important;
+  }
+  .ui-rejilla-filtros {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Tablas como tarjetas apiladas: la primera celda es el título y cada dato lleva su columna */
+  .nc-table.ui-tabla-tarjetas,
+  .ui-tabla-tarjetas tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ui-tabla-tarjetas thead {
+    display: none;
+  }
+  .ui-tabla-tarjetas tbody tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 12px;
+    padding: 10px 14px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+  .ui-tabla-tarjetas td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 4px;
+    min-width: 0;
+    max-width: none !important;
+    padding: 4px 0 !important;
+    border: 0;
+    white-space: normal !important;
+    text-align: left !important;
+    overflow-wrap: anywhere;
+  }
+  .ui-tabla-tarjetas td > * {
+    min-width: 0;
+  }
+  .ui-tabla-tarjetas td::before {
+    content: attr(data-etiqueta);
+    flex: none;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: left;
+  }
+  .ui-tabla-tarjetas td[data-etiqueta='']::before,
+  .ui-tabla-tarjetas td:first-child::before {
+    display: none;
+  }
+  .ui-tabla-tarjetas td:first-child {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 4px;
+    padding: 4px 44px 10px 0 !important;
+    border-bottom: 1px solid var(--border);
+  }
+  .ui-tabla-tarjetas td:last-child[data-etiqueta=''] {
+    position: absolute;
+    top: 8px;
+    right: 6px;
+    padding: 0 !important;
+  }
+  .ui-tabla-tarjetas td:last-child[data-etiqueta='']:empty {
+    display: none;
+  }
+  .ui-tabla-tarjetas tbody tr:hover td {
+    background: transparent;
+  }
+  .ui-tabla-tarjetas tbody tr.is-selected {
+    background: var(--accent-soft);
+  }
+  .ui-tabla-tarjetas .nc-table__device {
+    min-width: 0;
+  }
+
+  .ui-ficha__datos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Nico AI: el chat ocupa el alto de la pantalla (el hilo hace scroll dentro y el compositor
+   queda abajo); las conversaciones y la vista del reporte se abren encima. */
+@media (max-width: 900px) {
+  .ui-ia {
+    position: relative;
+    flex: none;
+    height: calc(100dvh - 76px);
+    min-height: 460px;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  /* Dentro del chat sí hay scroll propio (hilo, historial y vista del reporte) */
+  .ui-ia .nc-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .ui-ia:not(.is-sin-panel) .ui-ia-panel {
+    display: flex;
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(300px, 86%);
+    box-shadow: var(--shadow-lg);
+    animation: ui-entra-panel-ia var(--duration-slow) var(--ease-emphasized);
+  }
+  .ui-ia-conv__borrar {
+    opacity: 1;
+  }
+  .ui-ia.con-visor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ui-ia.con-visor .ui-ia-visor:not(.is-ampliado) {
+    position: absolute;
+    z-index: 4;
+    inset: 0;
+    border-left: 0;
+  }
+  .ui-ia-barra {
+    gap: 8px;
+    padding: 0 8px 0 10px;
+  }
+  .ui-ia-icono {
+    width: 40px;
+    height: 40px;
+    flex: none;
+  }
+  .ui-ia-agente {
+    flex: 0 1 260px;
+    width: auto;
+    min-width: 0;
+  }
+  .ui-burbuja {
+    max-width: 88%;
+  }
+  /* Centrado que no corta el saludo cuando las sugerencias no caben */
+  .ui-ia-inicio {
+    justify-content: safe center;
+  }
+}
+@media (max-width: 560px) {
+  .ui-ia {
+    height: calc(100dvh - 68px);
+    border-radius: 20px;
+  }
+  .ui-ia-barra__titulo {
+    display: none;
+  }
+  .ui-ia-agente {
+    flex: 1 1 auto;
+  }
+}
+@keyframes ui-entra-panel-ia {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app > .nc-sidebar,
+  .ui-menu-movil__fondo {
+    transition: none !important;
+  }
+  .ui-ia:not(.is-sin-panel) .ui-ia-panel {
+    animation: none;
+  }
+}
+
+/* Al elegir una alerta el detalle se lleva a la vista sin quedar bajo el encabezado fijo */
+.ui-detalle-alerta {
+  scroll-margin-top: 72px;
+}
