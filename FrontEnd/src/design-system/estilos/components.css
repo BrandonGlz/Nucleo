@@ -386,3 +386,5 @@ input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
 :root:not([data-theme="dark"]) .nc-iconcircle.nc-tone--neutral { background: var(--accent-soft); color: var(--success); }
 :root:not([data-theme="dark"]) .nc-chip.is-selected { background: var(--success); border-color: var(--success); color: var(--accent-contrast); }
 :root:not([data-theme="dark"]) .nc-tabs__indicador { background: var(--success); }
+:root:not([data-theme="dark"]) .nc-empty__icon { background: var(--accent-soft); color: var(--success); }
+:root:not([data-theme="dark"]) .nc-trend stop:first-child { stop-opacity: 0.5 !important; }
