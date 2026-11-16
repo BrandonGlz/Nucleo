@@ -1,0 +1,40 @@
+# Vigía externo: cada 15 minutos revisa desde fuera del servidor que la web, la API, la descarga
+# de la app y el subdominio de los ESP32 respondan. Si algo no responde, el flujo falla y GitHub
+# manda un correo (Settings → Notifications → Actions: avisos de flujos fallidos).
+# Los flujos programados solo corren desde la rama por defecto (main); GitHub los pausa si el
+# repositorio pasa 60 días sin actividad.
+name: Vigía
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Revisar las direcciones públicas
+        run: |
+          fallas=0
+          revisar() {  # nombre url [texto esperado]
+            if salida="$(curl -fsSL --retry 3 --retry-delay 20 --retry-all-errors --max-time 20 \
+                -A "Nucleo-Vigia/1.0" "$2")"; then
+              if [[ -n "${3:-}" && "$salida" != *"$3"* ]]; then
+                echo "::error::$1 respondió sin «$3»"; fallas=$((fallas + 1))
+              else
+                echo "OK  $1"
+              fi
+            else
+              echo "::error::$1 no responde ($2)"; fallas=$((fallas + 1))
+            fi
+          }
+          revisar "Web" "https://bynucleo.com/"
+          revisar "API" "https://bynucleo.com/api/v1/health/" '"status":"ok"'
+          revisar "Descarga de la app" "https://app.bynucleo.com/"
+          revisar "Subdominio de los ESP32" "https://dispositivos.bynucleo.com/api/v1/health/" '"status":"ok"'
+          exit "$fallas"

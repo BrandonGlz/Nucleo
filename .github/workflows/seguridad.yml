@@ -1,0 +1,65 @@
+# Revisión de seguridad del código: CodeQL (Python y JavaScript), reglas de seguridad de ruff
+# (bandit) y vulnerabilidades conocidas en las dependencias npm. Corre en cada push y PR a dev
+# y main, y cada lunes (por las vulnerabilidades nuevas en dependencias que no cambiaron).
+name: Seguridad
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+  schedule:
+    - cron: "17 13 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.lenguaje }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        lenguaje: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.lenguaje }}
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.lenguaje }}
+
+  ruff:
+    name: Backend · ruff (incluye reglas de seguridad)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "$(grep '^ruff==' BackEnd/requirements-dev.txt)"
+      - run: ruff check .
+        working-directory: BackEnd
+
+  npm-audit:
+    name: npm audit (${{ matrix.carpeta }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        carpeta: [FrontEnd, Mobile]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Solo dependencias de producción y vulnerabilidades altas o críticas.
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: ${{ matrix.carpeta }}
