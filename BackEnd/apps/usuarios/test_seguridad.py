@@ -2,13 +2,12 @@ import re
 
 from django.core import mail
 from django.db import connection
-from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.auditoria.models import RegistroAuditoria
 from apps.usuarios.models import SegundoFactor, Usuario
 from common import roles, totp
-from common.testing import CLAVE, Escenario, PruebaBase, cliente_de
+from common.testing import CLAVE, Escenario, PruebaBase, ajustar_politica, cliente_de
 
 
 def activar_2fa(usuario):
@@ -90,8 +89,8 @@ class SegundoFactorTests(PruebaBase):
         self.assertEqual(r.status_code, 204)
         self.assertFalse(SegundoFactor.objects.exists())
 
-    @override_settings(NUCLEO_2FA_OBLIGATORIO=[roles.ADMIN])
     def test_rol_obligatorio_sin_configurar_solo_usa_rutas_de_auth(self):
+        ajustar_politica(roles_2fa_obligatorio=[roles.ADMIN])
         r = self.login(self.e.admin)
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.data["configurar_segundo_factor"])

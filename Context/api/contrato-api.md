@@ -32,8 +32,8 @@ Authorization: Token <token>
 
 ```text
 POST /auth/login/              {"correo", "password", "codigo"?, "token_expo"?, "plataforma"?}
-                               → {"token", "usuario", "configurar_segundo_factor"}; máximo 10 por
-                               minuto por IP. Con la verificación en dos pasos activa y sin
+                               → {"token", "usuario", "configurar_segundo_factor"}; intentos por
+                               minuto por IP según la política de seguridad (10 al instalar). Con la verificación en dos pasos activa y sin
                                "codigo": 401 {"detail", "requiere_codigo": true}. La app móvil
                                envía token_expo y plataforma (ANDROID o IOS) juntos para
                                registrar su teléfono
@@ -46,21 +46,24 @@ POST /auth/2fa/configurar/     → {"secreto", "uri", "qr_svg"} (aún sin activa
 POST /auth/2fa/activar/        {"codigo"} → {"codigos_recuperacion": [10]} (solo se ven aquí)
 POST /auth/2fa/desactivar/     {"password", "codigo"}; 403 si el rol la tiene obligatoria
 POST /auth/2fa/codigos/        {"codigo"} → códigos de recuperación nuevos
-POST /auth/logout/             {"token_expo"?}; invalida el token actual y elimina ese teléfono
+POST /auth/logout/             {"token_expo"?}; cierra solo la sesión actual y elimina ese teléfono
 POST /auth/telefono/           {"token_expo", "plataforma"}; activa los push en ese teléfono sin
                                volver a entrar (interruptor del perfil de la app)
 DELETE /auth/telefono/         {"token_expo"}; los desactiva
 GET  /auth/yo/                 Usuario autenticado
-POST /auth/cambiar-password/   {"password_actual", "password_nueva"}; invalida el token
+POST /auth/cambiar-password/   {"password_actual", "password_nueva"}; cierra todas sus sesiones
 ```
 
-El token caduca tras 7 días sin uso (`NUCLEO_TOKEN_DIAS_SIN_USO`); cada petición lo
-renueva (como máximo una vez por minuto) y deja de valer al cerrar sesión o cambiar la
-contraseña. Con un token caducado la API responde 401 y basta iniciar sesión de nuevo.
-Web y móvil usan el mismo mecanismo. CORS aplica al navegador; una app nativa debe respetar
+Cada inicio de sesión abre una **sesión** propia (tabla `sesion`: navegador o teléfono, IP,
+creación y último uso; solo se guarda el SHA-256 de la clave). La web la recibe en una cookie
+HttpOnly y la app en `token`. Caduca tras los días sin uso de la política de seguridad (7 al
+instalar); cada petición la renueva (como máximo una vez por minuto). Cerrar sesión cierra solo
+esa; cambiar o restablecer la contraseña y la baja de la cuenta cierran todas. Desde la consola
+de administración se ven y se cierran una por una. Con una sesión caducada o cerrada la API
+responde 401 y basta iniciar sesión de nuevo. CORS aplica al navegador; una app nativa debe respetar
 autenticación y `ALLOWED_HOSTS`.
 
-Si el rol está en `NUCLEO_2FA_OBLIGATORIO` y la cuenta aún no configura la verificación en dos
+Si el rol está entre los que la política de seguridad obliga a usar la verificación en dos pasos y la cuenta aún no configura la verificación en dos
 pasos, todo lo que no sea `/auth/` responde 403 con `"segundo_factor_pendiente": true`; la web
 lleva a Mi perfil y la app pide configurarla en la web.
 
@@ -229,6 +232,46 @@ Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
 
 Las fechas se envían y se reciben en ISO 8601 con zona horaria, por ejemplo
 `2026-10-23T15:20:00-07:00`.
+
+## Consola de administración (`/consola/`)
+
+Solo el administrador de plataforma (superusuario), desde https://admin.bynucleo.com; cualquier
+otro rol recibe 403. Ve y gestiona todas las organizaciones.
+
+```text
+GET   /consola/resumen/                 Cifras (sesiones activas, usuarios por estado y sin la 2FA
+                                        obligatoria, accesos de hoy y fallidos 24 h/7 días, equipos
+                                        por estado), serie de accesos de 14 días y alertas de
+                                        seguridad: ≥5 fallos desde una IP o ≥3 en una cuenta en
+                                        24 h, acceso desde una IP no usada en los 30 días previos,
+                                        cuentas sin la 2FA obligatoria y cuentas bloqueadas
+GET   /consola/organizaciones/          [{num, nombre, areas: [{num, nombre}]}]
+GET   /consola/usuarios/                ?organizacion&rol&estado&q (paginada); incluye
+                                        segundo_factor y sesiones abiertas
+POST  /consola/usuarios/                {organizacion, area, rol, nombre, primer_apellido,
+                                        segundo_apellido?, correo, password}
+PATCH /consola/usuarios/{num}/          rol, área, estado (ACT desbloquea, INA da de baja y cierra
+                                        sus sesiones), nombre y correo. No edita al propio
+                                        superusuario ni a otro administrador de plataforma
+POST  /consola/usuarios/{num}/restablecer/      Le envía el enlace para crear contraseña nueva
+POST  /consola/usuarios/{num}/quitar-2fa/       Quita la verificación en dos pasos y cierra sus sesiones
+POST  /consola/usuarios/{num}/cerrar-sesiones/  → {cerradas}
+GET   /consola/sesiones/                ?organizacion&usuario&cliente=web|app&q (paginada, solo
+                                        vigentes): {id, cliente, dispositivo, ip, creada,
+                                        ultimo_uso, actual, usuario}
+DELETE /consola/sesiones/{id}/          Cierra esa sesión (400 si es la actual)
+GET   /consola/dispositivos/            ?organizacion&estado&q (paginada): estado, en_linea,
+                                        batería, última conexión y arranque, recibe_ota
+PATCH /consola/dispositivos/{num}/      {estado: MANT|BAJA|ACTIVO, recibe_ota}; ACTIVO lo deja sin
+                                        conexión hasta su siguiente lectura
+GET   /consola/firmware/                {version, publicada, ota_todos, dispositivos_ota}
+GET/PATCH /consola/politicas/           {dias_sesion 1–90, intentos_login_por_minuto 3–60,
+                                        roles_2fa_obligatorio, dias_auditoria 30–3650, ota_todos}
+```
+
+La bitácora (`/auditoria/`, con `?organizacion=`) y las integraciones (`/integraciones/…`, con
+`?organizacion=` obligatorio para listar y crear) también son solo del administrador de
+plataforma y se gestionan desde esta consola. Todo lo que se hace en ella queda en la bitácora.
 
 ## Webhooks
 

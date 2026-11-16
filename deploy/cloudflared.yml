@@ -1,6 +1,7 @@
 # Cloudflare Tunnel de Núcleo -> Caddy 127.0.0.1:8081:
 #   bynucleo.com (y www): web, API y admin · app.bynucleo.com: descarga del APK
 #   nicoai.bynucleo.com: consola de Nico AI (la misma web; main.jsx la elige por el host)
+#   admin.bynucleo.com: consola de administración (seguridad, accesos y equipos; igual que nicoai)
 #   dispositivos.bynucleo.com: los ESP32 (/mqtt va directo al WebSocket de Mosquitto).
 # deploy/instalar.sh lo copia a /etc/cloudflared/config.yml si CLOUDFLARE_TUNEL está en el .env raíz;
 # __TUNEL__ es el ID del túnel y sus credenciales van en /etc/cloudflared/<ID>.json (fuera de git).
@@ -17,6 +18,8 @@ ingress:
   - hostname: app.bynucleo.com
     service: http://127.0.0.1:8081
   - hostname: nicoai.bynucleo.com
+    service: http://127.0.0.1:8081
+  - hostname: admin.bynucleo.com
     service: http://127.0.0.1:8081
   - hostname: dispositivos.bynucleo.com
     path: ^/mqtt$

@@ -50,6 +50,8 @@ class Dispositivo(models.Model):
     nivel_bateria = models.SmallIntegerField(null=True, blank=True)
     ultima_conexion = models.DateTimeField(null=True, blank=True)
     ultimo_arranque = models.DateTimeField(null=True, blank=True)
+    # La consola de administración elige qué equipos reciben la actualización remota (OTA).
+    recibe_ota = models.BooleanField(db_default=False, default=False)
     fecha_alta = models.DateTimeField(db_default=Now(), editable=False)
 
     class Meta:

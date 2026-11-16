@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { Alert, Badge, Button, Card, Input, Skeleton, Toggle } from '../../design-system/componentes/index.js'
-import { EstadoError } from '../../components/EstadoError'
+import { Alert, Badge, Button, Card, EmptyState, Input, Skeleton, Toggle } from '../../design-system/componentes/index.js'
 import { MenuAcciones } from '../../components/MenuAcciones'
 import { Modal } from '../../components/Modal'
 import { Pantalla } from '../../components/Pantalla'
@@ -8,18 +7,21 @@ import { useDatos } from '../../hooks/useDatos'
 import * as seguridad from '../../services/seguridad'
 import { pagina } from '../../utils/convertir'
 import { haceCuanto } from '../../utils/formato'
+import { ErrorCarga, FiltroOrganizacion } from '../comunes'
+import { mensajeError, useOrganizaciones } from '../utilidades'
 
 const EVENTOS = [
   ['alerta.nueva', 'Alerta nueva'],
   ['alerta.atendida', 'Alerta atendida'],
   ['alerta.descartada', 'Alerta descartada'],
 ]
-const API = `${window.location.origin}/api/v1`
-const error = (err, porDefecto) =>
-  err?.datos?.url?.[0] || err?.datos?.nombre?.[0] || err?.datos?.eventos?.[0] || err?.datos?.detail || porDefecto
+// Los sistemas externos usan la API del dominio principal (sin «admin.»).
+const API = `${window.location.origin.replace('//admin.', '//')}/api/v1`
+const error = (err, porDefecto) => mensajeError(err, porDefecto)
 
-async function cargar() {
-  const [t, w] = await Promise.all([seguridad.tokens(), seguridad.webhooks()])
+async function cargar(organizacion) {
+  if (!organizacion) return null
+  const [t, w] = await Promise.all([seguridad.tokens(organizacion), seguridad.webhooks(organizacion)])
   return { tokens: pagina(t), webhooks: pagina(w) }
 }
 
@@ -53,14 +55,14 @@ function Secreto({ titulo, sub, valor, cerrar, children }) {
   )
 }
 
-function NuevoToken({ cerrar, creado }) {
+function NuevoToken({ organizacion, cerrar, creado }) {
   const [nombre, setNombre] = useState('')
   const [dias, setDias] = useState('')
   const [aviso, setAviso] = useState()
   const crear = async () => {
     try {
       const fecha_expiracion = dias ? new Date(Date.now() + Number(dias) * 24 * 3600 * 1000).toISOString() : null
-      creado(await seguridad.crearToken({ nombre, fecha_expiracion }))
+      creado(await seguridad.crearToken({ nombre, fecha_expiracion }, organizacion))
     } catch (err) {
       setAviso(error(err, 'No se pudo crear el token.'))
     }
@@ -68,7 +70,7 @@ function NuevoToken({ cerrar, creado }) {
   return (
     <Modal
       titulo="Nuevo token de API"
-      sub="De solo lectura: consulta dispositivos, sensores, lecturas y alertas de tu organización."
+      sub="De solo lectura: consulta dispositivos, sensores, lecturas y alertas de esta organización."
       cerrar={cerrar}
       acciones={
         <Button icon="key-round" disabled={!nombre.trim()} onClick={crear}>
@@ -92,14 +94,14 @@ function NuevoToken({ cerrar, creado }) {
   )
 }
 
-function NuevoWebhook({ cerrar, creado }) {
+function NuevoWebhook({ organizacion, cerrar, creado }) {
   const [datos, setDatos] = useState({ nombre: '', url: 'https://', eventos: ['alerta.nueva'] })
   const [aviso, setAviso] = useState()
   const alternar = (e) =>
     setDatos((d) => ({ ...d, eventos: d.eventos.includes(e) ? d.eventos.filter((x) => x !== e) : [...d.eventos, e] }))
   const crear = async () => {
     try {
-      creado(await seguridad.crearWebhook(datos))
+      creado(await seguridad.crearWebhook(datos, organizacion))
     } catch (err) {
       setAviso(error(err, 'No se pudo crear el webhook.'))
     }
@@ -126,9 +128,12 @@ function NuevoWebhook({ cerrar, creado }) {
   )
 }
 
-// Integraciones de la organización (solo ADMIN): tokens de API de solo lectura y webhooks de alertas.
-export function IntegracionesPage() {
-  const { estado, datos, reintentar, actualizar } = useDatos(cargar, [])
+// Integraciones de una organización (se elige arriba; todas las peticiones llevan ?organizacion=):
+// tokens de API de solo lectura y webhooks de alertas.
+export default function IntegracionesAdmin() {
+  const organizaciones = useOrganizaciones()
+  const [organizacion, setOrganizacion] = useState('')
+  const { estado, datos, error: errorCarga, reintentar, actualizar } = useDatos(() => cargar(organizacion), [organizacion])
   const [modal, setModal] = useState(null)
   const [secreto, setSecreto] = useState(null)
   const [aviso, setAviso] = useState(null)
@@ -140,33 +145,46 @@ export function IntegracionesPage() {
   const tokens = datos?.tokens ?? []
   const webhooks = datos?.webhooks ?? []
   const revocar = async (t) => {
-    await seguridad.revocarToken(t.num)
-    actualizar((d) => ({ ...d, tokens: d.tokens.map((x) => (x.num === t.num ? { ...x, activo: false } : x)) }))
-    avisar(`Token «${t.nombre}» revocado.`)
+    try {
+      await seguridad.revocarToken(t.num, organizacion)
+      actualizar((d) => ({ ...d, tokens: d.tokens.map((x) => (x.num === t.num ? { ...x, activo: false } : x)) }))
+      avisar(`Token «${t.nombre}» revocado.`)
+    } catch (e) {
+      avisar(mensajeError(e, 'No se pudo revocar el token.'), 'danger')
+    }
   }
   const cambiarWebhook = async (w, cambios, texto) => {
-    const nuevo = await seguridad.actualizarWebhook(w.num, cambios)
-    actualizar((d) => ({ ...d, webhooks: d.webhooks.map((x) => (x.num === w.num ? nuevo : x)) }))
-    avisar(texto)
+    try {
+      const nuevo = await seguridad.actualizarWebhook(w.num, cambios, organizacion)
+      actualizar((d) => ({ ...d, webhooks: d.webhooks.map((x) => (x.num === w.num ? nuevo : x)) }))
+      avisar(texto)
+    } catch (e) {
+      avisar(mensajeError(e, 'No se pudo cambiar el webhook.'), 'danger')
+    }
   }
   const probar = async (w) => {
     try {
-      const r = await seguridad.probarWebhook(w.num)
+      const r = await seguridad.probarWebhook(w.num, organizacion)
       avisar(r.exito ? `Prueba entregada (${r.estado}).` : `La prueba falló: ${r.estado}.`, r.exito ? 'success' : 'danger')
       reintentar()
-    } catch {
-      avisar('No se pudo probar el webhook.', 'danger')
+    } catch (e) {
+      avisar(mensajeError(e, 'No se pudo probar el webhook.'), 'danger')
     }
   }
   const borrar = async (w) => {
-    await seguridad.borrarWebhook(w.num)
-    actualizar((d) => ({ ...d, webhooks: d.webhooks.filter((x) => x.num !== w.num) }))
-    avisar(`Webhook «${w.nombre}» eliminado.`)
+    try {
+      await seguridad.borrarWebhook(w.num, organizacion)
+      actualizar((d) => ({ ...d, webhooks: d.webhooks.filter((x) => x.num !== w.num) }))
+      avisar(`Webhook «${w.nombre}» eliminado.`)
+    } catch (e) {
+      avisar(mensajeError(e, 'No se pudo eliminar el webhook.'), 'danger')
+    }
   }
+  const nombreOrg = organizaciones.find((o) => String(o.num) === organizacion)?.nombre
 
   return (
     <Pantalla
-      eyebrow="Conecta Núcleo con otros sistemas de tu organización"
+      eyebrow={nombreOrg ? `Conexiones de ${nombreOrg} con otros sistemas` : 'Conecta Núcleo con otros sistemas'}
       titulo="Integraciones"
       acciones={
         aviso && (
@@ -184,9 +202,29 @@ export function IntegracionesPage() {
         ],
       }}
     >
-      {estado === 'error' && <EstadoError reintentar={reintentar} />}
-      {estado === 'cargando' && <Skeleton variant="card" />}
-      {estado === 'listo' && (
+      <div className="ui-filtros" style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+        <FiltroOrganizacion
+          organizaciones={organizaciones}
+          value={organizacion}
+          onChange={setOrganizacion}
+          todas={false}
+          placeholder="Elige una organización"
+        />
+      </div>
+      {!organizacion && (
+        <Card className="nc-grow">
+          <div className="ui-centro">
+            <EmptyState
+              icon="building-2"
+              title="Elige una organización"
+              message="Los tokens de API y los webhooks son de cada organización: elige cuál quieres revisar."
+            />
+          </div>
+        </Card>
+      )}
+      {organizacion && estado === 'error' && <ErrorCarga error={errorCarga} reintentar={reintentar} />}
+      {organizacion && estado === 'cargando' && <Skeleton variant="card" />}
+      {organizacion && estado === 'listo' && datos && (
         <div className="ui-fila" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)' }}>
           <Card className="nc-grow">
             <div className="ui-panel">
@@ -267,6 +305,7 @@ export function IntegracionesPage() {
       )}
       {modal === 'token' && (
         <NuevoToken
+          organizacion={organizacion}
           cerrar={() => setModal(null)}
           creado={({ clave, ...t }) => {
             actualizar((d) => ({ ...d, tokens: [t, ...d.tokens] }))
@@ -277,6 +316,7 @@ export function IntegracionesPage() {
       )}
       {modal === 'webhook' && (
         <NuevoWebhook
+          organizacion={organizacion}
           cerrar={() => setModal(null)}
           creado={({ secreto: s, ...w }) => {
             actualizar((d) => ({ ...d, webhooks: [w, ...d.webhooks] }))

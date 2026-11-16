@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { Badge, Card, Select, Skeleton } from '../../design-system/componentes/index.js'
+import { Badge, Card, Skeleton } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
-import { EstadoError } from '../../components/EstadoError'
+import { Select } from '../../components/Desplegable'
 import { Pantalla } from '../../components/Pantalla'
 import { useDatos } from '../../hooks/useDatos'
 import * as seguridad from '../../services/seguridad'
 import { pagina } from '../../utils/convertir'
 import { esHoy, fechaCorta, hora } from '../../utils/formato'
+import { ErrorCarga, FiltroOrganizacion, Recorte } from '../comunes'
+import { useOrganizaciones } from '../utilidades'
 
 const ACCIONES = [
   { value: '', label: 'Todas las acciones' },
@@ -62,18 +64,21 @@ function Cambios({ cambios }) {
   )
 }
 
-// Bitácora de auditoría: quién hizo qué, cuándo y desde qué IP (ADMIN de su organización, ADMINPLAT toda).
-export function AuditoriaPage() {
+// Bitácora de auditoría: quién hizo qué, cuándo y desde qué IP, de todas las organizaciones o de una.
+export default function AuditoriaAdmin() {
+  const organizaciones = useOrganizaciones()
+  const [organizacion, setOrganizacion] = useState('')
   const [accion, setAccion] = useState('')
   const [dias, setDias] = useState('7')
   const [busqueda, setBusqueda] = useState('')
-  const { estado, datos, reintentar } = useDatos(
+  const { estado, datos, error, reintentar } = useDatos(
     () =>
       seguridad.auditoria({
+        organizacion,
         accion,
         desde: new Date(Date.now() - Number(dias) * 24 * 3600 * 1000).toISOString(),
       }),
-    [accion, dias],
+    [organizacion, accion, dias],
   )
   const registros = pagina(datos ?? [])
   const texto = busqueda.trim().toLowerCase()
@@ -104,12 +109,13 @@ export function AuditoriaPage() {
       }}
     >
       <div className="ui-filtros" style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+        <FiltroOrganizacion organizaciones={organizaciones} value={organizacion} onChange={setOrganizacion} />
         <Select label="Acción" value={accion} options={ACCIONES} onChange={(e) => setAccion(e.target.value)} />
         <Select label="Periodo" value={dias} options={DIAS} onChange={(e) => setDias(e.target.value)} />
         <div style={{ flex: 1 }} />
         <Buscador valor={busqueda} cambiar={setBusqueda} placeholder="Buscar por persona, IP o descripción…" />
       </div>
-      {estado === 'error' && <EstadoError reintentar={reintentar} />}
+      {estado === 'error' && <ErrorCarga error={error} reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
         <Card className="nc-grow">
@@ -119,6 +125,7 @@ export function AuditoriaPage() {
                 <tr>
                   <th>Fecha</th>
                   <th>Persona</th>
+                  <th>Organización</th>
                   <th>Acción</th>
                   <th>Sobre</th>
                   <th>Detalle</th>
@@ -139,6 +146,7 @@ export function AuditoriaPage() {
                         </div>
                       </div>
                     </td>
+                    <td>{organizaciones.find((o) => o.num === r.organizacion)?.nombre ?? '—'}</td>
                     <td>
                       <Badge tone={TONO[r.accion] ?? 'neutral'}>{r.accion_nombre}</Badge>
                     </td>
@@ -152,6 +160,7 @@ export function AuditoriaPage() {
                 ))}
               </tbody>
             </table>
+            <Recorte datos={datos} mostrados={registros.length} />
             {lista.length === 0 && (
               <p className="ui-muted" style={{ textAlign: 'center', padding: 32, margin: 0 }}>
                 {texto ? `Nada coincide con «${busqueda}».` : 'Sin registros en este periodo.'}

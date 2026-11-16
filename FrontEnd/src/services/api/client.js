@@ -2,17 +2,20 @@ const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 
 const baseConfigurada = (configuredBaseUrl || 'http://localhost:8000/api/v1').replace(/\/+$/, '')
 
-// La consola de Nico AI (nicoai.<dominio>) es la misma web compilada con la API de <dominio>: ahí
-// se usa la API de su propio host (Caddy la sirve igual), así el navegador no la bloquea por CORS.
+// Las consolas de Nico AI (nicoai.<dominio>) y de administración (admin.<dominio>) son la misma
+// web compilada con la API de <dominio>: ahí se usa la API de su propio host (Caddy la sirve
+// igual), así el navegador no la bloquea por CORS.
+const CONSOLAS = ['nicoai.', 'admin.']
 function baseDelHost(base) {
   if (typeof window === 'undefined') return base
   const { hostname, origin, port } = window.location
-  if (!hostname.startsWith('nicoai.')) return base
+  const prefijo = CONSOLAS.find((p) => hostname.startsWith(p))
+  if (!prefijo) return base
   try {
     const url = new URL(base)
     // Mismo dominio y puerto (producción): la API de su propio host. En desarrollo la API va
     // en otro puerto y se deja como está.
-    const mismo = url.hostname === hostname.slice('nicoai.'.length) && url.port === port
+    const mismo = url.hostname === hostname.slice(prefijo.length) && url.port === port
     return mismo ? origin + url.pathname.replace(/\/+$/, '') : base
   } catch {
     return base

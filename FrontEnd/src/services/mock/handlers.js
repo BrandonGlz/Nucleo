@@ -1,6 +1,7 @@
 // Imitan cada endpoint con un retraso de 300–600 ms y devuelven la forma del contrato.
 // Los errores llevan `status` como ApiError de services/api/client.js.
 import { ApiError } from '../api/client'
+import { PLATAFORMA } from './consola'
 import * as db from './datos'
 
 const esperar = () => new Promise((r) => setTimeout(r, 300 + Math.random() * 300))
@@ -40,6 +41,8 @@ export async function login({ correo }) {
   if (buscado === 'error@nucleo.mx') {
     throw new ApiError('La API respondió con el estado 400.', 400)
   }
+  // plataforma@nucleo.local (o VITE_MOCK_ROL=ADMINPLAT) entra como superusuario: consolas admin. y nicoai.
+  if (buscado === PLATAFORMA.correo || (!buscado && rolMock() === 'ADMINPLAT')) return { token: 'mock', usuario: copia(PLATAFORMA) }
   const usuario =
     db.usuarios.find((u) => u.correo === buscado) ??
     db.usuarios.find((u) => u.num === (USUARIO_POR_ROL[rolMock()] ?? 2))

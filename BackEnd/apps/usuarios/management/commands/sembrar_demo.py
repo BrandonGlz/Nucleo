@@ -6,7 +6,6 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connections, transaction
 from django.utils import timezone
-from rest_framework.authtoken.models import Token
 
 from apps.alertas.models import Alerta, Notificacion
 from apps.dispositivos.models import Dispositivo, Sensor
@@ -16,7 +15,7 @@ from apps.organizaciones.models import Area, Organizacion
 from apps.reportes import ia, servicios
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.umbrales.models import Umbral
-from apps.usuarios.models import TelefonoPush, Usuario
+from apps.usuarios.models import Sesion, TelefonoPush, Usuario
 from common import roles
 
 DOMINIO_ORG = "grupoaltamira.mx"
@@ -155,7 +154,7 @@ class Command(BaseCommand):
             Umbral.objects.all().delete()
             Sensor.objects.all().delete()
             Dispositivo.objects.all().delete()
-            Token.objects.all().delete()
+            Sesion.objects.all().delete()
             TelefonoPush.objects.all().delete()
             Usuario.objects.all().delete()
             Area.objects.all().delete()

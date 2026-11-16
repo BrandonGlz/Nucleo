@@ -66,17 +66,21 @@ class BitacoraTests(PruebaBase):
         )
         self.assertEqual(RegistroAuditoria.objects.get(accion=Accion.LOGIN).ip, "203.0.113.7")
 
-    def test_cada_administrador_ve_solo_su_organizacion(self):
+    def test_solo_el_administrador_de_plataforma_la_ve_y_filtra_por_organizacion(self):
         cliente_de(self.e.admin).patch(
             f"/api/v1/umbrales/{self.e.umbral_temp.pk}/", {"advertencia_max": 26}, format="json"
         )
-        r = cliente_de(self.otra.admin).get("/api/v1/auditoria/")
-        self.assertEqual(r.status_code, 200)
-        self.assertFalse(any(x["recurso"] == "umbral" for x in r.data["results"]))
-        r = cliente_de(self.e.admin).get("/api/v1/auditoria/?recurso=umbral")
+        # Se mudó a la consola de administración: el administrador de la empresa ya no la ve.
+        self.assertEqual(cliente_de(self.e.admin).get("/api/v1/auditoria/").status_code, 403)
+        plataforma = cliente_de(self.e.plataforma)
+        r = plataforma.get(
+            f"/api/v1/auditoria/?recurso=umbral&organizacion={self.e.organizacion.pk}"
+        )
         self.assertEqual(r.data["count"], 1)
-        r = cliente_de(self.e.plataforma).get("/api/v1/auditoria/?recurso=umbral")
-        self.assertEqual(r.data["count"], 1)
+        r = plataforma.get(
+            f"/api/v1/auditoria/?recurso=umbral&organizacion={self.otra.organizacion.pk}"
+        )
+        self.assertEqual(r.data["count"], 0)
 
     def test_solo_administradores(self):
         self.assertEqual(cliente_de(self.e.supervisor).get("/api/v1/auditoria/").status_code, 403)

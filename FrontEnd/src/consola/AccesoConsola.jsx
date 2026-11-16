@@ -4,7 +4,12 @@ import { Button, Input, Logo, LogoMark } from '../design-system/componentes/inde
 import { useSesion } from '../context/SesionContext'
 
 // Acceso a la consola: el mismo diseño que el inicio de sesión de la web, solo para el superusuario.
-export function AccesoConsola() {
+// Lo comparten la consola de Nico AI y la de administración (cada una con su nombre y lema).
+export function AccesoConsola({
+  nombre = 'Consola de Nico AI',
+  lema = 'Enseña, ajusta y cuida al agente de Núcleo.',
+  soloSuper = 'Esta consola es solo para el superusuario de Nico AI.',
+}) {
   const { login, logout } = useSesion()
   const navegar = useNavigate()
   const location = useLocation()
@@ -25,7 +30,7 @@ export function AccesoConsola() {
       const u = await login(correo, password)
       if (u?.rol !== 'ADMINPLAT') {
         await logout()
-        setError('Esta consola es solo para el superusuario de Nico AI.')
+        setError(soloSuper)
         setEnviando(false)
         return
       }
@@ -49,9 +54,9 @@ export function AccesoConsola() {
         <Logo size={48} inverse />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <span className="ui-eyebrow" style={{ color: '#9DA39E' }}>
-            Consola de Nico AI
+            {nombre}
           </span>
-          <h2>Enseña, ajusta y cuida al agente de Núcleo.</h2>
+          <h2>{lema}</h2>
         </div>
       </div>
       <div className="acceso__panel">
@@ -60,7 +65,7 @@ export function AccesoConsola() {
             <Logo size={40} />
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <h1>Consola de Nico AI</h1>
+            <h1>{nombre}</h1>
             <p style={{ margin: 0, fontSize: 16, lineHeight: '26px', color: 'var(--text-secondary)' }}>
               Entra con la cuenta de superusuario.
             </p>
@@ -88,7 +93,7 @@ export function AccesoConsola() {
             {enviando ? 'Entrando…' : 'Entrar a la consola'}
           </Button>
         </form>
-        <span className="acceso__pie">Núcleo · Consola de Nico AI</span>
+        <span className="acceso__pie">Núcleo · {nombre}</span>
       </div>
     </div>
   )

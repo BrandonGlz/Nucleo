@@ -3,10 +3,11 @@ from datetime import timedelta
 from asgiref.sync import sync_to_async
 from channels.testing import WebsocketCommunicator
 from django.utils import timezone
-from rest_framework.authtoken.models import Token
 
 from apps.mediciones import services
+from apps.usuarios.models import Sesion
 from common import roles
+from common.autenticacion import crear_sesion, hash_clave
 from common.testing import Escenario, PruebaTransaccional, cliente_de
 
 
@@ -27,8 +28,7 @@ class CanalEnVivoTests(PruebaTransaccional):
         self.abiertos = []
 
     def token_de(self, usuario):
-        cliente_de(usuario)  # crea el token
-        return Token.objects.get(user=usuario).key
+        return crear_sesion(usuario)[1]
 
     async def conectar(self, usuario):
         from config.asgi import application
@@ -82,8 +82,8 @@ class CanalEnVivoTests(PruebaTransaccional):
 
     async def test_un_token_caducado_se_rechaza(self):
         clave = await sync_to_async(self.token_de)(self.e.operador)
-        await sync_to_async(Token.objects.filter(key=clave).update)(
-            created=timezone.now() - timedelta(days=8)
+        await sync_to_async(Sesion.objects.filter(clave_hash=hash_clave(clave)).update)(
+            ultimo_uso=timezone.now() - timedelta(days=8)
         )
         from config.asgi import application
 

@@ -32,9 +32,17 @@ MODELOS = {
     "nico.AjusteSugerencias": None,
     "integraciones.TokenAPI": "organizacion_id",
     "integraciones.Webhook": "organizacion_id",
+    "consola.PoliticaSeguridad": None,
 }
 # Campos que no se registran: cambian solos o no aportan.
-IGNORADOS = {"last_login", "ultimo_uso", "ultimo_envio", "ultimo_estado", "fallos_consecutivos"}
+IGNORADOS = {
+    "last_login",
+    "ultimo_uso",
+    "actualizado",
+    "ultimo_envio",
+    "ultimo_estado",
+    "fallos_consecutivos",
+}
 # Campos cuyo valor nunca se copia a la bitácora.
 SECRETOS = {"password", "clave_hash", "secreto"}
 

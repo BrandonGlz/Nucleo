@@ -92,14 +92,30 @@ FrontEnd/
   panel a quien no tiene el rol.
 
 El menú lateral se agrupa en Monitoreo (Panel, Dispositivos, Histórico, Alertas),
-Análisis (Reportes, Agente IA) y Configuración (Umbrales, Usuarios para ADMIN y SUPER,
-Organización e Integraciones para ADMIN, y Auditoría para ADMIN y el administrador de
-plataforma). Histórico y Alertas tienen **Exportar CSV** con los filtros de la pantalla. `/dispositivos/:num`, `/perfil` y `/notificaciones` no
+Análisis (Reportes, Agente IA) y Configuración (Umbrales, Usuarios para ADMIN y SUPER y
+Organización para ADMIN). Auditoría e Integraciones se mudaron a la consola de administración. Histórico y Alertas tienen **Exportar CSV** con los filtros de la pantalla. `/dispositivos/:num`, `/perfil` y `/notificaciones` no
 aparecen en el menú; las dos últimas se abren desde los menús del encabezado.
 
 Cada pantalla ocupa la altura de la ventana: las tarjetas que llenan el resto llevan
 `nc-grow` y solo las listas y tablas largas hacen scroll dentro de `nc-scroll`, con el
 encabezado de la tabla fijo.
+
+## Consolas por dominio
+
+`main.jsx` elige la aplicación por el host; las dos son de la misma web compilada, se descargan
+aparte (lazy) y solo deja entrar al administrador de plataforma (superusuario):
+
+- `nicoai.<dominio>` → `src/consola/` (consola de Nico AI).
+- `admin.<dominio>` → `src/admin/` (consola de administración): Seguridad (Resumen con alertas
+  de seguridad, Auditoría, Políticas), Accesos (Usuarios y roles, Sesiones abiertas) y
+  Dispositivos (Equipos ESP32, Integraciones). Rutas de la API en `src/api/consola.js`, llamadas
+  en `src/services/admin.js` y `src/services/seguridad.js`.
+
+En esos hosts `services/api/client.js` usa la API de su propio dominio (Caddy la sirve igual),
+así la cookie de sesión es del mismo origen. En desarrollo se abren en
+`http://admin.localhost:5173` con `VITE_API_BASE_URL=http://admin.localhost:8000/api/v1` (la
+cookie no viaja entre `admin.localhost` y `localhost`) y el backend con `admin.localhost` en
+`DJANGO_ALLOWED_HOSTS` y CORS.
 
 ## Datos y servicios
 

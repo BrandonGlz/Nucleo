@@ -20,8 +20,10 @@ class TokenAPITests(PruebaBase):
         self.otra = Escenario("b")
 
     def crear(self):
-        r = cliente_de(self.e.admin).post(
-            "/api/v1/integraciones/tokens/", {"nombre": "ERP"}, format="json"
+        r = cliente_de(self.e.plataforma).post(
+            f"/api/v1/integraciones/tokens/?organizacion={self.e.organizacion.pk}",
+            {"nombre": "ERP"},
+            format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
         return r.data
@@ -36,7 +38,9 @@ class TokenAPITests(PruebaBase):
         self.assertTrue(datos["clave"].startswith("nuc_"))
         token = TokenAPI.objects.get()
         self.assertEqual(token.clave_hash, hashlib.sha256(datos["clave"].encode()).hexdigest())
-        r = cliente_de(self.e.admin).get("/api/v1/integraciones/tokens/")
+        r = cliente_de(self.e.plataforma).get(
+            f"/api/v1/integraciones/tokens/?organizacion={self.e.organizacion.pk}"
+        )
         self.assertNotIn("clave", r.data["results"][0])
 
     def test_consulta_solo_su_organizacion_y_no_escribe(self):
@@ -56,7 +60,9 @@ class TokenAPITests(PruebaBase):
 
     def test_revocado_deja_de_servir(self):
         datos = self.crear()
-        cliente_de(self.e.admin).delete(f"/api/v1/integraciones/tokens/{datos['num']}/")
+        cliente_de(self.e.plataforma).delete(
+            f"/api/v1/integraciones/tokens/{datos['num']}/?organizacion={self.e.organizacion.pk}"
+        )
         r = self.cliente_api(datos["clave"]).get("/api/v1/dispositivos/")
         self.assertEqual(r.status_code, 401)
 
@@ -65,7 +71,7 @@ class TokenAPITests(PruebaBase):
         falsa = datos["clave"][:-3] + "abc"
         self.assertEqual(self.cliente_api(falsa).get("/api/v1/dispositivos/").status_code, 401)
 
-    def test_solo_el_administrador_los_gestiona(self):
+    def test_solo_el_administrador_de_plataforma_los_gestiona(self):
         r = cliente_de(self.e.supervisor).get("/api/v1/integraciones/tokens/")
         self.assertEqual(r.status_code, 403)
 
@@ -82,8 +88,10 @@ class WebhookTests(PruebaBase):
             "eventos": ["alerta.nueva", "alerta.atendida"],
             **extra,
         }
-        return cliente_de(self.e.admin).post(
-            "/api/v1/integraciones/webhooks/", datos, format="json"
+        return cliente_de(self.e.plataforma).post(
+            f"/api/v1/integraciones/webhooks/?organizacion={self.e.organizacion.pk}",
+            datos,
+            format="json",
         )
 
     def test_crea_con_secreto_cifrado_visible_una_vez(self, _dns):
@@ -91,7 +99,9 @@ class WebhookTests(PruebaBase):
         self.assertEqual(r.status_code, 201, r.content)
         self.assertTrue(r.data["secreto"].startswith("whsec_"))
         self.assertEqual(Webhook.objects.get().secreto, r.data["secreto"])
-        r = cliente_de(self.e.admin).get("/api/v1/integraciones/webhooks/")
+        r = cliente_de(self.e.plataforma).get(
+            f"/api/v1/integraciones/webhooks/?organizacion={self.e.organizacion.pk}"
+        )
         self.assertNotIn("secreto", r.data["results"][0])
 
     def test_rechaza_http_y_redes_internas(self, dns):

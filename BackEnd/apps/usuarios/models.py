@@ -237,3 +237,37 @@ class SegundoFactor(models.Model):
 
     def __str__(self):
         return f"2FA usuario {self.usuario_id} ({'activa' if self.activo else 'pendiente'})"
+
+
+class Sesion(models.Model):
+    """Una sesión abierta en un navegador o un teléfono (common/autenticacion.py).
+
+    Cada inicio de sesión crea una; así se puede ver dónde está conectada cada persona y cerrar
+    una sola sin afectar las demás. Solo se guarda el SHA-256 de la clave: quien lea la base no
+    puede usarla para entrar.
+    """
+
+    class Cliente(models.TextChoices):
+        WEB = "web", "Web"
+        APP = "app", "App"
+
+    num = models.BigAutoField(primary_key=True)
+    usuario = models.ForeignKey(
+        Usuario, on_delete=models.CASCADE, db_column="usuario_num", related_name="sesiones"
+    )
+    clave_hash = models.CharField(max_length=64, unique=True)
+    cliente = models.CharField(max_length=3, choices=Cliente.choices, blank=True, default="")
+    agente = models.CharField(max_length=200, blank=True, default="")
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    creada = models.DateTimeField(db_default=Now(), editable=False)
+    ultimo_uso = models.DateTimeField(db_default=Now())
+
+    class Meta:
+        db_table = "sesion"
+        ordering = ["-ultimo_uso"]
+        verbose_name = "sesión"
+        verbose_name_plural = "sesiones"
+        indexes = [models.Index(fields=["usuario"], name="idx_sesion_usuario")]
+
+    def __str__(self):
+        return f"{self.usuario_id} · {self.cliente or '—'} · {self.ultimo_uso:%Y-%m-%d %H:%M}"

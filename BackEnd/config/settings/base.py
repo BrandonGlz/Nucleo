@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.tiempo_real",
     "apps.auditoria",
     "apps.integraciones",
+    "apps.consola",
 ]
 
 ASGI_APPLICATION = "config.asgi.application"

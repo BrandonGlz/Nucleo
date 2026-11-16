@@ -1,4 +1,5 @@
-// Bitácora de auditoría e integraciones (solo ADMIN; la bitácora también ADMINPLAT)
+// Bitácora de auditoría e integraciones: en la consola de administración (ADMINPLAT), siempre con ?organizacion=
+// (obligatorio en integraciones; opcional en la bitácora, sin él trae todas las organizaciones).
 export const AUDITORIA = '/auditoria/' // GET ?accion, recurso, usuario, desde, hasta (paginada)
 export const TOKENS_API = '/integraciones/tokens/' // GET; POST {nombre, fecha_expiracion?} → {..., clave} (solo esa vez)
 export const TOKEN_API = (num) => `/integraciones/tokens/${num}/` // DELETE = revocar

@@ -12,6 +12,7 @@ sirve para entrar por SSH.
 | Admin de Django | https://bynucleo.com/admin/ |
 | Descarga de la app | https://app.bynucleo.com (`bynucleo.com/app/…` redirige aquí) |
 | Consola de Nico AI | https://nicoai.bynucleo.com (solo superusuario) |
+| Consola de administración | https://admin.bynucleo.com (solo superusuario: seguridad, accesos, equipos) |
 | ESP32 (MQTT en WebSocket) | `wss://dispositivos.bynucleo.com/mqtt` |
 
 ## Acceso
@@ -47,12 +48,14 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
   - `app.bynucleo.com` → Caddy, que entrega `deploy/descargas/` (la raíz lleva a `nucleo-<versión>.apk`).
   - `nicoai.bynucleo.com` → Caddy, igual que `bynucleo.com`: es la misma web compilada, que al ver ese
     host abre la consola de Nico AI (solo el superusuario, rol administrador de plataforma).
+  - `admin.bynucleo.com` → Caddy, igual: la misma web abre la consola de administración (seguridad,
+    usuarios, sesiones, equipos ESP32, bitácora, integraciones y política; solo el superusuario).
   - `dispositivos.bynucleo.com/mqtt` → directo al listener WebSocket de Mosquitto
     (`127.0.0.1:51884`). El resto de ese subdominio pasa por Caddy, que solo deja el respaldo
     HTTPS de Nico, la actualización del firmware y la hora (`/api/v1/puente/`, `/api/v1/health/`)
     y lo demás lo manda a la web.
 - Los DNS son CNAME del túnel en Cloudflare: `cloudflared tunnel route dns nucleo <host>` por cada
-  nombre (`bynucleo.com`, `www`, `app`, `nicoai`, `dispositivos`).
+  nombre (`bynucleo.com`, `www`, `app`, `nicoai`, `admin`, `dispositivos`).
 - Caddy sirve la web compilada y pasa `/api`, `/admin` y `/ws` a Daphne (`127.0.0.1:8001`).
 - systemd: `nucleo-daphne` (API y WebSocket), `nucleo-mqtt` (lecturas del broker),
   `nucleo-sin-conexion`, `nucleo-reportes.timer` (cada 15 min), `nucleo-respaldo.timer` (03:45 y
@@ -303,7 +306,7 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 3. Cloudflare Tunnel: `sudo apt install cloudflared` (repositorio `pkg.cloudflare.com`),
    `cloudflared tunnel login` (se autoriza `bynucleo.com` en el navegador), luego
    `cloudflared tunnel create nucleo` y `cloudflared tunnel route dns nucleo <host>` para
-   `bynucleo.com`, `www.bynucleo.com`, `app.bynucleo.com`, `nicoai.bynucleo.com` y `dispositivos.bynucleo.com`. Copia `~/.cloudflared/<ID>.json` a `/etc/cloudflared/` (permiso 600)
+   `bynucleo.com`, `www.bynucleo.com`, `app.bynucleo.com`, `nicoai.bynucleo.com`, `admin.bynucleo.com` y `dispositivos.bynucleo.com`. Copia `~/.cloudflared/<ID>.json` a `/etc/cloudflared/` (permiso 600)
    y pon `CLOUDFLARE_TUNEL=<ID>` en el `.env` raíz. Si `tunnel create` falla con 524, activa
    Zero Trust (plan Free) en la cuenta del dominio. Para mudar de servidor basta con copiar
    `/etc/cloudflared/` y `~/.cloudflared/`.

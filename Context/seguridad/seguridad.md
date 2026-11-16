@@ -39,13 +39,25 @@ documento de su componente, enlazado en cada sección.
 ## API y usuarios
 
 - La API exige token salvo en el inicio de sesión, la salud y las rutas del ESP32 puente
-  (`/api/v1/puente/`), que piden la clave `X-Puente-Clave` comparada en tiempo constante. El token caduca a los 7 días sin uso
-  (`NUCLEO_TOKEN_DIAS_SIN_USO`) y el inicio de sesión admite como máximo 10 intentos por minuto
-  por IP.
+  (`/api/v1/puente/`), que piden la clave `X-Puente-Clave` comparada en tiempo constante.
+- **Sesiones por dispositivo**: cada inicio de sesión es una sesión aparte (navegador o teléfono,
+  IP, último uso) y solo se guarda el SHA-256 de su clave. Caducan por inactividad y se pueden
+  cerrar una por una desde la consola de administración.
+- **Política de seguridad** (tabla `politica_seguridad`, editable en la consola de
+  administración; al instalar toma los valores del `.env`): días sin uso para que caduque una
+  sesión (7), intentos de inicio de sesión por minuto por IP (10), roles con verificación en dos
+  pasos obligatoria, días que se guarda la bitácora (365) y si la actualización del firmware
+  llega a todos los equipos. Los cambios aplican en menos de 15 segundos sin reiniciar.
+- **Consola de administración** (https://admin.bynucleo.com, solo el administrador de
+  plataforma): resumen y alertas de seguridad (intentos fallidos por IP o cuenta, accesos desde
+  IP nuevas, cuentas sin la 2FA obligatoria o bloqueadas), usuarios y roles de todas las
+  organizaciones (alta, cambio de rol, desbloqueo, baja, restablecer contraseña, quitar la 2FA,
+  cerrar sesiones), sesiones abiertas, equipos ESP32 (mantenimiento, baja, OTA), bitácora,
+  integraciones y política.
 - **Verificación en dos pasos (TOTP, RFC 6238)** en Mi perfil: QR para la app de autenticación,
   10 códigos de recuperación de un solo uso (se guarda solo su SHA-256) y el secreto cifrado. Un
-  código ya usado no vale dos veces. `NUCLEO_2FA_OBLIGATORIO` (p. ej. `ADMINPLAT,ADMIN`) la vuelve
-  obligatoria: mientras no la configuren, esas cuentas solo pueden abrir su perfil.
+  código ya usado no vale dos veces. La política de seguridad la vuelve obligatoria por rol:
+  mientras no la configuren, esas cuentas solo pueden abrir su perfil.
 - **Recuperación de contraseña** por correo: enlace de un solo uso que caduca en una hora; la
   respuesta es la misma exista o no el correo y se limita a 5 pedidos por hora por IP. Al
   restablecerla se cierran todas las sesiones.
@@ -56,7 +68,7 @@ documento de su componente, enlazado en cada sección.
   área y el dispositivo del usuario (`common/scoping.py`). El canal en vivo aplica el mismo
   alcance. Detalle en [estructura del backend](../backend/estructura-backend.md) y en el
   [contrato de la API](../api/contrato-api.md).
-- **Integraciones**: tokens de API de solo lectura (`Authorization: ApiKey …`, se guarda solo su
+- **Integraciones** (solo el administrador de plataforma, desde la consola): tokens de API de solo lectura (`Authorization: ApiKey …`, se guarda solo su
   SHA-256, con caducidad opcional y revocables) y webhooks de alertas firmados con HMAC-SHA256,
   solo hacia direcciones HTTPS públicas (sin redirecciones; protección contra SSRF), que se
   pausan solos tras 10 fallas seguidas.
@@ -68,9 +80,9 @@ documento de su componente, enlazado en cada sección.
 - **Bitácora de auditoría** (`apps/auditoria`, tabla `registro_auditoria`): inicios de sesión
   (también fallidos), cierres, recuperación de contraseña, cambios en la verificación en dos
   pasos, altas, cambios y bajas hechos por personas (con antes y después; las contraseñas y los
-  secretos salen como «(oculto)»), integraciones y exportaciones, con la IP. La ven ADMIN (su
-  organización) y ADMINPLAT (todo) en **Auditoría**; se depura a los `NUCLEO_AUDITORIA_DIAS`
-  (365).
+  secretos salen como «(oculto)»), integraciones y exportaciones, con la IP. Solo la ve el administrador de plataforma, en la consola de
+  administración (filtra por organización); se depura a los días de la política de seguridad
+  (365 al instalar).
 - Exportación CSV de lecturas y alertas limitada al alcance del usuario y a
   `NUCLEO_EXPORTAR_MAX_FILAS`; cada exportación queda en la bitácora.
 

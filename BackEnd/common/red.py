@@ -36,3 +36,11 @@ class LimitePorIP(ScopedRateThrottle):
 
     def get_ident(self, request):
         return ip_cliente(request) or super().get_ident(request)
+
+    def get_rate(self):
+        # El inicio de sesión usa los intentos por minuto de la política de seguridad.
+        if self.scope == "login":
+            from apps.consola.politicas import politica
+
+            return f"{politica().intentos_login_por_minuto}/min"
+        return super().get_rate()

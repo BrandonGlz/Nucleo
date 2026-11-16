@@ -109,8 +109,16 @@ def version_actual():
 
 
 def autorizado(codigo):
+    """Reciben la versión: todos (política «ota_todos» o ``*`` en el ``.env``), los marcados
+    en la consola de administración (``recibe_ota``) o los de ``NUCLEO_FIRMWARE_DISPOSITIVOS``."""
+    from apps.consola.politicas import politica
+
+    from .models import Dispositivo
+
     lista = settings.NUCLEO_FIRMWARE_DISPOSITIVOS
-    return "*" in lista or codigo in lista
+    if "*" in lista or codigo in lista or politica().ota_todos:
+        return True
+    return Dispositivo.objects.filter(codigo_mqtt=codigo, recibe_ota=True).exists()
 
 
 def manifiesto_para(codigo):

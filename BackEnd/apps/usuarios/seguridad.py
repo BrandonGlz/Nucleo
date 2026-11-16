@@ -17,7 +17,6 @@ from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers, status
-from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -26,6 +25,7 @@ from apps.auditoria.models import RegistroAuditoria
 from apps.auditoria.servicios import registrar
 from apps.usuarios.models import SegundoFactor, Usuario
 from common import totp
+from common.autenticacion import cerrar_sesiones
 from common.red import LimitePorIP
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,10 @@ Accion = RegistroAuditoria.Accion
 
 
 def es_obligatorio(usuario):
-    return usuario.rol_id in settings.NUCLEO_2FA_OBLIGATORIO
+    """El rol de la cuenta exige verificación en dos pasos (política de seguridad)."""
+    from apps.consola.politicas import politica
+
+    return usuario.rol_id in politica().roles_2fa_obligatorio
 
 
 def segundo_factor_activo(usuario):
@@ -311,7 +314,7 @@ class RestablecerPasswordView(APIView):
             return Response({"password_nueva": mensajes}, status=status.HTTP_400_BAD_REQUEST)
         usuario.set_password(datos["password_nueva"])
         usuario.save(update_fields=["password"])
-        Token.objects.filter(user=usuario).delete()
+        cerrar_sesiones(usuario)
         registrar(
             Accion.RECUPERAR,
             usuario=usuario,

@@ -69,7 +69,8 @@ telefono_push  num, usuario_num, token_expo (único), plataforma, fecha_registro
                CHECK plataforma en ANDROID, IOS
 dispositivo    num, area_num, estado_dispositivo_codigo, operador_num (opcional),
                registrado_por, nombre, codigo_mqtt (único), intervalo_muestreo_seg
-               (def. 30), nivel_bateria, ultima_conexion, ultimo_arranque, fecha_alta
+               (def. 30), nivel_bateria, ultima_conexion, ultimo_arranque, recibe_ota
+               (def. FALSE, la elige la consola de administración), fecha_alta
                CHECK intervalo_muestreo_seg entre 5 y 120; CHECK nivel_bateria entre 0 y 100
 sensor         num, dispositivo_num, estado_sensor_codigo, modelo, funcion,
                fecha_acondicionamiento, fecha_calibracion
@@ -115,11 +116,20 @@ webhook        num, organizacion_num, nombre, url, secreto (cifrado), eventos JS
                creado_por (opcional), fecha_creacion, ultimo_envio, ultimo_estado,
                fallos_consecutivos (≥ 0)
                CHECK url empieza con https://
+sesion         num (bigint), usuario_num (CASCADE), clave_hash (SHA-256, único), cliente
+               (web, app o vacío en las anteriores a la actualización), agente (navegador o
+               app resumido), ip (INET), creada, ultimo_uso. Una por inicio de sesión
+               ÍNDICE (usuario_num)
+politica_seguridad
+               num (una sola fila), dias_sesion (1–90), intentos_login_por_minuto (3–60),
+               roles_2fa_obligatorio JSONB, dias_auditoria (30–3650), ota_todos,
+               actualizado, actualizado_por (opcional, SET NULL)
 ```
 
 Además existe `dispositivo (area_num)` como índice propio y las tablas internas de
 Django (migraciones, tipos de contenido, permisos, sesiones, registro del panel de
-administración y tokens de la API).
+administración y la de tokens de DRF, que ya no se usa: la migración
+`usuarios.0005_tokens_a_sesiones` pasó sus tokens a `sesion`).
 
 ## Tabla de nucleo_iot
 

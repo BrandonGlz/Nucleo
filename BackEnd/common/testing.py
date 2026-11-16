@@ -2,7 +2,6 @@
 
 from django.core.cache import cache
 from django.test import TestCase, TransactionTestCase
-from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from apps.dispositivos.models import Dispositivo, Sensor
@@ -14,7 +13,29 @@ from common import roles
 CLAVE = "Clave-de-prueba-2026"
 
 
-class PruebaBase(TestCase):
+class _PoliticaLimpia:
+    """Cada prueba empieza sin la copia en memoria de la política de seguridad."""
+
+    def _callSetUp(self):
+        from apps.consola.politicas import olvidar
+
+        olvidar()
+        super()._callSetUp()
+
+
+def ajustar_politica(**valores):
+    """Cambia la política de seguridad para una prueba."""
+    from apps.consola.politicas import olvidar, politica
+
+    p = politica(fresca=True)
+    for campo, valor in valores.items():
+        setattr(p, campo, valor)
+    p.save()
+    olvidar()
+    return p
+
+
+class PruebaBase(_PoliticaLimpia, TestCase):
     """Base de las pruebas con base de datos: usa nucleo_db y nucleo_iot (lecturas)."""
 
     databases = {"default", "iot"}
@@ -72,7 +93,7 @@ class Escenario:
         )
 
 
-class PruebaTransaccional(TransactionTestCase):
+class PruebaTransaccional(_PoliticaLimpia, TransactionTestCase):
     """Para el canal en vivo: Channels cierra conexiones y necesita transacciones reales.
 
     ``serialized_rollback`` restaura los catálogos que cargan las migraciones.
@@ -84,7 +105,9 @@ class PruebaTransaccional(TransactionTestCase):
 
 def cliente_de(usuario):
     """Cliente de API autenticado con el token del usuario."""
-    token, _ = Token.objects.get_or_create(user=usuario)
+    from common.autenticacion import crear_sesion
+
+    _, clave = crear_sesion(usuario)
     cliente = APIClient()
-    cliente.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+    cliente.credentials(HTTP_AUTHORIZATION=f"Token {clave}")
     return cliente

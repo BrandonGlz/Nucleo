@@ -2,12 +2,12 @@ from datetime import timedelta
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
-from apps.usuarios.models import TelefonoPush, Usuario
+from apps.usuarios.models import Sesion, TelefonoPush, Usuario
 from common import roles
-from common.testing import CLAVE, Escenario, PruebaBase, cliente_de
+from common.autenticacion import crear_sesion
+from common.testing import CLAVE, Escenario, PruebaBase, ajustar_politica, cliente_de
 
 
 class AutenticacionTests(PruebaBase):
@@ -322,23 +322,27 @@ class AdministradorDePlataformaTests(PruebaBase):
 class CaducidadDelTokenTests(PruebaBase):
     def setUp(self):
         self.e = Escenario()
-        self.cliente = cliente_de(self.e.operador)
-        self.token = Token.objects.get(user=self.e.operador)
+        self.sesion, clave = crear_sesion(self.e.operador)
+        self.clave = clave
+        self.cliente = APIClient()
+        self.cliente.credentials(HTTP_AUTHORIZATION=f"Token {clave}")
 
     def envejecer(self, **tiempo):
-        Token.objects.filter(pk=self.token.pk).update(created=timezone.now() - timedelta(**tiempo))
+        Sesion.objects.filter(pk=self.sesion.pk).update(
+            ultimo_uso=timezone.now() - timedelta(**tiempo)
+        )
 
     def test_un_token_con_uso_reciente_sirve_y_se_renueva(self):
         self.envejecer(days=6)
         self.assertEqual(self.cliente.get("/api/v1/auth/yo/").status_code, 200)
-        self.token.refresh_from_db()
-        self.assertLess(timezone.now() - self.token.created, timedelta(minutes=1))
+        self.sesion.refresh_from_db()
+        self.assertLess(timezone.now() - self.sesion.ultimo_uso, timedelta(minutes=1))
 
     def test_el_token_caduca_tras_siete_dias_sin_uso(self):
         self.envejecer(days=7, minutes=1)
         r = self.cliente.get("/api/v1/auth/yo/")
         self.assertEqual(r.status_code, 401)
-        self.assertFalse(Token.objects.filter(pk=self.token.pk).exists())
+        self.assertFalse(Sesion.objects.filter(pk=self.sesion.pk).exists())
 
     def test_el_dia_siete_exacto_todavia_sirve(self):
         self.envejecer(days=6, hours=23)
@@ -352,8 +356,31 @@ class CaducidadDelTokenTests(PruebaBase):
             format="json",
         )
         self.assertEqual(r.status_code, 200)
-        self.assertNotEqual(r.json()["token"], self.token.key)
-        self.assertEqual(Token.objects.filter(user=self.e.operador).count(), 1)
+        self.assertNotEqual(r.json()["token"], self.clave)
+
+    def test_solo_se_guarda_el_hash_de_la_clave(self):
+        self.assertFalse(Sesion.objects.filter(clave_hash=self.clave).exists())
+        self.assertEqual(len(self.sesion.clave_hash), 64)
+
+    def test_cada_inicio_de_sesion_es_una_sesion_aparte(self):
+        for _ in range(2):
+            APIClient().post(
+                "/api/v1/auth/login/",
+                {"correo": self.e.operador.correo, "password": CLAVE},
+                format="json",
+            )
+        self.assertEqual(Sesion.objects.filter(usuario=self.e.operador).count(), 3)
+
+    def test_cerrar_sesion_solo_cierra_la_actual(self):
+        otra, _ = crear_sesion(self.e.operador)
+        self.assertEqual(self.cliente.post("/api/v1/auth/logout/").status_code, 204)
+        self.assertFalse(Sesion.objects.filter(pk=self.sesion.pk).exists())
+        self.assertTrue(Sesion.objects.filter(pk=otra.pk).exists())
+
+    def test_la_caducidad_sigue_la_politica_de_seguridad(self):
+        ajustar_politica(dias_sesion=2)
+        self.envejecer(days=3)
+        self.assertEqual(self.cliente.get("/api/v1/auth/yo/").status_code, 401)
 
     def test_el_token_de_una_cuenta_inactiva_no_sirve(self):
         self.e.operador.estado_usuario_id = "INA"

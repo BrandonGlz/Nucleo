@@ -79,9 +79,23 @@ import {
   Copy,
   X,
   Menu,
+  ShieldAlert,
+  ShieldOff,
+  LockOpen,
+  Power,
+  RefreshCw,
+  MonitorSmartphone,
+  CloudDownload,
 } from 'lucide-react'
 
 const ICONS = {
+  'shield-alert': ShieldAlert,
+  'shield-off': ShieldOff,
+  'lock-open': LockOpen,
+  'power': Power,
+  'refresh-cw': RefreshCw,
+  'monitor-smartphone': MonitorSmartphone,
+  'cloud-download': CloudDownload,
   'shield-check': ShieldCheck,
   'webhook': Webhook,
   'scroll-text': ScrollText,

@@ -20,6 +20,7 @@ urlpatterns = [
                 path("", include("apps.alertas.urls")),
                 path("", include("apps.reportes.urls")),
                 path("nico/", include("apps.nico.urls")),
+                path("consola/", include("apps.consola.urls")),
                 path("", include("apps.auditoria.urls")),
                 path("", include("apps.integraciones.urls")),
                 path("esquema/", SpectacularAPIView.as_view(), name="esquema"),

@@ -33,12 +33,13 @@ class RegistroAuditoriaSerializer(serializers.ModelSerializer):
 
 
 class RegistroAuditoriaViewSet(viewsets.ReadOnlyModelViewSet):
-    """Bitácora de auditoría. El administrador ve la de su organización; el administrador de
-    plataforma, toda. Filtros: ``accion``, ``recurso``, ``usuario``, ``desde`` y ``hasta``."""
+    """Bitácora de auditoría. Solo el administrador de plataforma, desde la consola de
+    administración (admin.bynucleo.com). Filtros: ``organizacion``, ``accion``, ``recurso``,
+    ``usuario``, ``desde`` y ``hasta``."""
 
     serializer_class = RegistroAuditoriaSerializer
     permission_classes = [PermisoPorRol]
-    roles_lectura = (roles.ADMIN, roles.ADMIN_PLATAFORMA)
+    roles_lectura = (roles.ADMIN_PLATAFORMA,)
 
     def get_queryset(self):
         peticion = self.request
@@ -46,6 +47,9 @@ class RegistroAuditoriaViewSet(viewsets.ReadOnlyModelViewSet):
         consulta = RegistroAuditoria.objects.select_related("usuario")
         if usuario.rol_id != roles.ADMIN_PLATAFORMA:
             consulta = consulta.filter(organizacion_id=usuario.organizacion_id)
+        organizacion = parametro_entero(peticion, "organizacion")
+        if organizacion is not None:
+            consulta = consulta.filter(organizacion_id=organizacion)
         accion = peticion.query_params.get("accion")
         if accion:
             consulta = consulta.filter(accion=accion.upper())

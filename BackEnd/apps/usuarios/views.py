@@ -1,7 +1,6 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
 from rest_framework import status, viewsets
-from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -10,7 +9,7 @@ from rest_framework.views import APIView
 from apps.auditoria.models import RegistroAuditoria
 from apps.auditoria.servicios import registrar
 from apps.usuarios import seguridad
-from apps.usuarios.models import TelefonoPush, Usuario
+from apps.usuarios.models import Sesion, TelefonoPush, Usuario
 from apps.usuarios.serializers import (
     CambiarPasswordSerializer,
     CierreSesionSerializer,
@@ -20,10 +19,11 @@ from apps.usuarios.serializers import (
 )
 from common import roles
 from common.autenticacion import (
+    cerrar_sesiones,
+    crear_sesion,
     es_cliente_web,
     poner_cookie_sesion,
     quitar_cookie_sesion,
-    token_de,
 )
 from common.permissions import PermisoPorRol
 from common.red import LimitePorIP
@@ -87,7 +87,7 @@ class LoginView(APIView):
                     "El código no es válido.",
                     requiere_codigo=True,
                 )
-        token = token_de(usuario)
+        sesion, clave = crear_sesion(usuario, request)
         update_last_login(None, usuario)
         if "token_expo" in datos:
             # Un teléfono pertenece a una sola persona: si cambia de usuario, se reasigna.
@@ -102,19 +102,20 @@ class LoginView(APIView):
             descripcion="Con verificación en dos pasos" if factor else "",
         )
         cuerpo = {
-            "token": token.key,
+            "token": clave,
             "usuario": UsuarioSerializer(usuario, context={"request": request}).data,
             "configurar_segundo_factor": factor is None and seguridad.es_obligatorio(usuario),
         }
         if es_cliente_web(request):
             # La web recibe la sesión en una cookie HttpOnly y nunca ve el token.
             del cuerpo["token"]
-            return poner_cookie_sesion(Response(cuerpo), token)
+            return poner_cookie_sesion(Response(cuerpo), clave)
         return Response(cuerpo)
 
 
 class LogoutView(APIView):
-    """Invalida el token de la sesión y, si la app lo envía, quita el teléfono de los push."""
+    """Cierra la sesión actual (solo este navegador o teléfono) y, si la app lo envía, quita el
+    teléfono de los push."""
 
     def post(self, request):
         entrada = CierreSesionSerializer(data=request.data)
@@ -122,7 +123,8 @@ class LogoutView(APIView):
         token_expo = entrada.validated_data.get("token_expo")
         if token_expo:
             TelefonoPush.objects.filter(usuario=request.user, token_expo=token_expo).delete()
-        Token.objects.filter(user=request.user).delete()
+        if isinstance(request.auth, Sesion):
+            request.auth.delete()
         registrar(Accion.LOGOUT)
         return quitar_cookie_sesion(Response(status=status.HTTP_204_NO_CONTENT))
 
@@ -176,7 +178,7 @@ class CambiarPasswordView(APIView):
             )
         request.user.set_password(entrada.validated_data["password_nueva"])
         request.user.save(update_fields=["password"])
-        Token.objects.filter(user=request.user).delete()
+        cerrar_sesiones(request.user)
         return quitar_cookie_sesion(Response(status=status.HTTP_204_NO_CONTENT))
 
 
@@ -198,5 +200,5 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instancia):
         instancia.estado_usuario_id = roles.USUARIO_INACTIVO
         instancia.save(update_fields=["estado_usuario"])
-        Token.objects.filter(user=instancia).delete()
+        cerrar_sesiones(instancia)
         instancia.telefonos_push.all().delete()
