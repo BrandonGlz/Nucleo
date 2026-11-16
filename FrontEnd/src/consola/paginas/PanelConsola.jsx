@@ -1,4 +1,5 @@
-import { BarChart, Card, Skeleton } from '../../design-system/componentes/index.js'
+import { Card, Skeleton } from '../../design-system/componentes/index.js'
+import { BarrasAjustables } from '../../components/GraficaAjustable'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { useDatos } from '../../hooks/useDatos'
@@ -33,13 +34,12 @@ export default function PanelConsola() {
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {d && (
-        <div className="ui-consola-dash">
+        <div className="ui-consola-dash ui-consola-dash--llena">
           <Card className="ui-consola-dash__ancha" title="Preguntas por día" subtitle="Últimos 14 días, sin las precargas del chat.">
-            <BarChart
+            <BarrasAjustables
               data={d.por_dia.map((x) => ({ label: dia(x.fecha), value: x.total }))}
               decimals={0}
               unit="preg."
-              height={220}
               label="Preguntas por día"
               activeIndex={mayor(d.por_dia)}
             />
@@ -59,11 +59,10 @@ export default function PanelConsola() {
             />
           </Card>
           <Card className="ui-consola-dash__ancha" title="Horario de uso" subtitle="Preguntas por hora del día (hora de Tijuana).">
-            <BarChart
+            <BarrasAjustables
               data={d.por_hora.map((x) => ({ label: x.hora % 3 === 0 ? `${x.hora} h` : '', value: x.total }))}
               decimals={0}
               unit="preg."
-              height={200}
               label="Preguntas por hora"
               activeIndex={mayor(d.por_hora)}
             />

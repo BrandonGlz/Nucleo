@@ -708,3 +708,18 @@
     flex-wrap: wrap;
   }
 }
+
+/* Panel de Nico: las dos filas de tarjetas ocupan todo el alto libre y las gráficas de barras
+   crecen con su tarjeta (BarrasAjustables). */
+.ui-consola-dash--llena {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  align-content: stretch;
+  overflow: hidden;
+}
+.ui-consola-dash--llena .nc-card { min-height: 0; }
+.ui-consola-dash--llena .ui-consola-barras { flex: 1; justify-content: space-evenly; }
+.ui-grafica--barras { min-height: 120px; }
+@media (max-width: 900px) {
+  .ui-consola-dash--llena { grid-template-rows: none; overflow: visible; }
+  .ui-grafica--barras { flex: none; height: 200px; }
+}
