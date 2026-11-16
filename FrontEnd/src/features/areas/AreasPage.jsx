@@ -140,7 +140,7 @@ function EliminarArea({ area, cerrar, eliminada }) {
 function TablaAreas({ datos, editar, eliminar, editable }) {
   return (
     <div className="nc-table-wrap nc-scroll">
-      <table className="nc-table">
+      <table className="nc-table ui-tabla-tarjetas">
         <thead>
           <tr>
             <th>Área</th>
@@ -224,7 +224,7 @@ function Asignacion({ datos, mover, guardando, editable }) {
   const opciones = datos.areas.map((a) => ({ value: a.num, label: a.nombre }))
   return (
     <div className="nc-table-wrap nc-scroll">
-      <table className="nc-table">
+      <table className="nc-table ui-tabla-tarjetas">
         <thead>
           <tr>
             <th>Dispositivo</th>

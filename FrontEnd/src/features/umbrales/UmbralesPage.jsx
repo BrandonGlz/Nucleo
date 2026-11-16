@@ -113,7 +113,7 @@ export function UmbralesPage() {
   return (
     <Pantalla eyebrow={`${organizacion} · rango permitido por dispositivo`} titulo="Umbrales" cifras={cifras}>
       <Card>
-        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end' }}>
+        <div className="ui-filtros" style={{ display: 'flex', gap: 24, alignItems: 'flex-end' }}>
           <div style={{ width: 360 }}>
             <Select
               label="Dispositivo"
@@ -150,7 +150,7 @@ export function UmbralesPage() {
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 24, flex: 'none' }}>
+          <div className="ui-rejilla-umbrales" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 24, flex: 'none' }}>
             {['TEMP', 'HUM', 'AIRE'].map((v) => {
               const u = borrador[v]
               if (!u) return null

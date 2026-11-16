@@ -103,7 +103,7 @@ export function AuditoriaPage() {
         ],
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+      <div className="ui-filtros" style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
         <Select label="Acción" value={accion} options={ACCIONES} onChange={(e) => setAccion(e.target.value)} />
         <Select label="Periodo" value={dias} options={DIAS} onChange={(e) => setDias(e.target.value)} />
         <div style={{ flex: 1 }} />
@@ -114,7 +114,7 @@ export function AuditoriaPage() {
       {estado === 'listo' && (
         <Card className="nc-grow">
           <div className="nc-table-wrap nc-scroll">
-            <table className="nc-table">
+            <table className="nc-table ui-tabla-tarjetas">
               <thead>
                 <tr>
                   <th>Fecha</th>

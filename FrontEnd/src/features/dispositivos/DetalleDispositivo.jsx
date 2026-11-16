@@ -178,7 +178,7 @@ export function DetalleDispositivo() {
       cifras={cifrasDetalle(datos, sinConexion)}
     >
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div className="ui-ficha" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <IconCircle name="cpu" size="lg" tone="ink" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -190,7 +190,7 @@ export function DetalleDispositivo() {
             </span>
           </div>
           <div style={{ flex: 1 }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+          <div className="ui-ficha__datos" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
             <div className="ui-dato">
               <span className="ui-eyebrow">Batería</span>
               <Battery level={d.nivel_bateria} />

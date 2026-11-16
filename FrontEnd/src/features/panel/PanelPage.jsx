@@ -168,7 +168,7 @@ export function PanelPage() {
               </div>
             </div>
             <div className="nc-table-wrap nc-scroll">
-              <table className="nc-table">
+              <table className="nc-table ui-tabla-tarjetas">
                 <thead>
                   <tr>
                     <th>Dispositivo</th>

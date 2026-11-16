@@ -198,12 +198,14 @@ export function UsuariosPage() {
       }
       cifras={cifras}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {FILTROS.map(([id, label]) => (
-          <Chip key={id} selected={filtro === id} count={id === 'todos' ? usuarios.length : cuenta(id)} onClick={() => setFiltro(id)}>
-            {label}
-          </Chip>
-        ))}
+      <div className="ui-filtros" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="ui-filtros__chips" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {FILTROS.map(([id, label]) => (
+            <Chip key={id} selected={filtro === id} count={id === 'todos' ? usuarios.length : cuenta(id)} onClick={() => setFiltro(id)}>
+              {label}
+            </Chip>
+          ))}
+        </div>
         <div style={{ flex: 1 }} />
         {aviso && (
           <span className={`ui-aviso ui-aviso--${aviso.tono}`} role="status">
@@ -217,7 +219,7 @@ export function UsuariosPage() {
       {estado === 'listo' && (
         <Card className="nc-grow">
           <div className="nc-table-wrap nc-scroll">
-            <table className="nc-table">
+            <table className="nc-table ui-tabla-tarjetas">
               <thead>
                 <tr>
                   <th>Nombre</th>

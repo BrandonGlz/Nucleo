@@ -153,7 +153,7 @@ export function DispositivosPage() {
           : { principal: { etiqueta: 'Dispositivos', valor: '—', tonoValor: 'apagado', sub: 'Cargando…' } }
       }
     >
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+      <div className="ui-filtros" style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
         <div style={{ width: 280 }}>
           <Select
             label="Área"
@@ -163,7 +163,7 @@ export function DispositivosPage() {
             options={[{ value: '', label: 'Todas las áreas' }, ...areas.map((a) => ({ value: String(a.num), label: a.nombre }))]}
           />
         </div>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2, flexWrap: 'wrap' }}>
+        <div className="ui-filtros__chips" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2, flexWrap: 'wrap' }}>
           {FILTROS.map(([id, label, icon]) => (
             <Chip
               key={id}
@@ -218,7 +218,7 @@ export function DispositivosPage() {
           </div>
         ) : (
           <div className="nc-table-wrap nc-scroll">
-            <table className="nc-table">
+            <table className="nc-table ui-tabla-tarjetas">
               <thead>
                 <tr>
                   <th>Dispositivo</th>
