@@ -245,7 +245,7 @@ function Barras24({ serie, ultima, onPress }) {
           <View
             key={i}
             style={{
-              flex: 1, borderRadius: 4, backgroundColor: c.textPrimary,
+              flex: 1, borderRadius: 4, backgroundColor: c.grafica,
               height: Math.round(8 + ((v - mn) / (mx - mn || 1)) * 40),
               opacity: i === valores.length - 1 ? 1 : 0.12 + i * 0.025,
             }}

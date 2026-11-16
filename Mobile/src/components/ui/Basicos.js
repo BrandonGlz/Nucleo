@@ -87,7 +87,8 @@ export function StatusBadge({ status = 'normal', label, size }) {
 
 export function IconCircle({ name, size = 'md', tone: t = 'neutral' }) {
   const { c } = useTema()
-  const [bg, fg] = tono(c, t)
+  // El círculo neutro lleva el verde suave del acento (en oscuro queda como antes).
+  const [bg, fg] = t === 'neutral' ? [c.iconoNeutro, c.iconoNeutroTexto] : tono(c, t)
   const lado = { sm: 32, md: 40, lg: 48 }[size] ?? 40
   return (
     <View style={[s.circulo, { width: lado, height: lado, backgroundColor: bg }]}>
@@ -239,8 +240,8 @@ export function Chip({ selected, count, onPress, children }) {
   const { c } = useTema()
   // El fondo y el borde pasan de un color a otro en lugar de cambiar de golpe.
   const p = useSigue(selected ? 1 : 0)
-  const fondo = p.interpolate({ inputRange: [0, 1], outputRange: [c.surface, c.textPrimary] })
-  const borde = p.interpolate({ inputRange: [0, 1], outputRange: [c.border, c.textPrimary] })
+  const fondo = p.interpolate({ inputRange: [0, 1], outputRange: [c.surface, c.seleccion] })
+  const borde = p.interpolate({ inputRange: [0, 1], outputRange: [c.border, c.seleccion] })
   return (
     <Pressable
       accessibilityRole="button"
@@ -249,12 +250,12 @@ export function Chip({ selected, count, onPress, children }) {
       style={({ pressed }) => pressed && { transform: [{ scale: 0.95 }] }}
     >
       <Animated.View style={[s.chip, { backgroundColor: fondo, borderColor: borde }]}>
-        <T peso={600} size={13} color={selected ? c.surface : c.textSecondary}>
+        <T peso={600} size={13} color={selected ? c.seleccionTexto : c.textSecondary}>
           {children}
         </T>
         {count != null && (
-          <View style={[s.cuenta, { backgroundColor: selected ? c.accent : c.surfaceMuted }]}>
-            <T peso={600} size={11} lh={20} color={selected ? c.accentContrast : c.textSecondary}>
+          <View style={[s.cuenta, { backgroundColor: selected ? c.cuentaSeleccion : c.surfaceMuted }]}>
+            <T peso={600} size={11} lh={20} color={selected ? c.cuentaSeleccionTexto : c.textSecondary}>
               {count}
             </T>
           </View>
@@ -282,7 +283,7 @@ export function Tabs({ items, value, onChange }) {
   }, [m, x, ancho])
   return (
     <View style={[s.tabs, { backgroundColor: c.surfaceMuted }]}>
-      {m && <Animated.View pointerEvents="none" style={[s.tabPastilla, { backgroundColor: c.textPrimary, width: ancho, transform: [{ translateX: x }] }]} />}
+      {m && <Animated.View pointerEvents="none" style={[s.tabPastilla, { backgroundColor: c.seleccion, width: ancho, transform: [{ translateX: x }] }]} />}
       {items.map((it) => {
         const activo = it.id === value
         return (
@@ -295,9 +296,9 @@ export function Tabs({ items, value, onChange }) {
               const { x: px, width } = e.nativeEvent.layout
               setMedidas((ant) => (ant[it.id]?.x === px && ant[it.id]?.w === width ? ant : { ...ant, [it.id]: { x: px, w: width } }))
             }}
-            style={({ pressed }) => [s.tab, !m && activo && { backgroundColor: c.textPrimary }, pressed && { transform: [{ scale: 0.96 }] }]}
+            style={({ pressed }) => [s.tab, !m && activo && { backgroundColor: c.seleccion }, pressed && { transform: [{ scale: 0.96 }] }]}
           >
-            <T peso={600} size={14} color={activo ? c.surface : c.textSecondary}>
+            <T peso={600} size={14} color={activo ? c.seleccionTexto : c.textSecondary}>
               {it.label}
             </T>
           </Pressable>

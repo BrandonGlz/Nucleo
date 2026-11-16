@@ -11,6 +11,9 @@ export const colors = {
     sidebar: '#121413', sidebarText: '#F3F5F2', sidebarTextMuted: '#9DA39E', sidebarHover: '#23262A',
     focusRing: '#0F6E3F', chartLine: '#1E9A5E', chartArea: '#2BC47A', chartGrid: '#E6E9E2',
     logoColor: '#2BC47A',
+    // Modo claro 60-30-10: las selecciones, las gráficas y los íconos neutros llevan el verde.
+    seleccion: '#0F7A45', seleccionTexto: '#FFFFFF', cuentaSeleccion: '#FFFFFF', cuentaSeleccionTexto: '#0F7A45',
+    grafica: '#1E9A5E', iconoNeutro: '#DFF5EA', iconoNeutroTexto: '#0F7A45',
   },
   dark: {
     background: '#0E0F0F', surface: '#1A1C1C', surfaceElevated: '#232626', surfaceMuted: '#202323',
@@ -22,6 +25,8 @@ export const colors = {
     sidebar: '#141616', sidebarText: '#F3F5F2', sidebarTextMuted: '#8C928E', sidebarHover: '#1F2222',
     focusRing: '#2BC47A', chartLine: '#2BC47A', chartArea: '#2BC47A', chartGrid: '#272B2A',
     logoColor: '#2BC47A',
+    seleccion: '#F3F5F2', seleccionTexto: '#1A1C1C', cuentaSeleccion: '#2BC47A', cuentaSeleccionTexto: '#FFFFFF',
+    grafica: '#F3F5F2', iconoNeutro: '#202323', iconoNeutroTexto: '#B4BAB6',
   },
 }
 
