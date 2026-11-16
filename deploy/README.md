@@ -110,15 +110,28 @@ cifran el teléfono de los usuarios y los secretos de la verificación en dos pa
 webhooks. Guarda una copia fuera del servidor: si se pierde, esos campos no se pueden leer (los
 respaldos de la base los traen cifrados).
 
-### Firewall (nftables)
+### Firewall
 
-`deploy/firewall.nft` usa su propia tabla (`inet nucleo_filtro`) y no toca las reglas de Docker
-ni de Tailscale. Para activarlo:
+El servidor usa **ufw**: niega todo lo entrante salvo Tailscale (`tailscale0`, por donde entran
+SSH y TMO) y SSH desde la red local (`192.168.0.0/16` y `fe80::/10`). Las visitas de Núcleo no
+necesitan puertos abiertos porque llegan por el túnel de Cloudflare, que sale desde el servidor.
 
-1. `bash deploy/firewall.sh aplicar` — carga las reglas y programa quitarlas en 3 minutos.
-2. Desde **otra** sesión SSH nueva: `bash deploy/firewall.sh confirmar` — las deja fijas
-   (`nucleo-firewall.service`). Si no se puede entrar, a los 3 minutos se quitan solas.
-3. `bash deploy/firewall.sh quitar` las elimina.
+```bash
+sudo ufw status numbered
+```
+
+Antes de quitar una regla de SSH, programa una vuelta atrás y cancélala cuando una sesión SSH
+nueva funcione:
+
+```bash
+sudo systemd-run --unit=ufw-vuelta-atras --on-active=180 /usr/sbin/ufw allow OpenSSH
+# ...cambios y prueba desde otra sesión...
+sudo systemctl stop ufw-vuelta-atras.timer
+```
+
+En un servidor sin ufw, `deploy/firewall.nft` hace lo mismo con nftables:
+`bash deploy/firewall.sh aplicar` y, desde **otra** sesión SSH, `bash deploy/firewall.sh confirmar`
+(sin confirmar se quita solo a los 3 minutos). El script se niega a cargarse si ufw está activo.
 
 ### Reglas de Cloudflare (panel)
 
@@ -275,7 +288,7 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 4. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios y túnel.
 5. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file` y después
    el remoto cifrado ([Respaldos cifrados](#respaldos-cifrados)).
-6. Firewall: [aplicar y confirmar](#firewall-nftables).
+6. Firewall: [ufw con SSH solo por Tailscale y la red local](#firewall).
 
 | Archivo | Para qué |
 | --- | --- |

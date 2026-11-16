@@ -25,10 +25,9 @@ documento de su componente, enlazado en cada sección.
   HSTS y `nosniff` (`config/settings/production.py`).
 - El subdominio de los ESP32 (`dispositivos.bynucleo.com`) solo expone MQTT en WebSocket, el
   respaldo HTTPS de Nico, la actualización del firmware y la hora; lo demás lo manda a la web.
-- Firewall del host (`deploy/firewall.nft`, tabla propia `inet nucleo_filtro`): por defecto
-  descarta lo entrante y solo deja pasar loopback, conexiones ya establecidas, Tailscale, Docker,
-  SSH desde la red local, ICMP y DHCP. `deploy/firewall.sh aplicar` lo carga con vuelta atrás
-  automática a los 3 minutos si no se confirma desde otra sesión SSH.
+- Firewall del host con ufw: niega lo entrante salvo Tailscale y SSH desde la red local (SSH ya
+  no está abierto a internet por IPv6). En un servidor sin ufw, `deploy/firewall.nft` hace lo
+  mismo con nftables, con vuelta atrás automática si no se confirma desde otra sesión SSH.
 - Cloudflare (panel, sin API): reglas WAF que bloquean rutas de escáneres (`/wp-`, `/.env`,
   `/.git`, `.php`), `/admin` solo desde México y un límite de 5 peticiones cada 10 s por IP en
   inicio de sesión, recuperación y restablecimiento de contraseña. Bot Fight Mode queda apagado
