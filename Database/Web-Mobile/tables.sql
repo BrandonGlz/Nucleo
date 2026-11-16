@@ -70,7 +70,7 @@ CREATE TABLE usuario (
     primer_apellido VARCHAR(60) NOT NULL,
     segundo_apellido VARCHAR(60),
     correo VARCHAR(150) NOT NULL UNIQUE,
-    telefono VARCHAR(15),
+    telefono TEXT,  -- cifrado con Fernet por la aplicación ("fernet:…")
     password VARCHAR(128) NOT NULL,
     ultimo_acceso TIMESTAMPTZ,
     fecha_registro TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -202,6 +202,68 @@ CREATE TABLE reporte (
     CHECK (periodo_inicio < periodo_fin)
 );
 
+-- Verificación en dos pasos (TOTP): secreto cifrado por la aplicación y SHA-256 de los
+-- códigos de recuperación pendientes.
+CREATE TABLE segundo_factor (
+    num SERIAL PRIMARY KEY,
+    usuario_num INTEGER NOT NULL UNIQUE REFERENCES usuario(num) ON DELETE CASCADE,
+    secreto TEXT NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT FALSE,
+    ultimo_paso BIGINT,
+    codigos_recuperacion JSONB NOT NULL DEFAULT '[]',
+    fecha_activacion TIMESTAMPTZ,
+    fecha_registro TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Bitácora de auditoría: quién hizo qué, cuándo y desde qué IP.
+CREATE TABLE registro_auditoria (
+    num BIGSERIAL PRIMARY KEY,
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT now(),
+    usuario_num INTEGER REFERENCES usuario(num) ON DELETE SET NULL,
+    usuario_correo VARCHAR(150) NOT NULL DEFAULT '',
+    organizacion_num INTEGER REFERENCES organizacion(num) ON DELETE SET NULL,
+    accion VARCHAR(20) NOT NULL,
+    recurso VARCHAR(40) NOT NULL DEFAULT '',
+    recurso_num VARCHAR(40) NOT NULL DEFAULT '',
+    descripcion VARCHAR(255) NOT NULL DEFAULT '',
+    cambios JSONB,
+    ip INET,
+    CHECK (accion IN ('CREAR', 'MODIFICAR', 'ELIMINAR', 'LOGIN', 'LOGIN_FALLIDO', 'LOGOUT',
+                      'RECUPERAR', 'SEGUNDO_FACTOR', 'INTEGRACION', 'EXPORTAR'))
+);
+
+-- Integraciones: tokens de API de solo lectura (solo el SHA-256) y webhooks de alertas.
+CREATE TABLE token_api (
+    num SERIAL PRIMARY KEY,
+    organizacion_num INTEGER NOT NULL REFERENCES organizacion(num) ON DELETE CASCADE,
+    nombre VARCHAR(80) NOT NULL,
+    prefijo VARCHAR(12) NOT NULL UNIQUE,
+    clave_hash VARCHAR(64) NOT NULL,
+    creado_por_num INTEGER REFERENCES usuario(num) ON DELETE SET NULL,
+    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT now(),
+    fecha_expiracion TIMESTAMPTZ,
+    ultimo_uso TIMESTAMPTZ,
+    activo BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE webhook (
+    num SERIAL PRIMARY KEY,
+    organizacion_num INTEGER NOT NULL REFERENCES organizacion(num) ON DELETE CASCADE,
+    nombre VARCHAR(80) NOT NULL,
+    url VARCHAR(300) NOT NULL,
+    secreto TEXT NOT NULL,  -- cifrado por la aplicación
+    eventos JSONB NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_por_num INTEGER REFERENCES usuario(num) ON DELETE SET NULL,
+    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ultimo_envio TIMESTAMPTZ,
+    ultimo_estado VARCHAR(120) NOT NULL DEFAULT '',
+    fallos_consecutivos SMALLINT NOT NULL DEFAULT 0 CHECK (fallos_consecutivos >= 0),
+    CHECK (url LIKE 'https://%')
+);
+
 CREATE INDEX idx_dispositivo_area ON dispositivo (area_num);
 CREATE INDEX idx_usuario_organizacion ON usuario (organizacion_num, area_num);
 CREATE INDEX idx_programacion_activa ON programacion_reporte (activa, proxima_ejecucion);
+CREATE INDEX idx_auditoria_organizacion ON registro_auditoria (organizacion_num, fecha_hora DESC);
+CREATE INDEX idx_auditoria_usuario ON registro_auditoria (usuario_num, fecha_hora DESC);

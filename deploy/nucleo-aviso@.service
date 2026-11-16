@@ -1,0 +1,9 @@
+[Unit]
+Description=Núcleo - aviso por correo de la falla de %i
+
+[Service]
+Type=oneshot
+User=__USUARIO__
+WorkingDirectory=__RAIZ__/BackEnd
+Environment=DJANGO_SETTINGS_MODULE=config.settings.production
+ExecStart=__RAIZ__/deploy/aviso_fallo.sh %i

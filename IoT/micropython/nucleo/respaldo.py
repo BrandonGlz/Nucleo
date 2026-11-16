@@ -22,6 +22,7 @@ class RespaldoHTTPS:
         self._sock = self._crudo = None
         self._ultimo = None
         self.autorizadas = 0
+        self.respondio = False  # la plataforma contestó al menos una vez (confirma una OTA)
 
     def disponible(self):
         return bool(self._host and self._clave)
@@ -39,6 +40,7 @@ class RespaldoHTTPS:
                 if nueva:
                     self._abrir()
                 estado = self._consultar(ruta)
+                self.respondio = self.respondio or estado in (200, 204)
                 if estado == 200:
                     self.autorizadas += 1
                     return 1

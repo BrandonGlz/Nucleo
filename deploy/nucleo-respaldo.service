@@ -1,5 +1,7 @@
 [Unit]
 Description=Núcleo - respaldo de las bases y del broker
+# Si falla, nucleo-aviso@ manda un correo con las últimas líneas del journal (deploy/aviso_fallo.sh).
+OnFailure=nucleo-aviso@%n.service
 After=docker.service network-online.target
 Wants=network-online.target
 
@@ -7,3 +9,8 @@ Wants=network-online.target
 Type=oneshot
 User=__USUARIO__
 ExecStart=__RAIZ__/deploy/respaldar.sh
+# Después del respaldo, borra la bitácora de auditoría de más de NUCLEO_AUDITORIA_DIAS (365).
+# El «-» evita que un fallo aquí marque el respaldo como fallido.
+WorkingDirectory=__RAIZ__/BackEnd
+Environment=DJANGO_SETTINGS_MODULE=config.settings.production
+ExecStartPost=-__RAIZ__/BackEnd/.venv/bin/python manage.py depurar_auditoria

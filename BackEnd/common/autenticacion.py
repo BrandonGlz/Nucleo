@@ -11,7 +11,7 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 
 _RENOVAR_DESPUES_DE = timedelta(minutes=1)
 
@@ -52,7 +52,26 @@ def usuario_de_token(clave):
     return token.user
 
 
+# Con la verificación en dos pasos pendiente, el token solo sirve en estas rutas (perfil,
+# cierre de sesión, contraseña y la propia configuración del segundo factor).
+_RUTAS_SIN_SEGUNDO_FACTOR = "/api/v1/auth/"
+
+
+class SegundoFactorPendiente(PermissionDenied):
+    default_detail = "Tu rol exige la verificación en dos pasos. Configúrala para continuar."
+    default_code = "segundo_factor_pendiente"
+
+
 class TokenCaducable(TokenAuthentication):
+    def authenticate(self, request):
+        resultado = super().authenticate(request)
+        if resultado is not None and not request.path.startswith(_RUTAS_SIN_SEGUNDO_FACTOR):
+            from apps.usuarios.seguridad import falta_configurar
+
+            if falta_configurar(resultado[0]):
+                raise SegundoFactorPendiente()
+        return resultado
+
     def authenticate_credentials(self, clave):
         usuario, token = super().authenticate_credentials(clave)
         if token_caducado(token):

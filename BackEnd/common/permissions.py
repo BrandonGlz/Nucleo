@@ -19,6 +19,12 @@ class PermisoPorRol(BasePermission):
         usuario = request.user
         if not (usuario and usuario.is_authenticated):
             return False
+        if getattr(usuario, "es_integracion", False) and (
+            request.method not in SAFE_METHODS
+            or getattr(view, "action", None) in getattr(view, "roles_acciones", {})
+        ):
+            # Un token de API (apps/integraciones) solo consulta.
+            return False
         return usuario.rol_id in self.roles_permitidos(request, view)
 
     @staticmethod

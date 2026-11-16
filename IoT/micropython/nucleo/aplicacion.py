@@ -2,14 +2,16 @@
 
 import time
 
-from machine import WDT, SoftI2C, Pin
+from machine import WDT, SoftI2C, Pin, reset
 
+import actualizacion
 import config
 import secrets
 from nucleo.bateria import Bateria
 from nucleo.cola import ColaDeEnvio
 from nucleo.comunicacion import Broker
 from nucleo.indicadores import APAGADO, AZUL, Indicadores
+from nucleo.ota import Actualizador
 from nucleo.pantalla import Pantalla
 from nucleo.red import Red
 from nucleo.respaldo import RespaldoHTTPS
@@ -75,6 +77,8 @@ def ejecutar():
     broker = Broker(ajustes.actualizar, red, indicadores.parpadeo)
     respaldo = RespaldoHTTPS(red)
     cola = ColaDeEnvio()
+    ota = Actualizador(red, perro.feed if perro else None)
+    confirmada = False
 
     lecturas = {}
     nivel = NORMAL
@@ -96,6 +100,12 @@ def ejecutar():
                 if respaldo.mantener():
                     indicadores.parpadeo()
         broker.revisar()
+        if not confirmada and (broker.conectado() or respaldo.respondio):
+            # La versión nueva llegó a la plataforma: se queda (sin esto, vuelve atrás sola).
+            actualizacion.confirmar()
+            confirmada = True
+        if confirmada and conectada and ota.revisar():
+            reset()  # actualizacion.py la aplica al arrancar
         cola.enviar(broker.publicar_lecturas)  # lecturas guardadas mientras no hubo conexión
         indicadores.actualizar_buzzer()
 

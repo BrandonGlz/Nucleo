@@ -17,4 +17,12 @@ def manejar_excepcion(exc, context):
     if isinstance(exc, DjangoValidationError):
         detalle = exc.message_dict if hasattr(exc, "error_dict") else exc.messages
         return Response(detalle, status=status.HTTP_400_BAD_REQUEST)
-    return exception_handler(exc, context)
+    respuesta = exception_handler(exc, context)
+    if (
+        respuesta is not None
+        and getattr(exc, "default_code", "") == "segundo_factor_pendiente"
+        and isinstance(respuesta.data, dict)
+    ):
+        # La web y la app llevan a la configuración del segundo factor.
+        respuesta.data["segundo_factor_pendiente"] = True
+    return respuesta

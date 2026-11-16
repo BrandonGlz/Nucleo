@@ -4,6 +4,7 @@ from rest_framework.response import Response
 
 from apps.dispositivos.serializers import DispositivoSerializer, SensorSerializer
 from apps.dispositivos.services import publicar_configuracion_al_confirmar
+from apps.integraciones.autenticacion import con_token_api
 from apps.mediciones import consultas
 from apps.mediciones.serializers import UltimaLecturaSerializer
 from apps.tiempo_real import eventos
@@ -17,6 +18,7 @@ class DispositivoViewSet(viewsets.ModelViewSet):
     intervalo de muestreo; el operador solo ve el que tiene asignado."""
 
     serializer_class = DispositivoSerializer
+    authentication_classes = con_token_api()
     permission_classes = [PermisoPorRol]
     roles_escritura = (roles.ADMIN, roles.SUPERVISOR)
     roles_acciones = {"destroy": (roles.ADMIN,), "create": (roles.ADMIN,)}
@@ -64,6 +66,7 @@ class SensorViewSet(viewsets.ModelViewSet):
     """Sensores de los dispositivos y su estado de calibración."""
 
     serializer_class = SensorSerializer
+    authentication_classes = con_token_api()
     permission_classes = [PermisoPorRol]
     roles_escritura = (roles.ADMIN, roles.SUPERVISOR)
 

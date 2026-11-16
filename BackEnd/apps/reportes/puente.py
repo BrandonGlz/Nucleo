@@ -342,13 +342,14 @@ def _llamar_ia(trabajo, espera):
     """Llama a Ollama desde el servidor."""
     import urllib.request
 
-    peticion = urllib.request.Request(
+    # Ollama local de la configuración; la ruta sale de una lista fija del puente.
+    peticion = urllib.request.Request(  # noqa: S310
         settings.IA_OLLAMA_URL.rstrip("/") + trabajo["ruta"],
         data=json.dumps(trabajo["cuerpo"]).encode(),
         headers={"Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(peticion, timeout=espera) as r:
+        with urllib.request.urlopen(peticion, timeout=espera) as r:  # noqa: S310
             datos = json.loads(r.read())
     except Exception as e:  # noqa: BLE001 - cualquier falla se informa como error
         return {"texto": None, "error": f"Sin respuesta de la IA: {e}"}

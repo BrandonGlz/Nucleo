@@ -1,0 +1,38 @@
+#!/usr/sbin/nft -f
+# Firewall del servidor (defensa en profundidad): niega toda conexión entrante salvo las necesarias.
+# La web y la API no necesitan puertos abiertos: Cloudflare Tunnel y Tailscale son conexiones
+# salientes. Solo se filtra la entrada (hook input) en una tabla propia; no toca las reglas de
+# Docker ni las de Tailscale. Se aplica con deploy/firewall.sh (con vuelta atrás automática).
+
+# Recrea solo esta tabla (la primera línea la crea si no existe para que «delete» no falle).
+table inet nucleo_filtro
+delete table inet nucleo_filtro
+
+table inet nucleo_filtro {
+	chain entrada {
+		type filter hook input priority filter + 10; policy drop;
+
+		iif "lo" accept
+		ct state established,related accept
+		ct state invalid drop
+
+		# Tailscale: SSH de administración y el resto del tráfico de la red privada
+		iifname "tailscale0" accept
+		udp dport 41641 accept comment "Tailscale (conexión directa entre equipos)"
+
+		# Contenedores de Docker hacia el propio servidor
+		iifname "docker0" accept
+		iifname "br-*" accept
+
+		# Red local de la casa: SSH de respaldo si Tailscale no responde
+		ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } tcp dport 22 accept
+		ip6 saddr fe80::/10 tcp dport 22 accept
+
+		# Diagnóstico y configuración de red (ping, DHCP)
+		meta l4proto { icmp, ipv6-icmp } accept
+		udp sport 67 udp dport 68 accept
+		udp dport 546 accept
+
+		counter comment "rechazadas"
+	}
+}

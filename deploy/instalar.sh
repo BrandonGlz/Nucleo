@@ -23,6 +23,27 @@ cd "$raiz"
 docker compose up -d --wait postgres timescaledb redis
 docker compose up -d mosquitto
 
+# URL pública de la API (primer origen de CORS_ALLOWED_ORIGINS): absoluta, para que el canal
+# en vivo se abra en wss://bynucleo.com/ws/panel/.
+origen="$(sed -n 's/^CORS_ALLOWED_ORIGINS=\([^,]*\).*/\1/p' "$raiz/BackEnd/.env")"
+[[ "$origen" == https://* ]] || { echo "CORS_ALLOWED_ORIGINS no trae la URL https del servidor"; exit 1; }
+
+paso "Backend: variables de seguridad de BackEnd/.env"
+# Se agregan solo si faltan (un .env de una versión anterior). La llave de cifrado se crea ANTES
+# de migrar: la migración cifra los datos personales con ella.
+agregar_env() {  # VARIABLE valor comentario
+  grep -q "^$1=" "$raiz/BackEnd/.env" || printf '\n# %s\n%s=%s\n' "$3" "$1" "$2" >> "$raiz/BackEnd/.env"
+}
+if ! grep -q '^NUCLEO_CLAVE_CIFRADO=.' "$raiz/BackEnd/.env"; then
+  sed -i '/^NUCLEO_CLAVE_CIFRADO=$/d' "$raiz/BackEnd/.env"
+  agregar_env NUCLEO_CLAVE_CIFRADO "$(python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" \
+    "Llave de los datos cifrados en la base. GUARDA UNA COPIA FUERA DEL SERVIDOR: sin ella no se leen."
+  echo "Se creó NUCLEO_CLAVE_CIFRADO en BackEnd/.env: guarda una copia en tu gestor de contraseñas."
+fi
+agregar_env NUCLEO_CONFIAR_CF_CONNECTING_IP True "IP real del visitante detrás de Cloudflare Tunnel (límites y bitácora)"
+agregar_env NUCLEO_URL_WEB "$origen" "Web para el enlace de recuperación de contraseña"
+chmod 600 "$raiz/BackEnd/.env"
+
 paso "Backend: entorno de Python 3.12 y dependencias"
 cd "$raiz/BackEnd"
 [[ -x .venv/bin/python ]] || uv venv --python 3.12 .venv
@@ -32,11 +53,6 @@ uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python manage.py migrate --database=iot --noinput
 .venv/bin/python manage.py collectstatic --noinput
 mkdir -p media
-
-# URL pública de la API (primer origen de CORS_ALLOWED_ORIGINS): absoluta, para que el canal
-# en vivo se abra en wss://bynucleo.com/ws/panel/.
-origen="$(sed -n 's/^CORS_ALLOWED_ORIGINS=\([^,]*\).*/\1/p' "$raiz/BackEnd/.env")"
-[[ "$origen" == https://* ]] || { echo "CORS_ALLOWED_ORIGINS no trae la URL https del servidor"; exit 1; }
 
 paso "Web: build de producción (mocks: ${WEB_USE_MOCKS:-false}, API: $origen/api/v1)"
 export NVM_DIR="$HOME/.nvm"
@@ -60,17 +76,19 @@ if ! grep -q 'import /etc/caddy/sitios/\*.caddy' /etc/caddy/Caddyfile 2>/dev/nul
 fi
 plantilla nucleo.caddy /etc/caddy/sitios/nucleo.caddy
 servicios=(nucleo-daphne nucleo-mqtt nucleo-sin-conexion)
-for unidad in "${servicios[@]}" nucleo-reportes nucleo-respaldo; do
+temporizados=(nucleo-reportes nucleo-respaldo nucleo-prueba-restauracion)
+for unidad in "${servicios[@]}" "${temporizados[@]}" nucleo-aviso@; do
   plantilla "$unidad.service" "/etc/systemd/system/$unidad.service"
 done
-for unidad in nucleo-reportes nucleo-respaldo; do
+for unidad in "${temporizados[@]}"; do
   plantilla "$unidad.timer" "/etc/systemd/system/$unidad.timer"
 done
 sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 sudo systemctl daemon-reload
-sudo systemctl enable "${servicios[@]}" nucleo-reportes.timer nucleo-respaldo.timer caddy
+timers=("${temporizados[@]/%/.timer}")
+sudo systemctl enable "${servicios[@]}" "${timers[@]}" caddy
 sudo systemctl restart "${servicios[@]}"
-sudo systemctl start nucleo-reportes.timer nucleo-respaldo.timer
+sudo systemctl restart "${timers[@]}"
 sudo systemctl reload-or-restart caddy
 # Página de descarga del APK (app.bynucleo.com): se regenera por si cambió la plantilla deploy/descarga.html
 if compgen -G "$raiz/deploy/descargas/nucleo-*.apk" >/dev/null; then

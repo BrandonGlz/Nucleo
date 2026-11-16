@@ -1,8 +1,8 @@
 [Unit]
-Description=Núcleo - respaldo diario a las 03:45
+Description=Núcleo - respaldo dos veces al día (03:45 y 15:45): RPO de 12 horas
 
 [Timer]
-OnCalendar=*-*-* 03:45:00
+OnCalendar=*-*-* 03,15:45:00
 Persistent=true
 
 [Install]

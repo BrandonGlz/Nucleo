@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 
 from apps.alertas import notificaciones
 from apps.alertas.models import Alerta, Notificacion
+from apps.integraciones import envio as webhooks
 from apps.tiempo_real import eventos
 from apps.usuarios.models import Usuario
 from common import roles
@@ -93,5 +94,6 @@ def generar_alerta(umbral, lectura):
         logger.info("Alerta pendiente ya registrada para el umbral %s (%s)", umbral.pk, nivel)
         return None
     eventos.alerta(alerta, eventos.ALERTA_NUEVA)
+    webhooks.notificar_alerta(alerta, webhooks.Webhook.Evento.ALERTA_NUEVA)
     logger.info("Alerta %s (%s) creada para la lectura %s", alerta.pk, nivel, lectura.num)
     return alerta

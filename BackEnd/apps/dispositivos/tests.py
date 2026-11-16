@@ -125,3 +125,77 @@ class CambioDeAreaTests(PruebaBase):
         r = cliente_de(e.admin).get("/api/v1/usuarios/", {"page_size": 2})
         self.assertEqual(len(r.json()["results"]), 2)
         self.assertIsNotNone(r.json()["next"])
+
+
+class FirmwareOTATests(PruebaBase):
+    """Publicación del firmware y su descarga por el ESP con la clave del puente."""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+
+        self.e = Escenario()
+        self.codigo = self.e.dispositivo.codigo_mqtt
+        self.dir = Path(tempfile.mkdtemp())
+        self.origen = self.dir / "origen"
+        (self.origen / "nucleo").mkdir(parents=True)
+        (self.origen / "config.py").write_text('FIRMWARE_VERSION = "1.2.0"\n')
+        (self.origen / "main.py").write_text("print('hola')\n")
+        (self.origen / "nucleo" / "aplicacion.py").write_text("x = 1\n")
+        (self.origen / "secrets.py").write_text("CLAVE = 'no'\n")
+        (self.origen / "boot.py").write_text("import gc\n")
+        self.ajustes = self.settings(
+            NUCLEO_FIRMWARE_DIR=str(self.dir / "publicado"),
+            NUCLEO_FIRMWARE_DISPOSITIVOS=[self.codigo],
+            IA_PUENTE_CLAVE="k",
+        )
+        self.ajustes.enable()
+        self.addCleanup(self.ajustes.disable)
+
+    def _get(self, url, clave="k", **params):
+        from rest_framework.test import APIClient
+
+        return APIClient().get(
+            url, {"dispositivo": self.codigo, **params}, HTTP_X_PUENTE_CLAVE=clave
+        )
+
+    def test_publica_sin_secretos_y_firma_el_manifiesto(self):
+        import hashlib
+        import hmac
+
+        from apps.dispositivos import firmware
+
+        manifiesto = firmware.publicar(self.origen)
+        rutas = [a["ruta"] for a in manifiesto["archivos"]]
+        self.assertEqual(rutas, ["main.py", "config.py", "nucleo/aplicacion.py"])
+        r = self._get("/api/v1/puente/firmware/", version="1.0.0")
+        self.assertEqual(r.status_code, 200)
+        datos = r.json()
+        esperado = hmac.new(
+            b"k", firmware.canonico("1.2.0", datos["archivos"]), hashlib.sha256
+        ).hexdigest()
+        self.assertEqual(datos["firma"], esperado)
+        # Con la misma versión no hay nada que hacer.
+        self.assertEqual(self._get("/api/v1/puente/firmware/", version="1.2.0").status_code, 204)
+
+    def test_descarga_archivos_y_bloquea_rutas_ajenas(self):
+        from apps.dispositivos import firmware
+
+        firmware.publicar(self.origen)
+        r = self._get("/api/v1/puente/firmware/archivo/", version="1.2.0", ruta="main.py")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(b"".join(r.streaming_content), b"print('hola')\n")
+        for ruta in ("secrets.py", "../config.py", "boot.py", "manifiesto.json"):
+            r = self._get("/api/v1/puente/firmware/archivo/", version="1.2.0", ruta=ruta)
+            self.assertEqual(r.status_code, 404, ruta)
+        self.assertEqual(self._get("/api/v1/puente/firmware/", clave="mala").status_code, 403)
+
+    def test_solo_los_dispositivos_autorizados_y_version_inmutable(self):
+        from apps.dispositivos import firmware
+
+        firmware.publicar(self.origen)
+        with self.settings(NUCLEO_FIRMWARE_DISPOSITIVOS=[]):
+            self.assertEqual(self._get("/api/v1/puente/firmware/").status_code, 204)
+        (self.origen / "main.py").write_text("print('otro')\n")
+        with self.assertRaises(firmware.FirmwareError):
+            firmware.publicar(self.origen)

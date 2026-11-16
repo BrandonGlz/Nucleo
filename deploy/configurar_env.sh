@@ -32,9 +32,10 @@ db="postgres://${POSTGRES_USER:-nucleo_app}:$(q "$POSTGRES_PASSWORD")@127.0.0.1:
 iot="postgres://${IOT_USER:-nucleo_iot}:$(q "$IOT_PASSWORD")@127.0.0.1:${IOT_PORT:-55433}/${IOT_DB:-nucleo_iot}"
 redis="redis://:$(q "$REDIS_PASSWORD")@127.0.0.1:${REDIS_PORT:-56379}/0"
 secreto="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')"
+cifrado="$(python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')"
 
 umask 077
-DB="$db" IOT="$iot" REDIS="$redis" SECRETO="$secreto" APP="$app" MQTT="$MQTT_BACKEND_PASSWORD" \
+DB="$db" IOT="$iot" REDIS="$redis" SECRETO="$secreto" APP="$app" MQTT="$MQTT_BACKEND_PASSWORD" CIFRADO="$cifrado" \
 GMAIL="${gmail:-tu_cuenta@gmail.com}" \
 python3 - "$plantilla" "$destino" <<'EOF'
 import os, sys
@@ -42,6 +43,7 @@ e = os.environ
 lineas = {
     'DATABASE_URL': e['DB'], 'IOT_DATABASE_URL': e['IOT'], 'REDIS_URL': e['REDIS'],
     'DJANGO_SECRET_KEY': e['SECRETO'], 'EMAIL_HOST_PASSWORD': e['APP'], 'MQTT_PASSWORD': e['MQTT'],
+    'NUCLEO_CLAVE_CIFRADO': e['CIFRADO'],
 }
 salida = []
 for linea in open(sys.argv[1], encoding='utf-8'):
@@ -52,4 +54,5 @@ for linea in open(sys.argv[1], encoding='utf-8'):
     salida.append(linea)
 open(sys.argv[2], 'w', encoding='utf-8').writelines(salida)
 EOF
-echo "BackEnd/.env creado. Revísalo con: grep -v -e PASSWORD -e _URL BackEnd/.env"
+echo "BackEnd/.env creado. Revísalo con: grep -v -e PASSWORD -e _URL -e CLAVE BackEnd/.env"
+echo "Guarda una copia de NUCLEO_CLAVE_CIFRADO fuera del servidor (gestor de contraseñas)."

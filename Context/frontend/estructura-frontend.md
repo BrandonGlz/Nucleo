@@ -45,7 +45,8 @@ FrontEnd/
 │   │   ├── index.js      # registro de módulos: ruta, título, página, sección, ícono y roles
 │   │   └── <modulo>/     # acceso, panel, dispositivos (lista y detalle), mediciones,
 │   │                     # alertas, reportes, agente, umbrales, usuarios, organizaciones,
-│   │                     # perfil, notificaciones
+│   │                     # perfil (con la verificación en dos pasos), notificaciones,
+│   │                     # integraciones y auditoria
 │   ├── hooks/
 │   │   ├── useDatos.js        # { estado, datos, error, reintentar, actualizar }
 │   │   ├── useMonitoreo.js    # dispositivos + últimas lecturas + umbrales + alertas
@@ -59,7 +60,8 @@ FrontEnd/
 │   │   ├── config.js          # USAR_MOCKS, token y pedir() con Authorization
 │   │   ├── mock/              # datos.js y handlers.js
 │   │   └── <dominio>.js       # auth, dispositivos, lecturas, alertas, umbrales,
-│   │                          # reportes, usuarios, organizaciones, agente
+│   │                          # reportes, usuarios, organizaciones, agente,
+│   │                          # seguridad (auditoría, integraciones y descarga de CSV)
 │   ├── styles/global.css
 │   ├── utils/                 # convertir.js, formato.js, formatDate.js
 │   ├── App.jsx
@@ -77,7 +79,13 @@ FrontEnd/
 `src/features/index.js` exporta `modulos` (`ruta`, `titulo`, `Pagina`, `seccion`,
 `icono`, `roles`) y `acceso`. `App.jsx` crea las rutas:
 
-- `/acceso` va sin marco, a pantalla completa.
+- `/acceso` va sin marco, a pantalla completa; pide el código de la verificación en dos pasos
+  cuando la API responde `requiere_codigo`.
+- `/recuperar` y `/restablecer?uid=&token=` (enlace del correo) son públicas, con el mismo
+  marco que el acceso.
+- Si la API responde 403 `segundo_factor_pendiente`, `services/api/client.js` lanza el evento
+  `nucleo:segundo-factor-pendiente`; la sesión lo guarda y cualquier ruta lleva a `/perfil`
+  hasta configurarla.
 - `/` redirige a `/panel` si hay sesión y a `/acceso` si no.
 - `/estado` muestra el diagnóstico de la API.
 - El resto va dentro de `MainLayout` y exige sesión. Una ruta con `roles` devuelve al
@@ -85,7 +93,8 @@ FrontEnd/
 
 El menú lateral se agrupa en Monitoreo (Panel, Dispositivos, Histórico, Alertas),
 Análisis (Reportes, Agente IA) y Configuración (Umbrales, Usuarios para ADMIN y SUPER,
-Organización para ADMIN). `/dispositivos/:num`, `/perfil` y `/notificaciones` no
+Organización e Integraciones para ADMIN, y Auditoría para ADMIN y el administrador de
+plataforma). Histórico y Alertas tienen **Exportar CSV** con los filtros de la pantalla. `/dispositivos/:num`, `/perfil` y `/notificaciones` no
 aparecen en el menú; las dos últimas se abren desde los menús del encabezado.
 
 Cada pantalla ocupa la altura de la ventana: las tarjetas que llenan el resto llevan

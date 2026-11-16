@@ -96,6 +96,12 @@ La pantalla de salud es pública. El resto de la API exige el token de DRF
 después de iniciar sesión. El token vive en memoria y se pierde al cerrar la app. No
 se guardan contraseñas en el dispositivo. En producción la API debe servirse por HTTPS.
 
+Si la cuenta tiene la verificación en dos pasos, el acceso pide el código de la app de
+autenticación (o uno de recuperación) después de la contraseña. Se configura solo en la web: si
+el rol la exige y aún no la tiene, la app cierra esa sesión y avisa que se configure en Mi
+perfil de la web. «¿Olvidaste tu contraseña?» pide el enlace por correo
+(`POST /auth/recuperar/`); la contraseña nueva se elige en la web.
+
 ## Comandos
 
 ```bash

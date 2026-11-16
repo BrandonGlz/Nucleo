@@ -26,18 +26,22 @@ BackEnd/
 │   ├── asgi.py
 │   └── wsgi.py
 ├── apps/
-│   ├── core/                # salud de la API
+│   ├── core/                # salud de la API; avisar_servidor (correo de avisos del servidor)
 │   ├── catalogos/           # rol, estados y variable_ambiental con su rango (códigos iniciales)
 │   ├── organizaciones/      # organizacion y area
-│   ├── usuarios/            # usuario (modelo de usuario de Django), telefono_push, login y gestión
-│   ├── dispositivos/        # dispositivo y sensor; marcado de "Sin conexión"
+│   ├── usuarios/            # usuario (modelo de usuario de Django), telefono_push, login y gestión;
+│   │                        # seguridad.py: verificación en dos pasos y recuperación de contraseña
+│   ├── dispositivos/        # dispositivo y sensor; marcado de "Sin conexión"; firmware.py (OTA)
 │   ├── umbrales/            # umbral de cuatro límites por variable y dispositivo
 │   ├── mediciones/          # lectura (TimescaleDB); ingesta MQTT y consultas de histórico
 │   ├── alertas/             # alerta y notificacion; correo y push con Expo
 │   ├── tiempo_real/         # WebSocket ws/panel/: consumidor, eventos y rutas
-│   └── reportes/            # reporte y programacion_reporte; cifras, IA y PDF
+│   ├── reportes/            # reporte y programacion_reporte; cifras, IA y PDF; rutas del ESP puente
+│   ├── auditoria/           # registro_auditoria: middleware, señales, vista y depuración
+│   └── integraciones/       # token_api (ApiKey de solo lectura) y webhook (envío firmado)
 ├── common/                  # roles, permisos, token con caducidad, aislamiento por organización,
-│                            # errores y utilidades de prueba
+│                            # errores, utilidades de prueba, cifrado.py (Fernet), totp.py,
+│                            # red.py (IP real y límite por IP) y exportar.py (CSV)
 ├── scripts/                 # scripts operativos
 ├── manage.py
 ├── requirements.txt
@@ -128,7 +132,20 @@ configura otro motor.
 
 - `POST /api/v1/auth/login/` devuelve un token de DRF que web y móvil envían como
   `Authorization: Token <token>`. El inicio de sesión tiene un límite de 10
-  intentos por minuto.
+  intentos por minuto por IP (`common/red.LimitePorIP`, con `CF-Connecting-IP` detrás de
+  Cloudflare si `NUCLEO_CONFIAR_CF_CONNECTING_IP`).
+- Verificación en dos pasos (`apps/usuarios/seguridad.py`, `common/totp.py`): TOTP de 6
+  dígitos con ventana de ±30 s; el último paso usado se guarda para no aceptar el mismo código
+  dos veces. Los roles de `NUCLEO_2FA_OBLIGATORIO` sin configurarla reciben 403
+  `segundo_factor_pendiente` fuera de `/auth/` (`TokenCaducable`).
+- Recuperación de contraseña con el generador de tokens de Django (`PASSWORD_RESET_TIMEOUT`,
+  1 h): el token deja de valer al cambiar la contraseña o al volver a entrar.
+- Tokens de API (`apps/integraciones/autenticacion.py`): `con_token_api()` los acepta en las
+  vistas de dispositivos, sensores, lecturas y alertas; la petición corre como un ANALISTA de
+  toda la organización y `PermisoPorRol` le niega toda escritura y acción.
+- Auditoría: `PeticionActual` guarda la petición en un contextvar; las señales de
+  `apps/auditoria/senales.py` registran altas, cambios y bajas de los modelos de `MODELOS` solo
+  cuando hay una persona detrás (la ingesta MQTT y los comandos no generan registros).
 - El token caduca a los 7 días sin uso (`common/autenticacion.py`, `TokenCaducable`): usa
   `Token.created` como último uso, lo renueva en cada petición (como máximo una vez por
   minuto) y, si ya caducó, responde 401; un nuevo inicio de sesión crea un token nuevo.

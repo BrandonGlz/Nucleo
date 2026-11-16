@@ -1,5 +1,7 @@
 [Unit]
 Description=Núcleo - marca los dispositivos sin conexión (cada 60 s)
+# Si falla, nucleo-aviso@ manda un correo con las últimas líneas del journal (deploy/aviso_fallo.sh).
+OnFailure=nucleo-aviso@%n.service
 After=network-online.target docker.service
 Wants=network-online.target
 

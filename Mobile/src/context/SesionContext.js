@@ -12,11 +12,20 @@ export function SesionProvider({ children }) {
   const [usuario, setUsuario] = useState(null)
   const { prefs } = usePreferencias()
 
+  // `codigo`: segundo paso de la verificación en dos pasos.
   const login = useCallback(
-    async (correo, password) => {
+    async (correo, password, codigo) => {
       const telefono = prefs.push ? await tokenExpo() : null
-      const { token, usuario: u } = await auth.login(correo, password, telefono)
+      const { token, usuario: u, configurar_segundo_factor } = await auth.login(correo, password, telefono, codigo)
       guardarToken(token)
+      if (configurar_segundo_factor) {
+        // El rol exige la verificación en dos pasos y se configura en la web: no se entra a medias.
+        await auth.logout(telefono).catch(() => {})
+        guardarToken(null)
+        const error = new Error('Configura la verificación en dos pasos en la web.')
+        error.segundoFactorPendiente = true
+        throw error
+      }
       setUsuario(u)
       return u
     },

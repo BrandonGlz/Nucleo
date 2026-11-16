@@ -9,6 +9,8 @@ import { useSesion } from '../../context/SesionContext'
 import { useDatos } from '../../hooks/useDatos'
 import * as alertasApi from '../../services/alertas'
 import * as usuariosApi from '../../services/usuarios'
+import * as seguridad from '../../services/seguridad'
+import { ALERTAS_EXPORTAR } from '../../api'
 import {
   ESTADO_ALERTA, limiteAlerta, NIVEL_ALERTA, nombreCorto, pagina, puedeEditar, tituloAlerta, valorAlerta, VARIABLE,
 } from '../../utils/convertir'
@@ -129,6 +131,18 @@ export function AlertasPage() {
   const { estado, datos, reintentar, actualizar } = useDatos(() => cargar(rol), [rol])
   const [pestana, setPestana] = useState('PENDIENTE')
   const [elegida, setElegida] = useState(null)
+  const [exportando, setExportando] = useState(false)
+  // CSV de la pestaña actual (GET /alertas/exportar/ con el mismo filtro de estado).
+  const exportar = async () => {
+    setExportando(true)
+    try {
+      await seguridad.descargarCsv(ALERTAS_EXPORTAR, { estado: pestana === 'todas' ? '' : pestana })
+    } catch {
+      window.alert('No se pudo exportar. Intenta de nuevo.')
+    } finally {
+      setExportando(false)
+    }
+  }
 
   const alertas = useMemo(() => datos?.alertas ?? [], [datos])
   const cuenta = (k) => alertas.filter((a) => a.estado === k).length
@@ -182,8 +196,8 @@ export function AlertasPage() {
                   setElegida(null)
                 }}
               />
-              <Button variant="secondary" size="sm" icon="download">
-                Exportar
+              <Button variant="secondary" size="sm" icon="download" disabled={exportando} onClick={exportar}>
+                {exportando ? 'Exportando…' : 'Exportar CSV'}
               </Button>
             </div>
             <div className="ui-alerta ui-alerta--cabecera">

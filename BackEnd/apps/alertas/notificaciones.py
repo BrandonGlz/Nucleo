@@ -62,7 +62,8 @@ def _texto_push(alerta):
 
 def _post_expo(carga):
     """Envía una petición a Expo y devuelve la respuesta JSON. Separado para poder simularlo."""
-    peticion = urllib.request.Request(
+    # URL fija de la configuración (https de Expo), no de un dato del usuario.
+    peticion = urllib.request.Request(  # noqa: S310
         settings.NUCLEO_EXPO_PUSH_URL,
         data=json.dumps(carga).encode(),
         headers={

@@ -1,5 +1,7 @@
 [Unit]
 Description=Núcleo - genera y envía los reportes programados vencidos
+# Si falla, nucleo-aviso@ manda un correo con las últimas líneas del journal (deploy/aviso_fallo.sh).
+OnFailure=nucleo-aviso@%n.service
 After=docker.service
 
 [Service]

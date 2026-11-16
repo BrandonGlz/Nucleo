@@ -1,13 +1,23 @@
-import { AUTH_LOGIN, AUTH_LOGOUT, AUTH_YO } from '../api'
+import { AUTH_LOGIN, AUTH_LOGOUT, AUTH_RECUPERAR, AUTH_YO } from '../api'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
 import { telefono } from './notificaciones'
 
 // La API registra el teléfono para las notificaciones push solo si recibe el token de Expo y
 // la plataforma juntos; sin token se entra sin registrar el teléfono.
-export async function login(correo, password, tokenExpo) {
+// `codigo`: segundo paso si la cuenta tiene la verificación en dos pasos (si falta, 401 con
+// datos.requiere_codigo).
+export async function login(correo, password, tokenExpo, codigo) {
   if (USAR_MOCKS) return mock.login({ correo, password })
-  return pedir(AUTH_LOGIN, { metodo: 'POST', cuerpo: { correo, password, ...telefono(tokenExpo) } })
+  return pedir(AUTH_LOGIN, {
+    metodo: 'POST',
+    cuerpo: { correo, password, ...(codigo ? { codigo } : {}), ...telefono(tokenExpo) },
+  })
+}
+// Manda al correo el enlace para elegir una contraseña nueva (se abre en la web). Siempre 204.
+export async function recuperar(correo) {
+  if (USAR_MOCKS) return null
+  return pedir(AUTH_RECUPERAR, { metodo: 'POST', cuerpo: { correo } })
 }
 // Con el token de Expo, la API quita el teléfono de los push al cerrar la sesión.
 export async function logout(tokenExpo) {

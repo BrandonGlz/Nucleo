@@ -1,0 +1,13 @@
+[Unit]
+Description=Núcleo - prueba de restauración del último respaldo en contenedores temporales
+# Si falla, el aviso lleva la salida de la prueba (deploy/aviso_fallo.sh).
+OnFailure=nucleo-aviso@%n.service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=__USUARIO__
+WorkingDirectory=__RAIZ__
+ExecStart=__RAIZ__/deploy/probar_restauracion.sh
+TimeoutStartSec=2h

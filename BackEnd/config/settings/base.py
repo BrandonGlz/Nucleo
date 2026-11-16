@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     "apps.reportes",
     "apps.nico",
     "apps.tiempo_real",
+    "apps.auditoria",
+    "apps.integraciones",
 ]
 
 ASGI_APPLICATION = "config.asgi.application"
@@ -69,6 +71,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Deja la petición en curso a la bitácora de auditoría (quién hizo cada cambio).
+    "apps.auditoria.servicios.PeticionActual",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -152,6 +156,7 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "common.exceptions.manejar_excepcion",
     "DEFAULT_THROTTLE_RATES": {
         "login": "10/min",
+        "recuperar": "5/hour",
     },
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -215,6 +220,29 @@ NUCLEO_TOKEN_DIAS_SIN_USO = env.int("NUCLEO_TOKEN_DIAS_SIN_USO", default=7)
 NUCLEO_EXPO_PUSH_URL = env("NUCLEO_EXPO_PUSH_URL", default="https://exp.host/--/api/v2/push/send")
 NUCLEO_PUSH_HABILITADO = env.bool("NUCLEO_PUSH_HABILITADO", default=False)
 
+# Seguridad (Context/seguridad/seguridad.md).
+# Detrás de Cloudflare Tunnel, la IP real del visitante llega en CF-Connecting-IP (common/red.py).
+NUCLEO_CONFIAR_CF_CONNECTING_IP = env.bool("NUCLEO_CONFIAR_CF_CONNECTING_IP", default=False)
+# Llave Fernet de los datos cifrados en la base (common/cifrado.py). Vacía: se deriva de
+# DJANGO_SECRET_KEY (solo para desarrollo). En producción se guarda una copia fuera del servidor.
+NUCLEO_CLAVE_CIFRADO = env("NUCLEO_CLAVE_CIFRADO", default="")
+# Roles que deben usar la verificación en dos pasos, p. ej. ADMINPLAT,ADMIN. Vacío: opcional.
+NUCLEO_2FA_OBLIGATORIO = env.list("NUCLEO_2FA_OBLIGATORIO", default=[])
+# Dirección de la web, para el enlace de recuperación de contraseña.
+NUCLEO_URL_WEB = env("NUCLEO_URL_WEB", default="http://localhost:5173")
+PASSWORD_RESET_TIMEOUT = env.int("NUCLEO_RECUPERAR_SEGUNDOS", default=3600)
+# Días que se guarda la bitácora de auditoría (manage.py depurar_auditoria).
+NUCLEO_AUDITORIA_DIAS = env.int("NUCLEO_AUDITORIA_DIAS", default=365)
+# Correos que reciben los avisos del servidor (servicio caído, respaldo, prueba de
+# restauración). Vacío: los administradores de plataforma activos.
+NUCLEO_CORREOS_AVISOS = env.list("NUCLEO_CORREOS_AVISOS", default=[])
+# Tope de filas de una exportación CSV.
+NUCLEO_EXPORTAR_MAX_FILAS = env.int("NUCLEO_EXPORTAR_MAX_FILAS", default=100000)
+# Actualización remota del firmware (manage.py publicar_firmware): carpeta de las versiones
+# publicadas y códigos MQTT que la reciben (* = todos; vacío = ninguno).
+NUCLEO_FIRMWARE_DIR = env("NUCLEO_FIRMWARE_DIR", default=str(BASE_DIR / "firmware"))
+NUCLEO_FIRMWARE_DISPOSITIVOS = env.list("NUCLEO_FIRMWARE_DISPOSITIVOS", default=[])
+
 # Servicio externo de IA para redactar reportes; el proveedor está por definir.
 IA_PROVEEDOR = env("IA_PROVEEDOR", default="")
 IA_API_KEY = env("IA_API_KEY", default="")
@@ -235,6 +263,8 @@ IA_VOTOS_PARA_APRENDER = env.int("IA_VOTOS_PARA_APRENDER", default=2)
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+# Nombre del archivo en las descargas CSV cuando la web y la API están en orígenes distintos.
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 LOGGING = {

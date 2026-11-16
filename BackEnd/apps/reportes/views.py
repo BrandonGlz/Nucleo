@@ -3,7 +3,7 @@ import time
 from datetime import timedelta
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.dispositivos import firmware
 from apps.dispositivos.models import Dispositivo
 from apps.nico import configuracion, sugerencias
 from apps.reportes import (
@@ -771,3 +772,30 @@ class PuenteTomarView(_PuenteBase):
         if not autorizadas:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({"autorizadas": autorizadas})
+
+
+class PuenteFirmwareView(_PuenteBase):
+    """Manifiesto firmado del firmware publicado para este ESP (OTA). 204 si ya la tiene o si
+    no le toca (NUCLEO_FIRMWARE_DISPOSITIVOS)."""
+
+    def get(self, request):
+        codigo = self._dispositivo(request, request.query_params.get("dispositivo", ""))
+        manifiesto = firmware.manifiesto_para(codigo)
+        if not manifiesto or manifiesto["version"] == request.query_params.get("version"):
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(manifiesto)
+
+
+class PuenteFirmwareArchivoView(_PuenteBase):
+    """Un archivo de una versión publicada del firmware (el ESP comprueba su SHA-256)."""
+
+    def get(self, request):
+        codigo = self._dispositivo(request, request.query_params.get("dispositivo", ""))
+        if not firmware.autorizado(codigo):
+            raise NotFound("Sin actualización para este dispositivo.")
+        ruta = firmware.archivo(
+            request.query_params.get("version"), request.query_params.get("ruta")
+        )
+        if ruta is None:
+            raise NotFound("Archivo de firmware desconocido.")
+        return FileResponse(ruta.open("rb"), content_type="application/octet-stream")

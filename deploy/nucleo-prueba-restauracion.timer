@@ -1,0 +1,10 @@
+[Unit]
+Description=Núcleo - prueba de restauración el primer domingo de cada mes a las 04:30
+
+[Timer]
+# Después del respaldo de las 03:45, para probar el más reciente.
+OnCalendar=Sun *-*-01..07 04:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

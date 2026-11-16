@@ -11,6 +11,7 @@ import * as organizacionesApi from '../../services/organizaciones'
 import * as reportesApi from '../../services/reportes'
 import { nombreCompleto, pagina, ROL, ROL_TONO } from '../../utils/convertir'
 import { accesoCorto } from '../../utils/formato'
+import { SegundoFactor } from './SegundoFactor'
 
 const TEMAS = [
   { id: 'light', label: 'Claro' },
@@ -200,6 +201,7 @@ export function PerfilPage() {
           </div>
         </Card>
       </div>
+      <SegundoFactor />
     </Pantalla>
   )
 }

@@ -5,10 +5,12 @@ from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from apps.usuarios.models import TelefonoPush
+from apps.auditoria.models import RegistroAuditoria
+from apps.auditoria.servicios import registrar
+from apps.usuarios import seguridad
+from apps.usuarios.models import TelefonoPush, Usuario
 from apps.usuarios.serializers import (
     CambiarPasswordSerializer,
     CierreSesionSerializer,
@@ -19,43 +21,86 @@ from apps.usuarios.serializers import (
 from common import roles
 from common.autenticacion import token_de
 from common.permissions import PermisoPorRol
+from common.red import LimitePorIP
 from common.scoping import usuarios_gestionables
+
+Accion = RegistroAuditoria.Accion
 
 
 class LoginView(APIView):
-    """Inicia sesión con correo y contraseña y devuelve el token de la API."""
+    """Inicia sesión con correo y contraseña y devuelve el token de la API.
+
+    Con la verificación en dos pasos activa hace falta además ``codigo`` (de la app de
+    autenticación o de recuperación); sin él responde 401 con ``requiere_codigo``.
+    ``configurar_segundo_factor`` avisa que el rol la exige y la cuenta aún no la tiene.
+    """
 
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [LimitePorIP]
     throttle_scope = "login"
+
+    def _rechazo(self, request, correo, motivo, detalle, **extra):
+        conocido = Usuario.objects.filter(correo__iexact=correo).first()
+        registrar(
+            Accion.LOGIN_FALLIDO,
+            usuario=conocido,
+            correo=correo,
+            request=request,
+            descripcion=motivo,
+        )
+        return Response({"detail": detalle, **extra}, status=status.HTTP_401_UNAUTHORIZED)
 
     def post(self, request):
         entrada = LoginSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
-        usuario = authenticate(
-            request,
-            correo=entrada.validated_data["correo"],
-            password=entrada.validated_data["password"],
-        )
+        datos = entrada.validated_data
+        usuario = authenticate(request, correo=datos["correo"], password=datos["password"])
         if usuario is None:
-            return Response(
-                {"detail": "Correo o contraseña incorrectos, o la cuenta no está activa."},
-                status=status.HTTP_401_UNAUTHORIZED,
+            return self._rechazo(
+                request,
+                datos["correo"],
+                "Correo o contraseña incorrectos, o cuenta inactiva",
+                "Correo o contraseña incorrectos, o la cuenta no está activa.",
             )
+        factor = seguridad.segundo_factor_activo(usuario)
+        if factor is not None:
+            codigo = datos.get("codigo", "")
+            if not codigo:
+                return Response(
+                    {
+                        "detail": "Escribe el código de tu app de autenticación.",
+                        "requiere_codigo": True,
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            if seguridad.verificar_codigo(factor, codigo) is None:
+                return self._rechazo(
+                    request,
+                    datos["correo"],
+                    "Código de verificación incorrecto",
+                    "El código no es válido.",
+                    requiere_codigo=True,
+                )
         token = token_de(usuario)
         update_last_login(None, usuario)
-        datos = entrada.validated_data
         if "token_expo" in datos:
             # Un teléfono pertenece a una sola persona: si cambia de usuario, se reasigna.
             TelefonoPush.objects.update_or_create(
                 token_expo=datos["token_expo"],
                 defaults={"usuario": usuario, "plataforma": datos["plataforma"]},
             )
+        registrar(
+            Accion.LOGIN,
+            usuario=usuario,
+            request=request,
+            descripcion="Con verificación en dos pasos" if factor else "",
+        )
         return Response(
             {
                 "token": token.key,
                 "usuario": UsuarioSerializer(usuario, context={"request": request}).data,
+                "configurar_segundo_factor": factor is None and seguridad.es_obligatorio(usuario),
             }
         )
 
@@ -70,6 +115,7 @@ class LogoutView(APIView):
         if token_expo:
             TelefonoPush.objects.filter(usuario=request.user, token_expo=token_expo).delete()
         Token.objects.filter(user=request.user).delete()
+        registrar(Accion.LOGOUT)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -6,6 +6,8 @@ from .views import (
     CalificarAgenteView,
     EstadoAgenteView,
     ProgramacionReporteViewSet,
+    PuenteFirmwareArchivoView,
+    PuenteFirmwareView,
     PuenteTomarView,
     ReporteViewSet,
     SugerenciasAgenteView,
@@ -23,5 +25,11 @@ urlpatterns = [
     path("agente/estado/", EstadoAgenteView.as_view(), name="agente-estado"),
     path("agente/sugerencias/", SugerenciasAgenteView.as_view(), name="agente-sugerencias"),
     path("puente/tomar/", PuenteTomarView.as_view(), name="puente-tomar"),
+    path("puente/firmware/", PuenteFirmwareView.as_view(), name="puente-firmware"),
+    path(
+        "puente/firmware/archivo/",
+        PuenteFirmwareArchivoView.as_view(),
+        name="puente-firmware-archivo",
+    ),
     path("", include(router.urls)),
 ]

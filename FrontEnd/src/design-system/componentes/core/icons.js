@@ -73,10 +73,18 @@ import {
   UserX,
   UserCheck,
   KeyRound,
+  ShieldCheck,
+  Webhook,
+  ScrollText,
+  Copy,
   X,
 } from 'lucide-react'
 
 const ICONS = {
+  'shield-check': ShieldCheck,
+  'webhook': Webhook,
+  'scroll-text': ScrollText,
+  'copy': Copy,
   'activity': Activity,
   'arrow-down-right': ArrowDownRight,
   'arrow-up-right': ArrowUpRight,

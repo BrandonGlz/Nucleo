@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.db.models.functions import Now
 
 from common import roles
+from common.cifrado import CampoCifrado
 
 
 class UsuarioManager(BaseUserManager):
@@ -72,7 +73,8 @@ class Usuario(AbstractBaseUser):
     primer_apellido = models.CharField(max_length=60)
     segundo_apellido = models.CharField(max_length=60, null=True, blank=True)
     correo = models.EmailField(max_length=150, unique=True)
-    telefono = models.CharField(max_length=15, null=True, blank=True)
+    # Dato personal: se guarda cifrado (common/cifrado.py); el serializador limita a 15 caracteres.
+    telefono = CampoCifrado(null=True, blank=True)
     # Un operador usa el agente IA en la app solo si un administrador o supervisor se lo
     # permite; los demás roles siempre lo tienen.
     acceso_agente = models.BooleanField(db_default=False, default=False)
@@ -201,3 +203,34 @@ class TelefonoPush(models.Model):
 
     def __str__(self):
         return f"{self.plataforma} · usuario {self.usuario_id}"
+
+
+class SegundoFactor(models.Model):
+    """Verificación en dos pasos (TOTP) de un usuario.
+
+    ``secreto`` va cifrado. Mientras ``activo`` es falso, la configuración está pendiente de
+    confirmar con un primer código. ``ultimo_paso`` evita reutilizar un código ya aceptado y
+    ``codigos_recuperacion`` guarda el SHA-256 de los códigos de un solo uso que quedan.
+    """
+
+    num = models.AutoField(primary_key=True)
+    usuario = models.OneToOneField(
+        Usuario,
+        on_delete=models.CASCADE,
+        db_column="usuario_num",
+        related_name="segundo_factor",
+    )
+    secreto = CampoCifrado()
+    activo = models.BooleanField(db_default=False, default=False)
+    ultimo_paso = models.BigIntegerField(null=True, blank=True)
+    codigos_recuperacion = models.JSONField(default=list, blank=True)
+    fecha_activacion = models.DateTimeField(null=True, blank=True)
+    fecha_registro = models.DateTimeField(db_default=Now(), editable=False)
+
+    class Meta:
+        db_table = "segundo_factor"
+        verbose_name = "verificación en dos pasos"
+        verbose_name_plural = "verificaciones en dos pasos"
+
+    def __str__(self):
+        return f"2FA usuario {self.usuario_id} ({'activa' if self.activo else 'pendiente'})"

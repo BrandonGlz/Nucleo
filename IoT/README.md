@@ -18,8 +18,8 @@ extensión **Pymakr**. La placa ejecuta primero `boot.py` (inicio) y después
 - **Broker:** Mosquitto con TLS en el puerto 8883, en Docker (ver
   [Broker MQTT](../Context/mqtt/broker-mosquitto.md)). El `client_id` y el usuario MQTT de
   la placa son su `codigo_mqtt`.
-- **Pruebas de la lógica:** `tests/` ejecuta en la computadora 20 pruebas del firmware
-  (umbrales, calentamiento, baseline, cola, mensaje y batería) con módulos de MicroPython simulados.
+- **Pruebas de la lógica:** `tests/` ejecuta en la computadora las pruebas del firmware
+  (umbrales, calentamiento, baseline, cola, mensaje, batería y actualización remota) con módulos de MicroPython simulados.
 - **Sin validar en hardware:** los pines, la batería y el TLS en la placa se confirman al
   montar el dispositivo.
 

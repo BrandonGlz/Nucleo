@@ -166,6 +166,27 @@ IoT/.venv/bin/python -m unittest discover -s IoT/tests -t IoT
 - **Batería:** `BATERIA = "MAX17048"` lee el porcentaje real por I2C; si el medidor no
   responde, el campo `bateria` se omite. `"ADC"` usa un divisor 1:2 y `None` lo desactiva.
 
+## Actualización remota (OTA)
+
+El código de Python se actualiza sin cable (el binario de MicroPython no). Lo hacen tres piezas:
+
+- **`nucleo/ota.py`:** con `PUENTE_HOST` y `PUENTE_CLAVE` en `secrets.py`, a los 2 minutos de
+  confirmar la versión y luego cada 6 h (`OTA_REVISAR_SEG`) pregunta a
+  `GET /api/v1/puente/firmware/` si hay otra versión que `FIRMWARE_VERSION`. Comprueba la firma
+  HMAC-SHA256 del manifiesto con la clave del puente, baja cada archivo a `ota/` comprobando su
+  SHA-256 y su tamaño, deja `ota/listo` y reinicia la placa.
+- **`actualizacion.py`** (lo llama `boot.py`): copia a `anterior/` lo que va a reemplazar, pone
+  los archivos nuevos y deja `ota_estado.json` en «probando». Cuando la versión nueva conecta
+  con el broker o con el respaldo HTTPS, `aplicacion.py` la confirma y se borra `anterior/`.
+  Si la placa se reinicia 3 veces sin confirmar (error o watchdog), restaura `anterior/` y
+  marca esa versión como fallida para no volver a bajarla.
+- **Servidor:** `manage.py publicar_firmware` publica la versión de `config.py`, y
+  `NUCLEO_FIRMWARE_DISPOSITIVOS` decide qué placas la reciben (una para probar, `*` todas).
+
+Nunca se actualizan a distancia `secrets.py`, `boot.py` ni `actualizacion.py`: se graban por
+cable, igual que la primera vez `nucleo/ota.py`. Pasos en
+[deploy/README.md](../../deploy/README.md#firmware-de-los-esp32-ota).
+
 ## Conectividad y secretos
 
 Wi-Fi + MQTT sobre TLS en el puerto **8883**, validando siempre el certificado del

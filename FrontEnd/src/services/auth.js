@@ -1,10 +1,23 @@
-import { AUTH_CAMBIAR_PASSWORD, AUTH_LOGIN, AUTH_LOGOUT, AUTH_YO } from '../api'
+import {
+  AUTH_2FA,
+  AUTH_2FA_ACTIVAR,
+  AUTH_2FA_CODIGOS,
+  AUTH_2FA_CONFIGURAR,
+  AUTH_2FA_DESACTIVAR,
+  AUTH_CAMBIAR_PASSWORD,
+  AUTH_LOGIN,
+  AUTH_LOGOUT,
+  AUTH_RECUPERAR,
+  AUTH_RESTABLECER,
+  AUTH_YO,
+} from '../api'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
 
-export async function login(correo, password) {
+// `codigo`: segundo paso (app de autenticación o código de recuperación) si la cuenta lo tiene.
+export async function login(correo, password, codigo) {
   if (USAR_MOCKS) return mock.login({ correo, password })
-  return pedir(AUTH_LOGIN, { metodo: 'POST', cuerpo: { correo, password } })
+  return pedir(AUTH_LOGIN, { metodo: 'POST', cuerpo: { correo, password, ...(codigo ? { codigo } : {}) } })
 }
 export async function logout() {
   if (USAR_MOCKS) return mock.logout()
@@ -40,4 +53,32 @@ const SEMILLA = [
 export function cuentasDemo() {
   if (USAR_MOCKS) return mock.cuentasDemo()
   return PASSWORD_DEMO ? SEMILLA.map((c) => ({ ...c })) : []
+}
+
+// Recuperación de contraseña por correo
+export async function recuperar(correo) {
+  if (USAR_MOCKS) return null
+  return pedir(AUTH_RECUPERAR, { metodo: 'POST', cuerpo: { correo } })
+}
+export async function restablecer(uid, token, password_nueva) {
+  if (USAR_MOCKS) return null
+  return pedir(AUTH_RESTABLECER, { metodo: 'POST', cuerpo: { uid, token, password_nueva } })
+}
+
+// Verificación en dos pasos
+export async function segundoFactor() {
+  if (USAR_MOCKS) return { activo: false, obligatorio: false, codigos_restantes: 0 }
+  return pedir(AUTH_2FA)
+}
+export async function configurarSegundoFactor() {
+  return pedir(AUTH_2FA_CONFIGURAR, { metodo: 'POST', cuerpo: {} })
+}
+export async function activarSegundoFactor(codigo) {
+  return pedir(AUTH_2FA_ACTIVAR, { metodo: 'POST', cuerpo: { codigo } })
+}
+export async function desactivarSegundoFactor(password, codigo) {
+  return pedir(AUTH_2FA_DESACTIVAR, { metodo: 'POST', cuerpo: { password, codigo } })
+}
+export async function nuevosCodigos(codigo) {
+  return pedir(AUTH_2FA_CODIGOS, { metodo: 'POST', cuerpo: { codigo } })
 }

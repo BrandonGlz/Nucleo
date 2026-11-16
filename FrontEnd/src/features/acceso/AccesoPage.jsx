@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Avatar, Button, Icon, Input, Logo, LogoMark } from '../../design-system/componentes/index.js'
 import { useSesion } from '../../context/SesionContext'
 import { inicioDe } from '../index'
@@ -54,31 +54,54 @@ export function AccesoPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState()
   const [enviando, setEnviando] = useState(false)
+  // Segundo paso: la cuenta tiene la verificación en dos pasos y falta el código.
+  const [pideCodigo, setPideCodigo] = useState(false)
+  const [codigo, setCodigo] = useState('')
 
-  const entrar = async (c, p) => {
+  const entrar = async (c, p, cod) => {
     setError(undefined)
     setEnviando(true)
     try {
-      const u = await login(c, p)
+      const u = await login(c, p, cod)
       navegar(location.state?.desde || inicioDe(u?.rol), { replace: true })
     } catch (err) {
-      setError(
-        err.status === 400 || err.status === 401
-          ? 'Correo o contraseña incorrectos. Revisa e intenta de nuevo.'
-          : err.status === 403
-            ? 'Tu cuenta está inactiva. Pide al administrador que la active.'
-            : 'No pudimos conectar con Núcleo. Intenta de nuevo en unos minutos.',
-      )
+      if (err.status === 401 && err.datos?.requiere_codigo) {
+        setPideCodigo(true)
+        if (cod) setError('El código no es válido. Usa el más reciente de tu app.')
+      } else if (err.status === 429) {
+        setError('Demasiados intentos. Espera un minuto e intenta de nuevo.')
+      } else {
+        setError(
+          err.status === 400 || err.status === 401
+            ? 'Correo o contraseña incorrectos. Revisa e intenta de nuevo.'
+            : err.status === 403
+              ? 'Tu cuenta está inactiva. Pide al administrador que la active.'
+              : 'No pudimos conectar con Núcleo. Intenta de nuevo en unos minutos.',
+        )
+      }
       setEnviando(false)
     }
   }
   const enviar = (e) => {
     e.preventDefault()
+    if (pideCodigo) {
+      if (!codigo.trim()) {
+        setError('Escribe el código de 6 dígitos de tu app de autenticación.')
+        return
+      }
+      entrar(correo, password, codigo.trim())
+      return
+    }
     if (!correo || !password) {
       setError('Escribe tu correo y tu contraseña.')
       return
     }
     entrar(correo, password)
+  }
+  const volver = () => {
+    setPideCodigo(false)
+    setCodigo('')
+    setError(undefined)
   }
   const entrarDemo = (c) => {
     setCorreo(c)
@@ -107,12 +130,32 @@ export function AccesoPage() {
             <Logo size={40} />
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <h1>Inicia sesión</h1>
+            <h1>{pideCodigo ? 'Verificación en dos pasos' : 'Inicia sesión'}</h1>
             <p style={{ margin: 0, fontSize: 16, lineHeight: '26px', color: 'var(--text-secondary)' }}>
-              Entra con la cuenta que te dio el administrador de tu organización.
+              {pideCodigo
+                ? 'Escribe el código de 6 dígitos de tu app de autenticación, o uno de tus códigos de recuperación.'
+                : 'Entra con la cuenta que te dio el administrador de tu organización.'}
             </p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {pideCodigo && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <Input
+                label="Código"
+                icon="shield-check"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                placeholder="123456"
+                value={codigo}
+                error={error}
+                onChange={(e) => setCodigo(e.target.value)}
+              />
+              <button type="button" className="ui-enlace" onClick={volver} style={{ alignSelf: 'flex-start' }}>
+                Usar otra cuenta
+              </button>
+            </div>
+          )}
+          <div style={{ display: pideCodigo ? 'none' : 'flex', flexDirection: 'column', gap: 20 }}>
             <Input
               label="Correo"
               type="email"
@@ -127,17 +170,17 @@ export function AccesoPage() {
               icon="lock"
               autoComplete="current-password"
               value={password}
-              error={error}
+              error={pideCodigo ? undefined : error}
               onChange={(e) => setPassword(e.target.value)}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <a href="mailto:" style={{ fontSize: 14, fontWeight: 600 }}>
+              <Link to="/recuperar" style={{ fontSize: 14, fontWeight: 600 }}>
                 ¿Olvidaste tu contraseña?
-              </a>
+              </Link>
             </div>
           </div>
           <Button type="submit" size="lg" icon="log-in" block disabled={enviando}>
-            {enviando ? 'Entrando…' : 'Iniciar sesión'}
+            {enviando ? 'Entrando…' : pideCodigo ? 'Verificar y entrar' : 'Iniciar sesión'}
           </Button>
           <p style={{ margin: 0, fontSize: 14, lineHeight: '22px', color: 'var(--text-muted)' }}>
             ¿Necesitas acceso? Pídelo al administrador de tu organización.

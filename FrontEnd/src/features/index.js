@@ -14,6 +14,9 @@ const PanelPage = lazy(() => import('./panel/PanelPage').then((m) => ({ default:
 const PerfilPage = lazy(() => import('./perfil/PerfilPage').then((m) => ({ default: m.PerfilPage })))
 const ReportesPage = lazy(() => import('./reportes/ReportesPage').then((m) => ({ default: m.ReportesPage })))
 const UmbralesPage = lazy(() => import('./umbrales/UmbralesPage').then((m) => ({ default: m.UmbralesPage })))
+const AuditoriaPage = lazy(() => import('./auditoria/AuditoriaPage').then((m) => ({ default: m.AuditoriaPage })))
+const IntegracionesPage = lazy(() => import('./integraciones/IntegracionesPage').then((m) => ({ default: m.IntegracionesPage })))
+const RecuperarPage = lazy(() => import('./acceso/RecuperarPage').then((m) => ({ default: m.RecuperarPage })))
 const UsuariosPage = lazy(() => import('./usuarios/UsuariosPage').then((m) => ({ default: m.UsuariosPage })))
 
 // Registro único de módulos: App.jsx crea las rutas y MainLayout el menú a partir de esta lista.
@@ -32,6 +35,8 @@ export const modulos = [
   { ruta: '/umbrales', titulo: 'Umbrales', Pagina: UmbralesPage, seccion: 'Configuración', icono: 'sliders-horizontal' },
   { ruta: '/usuarios', titulo: 'Usuarios', Pagina: UsuariosPage, seccion: 'Configuración', icono: 'users', roles: ['ADMIN', 'SUPER'] },
   { ruta: '/areas', titulo: 'Empresa y áreas', Pagina: AreasPage, seccion: 'Áreas', icono: 'map-pin', roles: ['ADMIN', 'SUPER'] },
+  { ruta: '/integraciones', titulo: 'Integraciones', Pagina: IntegracionesPage, seccion: 'Configuración', icono: 'webhook', roles: ['ADMIN'] },
+  { ruta: '/auditoria', titulo: 'Auditoría', Pagina: AuditoriaPage, seccion: 'Configuración', icono: 'scroll-text', roles: ['ADMIN', 'ADMINPLAT'] },
   { ruta: '/perfil', titulo: 'Mi perfil', Pagina: PerfilPage },
   { ruta: '/notificaciones', titulo: 'Notificaciones', Pagina: NotificacionesPage },
 ]
@@ -42,3 +47,5 @@ export const inicioDe = (rol) => (rol === 'ADMINPLAT' ? '/organizaciones' : '/pa
 
 // La pantalla de acceso va fuera del marco con menú.
 export const acceso = { ruta: '/acceso', titulo: 'Acceso', Pagina: AccesoPage }
+// Recuperar la contraseña, también fuera del marco y sin sesión.
+export const recuperar = { titulo: 'Recuperar contraseña', Pagina: RecuperarPage }

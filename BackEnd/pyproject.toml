@@ -4,7 +4,19 @@ line-length = 100
 exclude = [".venv", "apps/*/migrations"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W", "B", "UP"]
+# S: reglas de seguridad (bandit).
+select = ["E", "F", "I", "W", "B", "UP", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "config/settings/*.py" = ["F403", "F405"]
+# Desarrollo escucha en todas las interfaces a propósito (pruebas desde el teléfono).
+"config/settings/development.py" = ["F403", "F405", "S104"]
+# Pruebas y datos de demostración: contraseñas de ejemplo y aleatorios sin uso criptográfico.
+"**/tests.py" = ["S101", "S105", "S106", "S311"]
+"**/test_*.py" = ["S101", "S105", "S106", "S311"]
+"common/testing.py" = ["S105", "S106"]
+"apps/usuarios/management/commands/sembrar_demo.py" = ["S105", "S106", "S311"]
+# Simulación de lecturas y variedad de las respuestas de Nico: aleatorio sin uso criptográfico.
+"apps/mediciones/simulacion.py" = ["S311"]
+"apps/mediciones/management/commands/simular_dispositivos.py" = ["S311"]
+"apps/reportes/personalidad.py" = ["S311"]

@@ -74,7 +74,7 @@ flowchart LR
   dentro de WebSocket en `wss://dispositivos.bynucleo.com/mqtt`; el túnel lo lleva directo al
   listener WebSocket de Mosquitto (solo local). El ESP valida el certificado con las raíces de
   Let's Encrypt y Google que lleva el firmware. En ese subdominio solo quedan además el respaldo
-  HTTPS de Nico y la hora (`/api/v1/puente/`, `/api/v1/health/`).
+  HTTPS de Nico, la actualización del firmware y la hora (`/api/v1/puente/`, `/api/v1/health/`).
 - **Web:** Vite la compila contra la API real y Caddy la sirve como archivos estáticos.
 - **API y tiempo real:** Daphne atiende HTTP y WebSocket (`/ws/panel/`) como servicio
   `nucleo-daphne`; Redis reparte los eventos en vivo.
@@ -87,8 +87,13 @@ flowchart LR
   (proyecto `nucleo-firebase`) a los teléfonos registrados al iniciar sesión en la app.
 - **App:** `deploy/compilar_apk.sh` compila el APK en el mismo servidor y lo publica en
   `https://app.bynucleo.com`.
-- **Respaldos:** `nucleo-respaldo.timer` respalda a diario las dos bases y la configuración del
-  broker: 7 días en el servidor y 30 en Google Drive.
+- **Respaldos:** `nucleo-respaldo.timer` respalda a las 03:45 y 15:45 (RPO de 12 h) las dos
+  bases y la configuración: 7 días en el servidor y 30 en Google Drive, cifrados con rclone
+  `crypt`. `nucleo-prueba-restauracion.timer` comprueba cada mes que el respaldo se restaura y
+  mide el RTO.
+- **Seguridad:** firewall nftables propio, reglas WAF y límite de acceso en Cloudflare, avisos
+  por correo cuando falla un servicio y vigía externo en GitHub Actions
+  ([seguridad](../seguridad/seguridad.md)).
 - **Disponibilidad:** todos los servicios arrancan con el equipo y se reinician solos; los
   contenedores tienen límite de memoria. El equipo no se suspende con la tapa
   cerrada ni por inactividad, usa el cable si está conectado y el Wi-Fi como respaldo.

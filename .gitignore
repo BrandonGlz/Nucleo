@@ -28,6 +28,8 @@ htmlcov/
 
 # Django
 staticfiles/
+# Versiones publicadas del firmware (manage.py publicar_firmware)
+BackEnd/firmware/
 media/
 *.log
 

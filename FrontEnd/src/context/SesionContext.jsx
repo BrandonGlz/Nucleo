@@ -3,10 +3,13 @@ import * as auth from '../services/auth'
 import * as organizacionesApi from '../services/organizaciones'
 import { pagina } from '../utils/convertir'
 import { guardarToken, leerToken } from '../services/config'
+import { EVENTO_SEGUNDO_FACTOR } from '../services/api/client'
 
 const SesionContext = createContext(null)
 const CLAVE_USUARIO = 'nucleo.usuario'
 const CLAVE_TEMA = 'nucleo.tema'
+// El rol exige la verificación en dos pasos y la cuenta aún no la tiene: solo se puede ir al perfil.
+const CLAVE_2FA = 'nucleo.segundo_factor_pendiente'
 
 const leer = (clave) => {
   try {
@@ -28,6 +31,16 @@ const escribir = (clave, valor) => {
 export function SesionProvider({ children }) {
   const [usuario, setUsuario] = useState(() => (leerToken() ? leer(CLAVE_USUARIO) : null))
   const [tema, setTemaEstado] = useState(() => leer(CLAVE_TEMA) || 'system')
+  const [segundoFactorPendiente, setPendiente] = useState(() => Boolean(leerToken() && leer(CLAVE_2FA)))
+  const marcarSegundoFactor = useCallback((pendiente) => {
+    setPendiente(pendiente)
+    escribir(CLAVE_2FA, pendiente || null)
+  }, [])
+  useEffect(() => {
+    const alAviso = () => marcarSegundoFactor(true)
+    window.addEventListener(EVENTO_SEGUNDO_FACTOR, alAviso)
+    return () => window.removeEventListener(EVENTO_SEGUNDO_FACTOR, alAviso)
+  }, [marcarSegundoFactor])
   const [oscuroSistema, setOscuroSistema] = useState(
     () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false,
   )
@@ -64,13 +77,18 @@ export function SesionProvider({ children }) {
     escribir(CLAVE_TEMA, t)
   }, [])
 
-  const login = useCallback(async (correo, password) => {
-    const { token, usuario: u } = await auth.login(correo, password)
-    guardarToken(token)
-    escribir(CLAVE_USUARIO, u)
-    setUsuario(u)
-    return u
-  }, [])
+  // `codigo`: segundo paso. Si falta, la API responde 401 con datos.requiere_codigo.
+  const login = useCallback(
+    async (correo, password, codigo) => {
+      const { token, usuario: u, configurar_segundo_factor } = await auth.login(correo, password, codigo)
+      guardarToken(token)
+      escribir(CLAVE_USUARIO, u)
+      marcarSegundoFactor(Boolean(configurar_segundo_factor))
+      setUsuario(u)
+      return u
+    },
+    [marcarSegundoFactor],
+  )
 
   const logout = useCallback(async () => {
     try {
@@ -80,12 +98,24 @@ export function SesionProvider({ children }) {
     }
     guardarToken(null)
     escribir(CLAVE_USUARIO, null)
+    marcarSegundoFactor(false)
     setUsuario(null)
-  }, [])
+  }, [marcarSegundoFactor])
 
   const valor = useMemo(
-    () => ({ usuario, rol: usuario?.rol, organizacion, login, logout, tema, temaAplicado, setTema }),
-    [usuario, organizacion, login, logout, tema, temaAplicado, setTema],
+    () => ({
+      usuario,
+      rol: usuario?.rol,
+      organizacion,
+      login,
+      logout,
+      tema,
+      temaAplicado,
+      setTema,
+      segundoFactorPendiente,
+      marcarSegundoFactor,
+    }),
+    [usuario, organizacion, login, logout, tema, temaAplicado, setTema, segundoFactorPendiente, marcarSegundoFactor],
   )
   return <SesionContext.Provider value={valor}>{children}</SesionContext.Provider>
 }

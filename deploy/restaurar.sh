@@ -3,6 +3,9 @@
 # (toma los más recientes). Trae el .env raíz y el broker (certificados y usuarios) si
 # faltan, y restaura nucleo_db (PostgreSQL) y nucleo_iot (TimescaleDB) en bases vacías.
 # Uso, desde la carpeta del proyecto:  bash deploy/restaurar.sh ~/traspaso
+# Respaldos cifrados en Drive: primero  rclone copy gdrive-nucleo-cifrado: ~/traspaso --max-age 2d
+# Variables: NUCLEO_PG / NUCLEO_TS (contenedores destino), NUCLEO_SIN_COMPOSE=1 (no levanta los del
+# proyecto) y NUCLEO_SOLO_BASES=1 (no toca archivos del proyecto; lo usa deploy/probar_restauracion.sh).
 set -euo pipefail
 
 raiz="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,13 +19,15 @@ archivos="$(reciente 'nucleo_archivos*.tar.gz')"
 [[ -n "$archivos" ]] || archivos="$(reciente 'nucleo_broker_media*.tar.gz')"
 [[ -n "$dump_db" && -n "$dump_iot" ]] || { echo "Faltan nucleo_db*.dump o nucleo_iot*.dump en $origen"; exit 1; }
 
-if [[ -n "$archivos" ]]; then
+if [[ -n "${NUCLEO_SOLO_BASES:-}" ]]; then
+  archivos=""
+elif [[ -n "$archivos" ]]; then
   # --skip-old-files: no pisa un .env o certificados que ya existan.
   tar -xzf "$archivos" -C "$raiz" --skip-old-files
   chmod 600 "$raiz/.env" 2>/dev/null || true
   echo "Archivos restaurados desde $(basename "$archivos")"
 fi
-[[ -f "$raiz/.env" ]] || { echo "Falta .env en la raíz del proyecto"; exit 1; }
+[[ -n "${NUCLEO_SOLO_BASES:-}" || -f "$raiz/.env" ]] || { echo "Falta .env en la raíz del proyecto"; exit 1; }
 
 # Una base recién creada arranca un servidor temporal para inicializarse, lo apaga y arranca el
 # definitivo; el healthcheck ya pasa con el temporal. Se espera al mensaje del arranque definitivo.
@@ -63,4 +68,4 @@ sql "$ts" "SELECT timescaledb_post_restore()" >/dev/null
 
 echo "nucleo_db: $(tablas "$pg") tablas"
 echo "nucleo_iot: $(tablas "$ts") tablas, hypertables: $(sql "$ts" "select string_agg(hypertable_name, ', ') from timescaledb_information.hypertables")"
-echo "Listo. Sigue con: bash deploy/configurar_env.sh"
+[[ -n "${NUCLEO_SOLO_BASES:-}" ]] || echo "Listo. Sigue con: bash deploy/configurar_env.sh"

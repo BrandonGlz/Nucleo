@@ -3,4 +3,5 @@ export const ALERTAS = '/alertas/' // GET ?estado, nivel, dispositivo, variable,
 export const ALERTA = (num) => `/alertas/${num}/` // GET
 export const ALERTA_ATENDER = (num) => `/alertas/${num}/atender/` // POST {observaciones}: ADMIN y SUPER
 export const ALERTA_DESCARTAR = (num) => `/alertas/${num}/descartar/` // POST {observaciones}: ADMIN y SUPER
+export const ALERTAS_EXPORTAR = '/alertas/exportar/' // GET CSV, mismos filtros que ALERTAS
 export const NOTIFICACIONES = '/notificaciones/' // GET: las del propio usuario

@@ -537,3 +537,75 @@ class WebSocketTests(unittest.TestCase):
         trama = self.ws.trama(0x2, b"x" * 300, b"\0\0\0\0")
         self.assertEqual(trama[1], 0x80 | 126)
         self.assertEqual((trama[2] << 8) | trama[3], 300)
+
+
+class OTATests(unittest.TestCase):
+    """Firma del manifiesto, instalación al arrancar y vuelta atrás si la versión no arranca."""
+
+    def setUp(self):
+        import tempfile
+
+        import actualizacion
+
+        self.act = actualizacion
+        self.raiz = tempfile.mkdtemp() + "/"
+        actualizacion.RAIZ = self.raiz
+        self.addCleanup(setattr, actualizacion, "RAIZ", "")
+        self._archivo("main.py", "viejo")
+        self._archivo("nucleo/aplicacion.py", "app vieja")
+
+    def _archivo(self, ruta, texto):
+        self.act._carpetas(ruta)
+        with open(self.raiz + ruta, "w") as f:
+            f.write(texto)
+
+    def _leer(self, ruta):
+        with open(self.raiz + ruta) as f:
+            return f.read()
+
+    def _descargada(self, version="1.1.0"):
+        self._archivo("ota/main.py", "nuevo")
+        self._archivo("ota/nucleo/aplicacion.py", "app nueva")
+        self._archivo("ota/nucleo/ota_extra.py", "extra")
+        archivos = [{"ruta": r} for r in ("main.py", "nucleo/aplicacion.py", "nucleo/ota_extra.py")]
+        self.act._escribir("ota/manifiesto.json", {"version": version, "archivos": archivos})
+        self._archivo("ota/listo", version)
+
+    def test_firma_y_rutas_del_manifiesto(self):
+        import hashlib
+        import hmac
+
+        from nucleo import ota
+
+        archivos = [{"ruta": "main.py", "sha256": "ab" * 32, "tamano": 10}]
+        firma = hmac.new(b"k", ota.canonico("1.1.0", archivos), hashlib.sha256).hexdigest()
+        manifiesto = {"version": "1.1.0", "archivos": archivos, "firma": firma}
+        self.assertTrue(ota.manifiesto_valido(manifiesto, "k"))
+        self.assertFalse(ota.manifiesto_valido(manifiesto, "otra"))
+        self.assertFalse(ota.manifiesto_valido({**manifiesto, "version": "6.6.6"}, "k"))
+        for mala in ("secrets.py", "boot.py", "actualizacion.py", "../x.py", "/main.py", "a.sh"):
+            self.assertFalse(ota.ruta_valida(mala), mala)
+        self.assertTrue(ota.ruta_valida("nucleo/raices.pem"))
+
+    def test_aplica_y_confirma(self):
+        self._descargada()
+        self.assertEqual(self.act.aplicar(), "aplicada")
+        self.assertEqual(self._leer("main.py"), "nuevo")
+        self.assertEqual(self._leer("anterior/main.py"), "viejo")
+        self.assertFalse(os.path.exists(self.raiz + "ota"))
+        self.assertTrue(self.act.confirmar())
+        self.assertFalse(os.path.exists(self.raiz + "anterior"))
+        self.assertEqual(self.act.estado(), {"version": "1.1.0", "fallida": None})
+        self.assertIsNone(self.act.aplicar())
+
+    def test_vuelve_atras_si_no_arranca(self):
+        self.act._escribir("ota_estado.json", {"version": "1.0.0"})
+        self._descargada()
+        self.act.aplicar()
+        for _ in range(self.act.INTENTOS - 1):
+            self.assertEqual(self.act.aplicar(), "probando")  # reinicios sin confirmar
+        self.assertEqual(self.act.aplicar(), "restaurada")
+        self.assertEqual(self._leer("main.py"), "viejo")
+        self.assertEqual(self._leer("nucleo/aplicacion.py"), "app vieja")
+        self.assertFalse(os.path.exists(self.raiz + "nucleo/ota_extra.py"))
+        self.assertEqual(self.act.estado(), {"version": "1.0.0", "fallida": "1.1.0"})

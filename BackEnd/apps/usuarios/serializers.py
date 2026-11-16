@@ -31,7 +31,10 @@ class UsuarioSerializer(serializers.ModelSerializer):
             "fecha_registro",
         ]
         read_only_fields = ["num", "organizacion", "fecha_registro"]
-        extra_kwargs = {"acceso_agente": {"required": False}}
+        extra_kwargs = {
+            "acceso_agente": {"required": False},
+            "telefono": {"max_length": 15, "allow_null": True, "required": False},
+        }
 
     def validate_password(self, valor):
         validate_password(valor)
@@ -86,6 +89,8 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(style={"input_type": "password"}, trim_whitespace=False)
     token_expo = serializers.CharField(max_length=255, required=False)
     plataforma = serializers.ChoiceField(choices=TelefonoPush.Plataforma.choices, required=False)
+    # Segundo paso: código de la app de autenticación o de recuperación.
+    codigo = serializers.CharField(max_length=20, required=False, allow_blank=True)
 
     def validate(self, datos):
         if ("token_expo" in datos) != ("plataforma" in datos):
@@ -123,6 +128,7 @@ class PrimerAdministradorSerializer(serializers.ModelSerializer):
             "password",
         ]
         read_only_fields = ["num"]
+        extra_kwargs = {"telefono": {"max_length": 15, "allow_null": True, "required": False}}
 
     def validate_password(self, valor):
         validate_password(valor)

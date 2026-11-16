@@ -99,5 +99,13 @@ RESPALDO_SEG = 10
 RESPALDO_ESPERA_SEG = 8
 RAIZ_PUENTE = "nucleo/raices.pem"
 
+# --- Actualización remota (OTA) ----------------------------------------------------------------
+# Versión de este firmware; súbela antes de `manage.py publicar_firmware`. Con PUENTE_HOST y
+# PUENTE_CLAVE en secrets.py la placa revisa cada OTA_REVISAR_SEG (0 = nunca) si hay otra.
+FIRMWARE_VERSION = "1.0.0"
+OTA_PRIMERA_SEG = 120
+OTA_REVISAR_SEG = 6 * 3600
+OTA_ESPERA_SEG = 15
+
 # Reinicia la placa si el programa deja de responder; 0 lo desactiva (útil al depurar con Pymakr).
 WATCHDOG_MS = 60000

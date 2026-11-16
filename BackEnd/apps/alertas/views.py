@@ -10,8 +10,11 @@ from apps.alertas.serializers import (
     AtencionSerializer,
     NotificacionSerializer,
 )
+from apps.integraciones import envio as webhooks
+from apps.integraciones.autenticacion import con_token_api
 from apps.tiempo_real import eventos
 from common import roles
+from common.exportar import respuesta_csv
 from common.filtros import parametro_entero, parametro_fecha
 from common.permissions import PermisoPorRol
 from common.scoping import dispositivos_visibles
@@ -25,6 +28,7 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     serializer_class = AlertaSerializer
+    authentication_classes = con_token_api()
     permission_classes = [PermisoPorRol]
     roles_acciones = {
         "atender": (roles.ADMIN, roles.SUPERVISOR),
@@ -77,7 +81,51 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
             if estado == Alerta.Estado.ATENDIDA
             else eventos.ALERTA_DESCARTADA,
         )
+        webhooks.notificar_alerta(
+            alerta,
+            webhooks.Webhook.Evento.ALERTA_ATENDIDA
+            if estado == Alerta.Estado.ATENDIDA
+            else webhooks.Webhook.Evento.ALERTA_DESCARTADA,
+        )
         return Response(self.get_serializer(alerta).data)
+
+    @action(detail=False, methods=["get"])
+    def exportar(self, request):
+        """CSV con las alertas del alcance y los mismos filtros de la lista."""
+        consulta = self.get_queryset().select_related("atendida_por")
+        encabezado = [
+            "alerta",
+            "fecha_hora",
+            "dispositivo",
+            "codigo",
+            "variable",
+            "valor",
+            "nivel",
+            "tipo",
+            "estado",
+            "atendida_por",
+            "fecha_atencion",
+            "observaciones",
+        ]
+
+        def filas():
+            for a in consulta.iterator():
+                yield [
+                    a.pk,
+                    a.fecha_hora.isoformat(),
+                    a.umbral.dispositivo.nombre,
+                    a.umbral.dispositivo.codigo_mqtt,
+                    a.umbral.variable_id,
+                    a.lectura_valor,
+                    a.nivel,
+                    a.tipo,
+                    a.estado,
+                    a.atendida_por.correo if a.atendida_por_id else "",
+                    a.fecha_atencion.isoformat() if a.fecha_atencion else "",
+                    a.observaciones or "",
+                ]
+
+        return respuesta_csv(request, "alertas", encabezado, filas())
 
     @action(detail=True, methods=["post"])
     def atender(self, request, pk=None):

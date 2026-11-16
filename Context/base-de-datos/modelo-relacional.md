@@ -61,7 +61,8 @@ area           num, organizacion_num, nombre, descripcion
                UNIQUE (organizacion_num, nombre)
 usuario        num, organizacion_num (opcional), area_num (opcional), rol_codigo,
                estado_usuario_codigo, nombre, primer_apellido, segundo_apellido,
-               correo (único), telefono, password (hash), ultimo_acceso, fecha_registro
+               correo (único), telefono (TEXT cifrado con Fernet), password (hash),
+               ultimo_acceso, fecha_registro
                CHECK (rol_codigo = 'ADMINPLAT') = (organizacion_num IS NULL)
                ÍNDICE (organizacion_num, area_num)
 telefono_push  num, usuario_num, token_expo (único), plataforma, fecha_registro
@@ -98,6 +99,22 @@ reporte        num, organizacion_num, area_num (opcional), generado_por (opciona
                origen, periodo_inicio, periodo_fin, cifras JSONB, contenido, archivo_pdf,
                fecha_generacion
                CHECK origen en MANUAL, PROGRAMADO, AGENTE; CHECK periodo_inicio < periodo_fin
+segundo_factor num, usuario_num (único), secreto (cifrado), activo (def. FALSE), ultimo_paso
+               (el último código TOTP usado no vale otra vez), codigos_recuperacion JSONB
+               (SHA-256 de los pendientes), fecha_activacion, fecha_registro
+registro_auditoria
+               num (bigint), fecha_hora, usuario_num (opcional, SET NULL), usuario_correo,
+               organizacion_num (opcional, SET NULL), accion, recurso, recurso_num,
+               descripcion, cambios JSONB (antes y después; secretos ocultos), ip (INET)
+               CHECK accion en CREAR, MODIFICAR, ELIMINAR, LOGIN, LOGIN_FALLIDO, LOGOUT,
+               RECUPERAR, SEGUNDO_FACTOR, INTEGRACION, EXPORTAR
+               ÍNDICES (organizacion_num, fecha_hora DESC) y (usuario_num, fecha_hora DESC)
+token_api      num, organizacion_num, nombre, prefijo (único), clave_hash (SHA-256),
+               creado_por (opcional), fecha_creacion, fecha_expiracion, ultimo_uso, activo
+webhook        num, organizacion_num, nombre, url, secreto (cifrado), eventos JSONB, activo,
+               creado_por (opcional), fecha_creacion, ultimo_envio, ultimo_estado,
+               fallos_consecutivos (≥ 0)
+               CHECK url empieza con https://
 ```
 
 Además existe `dispositivo (area_num)` como índice propio y las tablas internas de

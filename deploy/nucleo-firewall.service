@@ -1,0 +1,14 @@
+[Unit]
+Description=Núcleo - firewall del servidor (nftables, solo entrada)
+# Antes de la red, para que el equipo nunca quede expuesto sin reglas.
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f __REGLAS__
+ExecStop=/usr/sbin/nft delete table inet nucleo_filtro
+
+[Install]
+WantedBy=multi-user.target

@@ -49,12 +49,15 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
     host abre la consola de Nico AI (solo el superusuario, rol administrador de plataforma).
   - `dispositivos.bynucleo.com/mqtt` → directo al listener WebSocket de Mosquitto
     (`127.0.0.1:51884`). El resto de ese subdominio pasa por Caddy, que solo deja el respaldo
-    HTTPS de Nico y la hora (`/api/v1/puente/`, `/api/v1/health/`) y lo demás lo manda a la web.
+    HTTPS de Nico, la actualización del firmware y la hora (`/api/v1/puente/`, `/api/v1/health/`)
+    y lo demás lo manda a la web.
 - Los DNS son CNAME del túnel en Cloudflare: `cloudflared tunnel route dns nucleo <host>` por cada
   nombre (`bynucleo.com`, `www`, `app`, `nicoai`, `dispositivos`).
 - Caddy sirve la web compilada y pasa `/api`, `/admin` y `/ws` a Daphne (`127.0.0.1:8001`).
 - systemd: `nucleo-daphne` (API y WebSocket), `nucleo-mqtt` (lecturas del broker),
-  `nucleo-sin-conexion`, `nucleo-reportes.timer` (cada 15 min) y `nucleo-respaldo.timer` (diario).
+  `nucleo-sin-conexion`, `nucleo-reportes.timer` (cada 15 min), `nucleo-respaldo.timer` (03:45 y
+  15:45) y `nucleo-prueba-restauracion.timer` (primer domingo del mes, 04:30). Si cualquiera
+  falla, `nucleo-aviso@.service` manda un correo con sus últimas líneas de bitácora.
 - La laptop no se suspende con la tapa cerrada ni por inactividad, y NetworkManager usa el cable
   si está conectado y el Wi-Fi como respaldo.
 
@@ -67,7 +70,109 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 - `journalctl -u nucleo-daphne -n 50 --no-pager` — últimos mensajes de la API.
 - `docker ps` — contenedores: postgres, timescaledb, redis, mosquitto y ollama.
 - `systemctl status cloudflared --no-pager` — estado del túnel de Cloudflare.
-- `bash deploy/respaldar.sh` — respaldo inmediato en `~/respaldos/nucleo` y en Drive (`gdrive-nucleo:servidor/nucleo`).
+- `bash deploy/respaldar.sh` — respaldo inmediato en `~/respaldos/nucleo` y en Drive (cifrado en
+  `gdrive-nucleo-cifrado:`; sin ese remoto, en claro en `gdrive-nucleo:servidor/nucleo`).
+- `bash deploy/probar_restauracion.sh` — prueba de restauración inmediata (contenedores
+  temporales, no toca producción); el registro queda en `~/respaldos/nucleo-pruebas`.
+- `bash deploy/firewall.sh estado` — reglas del firewall y conexiones rechazadas.
+
+## Seguridad y recuperación
+
+### Respaldos cifrados
+
+Drive solo recibe archivos cifrados (nombres incluidos) con un remoto `crypt` de rclone sobre el
+remoto normal. Una sola vez, en la laptop:
+
+```bash
+rclone config create gdrive-nucleo-cifrado crypt \
+  remote=gdrive-nucleo:servidor/nucleo-cifrado \
+  password="$(rclone obscure 'CONTRASEÑA-LARGA')" \
+  password2="$(rclone obscure 'OTRA-CONTRASEÑA-LARGA')"
+```
+
+Guarda las dos contraseñas fuera del servidor (gestor de contraseñas): sin ellas los respaldos
+no se pueden leer. Desde ese momento `respaldar.sh` usa el remoto cifrado y los respaldos en claro
+anteriores se borran solos a los 30 días. Para restaurar en otra máquina se crea el mismo remoto
+con las mismas contraseñas y `rclone copy gdrive-nucleo-cifrado: ~/traspaso --max-age 2d`.
+
+### Objetivos de recuperación
+
+| Medida | Valor |
+| --- | --- |
+| RPO (datos que se pueden perder) | 12 h: respaldo a las 03:45 y 15:45 |
+| RTO (tiempo para volver) | El que mide la prueba mensual (≈ 1 min para restaurar las bases; más la instalación si es otra máquina) |
+| Prueba | `nucleo-prueba-restauracion.timer` restaura, compara conteos y avisa por correo |
+
+### Llave de cifrado de datos
+
+`instalar.sh` agrega a `BackEnd/.env` una `NUCLEO_CLAVE_CIFRADO` (Fernet) si no existe; con ella se
+cifran el teléfono de los usuarios y los secretos de la verificación en dos pasos y de los
+webhooks. Guarda una copia fuera del servidor: si se pierde, esos campos no se pueden leer (los
+respaldos de la base los traen cifrados).
+
+### Firewall (nftables)
+
+`deploy/firewall.nft` usa su propia tabla (`inet nucleo_filtro`) y no toca las reglas de Docker
+ni de Tailscale. Para activarlo:
+
+1. `bash deploy/firewall.sh aplicar` — carga las reglas y programa quitarlas en 3 minutos.
+2. Desde **otra** sesión SSH nueva: `bash deploy/firewall.sh confirmar` — las deja fijas
+   (`nucleo-firewall.service`). Si no se puede entrar, a los 3 minutos se quitan solas.
+3. `bash deploy/firewall.sh quitar` las elimina.
+
+### Reglas de Cloudflare (panel)
+
+En **Security → WAF** de `bynucleo.com` (plan Free):
+
+| Regla | Expresión | Acción |
+| --- | --- | --- |
+| Escáneres | `starts_with(http.request.uri.path, "/wp-") or starts_with(http.request.uri.path, "/.env") or starts_with(http.request.uri.path, "/.git") or ends_with(http.request.uri.path, ".php")` | Block |
+| Admin solo desde México | `starts_with(http.request.uri.path, "/admin") and ip.src.country ne "MX"` | Block |
+| Límite de acceso (Rate limiting) | `http.request.uri.path in {"/api/v1/auth/login/" "/api/v1/auth/recuperar/" "/api/v1/auth/restablecer/"}`, 5 peticiones / 10 s por IP | Block 10 s |
+
+No actives Bot Fight Mode: bloquearía a los ESP32, a la app y al vigía de GitHub.
+
+### Avisos y vigilancia
+
+- `nucleo-aviso@.service`: correo a `NUCLEO_CORREOS_AVISOS` (o a los administradores de
+  plataforma) cuando un servicio falla, como mucho uno por hora por servicio
+  (`NUCLEO_AVISO_MINUTOS`).
+- `.github/workflows/vigia.yml`: cada 15 min revisa desde fuera la web, la API, la app y el
+  subdominio de los ESP32. GitHub solo ejecuta los flujos programados de la rama principal, así
+  que empieza a correr cuando `dev` se une a `main`; las fallas llegan por correo de GitHub.
+- En **Settings → Code security** del repositorio activa *Dependabot alerts* y *security
+  updates*; `seguridad.yml` corre CodeQL, ruff y `npm audit` en cada push.
+
+### Verificación en dos pasos obligatoria
+
+`NUCLEO_2FA_OBLIGATORIO=ADMINPLAT,ADMIN` en `BackEnd/.env` (y reiniciar `nucleo-daphne`) obliga a
+esos roles a configurarla en Mi perfil antes de usar lo demás. Antes, configúrala en las cuentas
+de demostración que usen esos roles.
+
+### Firmware de los ESP32 (OTA)
+
+1. Sube `FIRMWARE_VERSION` en `IoT/micropython/config.py`, haz commit y despliega.
+2. `cd BackEnd && .venv/bin/python manage.py publicar_firmware` — copia la versión a
+   `BackEnd/firmware/` (fuera de git).
+3. `NUCLEO_FIRMWARE_DISPOSITIVOS=NUC-001` en `BackEnd/.env` (primero en una placa; `*` = todas) y
+   reinicia `nucleo-daphne`. La placa la baja en ≤ 6 h, la instala al reiniciar y, si no vuelve a
+   conectar tras 3 reinicios, regresa sola a la anterior.
+
+Las placas necesitan la primera vez `actualizacion.py`, `boot.py` y `nucleo/ota.py` grabados por
+cable, además de `PUENTE_HOST` y `PUENTE_CLAVE` en `secrets.py`.
+
+### Servidor de reserva
+
+Si la laptop se pierde, cualquier equipo con Debian y 8 GB sirve:
+
+1. Instala Docker, git, Caddy, rclone y cloudflared; clona el repositorio en `/var/www/html/Nucleo`
+   (rama `dev`).
+2. Crea los remotos `gdrive-nucleo` y `gdrive-nucleo-cifrado` (mismas contraseñas), baja el último
+   respaldo y sigue [Instalación desde cero](#instalación-desde-cero). Pon en `BackEnd/.env` la
+   misma `NUCLEO_CLAVE_CIFRADO`.
+3. Copia `/etc/cloudflared/` y `~/.cloudflared/` (o crea el túnel de nuevo): los dominios apuntan
+   al túnel, no a una IP, así que el cambio es inmediato.
+4. Revisa con el vigía o `curl https://bynucleo.com/api/v1/health/`.
 
 ### App móvil (APK)
 
@@ -168,12 +273,17 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
    Zero Trust (plan Free) en la cuenta del dominio. Para mudar de servidor basta con copiar
    `/etc/cloudflared/` y `~/.cloudflared/`.
 4. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios y túnel.
-5. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file`.
+5. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file` y después
+   el remoto cifrado ([Respaldos cifrados](#respaldos-cifrados)).
+6. Firewall: [aplicar y confirmar](#firewall-nftables).
 
 | Archivo | Para qué |
 | --- | --- |
 | `instalar.sh`, `desplegar.sh` | Instalar o actualizar |
 | `restaurar.sh`, `respaldar.sh` | Restaurar desde respaldos y respaldar |
+| `probar_restauracion.sh` | Prueba mensual de restauración (RTO) |
+| `aviso_fallo.sh`, `nucleo-aviso@.service` | Correo cuando falla un servicio |
+| `firewall.sh`, `firewall.nft`, `nucleo-firewall.service` | Firewall del host |
 | `configurar_env.sh`, `backend.env.ejemplo` | Generar `BackEnd/.env` de producción |
 | `nucleo.caddy`, `cloudflared.yml` | Caddy y Cloudflare Tunnel |
 | `*.service`, `*.timer` | Servicios y tareas de systemd |

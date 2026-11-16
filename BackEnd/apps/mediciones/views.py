@@ -8,8 +8,10 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+from apps.integraciones.autenticacion import con_token_api
 from apps.mediciones import consultas
 from apps.mediciones.serializers import LecturaSerializer, PuntoSerieSerializer
+from common.exportar import respuesta_csv
 from common.filtros import parametro_entero, parametro_fecha
 from common.permissions import PermisoPorRol
 
@@ -25,6 +27,7 @@ class LecturaViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     serializer_class = LecturaSerializer
+    authentication_classes = con_token_api()
     permission_classes = [PermisoPorRol]
 
     def _sensores(self):
@@ -92,3 +95,36 @@ class LecturaViewSet(viewsets.ReadOnlyModelViewSet):
             .order_by("periodo")
         )
         return Response(PuntoSerieSerializer(puntos, many=True).data)
+
+    @action(detail=False, methods=["get"])
+    def exportar(self, request):
+        """CSV de las lecturas con los mismos filtros de la lista. Sin ``desde`` ni ``hasta``
+        exporta los últimos 7 días."""
+        consulta = self.get_queryset()
+        if not (request.query_params.get("desde") or request.query_params.get("hasta")):
+            consulta = consulta.filter(fecha_hora__gte=timezone.now() - timedelta(days=7))
+        sensores = self._sensores()
+        unidades = consultas.unidades()
+        encabezado = [
+            "fecha_hora",
+            "dispositivo",
+            "sensor",
+            "variable",
+            "valor",
+            "unidad",
+            "estabilizada",
+        ]
+
+        def filas():
+            for lectura in consulta.order_by("fecha_hora").iterator(chunk_size=2000):
+                yield [
+                    lectura.fecha_hora.isoformat(),
+                    sensores.get(lectura.sensor_num),
+                    lectura.sensor_num,
+                    lectura.variable_codigo,
+                    lectura.valor,
+                    unidades.get(lectura.variable_codigo, ""),
+                    "si" if lectura.estabilizada else "no",
+                ]
+
+        return respuesta_csv(request, "lecturas", encabezado, filas())

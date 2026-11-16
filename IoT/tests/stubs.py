@@ -84,7 +84,7 @@ def _modulo(nombre, **atributos):
     return modulo
 
 
-_modulo("machine", Pin=Pin, SoftI2C=object, WDT=object, ADC=object)
+_modulo("machine", Pin=Pin, SoftI2C=object, WDT=object, ADC=object, reset=lambda: None)
 _modulo("dht", DHT22=DHT22)
 _modulo("ccs811", CCS811=CCS811)
 _modulo("ssd1306", SSD1306_I2C=object)

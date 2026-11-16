@@ -9,6 +9,8 @@ import * as dispositivosApi from '../../services/dispositivos'
 import * as lecturasApi from '../../services/lecturas'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as umbralesApi from '../../services/umbrales'
+import * as seguridad from '../../services/seguridad'
+import { LECTURAS_EXPORTAR } from '../../api'
 import { nivelLectura, pagina, rangoUmbral, UNIDAD, VARIABLE } from '../../utils/convertir'
 import { avisoUltima, fechaCorta, horaSeg, miles, num, puntoSerie } from '../../utils/formato'
 import { useSesion } from '../../context/SesionContext'
@@ -51,6 +53,7 @@ export function MedicionesPage() {
   const [elegido, setDisp] = useState('')
   const [variable, setVariable] = useState('HUM')
   const [periodo, setPeriodo] = useState('hoy')
+  const [exportando, setExportando] = useState(false)
   const dispositivos = cat.datos?.dispositivos ?? []
   // Mientras no se elige uno, se muestra el primer dispositivo del alcance del usuario.
   const disp = elegido || String(dispositivos[0]?.num ?? '')
@@ -58,6 +61,19 @@ export function MedicionesPage() {
     () => (disp ? cargarLecturas(disp, variable, periodo) : new Promise(() => {})),
     [disp, variable, periodo],
   )
+
+  // CSV del dispositivo, la variable y el periodo elegidos (GET /lecturas/exportar/).
+  const exportar = async () => {
+    setExportando(true)
+    try {
+      const { desde } = lecturasApi.rangoPeriodo(periodo)
+      await seguridad.descargarCsv(LECTURAS_EXPORTAR, { dispositivo: disp, variable, desde })
+    } catch {
+      window.alert('No se pudo exportar. Intenta de nuevo.')
+    } finally {
+      setExportando(false)
+    }
+  }
 
   const areas = cat.datos?.areas ?? []
   const visibles = dispositivos.filter((d) => !area || d.area === Number(area))
@@ -169,8 +185,8 @@ export function MedicionesPage() {
                 <h3 className="nc-card__title">Lecturas</h3>
                 <p className="nc-card__sub">{actual?.nombre} · hora de medición y de recepción en la plataforma</p>
               </div>
-              <Button variant="secondary" icon="download" size="sm">
-                Exportar
+              <Button variant="secondary" icon="download" size="sm" disabled={!disp || exportando} onClick={exportar}>
+                {exportando ? 'Exportando…' : 'Exportar CSV'}
               </Button>
             </div>
             <div className="nc-table-wrap nc-scroll">

@@ -21,6 +21,8 @@ function baseDelHost(base) {
 
 export const API_BASE_URL = baseDelHost(baseConfigurada)
 
+export const EVENTO_SEGUNDO_FACTOR = 'nucleo:segundo-factor-pendiente'
+
 export class ApiError extends Error {
   // `datos`: cuerpo JSON del error, si lo hay (p. ej. {detail, inactivo} de Nico AI).
   constructor(message, status, datos = null) {
@@ -58,6 +60,10 @@ export async function apiRequest(path, options = {}) {
       datos = await response.json()
     } catch {
       // Sin cuerpo JSON.
+    }
+    if (response.status === 403 && datos?.segundo_factor_pendiente && typeof window !== 'undefined') {
+      // El rol exige la verificación en dos pasos: la sesión lleva a configurarla (SesionContext).
+      window.dispatchEvent(new CustomEvent(EVENTO_SEGUNDO_FACTOR))
     }
     throw new ApiError(`La API respondió con el estado ${response.status}.`, response.status, datos)
   }

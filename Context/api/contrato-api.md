@@ -23,16 +23,29 @@ modelo relacional, en español.
 
 ## Autenticación
 
-Las rutas, salvo `health` y `auth/login`, exigen el encabezado:
+Las rutas, salvo `health`, `auth/login`, `auth/recuperar` y `auth/restablecer`, exigen el
+encabezado:
 
 ```text
 Authorization: Token <token>
 ```
 
 ```text
-POST /auth/login/              {"correo", "password", "token_expo"?, "plataforma"?} → {"token", "usuario"};
-                               máximo 10 por minuto. La app móvil envía token_expo y plataforma
-                               (ANDROID o IOS) juntos para registrar su teléfono
+POST /auth/login/              {"correo", "password", "codigo"?, "token_expo"?, "plataforma"?}
+                               → {"token", "usuario", "configurar_segundo_factor"}; máximo 10 por
+                               minuto por IP. Con la verificación en dos pasos activa y sin
+                               "codigo": 401 {"detail", "requiere_codigo": true}. La app móvil
+                               envía token_expo y plataforma (ANDROID o IOS) juntos para
+                               registrar su teléfono
+POST /auth/recuperar/          {"correo"}; siempre 204. Si la cuenta existe y está activa, manda
+                               el enlace {NUCLEO_URL_WEB}/restablecer?uid=…&token=… (1 h, un solo
+                               uso); máximo 5 por hora por IP
+POST /auth/restablecer/        {"uid", "token", "password"}; 204 y cierra todas las sesiones
+GET  /auth/2fa/                {"activo", "obligatorio", "codigos_restantes"}
+POST /auth/2fa/configurar/     → {"secreto", "uri", "qr_svg"} (aún sin activar)
+POST /auth/2fa/activar/        {"codigo"} → {"codigos_recuperacion": [10]} (solo se ven aquí)
+POST /auth/2fa/desactivar/     {"password", "codigo"}; 403 si el rol la tiene obligatoria
+POST /auth/2fa/codigos/        {"codigo"} → códigos de recuperación nuevos
 POST /auth/logout/             {"token_expo"?}; invalida el token actual y elimina ese teléfono
 POST /auth/telefono/           {"token_expo", "plataforma"}; activa los push en ese teléfono sin
                                volver a entrar (interruptor del perfil de la app)
@@ -46,6 +59,17 @@ renueva (como máximo una vez por minuto) y deja de valer al cerrar sesión o ca
 contraseña. Con un token caducado la API responde 401 y basta iniciar sesión de nuevo.
 Web y móvil usan el mismo mecanismo. CORS aplica al navegador; una app nativa debe respetar
 autenticación y `ALLOWED_HOSTS`.
+
+Si el rol está en `NUCLEO_2FA_OBLIGATORIO` y la cuenta aún no configura la verificación en dos
+pasos, todo lo que no sea `/auth/` responde 403 con `"segundo_factor_pendiente": true`; la web
+lleva a Mi perfil y la app pide configurarla en la web.
+
+### Tokens de API (integraciones)
+
+Otros sistemas de la organización leen con `Authorization: ApiKey nuc_<prefijo>_<secreto>`
+(creado en **Integraciones**; se muestra una sola vez). Actúa como ANALISTA de toda la
+organización y solo con GET en `/dispositivos/`, `/sensores/`, `/lecturas/` (y `exportar/`) y
+`/alertas/` (y `exportar/`); lo demás responde 401 o 403.
 
 ## Roles y alcance de los datos
 
@@ -93,6 +117,8 @@ Umbrales
 Mediciones
 ├── GET /lecturas/                          Filtros: dispositivo, sensor, variable, desde, hasta,
 │                                           estabilizada (true|false)
+├── GET /lecturas/exportar/                 CSV con los mismos filtros; sin fechas, últimos 7 días;
+│                                           máximo NUCLEO_EXPORTAR_MAX_FILAS; queda en la auditoría
 └── GET /lecturas/serie/                    Tendencia: dispositivo y variable obligatorios,
                                             intervalo=minuto|hora|dia; sin fechas, últimas 24 h;
                                             solo lecturas estabilizadas
@@ -102,7 +128,25 @@ Alertas
 │                                           incluye la lectura que la disparó y los 4 límites
 ├── POST /alertas/{num}/atender/            {"observaciones"}; ADMIN y SUPER
 ├── POST /alertas/{num}/descartar/          {"observaciones"}; ADMIN y SUPER
+├── GET /alertas/exportar/                  CSV con los mismos filtros; queda en la auditoría
 └── GET /notificaciones/                    Notificaciones del propio usuario
+
+Seguridad
+├── GET /auditoria/                         ADMIN (su organización) y ADMINPLAT (todo); filtros
+│                                           accion, recurso, usuario, desde, hasta; paginado
+├── /integraciones/tokens/                  ADMIN; POST {"nombre", "fecha_expiracion"?} → incluye
+│                                           "clave" una sola vez; DELETE revoca
+├── /integraciones/webhooks/                ADMIN; {"nombre", "url" (https), "eventos", "activo"};
+│                                           POST → incluye "secreto" una sola vez
+└── POST /integraciones/webhooks/{num}/probar/   Envía un evento "prueba" → {"exito", "estado"}
+
+ESP32 (clave X-Puente-Clave, sin sesión)
+├── GET /puente/tomar/?dispositivo=         Respaldo HTTPS del latido de Nico AI
+├── GET /puente/firmware/?dispositivo=&version=
+│                                           Manifiesto firmado de la versión publicada; 204 si
+│                                           ya la tiene o no está en NUCLEO_FIRMWARE_DISPOSITIVOS
+└── GET /puente/firmware/archivo/?dispositivo=&version=&ruta=
+                                            Un archivo de esa versión
 
 Reportes (ADMIN, SUPER y ANALISTA)
 ├── GET /reportes/                          Lista y detalle
@@ -182,6 +226,16 @@ Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
 
 Las fechas se envían y se reciben en ISO 8601 con zona horaria, por ejemplo
 `2026-10-23T15:20:00-07:00`.
+
+## Webhooks
+
+Cada evento elegido (`alerta.nueva`, `alerta.atendida`, `alerta.descartada`; `prueba` desde el
+botón) se envía como `POST` JSON `{"evento", "fecha_hora", "datos"}` con los encabezados
+`X-Nucleo-Evento`, `X-Nucleo-Entrega` (id único), `X-Nucleo-Fecha` (segundos Unix) y
+`X-Nucleo-Firma: sha256=<hex>` = HMAC-SHA256(secreto, `"<X-Nucleo-Fecha>.<cuerpo>"`). El
+receptor debe comparar la firma en tiempo constante y rechazar fechas viejas. Hay 3 intentos;
+tras 10 fallas seguidas el webhook se pausa. Solo se aceptan direcciones HTTPS con IP pública y
+no se siguen redirecciones.
 
 ## Canal en vivo (WebSocket)
 
