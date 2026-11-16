@@ -74,10 +74,12 @@ http://:8081 {
 
 	# Web de React (vite build). CSP: scripts solo propios (lo que importa contra XSS); los estilos
 	# en línea hacen falta para las gráficas SVG y la impresión de reportes. El canal en vivo va
-	# por wss:// al mismo host. Probada en navegador con todas las páginas.
+	# por wss:// al mismo host. Cloudflare inyecta su script de Web Analytics (static.
+	# cloudflareinsights.com, que reporta a cloudflareinsights.com): se permite solo ese origen.
+	# Probada en Chrome, Firefox y Brave con todas las páginas.
 	handle {
 		header {
-			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss://{host}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+			Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss://{host} https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 			X-Frame-Options DENY
 			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), clipboard-write=(self)"
 		}
