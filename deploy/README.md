@@ -73,6 +73,9 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
 - `systemctl status cloudflared --no-pager` — estado del túnel de Cloudflare.
 - `bash deploy/respaldar.sh` — respaldo inmediato en `~/respaldos/nucleo` y en Drive (cifrado en
   `gdrive-nucleo-cifrado:`; sin ese remoto, en claro en `gdrive-nucleo:servidor/nucleo`).
+  Guarda las dos bases (`.dump`), la aplicación completa (`nucleo_aplicacion_*.tar.gz`: código
+  desplegado con sus `.env` y la configuración, y `VERSION_DESPLEGADA` con el commit), el broker y
+  los archivos subidos, y la llave de firma de la app.
 - `bash deploy/probar_restauracion.sh` — prueba de restauración inmediata (contenedores
   temporales, no toca producción); el registro queda en `~/respaldos/nucleo-pruebas`.
 - `bash deploy/firewall.sh estado` — reglas del firewall y conexiones rechazadas.
@@ -199,7 +202,8 @@ Si la laptop se pierde, cualquier equipo con Debian y 8 GB sirve:
 1. Instala Docker, git, Caddy, rclone y cloudflared; clona el repositorio en `/var/www/html/Nucleo`
    (rama `main`).
 2. Crea los remotos `gdrive-nucleo` y `gdrive-nucleo-cifrado` (mismas contraseñas), baja el último
-   respaldo y sigue [Instalación desde cero](#instalación-desde-cero). Pon en `BackEnd/.env` la
+   respaldo (si no hay acceso a GitHub, `nucleo_aplicacion_*.tar.gz` trae el código y los `.env`:
+   `tar -xzf … -C /var/www/html/Nucleo`) y sigue [Instalación desde cero](#instalación-desde-cero). Pon en `BackEnd/.env` la
    misma `NUCLEO_CLAVE_CIFRADO`.
 3. Copia `/etc/cloudflared/` y `~/.cloudflared/` (o crea el túnel de nuevo): los dominios apuntan
    al túnel, no a una IP, así que el cambio es inmediato.

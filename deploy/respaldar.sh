@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Respaldo de Núcleo: pg_dump de nucleo_db y nucleo_iot (TimescaleDB) + usuarios y
-# certificados del broker, y la llave de firma de la app (~/nucleo-app). Guarda 7 días en ~/respaldos/nucleo y lo
+# Respaldo de Núcleo: pg_dump de nucleo_db y nucleo_iot (TimescaleDB), la aplicación completa
+# empaquetada (código + configuración), usuarios y certificados del broker, y la llave de firma de la app (~/nucleo-app). Guarda 7 días en ~/respaldos/nucleo y lo
 # sube a Google Drive con rclone, borrando allá lo de más de 30 días:
 # - "gdrive-nucleo-cifrado" (remoto crypt sobre gdrive-nucleo:servidor/nucleo-cifrado): Drive solo recibe archivos
 #   cifrados, con nombres cifrados. Es el que se usa si existe (ver deploy/README.md, «Respaldos cifrados»).
@@ -20,6 +20,15 @@ volcar nucleo_postgres nucleo_db
 volcar nucleo_timescaledb nucleo_iot
 tar -czf "$destino/nucleo_broker_media_$fecha.tar.gz" -C "$raiz" \
   Mosquitto/certs Mosquitto/config/passwd BackEnd/media
+# Aplicación completa: código desplegado + configuración (.env, Caddy, systemd, Mosquitto). Sin
+# dependencias ni archivos generados (se recrean con deploy/instalar.sh); ~3 MB. Incluye
+# VERSION_DESPLEGADA con el commit, para reconstruir exactamente lo que corría.
+git -C "$raiz" log -1 --format='%H %cI %s' > "$raiz/VERSION_DESPLEGADA" 2>/dev/null || true
+tar -czf "$destino/nucleo_aplicacion_$fecha.tar.gz" -C "$raiz" --exclude-vcs \
+  --exclude=node_modules --exclude=.venv --exclude=__pycache__ --exclude=./FrontEnd/dist \
+  --exclude=./BackEnd/staticfiles --exclude=./deploy/descargas --exclude=./Docs \
+  --exclude=./BackEnd/media --exclude=./Mobile/android --exclude=./Mobile/.expo --exclude=./BackEnd/firmware .
+rm -f "$raiz/VERSION_DESPLEGADA"
 # Sin la llave de firma no se puede publicar una actualización de la app instalada
 if [[ -d "$HOME/nucleo-app" ]]; then
   tar -czf "$destino/nucleo_firma_app_$fecha.tar.gz" -C "$HOME" nucleo-app

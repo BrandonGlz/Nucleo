@@ -71,3 +71,4 @@ Mosquitto/config/passwd
 
 # Nico AI: marca de mantenimiento
 BackEnd/var/
+VERSION_DESPLEGADA
