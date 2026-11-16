@@ -108,11 +108,10 @@ misma guía.
 
 | Dirección | Para qué |
 | --- | --- |
-| **https://bynucleo.com** | Web, API de la app (`/api/v1`) y panel en vivo |
+| **https://bynucleo.com** | Página principal |
 | **https://app.bynucleo.com** | Descarga de la app Android |
 | **https://nicoai.bynucleo.com** | Consola de Nico AI (solo superusuario) |
 | **https://admin.bynucleo.com** | Consola de administración (solo superusuario) |
-| **dispositivos.bynucleo.com** | Entrada de los ESP32: MQTT dentro de WebSocket y llave de Nico AI |
 
 ### Host
 
