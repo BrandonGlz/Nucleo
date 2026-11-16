@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { SelectorDispositivo } from '../../components/SelectorDispositivo'
-import { Card, Chip, Icon, IconCircle, Skeleton, T, Tabs, TrendChart } from '../../components/ui'
+import { Card, Chip, Icon, Skeleton, T, Tabs, TrendChart } from '../../components/ui'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
 import { umbralDe, useOperador } from '../../hooks/useOperador'
@@ -21,8 +21,8 @@ const RANGOS = [
 ]
 const VARIABLES = ['TEMP', 'HUM', 'AIRE']
 
-// Histórico: una variable del dispositivo a la vista en 24 h, 7 o 30 días, con su umbral, mínimo,
-// promedio y máximo, el tiempo en rango y el CSV para compartir.
+// Histórico: una variable del dispositivo a la vista en 24 h, 7 o 30 días, con su umbral, el promedio,
+// mínimo, máximo y tiempo en rango (en una fila, sin scroll) y el CSV para compartir.
 export function HistoricoScreen() {
   const { c } = useTema()
   const { estado: estadoOp, datos: op, elegir } = useOperador()
@@ -48,8 +48,7 @@ export function HistoricoScreen() {
   const maximo = puntos?.length ? Math.max(...puntos.map((p) => Number(p.maximo ?? p.promedio))) : null
   const prom = valores.length ? valores.reduce((a, b) => a + b, 0) / valores.length : null
   const enRango = (v) => (u?.advertencia_min == null || v >= Number(u.advertencia_min)) && (u?.advertencia_max == null || v <= Number(u.advertencia_max))
-  const dentro = valores.length && u ? Math.round((valores.filter(enRango).length / valores.length) * 100) : null
-  const fuera = valores.length && u ? valores.filter((v) => !enRango(v)).length : 0
+  const dentro = valores.length > 0 && u ? Math.round((valores.filter(enRango).length / valores.length) * 100) : null
   const varios = (op?.dispositivos?.length ?? 0) > 1
 
   const compartir = async () => {
@@ -91,7 +90,7 @@ export function HistoricoScreen() {
           {d ? `${d.nombre} · ${op.area?.nombre ?? ''}` : ' '}
         </T>
       )}
-      <Tabs items={VARIABLES.map((v) => ({ id: v, label: VARIABLE[v].corta }))} value={variable} onChange={setVariable} />
+      <Tabs items={VARIABLES.map((v) => ({ id: v, label: VARIABLE[v].corta }))} value={variable} onChange={setVariable} lleno />
     </>
   )
 
@@ -150,39 +149,33 @@ export function HistoricoScreen() {
           </Card>
           <View style={s.tres}>
             {[
-              ['Mínimo', minimo, c.surface, c.textPrimary, c.textMuted],
-              ['Promedio', prom, c.accentSoft, c.textPrimary, c.success],
-              ['Máximo', maximo, c.surface, c.textPrimary, c.textMuted],
-            ].map(([k, v, bg, fg, et]) => (
-              <View key={k} style={[s.cifra, { backgroundColor: bg }]}>
-                <T size={11} peso={600} color={et}>
-                  {k}
+              { k: 'Mínimo', v: minimo == null ? null : minimo.toFixed(dec), bg: c.surface, et: c.textMuted },
+              { k: 'Máximo', v: maximo == null ? null : maximo.toFixed(dec), bg: c.surface, et: c.textMuted, alto: u && maximo > Number(u.advertencia_max) },
+              {
+                k: 'En rango',
+                v: dentro == null ? null : `${dentro} %`,
+                bg: dentro != null && dentro < 90 ? c.warningSoft : c.accentSoft,
+                et: dentro != null && dentro < 90 ? c.warning : c.success,
+              },
+            ].map((x) => (
+              <View
+                key={x.k}
+                style={[s.cifra, { backgroundColor: x.bg }]}
+                accessibilityLabel={x.k === 'En rango' && u ? `${x.v ?? '—'} del tiempo dentro del umbral ${Number(u.advertencia_min ?? 0)} – ${Number(u.advertencia_max)} ${unidad}` : undefined}
+              >
+                <T size={11} peso={600} color={x.et}>
+                  {x.k}
                 </T>
-                {v == null && !puntos ? (
+                {x.v == null && !puntos ? (
                   <Skeleton height={22} width={56} />
                 ) : (
-                  <T peso={800} size={20} lh={26} num color={k === 'Máximo' && u && v > Number(u.advertencia_max) ? c.danger : fg}>
-                    {v == null ? '—' : v.toFixed(dec)}
+                  <T peso={800} size={20} lh={26} num color={x.alto ? c.danger : c.textPrimary}>
+                    {x.v ?? '—'}
                   </T>
                 )}
               </View>
             ))}
           </View>
-          {dentro != null && (
-            <View style={[s.resumen, { backgroundColor: c.surface }]}>
-              <IconCircle name="clock" size="sm" tone={dentro >= 90 ? 'success' : 'warning'} />
-              <View style={{ flex: 1 }}>
-                <T peso={700} size={14}>
-                  {`${dentro} % del tiempo en rango`}
-                </T>
-                <T size={12} color={c.textMuted}>
-                  {fuera
-                    ? `${fuera} ${fuera === 1 ? (rango.intervalo === 'dia' ? 'día' : 'hora') : rango.intervalo === 'dia' ? 'días' : 'horas'} fuera del umbral ${Number(u.advertencia_min ?? 0)} – ${Number(u.advertencia_max)} ${unidad}`
-                    : `Siempre dentro del umbral ${Number(u.advertencia_min ?? 0)} – ${Number(u.advertencia_max)} ${unidad}`}
-                </T>
-              </View>
-            </View>
-          )}
         </>
       )}
     </Pantalla>
@@ -195,5 +188,4 @@ const s = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tres: { flexDirection: 'row', gap: 10 },
   cifra: { flex: 1, gap: 2, padding: 14, borderRadius: 20 },
-  resumen: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 20 },
 })

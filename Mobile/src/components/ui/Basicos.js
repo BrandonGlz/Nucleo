@@ -268,7 +268,8 @@ export function Chip({ selected, count, onPress, children }) {
 
 // La pastilla oscura se desliza hasta la pestaña elegida (posición y ancho medidos de cada pestaña).
 // `compacto`: más bajo y con letra menor, para ponerlo dentro de una tarjeta.
-export function Tabs({ items, value, onChange, compacto }) {
+// `lleno`: las pestañas se reparten todo el ancho (la pastilla llega hasta el borde).
+export function Tabs({ items, value, onChange, compacto, lleno }) {
   const { c } = useTema()
   const [medidas, setMedidas] = useState({})
   const m = medidas[value]
@@ -298,7 +299,7 @@ export function Tabs({ items, value, onChange, compacto }) {
               const { x: px, width } = e.nativeEvent.layout
               setMedidas((ant) => (ant[it.id]?.x === px && ant[it.id]?.w === width ? ant : { ...ant, [it.id]: { x: px, w: width } }))
             }}
-            style={({ pressed }) => [s.tab, compacto && s.tabCompacto, !m && activo && { backgroundColor: c.seleccion }, pressed && { transform: [{ scale: 0.96 }] }]}
+            style={({ pressed }) => [s.tab, compacto && s.tabCompacto, lleno && { flex: 1, paddingHorizontal: 8 }, !m && activo && { backgroundColor: c.seleccion }, pressed && { transform: [{ scale: 0.96 }] }]}
           >
             <T peso={600} size={compacto ? 12 : 14} color={activo ? c.seleccionTexto : c.textSecondary}>
               {it.label}

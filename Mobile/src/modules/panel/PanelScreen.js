@@ -5,7 +5,7 @@ import { BarraRango } from '../../components/BarraRango'
 import { SelectorDispositivo } from '../../components/SelectorDispositivo'
 import { BarraCrece, PuntoVivo, useCuenta } from '../../components/Movimiento'
 import { Pantalla } from '../../components/Pantalla'
-import { Avatar, Battery, Icon, IconButton, IconCircle, Skeleton, Sparkline, T, Tabs } from '../../components/ui'
+import { Avatar, Icon, IconButton, Skeleton, Sparkline, T, Tabs } from '../../components/ui'
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
 import { useAvisos } from '../../hooks/useAvisos'
@@ -14,64 +14,40 @@ import { lecturaDe, umbralDe, useOperador } from '../../hooks/useOperador'
 import { ESTADO_FORZADO } from '../../services/mock/handlers'
 import { USAR_MOCKS } from '../../services/config'
 import * as lecturasApi from '../../services/lecturas'
-import { enLinea, ESTADO_ALERTA, ESTADO_DISPOSITIVO, escala, NIVEL_ALERTA, nivelLectura, posicion, tituloAlerta, UNIDAD, valorAlerta, VARIABLE } from '../../utils/convertir'
-import { cuando, diaCorto, fechaCorta, haceCuanto, hora, hoyTexto, num } from '../../utils/formato'
+import { enLinea, ESTADO_DISPOSITIVO, escala, nivelLectura, posicion, UNIDAD, VARIABLE } from '../../utils/convertir'
+import { cuando, fechaCorta, haceCuanto, hora, hoyTexto, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const TONO_ZONA = { normal: marca.verde, warning: colors.dark.warning, critical: colors.dark.danger }
 const TEXTO_NIVEL = { normal: 'En rango', warning: 'Cerca del límite', critical: 'Fuera de rango' }
 
-function Pastilla({ punto, icono, children, onPress }) {
-  const contenido = (
-    <>
-      {icono ? <Icon name={icono} size={14} color={marca.claro} /> : <PuntoVivo color={punto} />}
-      <T peso={600} size={12} numberOfLines={1} style={{ flexShrink: 1 }}>
-        {children}
-      </T>
-      {onPress && <Icon name="chevron-down" size={16} color={marca.claro} />}
-    </>
-  )
-  if (!onPress) return <View style={s.pastilla}>{contenido}</View>
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${children}. Cambiar de dispositivo`}
-      style={({ pressed }) => [s.pastilla, s.pastillaBoton, pressed && { opacity: 0.8 }]}
-    >
-      {contenido}
-    </Pressable>
-  )
-}
-
-// Pastilla del dispositivo con su batería a la derecha: todo el estado del equipo en una línea.
-// Con varios dispositivos (administrador, supervisor, analista) la pastilla abre el selector.
-function FilaEquipo({ punto, icono, children, bateria }) {
+// Nombre del dispositivo sobre la cifra grande, con su punto en vivo. Con varios dispositivos
+// (administrador, supervisor, analista) tocarlo abre el selector; el estado va en la franja de abajo.
+function Equipo({ punto, icono, children }) {
+  const { c } = useTema()
   const { datos: op, elegir } = useOperador()
   const varios = (op?.dispositivos?.length ?? 0) > 1
+  const contenido = (abrir) => (
+    <Pressable
+      onPress={abrir}
+      disabled={!abrir}
+      accessibilityRole={abrir ? 'button' : undefined}
+      accessibilityLabel={abrir ? `${children}. Cambiar de dispositivo` : undefined}
+      hitSlop={8}
+      style={({ pressed }) => [s.fila6, { alignSelf: 'flex-start' }, pressed && { opacity: 0.7 }]}
+    >
+      {icono ? <Icon name={icono} size={13} color={c.textMuted} /> : <PuntoVivo color={punto} />}
+      <T mayus color={c.textMuted} numberOfLines={1} style={{ flexShrink: 1 }}>
+        {children}
+      </T>
+      {abrir && <Icon name="chevron-down" size={14} color={c.textMuted} />}
+    </Pressable>
+  )
+  if (!varios) return contenido(null)
   return (
-    <View style={s.entre}>
-      <View style={{ flexShrink: 1 }}>
-        {varios ? (
-          <SelectorDispositivo dispositivos={op.dispositivos} valor={op.dispositivo?.num} onElegir={elegir}>
-            {(abrir) => (
-              <Pastilla punto={punto} icono={icono} onPress={abrir}>
-                {children}
-              </Pastilla>
-            )}
-          </SelectorDispositivo>
-        ) : (
-          <Pastilla punto={punto} icono={icono}>
-            {children}
-          </Pastilla>
-        )}
-      </View>
-      {bateria != null && (
-        <View style={[s.pastilla, { paddingLeft: 12 }]} accessibilityLabel={`Batería al ${bateria} %`}>
-          <Battery level={bateria} />
-        </View>
-      )}
-    </View>
+    <SelectorDispositivo dispositivos={op.dispositivos} valor={op.dispositivo?.num} onElegir={elegir}>
+      {contenido}
+    </SelectorDispositivo>
   )
 }
 
@@ -100,10 +76,9 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAvisos }) {
     return (
       <>
         {cabeza}
-        <Pastilla punto={c.textMuted}>{estado === 'error' ? 'Sin datos' : estado === 'cargando' ? 'Conectando…' : 'Sin dispositivo'}</Pastilla>
-        <View>
+        <View style={{ gap: 4 }}>
           <T mayus color={c.textMuted}>
-            Temperatura
+            {estado === 'error' ? 'Sin datos' : estado === 'cargando' ? 'Conectando…' : 'Sin dispositivo'}
           </T>
           <T peso={800} size={88} lh={90} style={[s.gigante, { color: 'rgba(243,245,242,0.16)' }]}>
             --.-
@@ -117,13 +92,8 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAvisos }) {
     return (
       <>
         {cabeza}
-        <FilaEquipo icono="wifi-off" bateria={d.nivel_bateria}>
-          {`${d.nombre} · sin conexión`}
-        </FilaEquipo>
-        <View>
-          <T mayus color={c.textMuted}>
-            Última lectura · {haceCuanto(d.ultima_conexion)}
-          </T>
+        <View style={{ gap: 4 }}>
+          <Equipo icono="wifi-off">{`${d.nombre} · temperatura`}</Equipo>
           <T peso={800} size={88} lh={90} num style={[s.gigante, { color: 'rgba(243,245,242,0.42)' }]}>
             {num(l?.valor)}
             <T peso={800} size={32} color="rgba(243,245,242,0.42)">{` ${UNIDAD.TEMP}`}</T>
@@ -142,16 +112,9 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAvisos }) {
   return (
     <>
       {cabeza}
-      {/* Recién encendido, el sensor de aire se estabiliza unos 20 min: se muestra «Calentando». */}
-      <FilaEquipo punto={calentando ? colors.dark.warning : marca.verde} bateria={d.nivel_bateria}>
-        {calentando
-          ? `${d.nombre} · calentando · cada ${d.intervalo_muestreo_seg} s`
-          : `${d.nombre} · ${op.area?.nombre ?? 'en línea'} · cada ${d.intervalo_muestreo_seg} s`}
-      </FilaEquipo>
-      <View>
-        <T mayus color={c.textMuted}>
-          Temperatura · en vivo
-        </T>
+      <View style={{ gap: 4 }}>
+        {/* Recién encendido, el sensor de aire se estabiliza unos 20 min: el punto va en ámbar. */}
+        <Equipo punto={calentando ? colors.dark.warning : marca.verde}>{`${d.nombre} · temperatura en vivo`}</Equipo>
         <T peso={800} size={88} lh={90} num style={s.gigante}>
           {temp}
           <T peso={800} size={32} color={color} style={{ letterSpacing: -0.6 }}>{` ${UNIDAD.TEMP}`}</T>
@@ -287,81 +250,44 @@ function BarrasTemp({ serie, ultima, dispositivo, onPress }) {
   )
 }
 
-// Estado del equipo en una fila: conexión, última lectura y batería.
+// Estado del equipo en una franja (arriba de humedad y aire): conexión, lectura y batería. Cada
+// celda va en columna (ícono y etiqueta arriba, valor abajo) para que los valores no se corten.
 function EstadoEquipo({ d }) {
   const { c } = useTema()
   const est = ESTADO_DISPOSITIVO[d.estado_dispositivo]
+  const vivo = enLinea(d)
+  const baja = d.nivel_bateria != null && d.nivel_bateria < 20
   const celdas = [
-    { k: 'Estado', v: est?.label ?? d.estado_dispositivo, icono: enLinea(d) ? 'signal' : 'wifi-off', tono: enLinea(d) ? 'success' : 'offline' },
-    { k: 'Lectura', v: haceCuanto(d.ultima_conexion).replace(/^hace /, ''), icono: 'clock', tono: 'neutral' },
-    { k: 'Batería', v: d.nivel_bateria == null ? '—' : `${d.nivel_bateria} %`, icono: d.nivel_bateria != null && d.nivel_bateria < 20 ? 'battery-low' : 'battery-full', tono: d.nivel_bateria != null && d.nivel_bateria < 20 ? 'danger' : 'neutral' },
+    { k: 'Estado', v: est?.label ?? d.estado_dispositivo, icono: vivo ? 'signal' : 'wifi-off', color: vivo ? c.success : c.offline },
+    {
+      k: 'Lectura',
+      v: vivo ? `cada ${d.intervalo_muestreo_seg} s` : haceCuanto(d.ultima_conexion).replace(/^hace/, 'Hace'),
+      icono: 'clock',
+      color: c.textMuted,
+    },
+    { k: 'Batería', v: d.nivel_bateria == null ? '—' : `${d.nivel_bateria} %`, icono: baja ? 'battery-low' : 'battery-full', color: baja ? c.danger : c.textMuted },
   ]
   return (
     <View style={[s.tarjeta, s.equipo, { backgroundColor: c.surface }]}>
-      {celdas.map((x) => (
-        <View key={x.k} style={s.celda}>
-          <IconCircle name={x.icono} size="sm" tone={x.tono} />
-          <View style={{ flexShrink: 1 }}>
+      {celdas.map((x, i) => (
+        <View key={x.k} style={[s.celda, i > 0 && { borderLeftWidth: 1, borderLeftColor: c.border, paddingLeft: 12 }]}>
+          <View style={s.fila6}>
+            <Icon name={x.icono} size={13} color={x.color} />
             <T size={11} color={c.textMuted}>
               {x.k}
             </T>
-            <T peso={700} size={13} numberOfLines={1}>
-              {x.v}
-            </T>
           </View>
+          <T peso={700} size={14} numberOfLines={1} color={x.k === 'Batería' && baja ? c.danger : undefined}>
+            {x.v}
+          </T>
         </View>
       ))}
     </View>
   )
 }
 
-// Las tres alertas más recientes; tocar una abre su detalle.
-function AlertasRecientes({ alertas, onVer, onTodas }) {
-  const { c } = useTema()
-  const recientes = [...alertas].sort((x, y) => (x.fecha_hora < y.fecha_hora ? 1 : -1)).slice(0, 3)
-  return (
-    <View style={[s.tarjeta, { backgroundColor: c.surface, gap: 12 }]}>
-      <View style={s.entre}>
-        <T peso={700} size={15}>
-          Alertas recientes
-        </T>
-        <Pressable onPress={onTodas} hitSlop={8} accessibilityRole="button">
-          <T peso={600} size={13} color={c.success}>
-            Ver todas
-          </T>
-        </Pressable>
-      </View>
-      {recientes.length === 0 ? (
-        <View style={s.fila12}>
-          <IconCircle name="circle-check" size="sm" tone="success" />
-          <T size={13} color={c.textSecondary} style={{ flex: 1 }}>
-            Sin alertas. Todo en rango.
-          </T>
-        </View>
-      ) : (
-        recientes.map((a) => (
-          <Pressable key={a.num} onPress={() => onVer(a.num)} accessibilityRole="button" style={({ pressed }) => [s.fila12, pressed && { opacity: 0.7 }]}>
-            <IconCircle name={a.nivel === 'PELIGRO' ? 'octagon-alert' : 'triangle-alert'} size="sm" tone={NIVEL_ALERTA[a.nivel].tone} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <T peso={600} size={13} numberOfLines={1}>
-                {tituloAlerta(a)}
-              </T>
-              <T size={12} color={c.textMuted} numberOfLines={1}>
-                {`${valorAlerta(a)} · ${ESTADO_ALERTA[a.estado].label}`}
-              </T>
-            </View>
-            <T size={11} num color={c.textMuted}>
-              {diaCorto(a.fecha_hora)}
-            </T>
-          </Pressable>
-        ))
-      )}
-    </View>
-  )
-}
-
-// Panel: el dispositivo en vivo (con batería arriba), humedad, aire, el estado del equipo, la
-// temperatura de 24 h o 7 días y las alertas recientes. La campana abre el centro de avisos.
+// Panel: el dispositivo en vivo arriba; abajo la franja de estado (conexión, lectura, batería),
+// humedad, aire y la temperatura de 24 h o 7 días. La campana abre el centro de avisos.
 export function PanelScreen({ navigation }) {
   const { usuario } = useSesion()
   const { estado, datos: op, reintentar } = useOperador()
@@ -395,25 +321,21 @@ export function PanelScreen({ navigation }) {
         />
       ) : cargando ? (
         <>
+          <Skeleton height={64} style={{ borderRadius: 28 }} />
           <View style={s.dos}>
             <Skeleton height={140} style={{ flex: 1, borderRadius: 28 }} />
             <Skeleton height={140} style={{ flex: 1, borderRadius: 28 }} />
           </View>
-          <Skeleton height={120} style={{ borderRadius: 28 }} />
+          <Skeleton height={64} style={{ borderRadius: 28 }} />
         </>
       ) : (
         <>
+          <EstadoEquipo d={d} />
           <View style={s.dos}>
             <Mosaico variable="HUM" tipo="verde" lectura={lecturaDe(op, 'HUM')} serie={(sH?.puntos ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('HUM')} />
             <Mosaico variable="AIRE" tipo="tinta" lectura={lecturaDe(op, 'AIRE')} serie={(sA?.puntos ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('AIRE')} />
           </View>
-          <EstadoEquipo d={d} />
           {sT?.puntos?.length > 1 && <BarrasTemp serie={sT.puntos} ultima={sT.ultima} dispositivo={d.num} onPress={() => ver('TEMP')} />}
-          <AlertasRecientes
-            alertas={(op?.alertas ?? []).filter((a) => a.dispositivo === d.num)}
-            onVer={(n) => navigation.navigate('DetalleAlerta', { num: n })}
-            onTodas={() => navigation.navigate('Alertas')}
-          />
         </>
       )}
     </Pantalla>
@@ -424,14 +346,11 @@ const s = StyleSheet.create({
   fila12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   fila6: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   entre: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  pastillaBoton: { borderWidth: 1, borderColor: 'rgba(243,245,242,0.16)' },
-  pastilla: { alignSelf: 'flex-start', flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingLeft: 10, paddingRight: 12, borderRadius: 999, backgroundColor: 'rgba(243,245,242,0.08)' },
-  punto: { width: 8, height: 8, borderRadius: 4, shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } },
   gigante: { letterSpacing: -4.6, includeFontPadding: false },
   dos: { flexDirection: 'row', gap: 12 },
   mosaico: { flex: 1, gap: 4, padding: 16, borderRadius: 28, overflow: 'hidden' },
   anilloMini: { position: 'absolute', right: -70, top: -70, width: 160, height: 160, borderRadius: 80, borderWidth: 2 },
   tarjeta: { paddingVertical: 14, paddingHorizontal: 18, borderRadius: 28 },
-  equipo: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingHorizontal: 14 },
-  celda: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  equipo: { flexDirection: 'row', gap: 12, paddingVertical: 12 },
+  celda: { flex: 1, minWidth: 0, gap: 3 },
 })

@@ -15,7 +15,7 @@ import { marca } from '../../theme'
 import app from '../../../app.json'
 
 // Mi perfil: datos de la cuenta, preferencias del teléfono (tema incluido), seguridad (sesiones
-// abiertas y contraseña), diagnóstico de la API y cierre de sesión.
+// abiertas y contraseña) y cierre de sesión.
 export function PerfilScreen({ navigation }) {
   const { c, setTema } = useTema()
   const { usuario, logout } = useSesion()
@@ -67,7 +67,6 @@ export function PerfilScreen({ navigation }) {
   const enlaces = [
     { icono: 'smartphone', titulo: 'Sesiones abiertas', texto: 'Dónde está abierta tu cuenta', ir: 'Sesiones' },
     { icono: 'key-round', titulo: 'Cambiar contraseña', texto: 'Cierra tus otras sesiones', ir: 'Contrasena' },
-    { icono: 'activity', titulo: 'Estado de la API', texto: 'Diagnóstico de la conexión', ir: 'Estado' },
   ]
 
   return (

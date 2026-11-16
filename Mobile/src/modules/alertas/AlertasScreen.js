@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { Alert, Animated, PanResponder, Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
-import { Aparece, Badge, Chip, Icon, IconCircle, Input, Skeleton, StatusBadge, T } from '../../components/ui'
+import { Aparece, Chip, Icon, IconCircle, Input, Skeleton, T } from '../../components/ui'
 import { useAnimaciones } from '../../context/PreferenciasContext'
 import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { pendientesDe, useOperador } from '../../hooks/useOperador'
 import * as alertasApi from '../../services/alertas'
 import { ESTADO_ALERTA, NIVEL_ALERTA, tituloAlerta, valorAlerta, VARIABLE } from '../../utils/convertir'
-import { diaCorto, esAyer, esHoy, fechaLarga } from '../../utils/formato'
+import { esAyer, esHoy, fechaLarga, haceCuanto } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const FILTROS = [
@@ -96,36 +96,34 @@ function Deslizable({ activo, alResolver, children }) {
 const limiteCruzado = (a) =>
   a.nivel === 'PELIGRO' ? `máx ${Number(a.peligro_max)} ${a.unidad}` : `máx ${Number(a.advertencia_max)} ${a.unidad}`
 
+// Tarjeta como las de Notificaciones: ícono del nivel (o de cómo quedó), título, dispositivo y valor,
+// y abajo nivel, estado y cuándo. Las pendientes llevan el punto verde; las resueltas van tenues.
 export function TarjetaAlerta({ a, onPress }) {
   const { c } = useTema()
   const nivel = NIVEL_ALERTA[a.nivel]
   const est = ESTADO_ALERTA[a.estado]
+  const pendiente = a.estado === 'PENDIENTE'
+  const icono = pendiente ? nivel.icon : est.icon
+  const tono = pendiente ? nivel.tone : a.estado === 'ATENDIDA' ? 'success' : 'offline'
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [s.tarjeta, { backgroundColor: c.surface }, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [s.tarjeta, { backgroundColor: c.surface }, !pendiente && { opacity: 0.78 }, pressed && { opacity: 0.6 }]}
     >
-      <View style={[s.franja, { backgroundColor: c[nivel.tone] }]} />
-      <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
-        <View style={s.entre}>
-          <T peso={700} size={15} lh={20} style={{ flex: 1 }}>
-            {tituloAlerta(a)}
-          </T>
-          <T size={12} num color={c.textMuted}>
-            {diaCorto(a.fecha_hora)}
-          </T>
-        </View>
-        <T size={13} lh={18} color={c.textSecondary}>
-          {`${a.dispositivo_nombre} · ${valorAlerta(a)} (${limiteCruzado(a)})`}
+      <IconCircle name={icono} size="sm" tone={tono} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <T peso={700} size={14} lh={19}>
+          {tituloAlerta(a)}
         </T>
-        <View style={s.badges}>
-          <StatusBadge status={nivel.status} />
-          <Badge tone={est.tone} icon={est.icon}>
-            {est.label}
-          </Badge>
-        </View>
+        <T size={12} lh={17} color={c.textSecondary}>
+          {`${a.dispositivo_nombre} marcó ${valorAlerta(a)} (${limiteCruzado(a)})`}
+        </T>
+        <T size={11} color={pendiente ? c[nivel.tone] : c.textMuted}>
+          {`${a.nivel === 'PELIGRO' ? 'Crítica' : 'Advertencia'} · ${est.label} · ${haceCuanto(a.fecha_hora).replace(/^hace/, 'Hace')}`}
+        </T>
       </View>
+      {pendiente && <View style={[s.puntoNuevo, { backgroundColor: c.accent }]} accessibilityLabel="Pendiente" />}
     </Pressable>
   )
 }
@@ -232,7 +230,7 @@ export function AlertasScreen({ navigation }) {
             ))}
           </View>
           {estado === 'cargando' ? (
-            [0, 1, 2].map((i) => <Skeleton key={i} height={110} style={{ borderRadius: 22 }} />)
+            [0, 1, 2].map((i) => <Skeleton key={i} height={84} style={{ borderRadius: 20 }} />)
           ) : vacio ? (
             <View style={[s.fila12, s.aviso, { backgroundColor: c.surface }]}>
               <IconCircle name="bell" size="sm" />
@@ -244,7 +242,7 @@ export function AlertasScreen({ navigation }) {
             <>
               <View style={{ gap: 10 }}>
                 {grupos.map(({ g, items }) => (
-                  <View key={g} style={{ gap: 10 }}>
+                  <View key={g} style={{ gap: 8 }}>
                     <T mayus color={c.textMuted} style={{ paddingTop: 4 }}>
                       {g}
                     </T>
@@ -284,14 +282,13 @@ const s = StyleSheet.create({
   fila12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   check: { width: 64, height: 64, borderRadius: 32, backgroundColor: marca.verde, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tarjeta: { flexDirection: 'row', gap: 14, paddingVertical: 16, paddingRight: 16, paddingLeft: 14, borderRadius: 22 },
-  franja: { width: 4, borderRadius: 4 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
+  tarjeta: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, borderRadius: 20 },
+  puntoNuevo: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
   aviso: { padding: 16, borderRadius: 22 },
   gravedad: { flexDirection: 'row', gap: 8 },
   pildora: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(243,245,242,0.08)' },
   punto: { width: 8, height: 8, borderRadius: 4 },
-  deslizable: { borderRadius: 22, overflow: 'hidden' },
+  deslizable: { borderRadius: 20, overflow: 'hidden' },
   acciones: { flexDirection: 'row', justifyContent: 'space-between' },
   accion: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
 })
