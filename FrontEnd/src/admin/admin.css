@@ -412,3 +412,15 @@
   .ui-flasheo { grid-template-columns: 1fr; }
   .ui-flasheo-modos { grid-template-columns: 1fr; }
 }
+
+/* Panel de admin: 4 gráficas y la tabla de dispositivos ocupan la ventana sin scroll. */
+.ui-admin-panel { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.ui-admin-panel__graficas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.ui-admin-panel .nc-card { min-width: 0; }
+.ui-admin-panel .ui-admin-serie__barras { height: 150px; }
+.ui-admin-vertodos { font-size: .875rem; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.ui-admin-vertodos:hover { text-decoration: underline; }
+@media (max-width: 900px) {
+  .ui-admin-panel { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .ui-admin-panel__graficas { grid-template-columns: minmax(0, 1fr); }
+}
