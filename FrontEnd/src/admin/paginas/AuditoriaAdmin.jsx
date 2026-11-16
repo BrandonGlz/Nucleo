@@ -151,11 +151,11 @@ export default function AuditoriaAdmin() {
                       <Badge tone={TONO[r.accion] ?? 'neutral'}>{r.accion_nombre}</Badge>
                     </td>
                     <td>{r.recurso ? `${RECURSO[r.recurso] ?? r.recurso}${r.recurso_num ? ` #${r.recurso_num}` : ''}` : '—'}</td>
-                    <td style={{ maxWidth: 360 }}>
+                    <td className="ui-admin-detalle">
                       {r.descripcion && <div style={{ fontSize: 13 }}>{r.descripcion}</div>}
                       <Cambios cambios={r.cambios} />
                     </td>
-                    <td style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}>{r.ip || '—'}</td>
+                    <td style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, whiteSpace: 'nowrap' }}>{r.ip || '—'}</td>
                   </tr>
                 ))}
               </tbody>

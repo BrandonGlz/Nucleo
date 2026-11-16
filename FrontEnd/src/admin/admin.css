@@ -424,3 +424,8 @@
   .ui-admin-panel { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
   .ui-admin-panel__graficas { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Auditoría: el detalle se parte en varias líneas (URLs y parámetros largos incluidos) y no
+   invade la columna de la IP. */
+.nc-table td.ui-admin-detalle { min-width: 200px; max-width: 300px; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+.nc-table td.ui-admin-detalle * { white-space: normal; overflow-wrap: anywhere; }
