@@ -114,6 +114,8 @@ documento de su componente, enlazado en cada sección.
 
 ## Dependencias y código
 
-- Dependabot (`.github/dependabot.yml`) propone actualizaciones de pip, npm y Actions sobre `dev`.
+- Dependabot avisa de dependencias vulnerables (solo alertas, sin ramas ni pull requests); las
+  actualizaciones se aplican en `dev` con las pruebas pasando. Django se mantiene en la serie
+  LTS (5.2, con soporte hasta abril de 2028).
 - `.github/workflows/seguridad.yml`: CodeQL (Python y JavaScript), ruff con las reglas de
   seguridad `S` (bandit) y `npm audit` de la web y la app.

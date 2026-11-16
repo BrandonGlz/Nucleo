@@ -154,9 +154,10 @@ No actives Bot Fight Mode: bloquearía a los ESP32, a la app y al vigía de GitH
   (`NUCLEO_AVISO_MINUTOS`).
 - `.github/workflows/vigia.yml`: cada 15 min revisa desde fuera la web, la API, la app y el
   subdominio de los ESP32. GitHub solo ejecuta los flujos programados de la rama principal, así
-  así que vigila desde `main`; las fallas llegan por correo de GitHub.
-- En **Settings → Code security** del repositorio activa *Dependabot alerts* y *security
-  updates*; `seguridad.yml` corre CodeQL, ruff y `npm audit` en cada push.
+  que vigila desde `main`; las fallas llegan por correo de GitHub.
+- Las *Dependabot alerts* están activas: avisan de dependencias vulnerables sin crear ramas ni
+  pull requests. Las actualizaciones se aplican a mano en `dev` (con las pruebas) y pasan a
+  `main` con el deploy. `seguridad.yml` corre CodeQL, ruff y `npm audit` en cada push.
 
 ### Verificación en dos pasos obligatoria
 
