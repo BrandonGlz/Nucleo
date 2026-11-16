@@ -1,6 +1,6 @@
 import { AUDITORIA, TOKEN_API, TOKENS_API, WEBHOOK, WEBHOOK_PROBAR, WEBHOOKS } from '../api'
-import { API_BASE_URL, ApiError } from './api/client'
-import { USAR_MOCKS, leerToken, pedir } from './config'
+import { API_BASE_URL, ApiError, OPCIONES_SESION } from './api/client'
+import { USAR_MOCKS, pedir } from './config'
 
 const vacia = { count: 0, results: [] }
 
@@ -40,13 +40,10 @@ export async function probarWebhook(num) {
   return pedir(WEBHOOK_PROBAR(num), { metodo: 'POST', cuerpo: {} })
 }
 
-// Descarga un CSV de la API (lecturas o alertas) con el token de la sesión.
+// Descarga un CSV de la API (lecturas o alertas) con la cookie de la sesión.
 export async function descargarCsv(ruta, params = {}) {
   const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== '')).toString()
-  const token = leerToken()
-  const respuesta = await fetch(`${API_BASE_URL}${ruta}${query ? `?${query}` : ''}`, {
-    headers: token ? { Authorization: `Token ${token}` } : {},
-  })
+  const respuesta = await fetch(`${API_BASE_URL}${ruta}${query ? `?${query}` : ''}`, OPCIONES_SESION)
   if (!respuesta.ok) throw new ApiError(`La API respondió con el estado ${respuesta.status}.`, respuesta.status)
   const nombre =
     /filename="([^"]+)"/.exec(respuesta.headers.get('Content-Disposition') || '')?.[1] || 'nucleo.csv'

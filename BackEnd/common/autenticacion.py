@@ -12,6 +12,7 @@ from django.utils import timezone
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
+from rest_framework.permissions import SAFE_METHODS
 
 _RENOVAR_DESPUES_DE = timedelta(minutes=1)
 
@@ -52,6 +53,40 @@ def usuario_de_token(clave):
     return token.user
 
 
+# --- Sesión de la web en cookie HttpOnly -----------------------------------------------------
+# La web no guarda el token: el inicio de sesión lo deja en una cookie que JavaScript no puede
+# leer (un XSS no puede robar la sesión). La app móvil sigue con Authorization: Token.
+# Protección CSRF: la cookie es SameSite=Lax y, en métodos que escriben, la API exige además el
+# encabezado CLIENTE_WEB, que un sitio ajeno no puede enviar sin pasar por CORS.
+CLIENTE_WEB = "X-Nucleo-Cliente"
+
+
+def es_cliente_web(request):
+    return request.headers.get(CLIENTE_WEB) == "web"
+
+
+def poner_cookie_sesion(respuesta, token):
+    respuesta.set_cookie(
+        settings.NUCLEO_COOKIE_SESION,
+        token.key,
+        max_age=int(_vigencia().total_seconds()),
+        httponly=True,
+        secure=settings.NUCLEO_COOKIE_SEGURA,
+        samesite="Lax",
+        path="/",
+    )
+    return respuesta
+
+
+def quitar_cookie_sesion(respuesta):
+    respuesta.delete_cookie(settings.NUCLEO_COOKIE_SESION, path="/", samesite="Lax")
+    return respuesta
+
+
+def token_de_cookie(cookies):
+    return cookies.get(settings.NUCLEO_COOKIE_SESION) or ""
+
+
 # Con la verificación en dos pasos pendiente, el token solo sirve en estas rutas (perfil,
 # cierre de sesión, contraseña y la propia configuración del segundo factor).
 _RUTAS_SIN_SEGUNDO_FACTOR = "/api/v1/auth/"
@@ -65,12 +100,27 @@ class SegundoFactorPendiente(PermissionDenied):
 class TokenCaducable(TokenAuthentication):
     def authenticate(self, request):
         resultado = super().authenticate(request)
+        if resultado is None:
+            resultado = self._desde_cookie(request)
         if resultado is not None and not request.path.startswith(_RUTAS_SIN_SEGUNDO_FACTOR):
             from apps.usuarios.seguridad import falta_configurar
 
             if falta_configurar(resultado[0]):
                 raise SegundoFactorPendiente()
         return resultado
+
+    def _desde_cookie(self, request):
+        clave = token_de_cookie(request.COOKIES)
+        if not clave:
+            return None
+        if request.method not in SAFE_METHODS and not es_cliente_web(request):
+            raise PermissionDenied(f"Falta el encabezado {CLIENTE_WEB} (protección CSRF).")
+        try:
+            return self.authenticate_credentials(clave)
+        except AuthenticationFailed:
+            # Cookie vieja o de una sesión cerrada: se trata como visita sin sesión, así las
+            # rutas públicas (acceso, recuperación) siguen funcionando.
+            return None
 
     def authenticate_credentials(self, clave):
         usuario, token = super().authenticate_credentials(clave)

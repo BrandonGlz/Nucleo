@@ -1,6 +1,6 @@
 import { WS_PANEL } from '../api'
 import { API_BASE_URL } from './api/client'
-import { USAR_MOCKS, leerToken } from './config'
+import { USAR_MOCKS } from './config'
 
 export const EVENTO = 'nucleo:evento'
 
@@ -17,9 +17,9 @@ export function escucharPanel() {
   let cerrado = false
 
   const abrir = () => {
-    const token = leerToken()
-    if (!token || cerrado) return
-    socket = new WebSocket(`${base}${WS_PANEL}?token=${encodeURIComponent(token)}`)
+    if (cerrado) return
+    // Sin token en la URL: el navegador manda la cookie HttpOnly de la sesión.
+    socket = new WebSocket(`${base}${WS_PANEL}`)
     socket.onopen = () => {
       espera = 1000
       ping = setInterval(() => socket.readyState === 1 && socket.send(JSON.stringify({ tipo: 'ping' })), 25000)
@@ -34,9 +34,9 @@ export function escucharPanel() {
         // Un mensaje que no es JSON se ignora.
       }
     }
-    socket.onclose = () => {
+    socket.onclose = (e) => {
       clearInterval(ping)
-      if (cerrado) return
+      if (cerrado || e.code === 4401) return // sin sesión: no tiene caso reintentar
       reintento = setTimeout(abrir, espera)
       espera = Math.min(espera * 2, 30000)
     }

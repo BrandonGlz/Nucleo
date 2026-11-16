@@ -185,3 +185,62 @@ class TelefonoCifradoTests(PruebaBase):
             f"/api/v1/usuarios/{e.analista.pk}/", {"telefono": "1" * 16}, format="json"
         )
         self.assertEqual(r.status_code, 400)
+
+
+class SesionWebCookieTests(PruebaBase):
+    """La web recibe la sesión en una cookie HttpOnly y nunca ve el token."""
+
+    WEB = {"HTTP_X_NUCLEO_CLIENTE": "web"}
+
+    def setUp(self):
+        self.e = Escenario()
+        self.cliente = APIClient()
+
+    def _entrar(self):
+        return self.cliente.post(
+            "/api/v1/auth/login/",
+            {"correo": self.e.admin.correo, "password": CLAVE},
+            format="json",
+            **self.WEB,
+        )
+
+    def test_login_web_pone_cookie_httponly_sin_token_en_el_cuerpo(self):
+        r = self._entrar()
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("token", r.json())
+        cookie = r.cookies["nucleo_sesion"]
+        self.assertTrue(cookie["httponly"])
+        self.assertEqual(cookie["samesite"], "Lax")
+        self.assertEqual(self.cliente.get("/api/v1/auth/yo/").status_code, 200)
+
+    def test_la_app_movil_sigue_recibiendo_el_token(self):
+        r = self.cliente.post(
+            "/api/v1/auth/login/",
+            {"correo": self.e.admin.correo, "password": CLAVE},
+            format="json",
+        )
+        self.assertIn("token", r.json())
+        self.assertNotIn("nucleo_sesion", r.cookies)
+
+    def test_escribir_con_cookie_exige_el_encabezado_de_la_web(self):
+        self._entrar()
+        sin = self.cliente.post("/api/v1/areas/", {"nombre": "Nueva"}, format="json")
+        self.assertEqual(sin.status_code, 403)
+        con = self.cliente.post("/api/v1/areas/", {"nombre": "Nueva"}, format="json", **self.WEB)
+        self.assertEqual(con.status_code, 201)
+
+    def test_cookie_vieja_no_bloquea_las_rutas_publicas(self):
+        self.cliente.cookies["nucleo_sesion"] = "inventada"
+        self.assertEqual(self.cliente.get("/api/v1/auth/yo/").status_code, 401)
+        r = self.cliente.post(
+            "/api/v1/auth/recuperar/", {"correo": "nadie@ejemplo.mx"}, format="json", **self.WEB
+        )
+        self.assertEqual(r.status_code, 204)
+
+    def test_cerrar_sesion_borra_la_cookie_y_el_token(self):
+        self._entrar()
+        r = self.cliente.post("/api/v1/auth/logout/", {}, format="json", **self.WEB)
+        self.assertEqual(r.status_code, 204)
+        self.assertEqual(r.cookies["nucleo_sesion"].value, "")
+        self.cliente.cookies["nucleo_sesion"] = r.cookies["nucleo_sesion"].value
+        self.assertEqual(self.cliente.get("/api/v1/auth/yo/").status_code, 401)

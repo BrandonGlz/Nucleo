@@ -19,7 +19,12 @@ from apps.usuarios.serializers import (
     UsuarioSerializer,
 )
 from common import roles
-from common.autenticacion import token_de
+from common.autenticacion import (
+    es_cliente_web,
+    poner_cookie_sesion,
+    quitar_cookie_sesion,
+    token_de,
+)
 from common.permissions import PermisoPorRol
 from common.red import LimitePorIP
 from common.scoping import usuarios_gestionables
@@ -96,13 +101,16 @@ class LoginView(APIView):
             request=request,
             descripcion="Con verificación en dos pasos" if factor else "",
         )
-        return Response(
-            {
-                "token": token.key,
-                "usuario": UsuarioSerializer(usuario, context={"request": request}).data,
-                "configurar_segundo_factor": factor is None and seguridad.es_obligatorio(usuario),
-            }
-        )
+        cuerpo = {
+            "token": token.key,
+            "usuario": UsuarioSerializer(usuario, context={"request": request}).data,
+            "configurar_segundo_factor": factor is None and seguridad.es_obligatorio(usuario),
+        }
+        if es_cliente_web(request):
+            # La web recibe la sesión en una cookie HttpOnly y nunca ve el token.
+            del cuerpo["token"]
+            return poner_cookie_sesion(Response(cuerpo), token)
+        return Response(cuerpo)
 
 
 class LogoutView(APIView):
@@ -116,7 +124,7 @@ class LogoutView(APIView):
             TelefonoPush.objects.filter(usuario=request.user, token_expo=token_expo).delete()
         Token.objects.filter(user=request.user).delete()
         registrar(Accion.LOGOUT)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return quitar_cookie_sesion(Response(status=status.HTTP_204_NO_CONTENT))
 
 
 class TelefonoView(APIView):
@@ -169,7 +177,7 @@ class CambiarPasswordView(APIView):
         request.user.set_password(entrada.validated_data["password_nueva"])
         request.user.save(update_fields=["password"])
         Token.objects.filter(user=request.user).delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return quitar_cookie_sesion(Response(status=status.HTTP_204_NO_CONTENT))
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):

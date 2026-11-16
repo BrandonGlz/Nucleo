@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import * as auth from '../services/auth'
 import * as organizacionesApi from '../services/organizaciones'
 import { pagina } from '../utils/convertir'
-import { guardarToken, leerToken } from '../services/config'
-import { EVENTO_SEGUNDO_FACTOR } from '../services/api/client'
+import { EVENTO_SEGUNDO_FACTOR, EVENTO_SESION_CADUCADA } from '../services/api/client'
+import { USAR_MOCKS } from '../services/config'
 
 const SesionContext = createContext(null)
 const CLAVE_USUARIO = 'nucleo.usuario'
@@ -29,9 +29,11 @@ const escribir = (clave, valor) => {
 
 // Sesión (token y usuario) y tema: light, dark o system (sigue al sistema).
 export function SesionProvider({ children }) {
-  const [usuario, setUsuario] = useState(() => (leerToken() ? leer(CLAVE_USUARIO) : null))
+  // El usuario guardado solo sirve para pintar al instante; la sesión real es la cookie HttpOnly
+  // y se confirma con /auth/yo/ al abrir la web.
+  const [usuario, setUsuario] = useState(() => leer(CLAVE_USUARIO))
   const [tema, setTemaEstado] = useState(() => leer(CLAVE_TEMA) || 'system')
-  const [segundoFactorPendiente, setPendiente] = useState(() => Boolean(leerToken() && leer(CLAVE_2FA)))
+  const [segundoFactorPendiente, setPendiente] = useState(() => Boolean(leer(CLAVE_USUARIO) && leer(CLAVE_2FA)))
   const marcarSegundoFactor = useCallback((pendiente) => {
     setPendiente(pendiente)
     escribir(CLAVE_2FA, pendiente || null)
@@ -80,8 +82,7 @@ export function SesionProvider({ children }) {
   // `codigo`: segundo paso. Si falta, la API responde 401 con datos.requiere_codigo.
   const login = useCallback(
     async (correo, password, codigo) => {
-      const { token, usuario: u, configurar_segundo_factor } = await auth.login(correo, password, codigo)
-      guardarToken(token)
+      const { usuario: u, configurar_segundo_factor } = await auth.login(correo, password, codigo)
       escribir(CLAVE_USUARIO, u)
       marcarSegundoFactor(Boolean(configurar_segundo_factor))
       setUsuario(u)
@@ -96,11 +97,32 @@ export function SesionProvider({ children }) {
     } catch {
       // Aunque la API falle, la sesión local se cierra.
     }
-    guardarToken(null)
     escribir(CLAVE_USUARIO, null)
     marcarSegundoFactor(false)
     setUsuario(null)
   }, [marcarSegundoFactor])
+
+  // Sesión caducada o cerrada en otro lado (401 de la API): se olvida el usuario local.
+  const olvidar = useCallback(() => {
+    escribir(CLAVE_USUARIO, null)
+    marcarSegundoFactor(false)
+    setUsuario(null)
+  }, [marcarSegundoFactor])
+  useEffect(() => {
+    window.addEventListener(EVENTO_SESION_CADUCADA, olvidar)
+    return () => window.removeEventListener(EVENTO_SESION_CADUCADA, olvidar)
+  }, [olvidar])
+  // Al abrir la web se confirma que la cookie sigue vigente (y se refrescan los datos del usuario).
+  useEffect(() => {
+    if (USAR_MOCKS || !leer(CLAVE_USUARIO)) return
+    auth
+      .yo()
+      .then((u) => {
+        escribir(CLAVE_USUARIO, u)
+        setUsuario(u)
+      })
+      .catch(() => {}) // un 401 ya lanza EVENTO_SESION_CADUCADA
+  }, [])
 
   const valor = useMemo(
     () => ({

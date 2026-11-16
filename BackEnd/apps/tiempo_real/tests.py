@@ -57,6 +57,29 @@ class CanalEnVivoTests(PruebaTransaccional):
             self.assertFalse(conectado)
             self.assertEqual(codigo, 4401)
 
+    async def test_la_web_entra_con_la_cookie_solo_desde_su_origen(self):
+        from config.asgi import application
+
+        clave = await sync_to_async(self.token_de)(self.e.admin)
+        cookie = (b"cookie", f"nucleo_sesion={clave}".encode())
+        propio = WebsocketCommunicator(
+            application,
+            "/ws/panel/",
+            headers=[cookie, (b"origin", b"https://bynucleo.com"), (b"host", b"bynucleo.com")],
+        )
+        conectado, _ = await propio.connect()
+        self.assertTrue(conectado)
+        self.assertEqual((await propio.receive_json_from())["tipo"], "conectado")
+        await propio.disconnect()
+        ajeno = WebsocketCommunicator(
+            application,
+            "/ws/panel/",
+            headers=[cookie, (b"origin", b"https://ajeno.example"), (b"host", b"bynucleo.com")],
+        )
+        conectado, codigo = await ajeno.connect()
+        self.assertFalse(conectado)
+        self.assertEqual(codigo, 4401)
+
     async def test_un_token_caducado_se_rechaza(self):
         clave = await sync_to_async(self.token_de)(self.e.operador)
         await sync_to_async(Token.objects.filter(key=clave).update)(

@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import environ
+from corsheaders.defaults import default_headers
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -217,6 +218,9 @@ NUCLEO_AGENTE_MANTENIMIENTO = env(
 NUCLEO_BATERIA_BAJA_PCT = env.int("NUCLEO_BATERIA_BAJA_PCT", default=20)
 NUCLEO_ALERTAS_MAX_SEGUNDOS = 120
 NUCLEO_TOKEN_DIAS_SIN_USO = env.int("NUCLEO_TOKEN_DIAS_SIN_USO", default=7)
+# Cookie HttpOnly de la sesión web (common/autenticacion.py). Segura (solo HTTPS) fuera de DEBUG.
+NUCLEO_COOKIE_SESION = "nucleo_sesion"
+NUCLEO_COOKIE_SEGURA = env.bool("NUCLEO_COOKIE_SEGURA", default=not DEBUG)
 NUCLEO_EXPO_PUSH_URL = env("NUCLEO_EXPO_PUSH_URL", default="https://exp.host/--/api/v2/push/send")
 NUCLEO_PUSH_HABILITADO = env.bool("NUCLEO_PUSH_HABILITADO", default=False)
 
@@ -265,6 +269,10 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 # Nombre del archivo en las descargas CSV cuando la web y la API están en orígenes distintos.
 CORS_EXPOSE_HEADERS = ["Content-Disposition"]
+# En desarrollo la web (5173) y la API (8000) son orígenes distintos: la cookie de sesión viaja
+# con credentials: "include" y el encabezado X-Nucleo-Cliente debe estar permitido.
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (*default_headers, "x-nucleo-cliente")
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 LOGGING = {
