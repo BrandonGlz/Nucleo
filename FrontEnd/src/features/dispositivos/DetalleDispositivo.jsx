@@ -5,6 +5,7 @@ import {
   StatusBadge,
 } from '../../design-system/componentes/index.js'
 import { GraficaAjustable } from '../../components/GraficaAjustable'
+import { BotonVolver, Migas } from '../../components/BotonVolver'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { useSesion } from '../../context/SesionContext'
@@ -24,6 +25,8 @@ const SENSOR = {
   CALIB: ['warning', 'wrench', 'Requiere calibración'],
   FALLA: ['danger', 'octagon-alert', 'Falla'],
 }
+const MIGA = <Migas a="/dispositivos" modulo="Dispositivos" />
+const VOLVER = <BotonVolver a="/dispositivos" etiqueta="Volver a la página anterior" />
 const VAR_POR_SENSOR = { DHT22: 'thermometer', 'MQ-135': 'wind', CCS811: 'wind' }
 
 async function cargar(numDisp) {
@@ -129,7 +132,7 @@ export function DetalleDispositivo() {
 
   if (estado === 'error') {
     return (
-      <Pantalla eyebrow="Dispositivos" titulo="Detalle de dispositivo">
+      <Pantalla eyebrow={MIGA} titulo="Detalle de dispositivo" volver={VOLVER}>
         <EstadoError reintentar={reintentar} titulo="No encontramos este dispositivo" />
       </Pantalla>
     )
@@ -137,8 +140,9 @@ export function DetalleDispositivo() {
   if (estado === 'cargando' || !datos) {
     return (
       <Pantalla
-        eyebrow="Dispositivos"
+        eyebrow={MIGA}
         titulo="Detalle de dispositivo"
+        volver={VOLVER}
         cifras={{ principal: { etiqueta: 'Cargando', valor: '--.-', tonoValor: 'apagado' } }}
       >
         <Skeleton variant="card" />
@@ -166,8 +170,9 @@ export function DetalleDispositivo() {
 
   return (
     <Pantalla
-      eyebrow={`Dispositivos / ${d.codigo_mqtt}`}
+      eyebrow={<Migas a="/dispositivos" modulo="Dispositivos" actual={d.codigo_mqtt} />}
       titulo="Detalle de dispositivo"
+      volver={VOLVER}
       acciones={
         puedeEditar(rol) && (
           <Button variant="secondary" icon="sliders-horizontal" onClick={() => navegar(`/umbrales?dispositivo=${d.num}`)}>

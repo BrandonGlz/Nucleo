@@ -3873,6 +3873,20 @@ button.ui-menuitem:not(:disabled):hover svg {
   animation: ui-baja var(--duration-base) var(--ease-standard) forwards;
 }
 
+/* Pantallas de detalle: flecha para volver antes del título y la miga del módulo como enlace */
+.ui-volver {
+  flex: none;
+}
+.nc-header__eyebrow .ui-miga {
+  color: inherit;
+  text-decoration: none;
+}
+.nc-header__eyebrow .ui-miga:hover,
+.nc-header__eyebrow .ui-miga:focus-visible {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
 /* Pestañas: la pastilla (o la raya) se desliza hasta la pestaña elegida */
 .nc-tabs {
   position: relative;

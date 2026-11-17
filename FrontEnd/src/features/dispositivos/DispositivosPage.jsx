@@ -1,6 +1,6 @@
 import { useSesion } from '../../context/SesionContext'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Battery, Card, ChipFilter, DeviceTable, Icon, IconButton, IconCircle, SignalBars, Skeleton, StatusBadge, Tabs,
 } from '../../design-system/componentes/index.js'
@@ -85,9 +85,24 @@ function TarjetaDispositivo({ d, area, umbrales, abrir }) {
 export function DispositivosPage() {
   const { organizacion } = useSesion()
   const navegar = useNavigate()
-  const [filtro, setFiltro] = useState('all')
-  const [area, setArea] = useState('')
-  const [busqueda, setBusqueda] = useState('')
+  // Filtros en la URL (?estado=&area=&q=): al volver del detalle de un dispositivo la lista queda igual.
+  const [params, setParams] = useSearchParams()
+  const filtro = FILTROS.some(([id]) => id === params.get('estado')) ? params.get('estado') : 'all'
+  const area = params.get('area') ?? ''
+  const busqueda = params.get('q') ?? ''
+  const cambiarParam = (clave, valor, vacio) =>
+    setParams(
+      (p) => {
+        const n = new URLSearchParams(p)
+        if (!valor || valor === vacio) n.delete(clave)
+        else n.set(clave, valor)
+        return n
+      },
+      { replace: true },
+    )
+  const setFiltro = (v) => cambiarParam('estado', v, 'all')
+  const setArea = (v) => cambiarParam('area', v)
+  const setBusqueda = (v) => cambiarParam('q', v)
   const [vista, setVistaEstado] = useState(leerVista)
   const setVista = (v) => {
     setVistaEstado(v)

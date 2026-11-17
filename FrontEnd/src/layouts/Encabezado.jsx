@@ -17,8 +17,9 @@ const fechaCorta = (iso) =>
   esHoy(iso) ? hora(iso) : new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
 
 // Encabezado de cada pantalla (clases nc-header del sistema de diseño) con los menús de la
-// campana y del avatar. Los menús se cierran al hacer clic fuera o con Escape.
-export function Encabezado({ eyebrow, titulo, acciones }) {
+// campana y del avatar. Los menús se cierran al hacer clic fuera o con Escape. «volver» (BotonVolver)
+// va antes del título en las pantallas de detalle.
+export function Encabezado({ eyebrow, titulo, acciones, volver }) {
   const [menu, setMenu] = useState(null)
   const ref = useRef(null)
   const notif = useSalida(menu === 'notif')
@@ -67,6 +68,7 @@ export function Encabezado({ eyebrow, titulo, acciones }) {
           aria-expanded={menuMovil.abierto}
           onClick={menuMovil.abrir}
         />
+        {volver}
         <div className="nc-header__titles">
           {eyebrow && <span className="nc-header__eyebrow">{eyebrow}</span>}
           <h1 className="nc-header__title">{titulo}</h1>
