@@ -1,5 +1,5 @@
-import { useId, useState } from 'react'
-import { View } from 'react-native'
+import { useEffect, useId, useState } from 'react'
+import { InteractionManager, View } from 'react-native'
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg'
 import { useTema } from '../../context/TemaContext'
 import { font } from '../../theme'
@@ -48,10 +48,22 @@ export function Sparkline({ data = [], width = 96, height = 32, color }) {
 
 // Tendencia con ejes, umbrales y cursor. Se toca o arrastra para mover el cursor.
 // data: [{ label, time, value }]; threshold: { min, max }.
+// true cuando terminan las transiciones en curso: el SVG se dibuja después de que la pantalla
+// ya entró, para no quitarle cuadros a la animación.
+function useTrasTransicion() {
+  const [listo, setListo] = useState(false)
+  useEffect(() => {
+    const t = InteractionManager.runAfterInteractions(() => setListo(true))
+    return () => t.cancel()
+  }, [])
+  return listo
+}
+
 export function TrendChart({ data = [], unit = '', threshold = {}, min, max, height = 200, activeIndex, decimals = 1, tooltip = true }) {
   const { c } = useTema()
   const id = useId().replace(/:/g, '')
   const [W, setW] = useState(0)
+  const listo = useTrasTransicion()
   const [hover, setHover] = useState(activeIndex ?? data.length - 1)
   const H = height
   const padL = 36
@@ -91,7 +103,7 @@ export function TrendChart({ data = [], unit = '', threshold = {}, min, max, hei
       onResponderGrant={(e) => mover(e.nativeEvent.locationX)}
       onResponderMove={(e) => mover(e.nativeEvent.locationX)}
     >
-      {W > 0 && data.length > 0 && (
+      {listo && W > 0 && data.length > 0 && (
         <Svg width={W} height={H} pointerEvents="none">
           <Defs>
             <LinearGradient id={`ta${id}`} x1="0" y1="0" x2="0" y2="1">

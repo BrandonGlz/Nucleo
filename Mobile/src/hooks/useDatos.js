@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ESTADO_FORZADO } from '../services/mock/handlers'
 import { USAR_MOCKS } from '../services/config'
 
@@ -21,7 +21,10 @@ export function useDatos(cargar, deps = [], { esVacio, cadaMs, activo = true } =
       if (!callado) setRes((r) => ({ ...r, estado: 'cargando', error: null }))
       cargar()
         .then((datos) => {
-          if (vivo) setRes({ estado: esVacio?.(datos) ? 'vacio' : 'listo', datos, error: null })
+          if (!vivo) return
+          const estado = esVacio?.(datos) ? 'vacio' : 'listo'
+          // Consultas de fondo que traen lo mismo no vuelven a pintar las pantallas.
+          setRes((r) => (callado && r.estado === estado && mismo(r.datos, datos) ? r : { estado, datos, error: null }))
         })
         .catch((error) => vivo && !callado && setRes({ estado: 'error', datos: null, error }))
     }
@@ -47,5 +50,13 @@ export function useDatos(cargar, deps = [], { esVacio, cadaMs, activo = true } =
 
   const reintentar = useCallback(() => setVuelta((v) => v + 1), [])
   const refrescar = useCallback(() => silencioso.current(), [])
-  return { ...res, reintentar, refrescar }
+  return useMemo(() => ({ ...res, reintentar, refrescar }), [res, reintentar, refrescar])
+}
+
+function mismo(a, b) {
+  try {
+    return JSON.stringify(a) === JSON.stringify(b)
+  } catch {
+    return false
+  }
 }

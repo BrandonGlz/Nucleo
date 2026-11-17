@@ -10,7 +10,7 @@ import { T } from './Texto'
 export const MOV = { curva: Easing.bezier(0.2, 0, 0, 1), base: 200, lento: 320 }
 
 // Valor animado que sigue a `destino`; sin animaciones salta directo.
-function useSigue(destino, duracion = MOV.base) {
+function useSigue(destino, duracion = MOV.base, nativo = false) {
   const animar = useAnimaciones()
   const [v] = useState(() => new Animated.Value(destino))
   useEffect(() => {
@@ -18,8 +18,8 @@ function useSigue(destino, duracion = MOV.base) {
       v.setValue(destino)
       return
     }
-    Animated.timing(v, { toValue: destino, duration: duracion, easing: MOV.curva, useNativeDriver: false }).start()
-  }, [destino, animar, duracion, v])
+    Animated.timing(v, { toValue: destino, duration: duracion, easing: MOV.curva, useNativeDriver: nativo }).start()
+  }, [destino, animar, duracion, nativo, v])
   return v
 }
 
@@ -29,9 +29,9 @@ export function Aparece({ indice = 0, style, children }) {
   const [p] = useState(() => new Animated.Value(animar ? 0 : 1))
   useEffect(() => {
     if (!animar) return
-    Animated.timing(p, { toValue: 1, duration: MOV.lento, delay: Math.min(indice, 8) * 45, easing: MOV.curva, useNativeDriver: true }).start()
+    Animated.timing(p, { toValue: 1, duration: 220, delay: Math.min(indice, 6) * 30, easing: MOV.curva, useNativeDriver: true }).start()
   }, [animar, indice, p])
-  const sube = p.interpolate({ inputRange: [0, 1], outputRange: [14, 0] })
+  const sube = p.interpolate({ inputRange: [0, 1], outputRange: [8, 0] })
   return <Animated.View style={[style, { opacity: p, transform: [{ translateY: sube }] }]}>{children}</Animated.View>
 }
 
@@ -272,21 +272,43 @@ export function Chip({ selected, count, onPress, children }) {
 export function Tabs({ items, value, onChange, compacto, lleno }) {
   const { c } = useTema()
   const [medidas, setMedidas] = useState({})
+  const animar = useAnimaciones()
   const m = medidas[value]
-  const x = useSigue(m?.x ?? 0, MOV.lento)
-  const ancho = useSigue(m?.w ?? 0, MOV.lento)
-  // La primera medida se coloca sin animar para que la pastilla no venga desde la izquierda.
+  // Bordes izquierdo y derecho de la pastilla, animados en el hilo nativo (no se traban mientras se
+  // dibuja la pantalla). Son dos tapas redondas y un centro que se estira entre ellas, como la barra
+  // de pestañas, porque el ancho no se puede animar en el hilo nativo.
+  const [izq] = useState(() => new Animated.Value(0))
+  const [der] = useState(() => new Animated.Value(0))
   const colocada = useRef(false)
   useEffect(() => {
-    if (m && !colocada.current) {
-      x.setValue(m.x)
-      ancho.setValue(m.w)
+    if (!m) return
+    if (!colocada.current || !animar) {
+      izq.setValue(m.x)
+      der.setValue(m.x + m.w)
       colocada.current = true
+      return
     }
-  }, [m, x, ancho])
+    const ir = (v, a) => Animated.timing(v, { toValue: a, duration: 260, easing: MOV.curva, useNativeDriver: true })
+    Animated.parallel([ir(izq, m.x), ir(der, m.x + m.w)]).start()
+  }, [m, animar, izq, der])
+  const alto = m?.h ?? 0
+  const BASE = 100
+  const escala = Animated.add(der, Animated.multiply(izq, -1)).interpolate({
+    inputRange: [alto, alto + BASE],
+    outputRange: [0.001, 1],
+    extrapolateLeft: 'clamp',
+  })
+  const centro = Animated.add(Animated.multiply(Animated.add(izq, der), 0.5), -BASE / 2)
+  const pieza = [s.tabPieza, { top: m?.y ?? 0, height: alto, backgroundColor: c.seleccion }]
   return (
     <View style={[s.tabs, compacto && { padding: 3, gap: 2 }, { backgroundColor: c.surfaceMuted }]}>
-      {m && <Animated.View pointerEvents="none" style={[s.tabPastilla, compacto && { top: 3, bottom: 3 }, { backgroundColor: c.seleccion, width: ancho, transform: [{ translateX: x }] }]} />}
+      {m ? (
+        <>
+          <Animated.View pointerEvents="none" style={[pieza, { width: alto, borderRadius: alto / 2, transform: [{ translateX: izq }] }]} />
+          <Animated.View pointerEvents="none" style={[pieza, { width: alto, borderRadius: alto / 2, transform: [{ translateX: Animated.add(der, -alto) }] }]} />
+          <Animated.View pointerEvents="none" style={[pieza, { width: BASE, transform: [{ translateX: centro }, { scaleX: escala }] }]} />
+        </>
+      ) : null}
       {items.map((it) => {
         const activo = it.id === value
         return (
@@ -296,8 +318,10 @@ export function Tabs({ items, value, onChange, compacto, lleno }) {
             accessibilityState={{ selected: activo }}
             onPress={() => onChange?.(it.id)}
             onLayout={(e) => {
-              const { x: px, width } = e.nativeEvent.layout
-              setMedidas((ant) => (ant[it.id]?.x === px && ant[it.id]?.w === width ? ant : { ...ant, [it.id]: { x: px, w: width } }))
+              const { x: px, y: py, width, height } = e.nativeEvent.layout
+              const a = medidas[it.id]
+              if (a?.x === px && a?.w === width && a?.h === height && a?.y === py) return
+              setMedidas((ant) => ({ ...ant, [it.id]: { x: px, y: py, w: width, h: height } }))
             }}
             style={({ pressed }) => [s.tab, compacto && s.tabCompacto, lleno && { flex: 1, paddingHorizontal: 8 }, !m && activo && { backgroundColor: c.seleccion }, pressed && { transform: [{ scale: 0.96 }] }]}
           >
@@ -313,7 +337,7 @@ export function Tabs({ items, value, onChange, compacto, lleno }) {
 
 export function Toggle({ label, value, onChange }) {
   const { c } = useTema()
-  const x = useSigue(value ? 20 : 0, 180)
+  const x = useSigue(value ? 20 : 0, 180, true)
   return (
     <Pressable
       accessibilityRole="switch"
@@ -398,7 +422,7 @@ const s = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1 },
   cuenta: { minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, alignItems: 'center' },
   tabs: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 999 },
-  tabPastilla: { position: 'absolute', top: 4, bottom: 4, left: 0, borderRadius: 999 },
+  tabPieza: { position: 'absolute', left: 0 },
   tabCompacto: { height: 28, paddingHorizontal: 10 },
   tab: { height: 36, paddingHorizontal: 16, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   toggleFila: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 28 },

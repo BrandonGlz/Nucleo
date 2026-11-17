@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, LayoutAnimation, Pressable, StyleSheet, View } from 'react-native'
+import { Animated, Pressable, StyleSheet, View } from 'react-native'
 import { useAnimaciones } from '../../context/PreferenciasContext'
 import { useTema } from '../../context/TemaContext'
 import { MOV } from './Basicos'
@@ -7,17 +7,16 @@ import { Icon } from './Icon'
 import { T } from './Texto'
 
 // Barra flotante oscura de pestañas. items: [{ id, label, icon, count }]; la activa muestra su etiqueta.
-// Al cambiar, la pastilla verde se desliza hasta la pestaña elegida (posición y ancho medidos), las
-// pestañas se reacomodan con una transición y la etiqueta nueva aparece suavemente.
+// Al cambiar, la pastilla verde se desliza hasta la pestaña elegida (posición y ancho medidos) y la
+// etiqueta nueva aparece suavemente.
 const ALTO = 52 // alto de cada pestaña
 const BASE = 100 // ancho de referencia del centro de la pastilla antes de estirarlo
-const TRANSICION = { duration: MOV.lento, update: { type: LayoutAnimation.Types.easeInEaseOut } }
 
 function Etiqueta({ color, children }) {
   const animar = useAnimaciones()
   const [o] = useState(() => new Animated.Value(animar ? 0 : 1))
   useEffect(() => {
-    if (animar) Animated.timing(o, { toValue: 1, duration: MOV.lento, delay: 80, easing: MOV.curva, useNativeDriver: true }).start()
+    if (animar) Animated.timing(o, { toValue: 1, duration: MOV.base, delay: 40, easing: MOV.curva, useNativeDriver: true }).start()
   }, [animar, o])
   return (
     <Animated.View style={{ opacity: o }}>
@@ -51,7 +50,7 @@ export function TabBar({ items, active, onChange }) {
   const [izq] = useState(() => new Animated.Value(0))
   const [der] = useState(() => new Animated.Value(0))
   const colocada = useRef(false)
-  // Pestaña pendiente de navegar: se navega en cuanto arranca la pastilla, o a los 120 ms si no hubo medida.
+  // Pestaña pendiente de navegar: se navega en el siguiente cuadro (o antes, si la pastilla arranca primero).
   const pendiente = useRef(null)
   const reloj = useRef(null)
   const alCambiar = useRef(onChange)
@@ -74,7 +73,7 @@ export function TabBar({ items, active, onChange }) {
       colocada.current = true
       return
     }
-    const ir = (v, a) => Animated.timing(v, { toValue: a, duration: MOV.lento, easing: MOV.curva, useNativeDriver: true })
+    const ir = (v, a) => Animated.timing(v, { toValue: a, duration: 260, easing: MOV.curva, useNativeDriver: true })
     Animated.parallel([ir(izq, m.x), ir(der, m.x + m.w)]).start()
     // Con la pastilla ya en movimiento (en el hilo nativo) se cambia de pantalla.
     navegar()
@@ -111,11 +110,12 @@ export function TabBar({ items, active, onChange }) {
             accessibilityState={{ selected: activo }}
             onPress={() => {
               if (activo) return
-              if (animar) LayoutAnimation.configureNext(TRANSICION)
+              // Sin espera: la pantalla cambia en el siguiente cuadro y la pastilla viaja a la vez (en el
+              // hilo nativo). Sin LayoutAnimation: en Android animaría también el cambio de pantalla.
               setElegida(it.id)
               pendiente.current = it.id
               clearTimeout(reloj.current)
-              reloj.current = setTimeout(navegar, animar ? 120 : 0)
+              reloj.current = setTimeout(navegar, 0)
             }}
             onLayout={(e) => {
               const { x: px, width } = e.nativeEvent.layout

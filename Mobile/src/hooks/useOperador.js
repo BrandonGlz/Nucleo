@@ -1,4 +1,4 @@
-import { createContext, createElement, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, createElement, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState } from 'react-native'
 import { usePreferencias } from '../context/PreferenciasContext'
 import * as alertasApi from '../services/alertas'
@@ -91,7 +91,9 @@ export function OperadorProvider({ usuario, children }) {
     }
   }, [alFrente, usuario?.organizacion, refrescar])
 
-  return createElement(OperadorContext.Provider, { value: { ...valor, elegir } }, children)
+  // Mismo objeto mientras los datos no cambien: las pestañas no se redibujan con cada consulta de fondo.
+  const valorCtx = useMemo(() => ({ ...valor, elegir }), [valor])
+  return createElement(OperadorContext.Provider, { value: valorCtx }, children)
 }
 export const useOperador = () => useContext(OperadorContext)
 

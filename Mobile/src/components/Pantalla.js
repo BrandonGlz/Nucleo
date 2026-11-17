@@ -1,4 +1,4 @@
-import { Children, useEffect, useState } from 'react'
+import { Children, useEffect, useRef, useState } from 'react'
 import { useIsFocused } from '@react-navigation/native'
 import { Animated, Easing, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
@@ -42,27 +42,31 @@ function Deco({ tipo }) {
 export function Pantalla({ zona, deco = 'anillos', pestanas = true, compacta, recargando, onRecargar, children }) {
   const { c } = useTema()
   const inset = useSafeAreaInsets()
-  // Cada vez que se entra a la pantalla (también al volver a una pestaña) la zona oscura aparece, la
-  // hoja clara sube y su contenido entra escalonado, como los módulos de la web.
-  const animar = useAnimaciones()
+  // Solo la primera vez que se abre una pestaña su contenido entra (corto, en el hilo nativo); al volver
+  // a ella o regresar de un detalle ya está a la vista. Las pantallas de detalle (sin pestañas) no
+  // animan su contenido: ya entran deslizándose desde la derecha.
+  const animar = useAnimaciones() && pestanas
   const enfocada = useIsFocused()
   const [p] = useState(() => new Animated.Value(animar ? 0 : 1))
+  const entro = useRef(false)
   useEffect(() => {
-    if (!enfocada) return
+    if (!enfocada || entro.current) return
+    entro.current = true
     if (!animar) {
       p.setValue(1)
       return
     }
-    p.setValue(0)
-    Animated.timing(p, { toValue: 1, duration: 560, easing: Easing.bezier(0.2, 0, 0, 1), useNativeDriver: true }).start()
+    Animated.timing(p, { toValue: 1, duration: 300, easing: Easing.bezier(0.2, 0, 0, 1), useNativeDriver: true }).start()
   }, [enfocada, animar, p])
   const tramo = (desde, hasta, de, a) => p.interpolate({ inputRange: [0, desde, hasta, 1], outputRange: [de, de, a, a] })
-  const subeHoja = { opacity: tramo(0, 0.6, 0, 1), transform: [{ translateY: tramo(0, 0.6, 40, 0) }] }
-  const apareceZona = { opacity: tramo(0, 0.5, 0, 1), transform: [{ translateY: tramo(0, 0.5, -8, 0) }] }
+  // La hoja (grande y con sombra) solo se desplaza: animar su transparencia obliga a Android a
+  // redibujarla completa en cada cuadro. Lo que aparece son la zona y los bloques, que son ligeros.
+  const subeHoja = { transform: [{ translateY: tramo(0, 0.8, 24, 0) }] }
+  const apareceZona = { opacity: tramo(0, 0.6, 0, 1) }
   // Escalón de cada bloque de la hoja: empieza un poco después del anterior.
   const bloque = (i) => {
-    const desde = Math.min(0.12 + i * 0.07, 0.5)
-    return { opacity: tramo(desde, desde + 0.4, 0, 1), transform: [{ translateY: tramo(desde, desde + 0.4, 16, 0) }] }
+    const desde = Math.min(0.1 + i * 0.06, 0.4)
+    return { opacity: tramo(desde, desde + 0.5, 0, 1), transform: [{ translateY: tramo(desde, desde + 0.5, 10, 0) }] }
   }
   return (
     <View style={{ flex: 1, backgroundColor: marca.tinta }}>
