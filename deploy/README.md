@@ -173,6 +173,14 @@ Tras un deploy que cambie encabezados, vacía la caché en **Caching → Configu
 - `nucleo-aviso@.service`: correo a `NUCLEO_CORREOS_AVISOS` (o a los administradores de
   plataforma) cuando un servicio falla, como mucho uno por hora por servicio
   (`NUCLEO_AVISO_MINUTOS`).
+- En producción `NUCLEO_CORREOS_AVISOS` apunta a la cuenta de avisos del proyecto (la misma del
+  SMTP), así que estos correos y los de `vigilar_recursos.sh` llegan a su bandeja.
+- El vigilante del servidor (`/usr/local/bin/hostpanel-avisos`, fuera del repo) corre tras cada
+  actualización del panel del host y solo actúa cuando algo cambia de estado: manda «Caído»,
+  «Aviso» o «Resuelto» con la explicación y las últimas líneas del registro a la cuenta de avisos
+  de la plataforma afectada (túnel, dominios, Daphne o MQTT detenidos, ESP32 sin conexión,
+  Nico AI, seguridad, respaldos, Caddy, Ollama, red). Usa el SMTP del `.env` y no repite lo que ya
+  avisan `aviso_fallo.sh` y `vigilar_recursos.sh`.
 - `.github/workflows/vigia.yml`: cada 15 min revisa desde fuera la web, la API, la app y el
   subdominio de los ESP32. GitHub solo ejecuta los flujos programados de la rama principal, así
   que vigila desde `main`; las fallas llegan por correo de GitHub.
