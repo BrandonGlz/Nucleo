@@ -21,7 +21,9 @@ class Pantalla:
             self._oled.text(texto[:16], 0, fila * 8)
         self._oled.show()
 
-    def lecturas(self, lecturas, nivel, wifi, mqtt, restante_calentamiento_seg, bateria):
+    def lecturas(self, lecturas, nivel, red_wifi, restante_calentamiento_seg, bateria):
+        """``red_wifi`` es el nombre de la red conectada o vacío sin conexión. El estado de MQTT
+        no se muestra: es técnico y se revisa en el servidor (``estadoServer.sh``)."""
         temperatura = lecturas.get("TEMP")
         humedad = lecturas.get("HUM")
         aire = lecturas.get("AIRE")
@@ -36,6 +38,6 @@ class Pantalla:
             "Hum  %s %%" % ("--" if humedad is None else "%.0f" % humedad),
             estado_aire,
             "",
-            "WiFi:%s MQTT:%s" % ("OK" if wifi else "--", "OK" if mqtt else "--"),
+            ("WiFi " + red_wifi) if red_wifi else "Sin WiFi",
             "%s%s" % (NOMBRES[nivel], "" if bateria is None else "  Bat %d%%" % bateria),
         )

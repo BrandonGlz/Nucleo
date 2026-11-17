@@ -140,8 +140,7 @@ def ejecutar():
             pantalla.lecturas(
                 lecturas,
                 nivel,
-                conectada,
-                broker.conectado(),
+                red.red if conectada else "",
                 sensores.calentamiento_restante_seg(),
                 porcentaje,
             )
