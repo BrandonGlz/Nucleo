@@ -3987,10 +3987,12 @@ button.ui-menuitem:not(:disabled):hover svg {
   border-color: var(--success);
 }
 .nc-chipfilter__indicador.is-deslizando {
+  /* Los chips están lejos entre sí: una curva pareja y algo más larga para que se vea el viaje
+     (con la enfática casi todo el recorrido pasa en los primeros cuadros y parece un salto). */
   transition:
-    transform var(--duration-slow) var(--ease-emphasized),
-    width var(--duration-slow) var(--ease-emphasized),
-    height var(--duration-slow) var(--ease-emphasized);
+    transform 480ms cubic-bezier(0.45, 0, 0.15, 1),
+    width 480ms cubic-bezier(0.45, 0, 0.15, 1),
+    height 480ms cubic-bezier(0.45, 0, 0.15, 1);
 }
 .nc-chipfilter.con-indicador .nc-chip.is-selected,
 :root:not([data-theme="dark"]) .nc-chipfilter.con-indicador .nc-chip.is-selected {
