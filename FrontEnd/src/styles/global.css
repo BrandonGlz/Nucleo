@@ -3877,6 +3877,15 @@ button.ui-menuitem:not(:disabled):hover svg {
 .ui-volver {
   flex: none;
 }
+@media (min-width: 901px) {
+  .ui-volver {
+    margin-right: calc(12px - var(--space-6));
+  }
+}
+.nc-header .ui-volver + .nc-header__titles {
+  flex: 1;
+  min-width: 0;
+}
 .nc-header__eyebrow .ui-miga {
   color: inherit;
   text-decoration: none;
