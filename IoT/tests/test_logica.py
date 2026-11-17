@@ -97,6 +97,18 @@ class SensoresTests(unittest.TestCase):
         CCS811.eco2 = 20000
         self.assertEqual(self.sensores.leer(), {})
 
+    def test_sin_ccs811_no_hay_calentamiento_y_empieza_cuando_aparece(self):
+        CCS811.presente = False
+        sensores = Sensores(i2c=None)
+        self.assertTrue(sensores.aire_estabilizado())
+        self.assertEqual(sensores.calentamiento_restante_seg(), 0)
+        reloj["ms"] = 500_000
+        CCS811.presente = True
+        sensores.leer()
+        self.assertFalse(sensores.aire_estabilizado())
+        self.assertEqual(sensores.calentamiento_restante_seg(), 1200)
+        CCS811.presente = True
+
     def test_el_aire_se_estabiliza_a_los_20_minutos(self):
         self.assertFalse(self.sensores.aire_estabilizado())
         self.assertEqual(self.sensores.calentamiento_restante_seg(), 1200)

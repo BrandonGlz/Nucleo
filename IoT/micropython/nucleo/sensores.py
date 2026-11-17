@@ -23,7 +23,7 @@ class Sensores:
         pin = Pin(config.PIN_DHT22, Pin.IN, Pin.PULL_UP if config.DHT22_PULL_UP_INTERNO else None)
         self._dht = dht.DHT22(pin)
         self._ccs = None
-        self._arranque = time.ticks_ms()
+        self._arranque = None  # cuándo respondió el CCS811; sin él no hay calentamiento
         self._baseline_guardado = None
         self.temperatura = None
         self.humedad = None
@@ -37,6 +37,8 @@ class Sensores:
         except (ValueError, OSError):
             self._ccs = None  # se reintenta en la siguiente lectura
             return
+        if self._arranque is None:
+            self._arranque = time.ticks_ms()
         self._restaurar_baseline()
 
     def _restaurar_baseline(self):
@@ -68,6 +70,9 @@ class Sensores:
         return self.calentamiento_restante_seg() == 0
 
     def calentamiento_restante_seg(self):
+        # Sin CCS811 (no está conectado) no hay aire que calentar: el equipo no se marca «Calentando».
+        if self._arranque is None:
+            return 0
         transcurrido = time.ticks_diff(time.ticks_ms(), self._arranque) // 1000
         return max(0, config.CALENTAMIENTO_AIRE_SEG - transcurrido)
 

@@ -173,9 +173,10 @@ IoT/.venv/bin/python -m unittest discover -s IoT/tests -t IoT
 - **Un sensor que falla** no impide leer ni publicar los demás; las lecturas fuera del
   rango físico no se publican. Si el CCS811 no responde se reintenta en la siguiente
   lectura.
-- **Calentamiento:** durante los primeros 20 minutos tras el arranque el mensaje lleva
-  `aire_estabilizado: false`, la pantalla muestra "Calentando" y el aire no activa el LED
-  ni el buzzer.
+- **Calentamiento:** durante los primeros 20 minutos desde que responde el CCS811 el mensaje
+  lleva `aire_estabilizado: false`, la pantalla muestra "Calentando" y el aire no activa el LED
+  ni el buzzer. Sin CCS811 conectado no hay calentamiento (el equipo no queda en `CALENT`); si
+  se conecta después, sus 20 minutos empiezan en ese momento.
 - **Alertas locales:** con la última configuración recibida (se guarda en `ajustes.json`
   de la placa) el LED RGB y el buzzer funcionan aunque no haya Wi-Fi ni broker. Sin
   configuración, todo se considera normal.
