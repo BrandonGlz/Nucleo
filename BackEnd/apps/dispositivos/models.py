@@ -55,6 +55,10 @@ class Dispositivo(models.Model):
     # ESP32 físico que es la llave de Nico AI (se marca al cargarle firmware desde la consola);
     # se suma a IA_PUENTE_DISPOSITIVOS.
     puente_ia = models.BooleanField(db_default=False, default=False)
+    # Versión de firmware que trae el ESP32: la informa al revisar si hay actualización (OTA,
+    # /puente/firmware/?version=), dos minutos después de arrancar y luego cada 6 horas.
+    version_firmware = models.CharField(max_length=20, null=True, blank=True)
+    version_reportada_en = models.DateTimeField(null=True, blank=True)
     fecha_alta = models.DateTimeField(db_default=Now(), editable=False)
 
     class Meta:

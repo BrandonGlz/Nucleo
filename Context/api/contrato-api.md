@@ -115,7 +115,10 @@ Organizaciones y usuarios
 Dispositivos
 ├── /dispositivos/                          Alta y baja: ADMIN; PATCH del intervalo: ADMIN y SUPER;
 │                                           PATCH del área: ADMIN (quita al operador de otra área);
-│                                           estados LINEA, CALENT, SINCONEX, BATBAJA, MANT, BAJA
+│                                           estados LINEA, CALENT, SINCONEX, BATBAJA, MANT, BAJA;
+│                                           solo lectura: version_firmware y version_reportada_en
+│                                           (las informa el ESP en /puente/firmware/) y
+│                                           version_firmware_publicada (null si no hay ninguna)
 ├── GET /dispositivos/{num}/ultimas-lecturas/    Última lectura de cada variable
 └── /sensores/                              Escritura: ADMIN y SUPER; filtro ?dispositivo=
 
@@ -153,7 +156,8 @@ ESP32 (clave X-Puente-Clave, sin sesión)
 ├── GET /puente/tomar/?dispositivo=         Respaldo HTTPS del latido de Nico AI
 ├── GET /puente/firmware/?dispositivo=&version=
 │                                           Manifiesto firmado de la versión publicada; 204 si
-│                                           ya la tiene o no está en NUCLEO_FIRMWARE_DISPOSITIVOS
+│                                           ya la tiene o no está en NUCLEO_FIRMWARE_DISPOSITIVOS;
+│                                           guarda la versión que informa en el dispositivo
 └── GET /puente/firmware/archivo/?dispositivo=&version=&ruta=
                                             Un archivo de esa versión
 

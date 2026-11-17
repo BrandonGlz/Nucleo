@@ -21,6 +21,7 @@ import shutil
 from pathlib import Path
 
 from django.conf import settings
+from django.utils import timezone
 
 # Lo que se puede actualizar a distancia. Nunca: secrets.py (credenciales de cada placa),
 # boot.py y actualizacion.py (si se rompieran, la placa no podría volver atrás sola).
@@ -106,6 +107,18 @@ def version_actual():
         return (carpeta() / "actual").read_text().strip() or None
     except FileNotFoundError:
         return None
+
+
+def registrar_version(codigo, version):
+    """Guarda la versión que dice traer el ESP al revisar si hay actualización; el detalle del
+    dispositivo la compara con la publicada («al día» o «actualización disponible»)."""
+    from .models import Dispositivo
+
+    if not _VERSION.match(version or ""):
+        return
+    Dispositivo.objects.filter(codigo_mqtt=codigo).update(
+        version_firmware=version, version_reportada_en=timezone.now()
+    )
 
 
 def autorizado(codigo):

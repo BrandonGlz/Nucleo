@@ -70,7 +70,8 @@ telefono_push  num, usuario_num, token_expo (único), plataforma, fecha_registro
 dispositivo    num, area_num, estado_dispositivo_codigo, operador_num (opcional),
                registrado_por, nombre, codigo_mqtt (único), intervalo_muestreo_seg
                (def. 30), nivel_bateria, ultima_conexion, ultimo_arranque, recibe_ota
-               (def. FALSE, la elige la consola de administración), fecha_alta
+               (def. FALSE, la elige la consola de administración), version_firmware y
+               version_reportada_en (las informa el ESP al revisar la OTA), fecha_alta
                CHECK intervalo_muestreo_seg entre 5 y 120; CHECK nivel_bateria entre 0 y 100
 sensor         num, dispositivo_num, estado_sensor_codigo, modelo, funcion,
                fecha_acondicionamiento, fecha_calibracion

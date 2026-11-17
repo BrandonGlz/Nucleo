@@ -199,3 +199,33 @@ class FirmwareOTATests(PruebaBase):
         (self.origen / "main.py").write_text("print('otro')\n")
         with self.assertRaises(firmware.FirmwareError):
             firmware.publicar(self.origen)
+
+    def test_guarda_la_version_que_informa_y_la_compara_con_la_publicada(self):
+        from apps.dispositivos import firmware
+
+        url = f"/api/v1/dispositivos/{self.e.dispositivo.pk}/"
+        # Sin firmware publicado: el detalle no tiene contra qué comparar.
+        detalle = cliente_de(self.e.admin).get(url).json()
+        self.assertIsNone(detalle["version_firmware"])
+        self.assertIsNone(detalle["version_firmware_publicada"])
+
+        firmware.publicar(self.origen)
+        # Aunque no le toque la actualización, la versión que trae queda registrada.
+        with self.settings(NUCLEO_FIRMWARE_DISPOSITIVOS=[]):
+            r = self._get("/api/v1/puente/firmware/", version="1.1.3")
+            self.assertEqual(r.status_code, 204)
+        datos = cliente_de(self.e.admin).get(url).json()
+        self.assertEqual(datos["version_firmware"], "1.1.3")
+        self.assertIsNotNone(datos["version_reportada_en"])
+        self.assertEqual(datos["version_firmware_publicada"], "1.2.0")
+
+        # Una versión con caracteres raros no se guarda; la última válida se conserva.
+        self._get("/api/v1/puente/firmware/", version="1.2.0; rm -rf")
+        self.e.dispositivo.refresh_from_db()
+        self.assertEqual(self.e.dispositivo.version_firmware, "1.1.3")
+
+        # Solo lectura desde la API de la organización.
+        r = cliente_de(self.e.admin).patch(url, {"version_firmware": "9.9.9"})
+        self.assertEqual(r.status_code, 200)
+        self.e.dispositivo.refresh_from_db()
+        self.assertEqual(self.e.dispositivo.version_firmware, "1.1.3")

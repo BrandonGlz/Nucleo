@@ -76,17 +76,23 @@ const DISP = [
   [12, 3, 'Núcleo E-06', 'NC-0291', 31, 2 * HORA, 60, 'SINCONEX', null, 21.2, 43.0, 500],
 ]
 
+// Los mismos dos sensores que lleva cada ESP32 (sembrar_demo).
 const SENSORES = [
   ['DHT22', 'Temperatura y humedad'],
-  ['MQ-135', 'Calidad del aire'],
   ['CCS811', 'eCO₂ y compuestos orgánicos'],
 ]
-const estadoSensor = (disp, i) => (disp === 5 && i === 1 ? 'CALIB' : disp === 11 && i === 2 ? 'FALLA' : 'OPERA')
+const estadoSensor = (disp, i) => (disp === 5 && i === 1 ? 'CALIB' : disp === 11 && i === 1 ? 'FALLA' : 'OPERA')
+// Firmware publicado para la actualización remota (el mismo que muestra la consola) y el que informó cada
+// equipo: uno se quedó atrás y otro aún no lo informa.
+const FIRMWARE_PUBLICADO = '1.4.2'
+const versionDe = (num) => (num === 4 ? '1.3.0' : num === 12 ? null : FIRMWARE_PUBLICADO)
 
 export const dispositivos = DISP.map(([num, area, nombre, codigo, bat, seg, intervalo, estado, operador]) => ({
   num, area, estado_dispositivo: estado, operador, registrado_por: 1, nombre, codigo_mqtt: codigo,
   intervalo_muestreo_seg: intervalo, nivel_bateria: bat, ultima_conexion: hace(seg),
   ultimo_arranque: hace(3 * DIA), fecha_alta: '2026-08-10T16:00:00Z',
+  version_firmware: versionDe(num), version_reportada_en: versionDe(num) ? hace(seg + 2 * HORA) : null,
+  version_firmware_publicada: FIRMWARE_PUBLICADO,
   sensores: SENSORES.map(([modelo, funcion], i) => ({
     num: num * 10 + i, dispositivo: num, estado_sensor: estadoSensor(num, i), modelo, funcion,
     fecha_acondicionamiento: '2026-08-10',

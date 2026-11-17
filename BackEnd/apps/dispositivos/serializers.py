@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.dispositivos import firmware
 from apps.dispositivos.models import Dispositivo, Sensor
 from common import roles
 from common.scoping import areas_visibles, dispositivos_visibles
@@ -31,6 +32,9 @@ class SensorSerializer(serializers.ModelSerializer):
 
 class DispositivoSerializer(ValoresPorDefectoDeBaseMixin, serializers.ModelSerializer):
     sensores = SensorSerializer(many=True, read_only=True)
+    # Versión de firmware publicada para la actualización remota (null si no hay ninguna): con
+    # version_firmware el cliente sabe si el equipo está al día.
+    version_firmware_publicada = serializers.SerializerMethodField()
 
     class Meta:
         model = Dispositivo
@@ -47,6 +51,9 @@ class DispositivoSerializer(ValoresPorDefectoDeBaseMixin, serializers.ModelSeria
             "ultima_conexion",
             "ultimo_arranque",
             "fecha_alta",
+            "version_firmware",
+            "version_reportada_en",
+            "version_firmware_publicada",
             "sensores",
         ]
         read_only_fields = [
@@ -56,7 +63,16 @@ class DispositivoSerializer(ValoresPorDefectoDeBaseMixin, serializers.ModelSeria
             "ultima_conexion",
             "ultimo_arranque",
             "fecha_alta",
+            "version_firmware",
+            "version_reportada_en",
         ]
+
+    def get_version_firmware_publicada(self, dispositivo):
+        # Se lee una vez por respuesta (es un archivo), no una por dispositivo de la lista.
+        cache = self.root.__dict__.setdefault("_version_publicada", [])
+        if not cache:
+            cache.append(firmware.version_actual())
+        return cache[0]
 
     def validate_area(self, area):
         if not areas_visibles(self.context["request"].user).filter(pk=area.pk).exists():

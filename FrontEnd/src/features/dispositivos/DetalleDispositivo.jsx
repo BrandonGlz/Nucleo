@@ -20,10 +20,38 @@ import {
 } from '../../utils/convertir'
 import { avisoUltima, fechaLarga, haceCuanto, num, puntoSerie } from '../../utils/formato'
 
-const SENSOR = {
-  OPERA: ['success', 'circle-check', 'Operando'],
+// Estado de cada sensor: primero lo que se registró de él (falla o calibración pendiente) y luego si
+// está respondiendo, según su última lectura. Sin conexión no hay forma de saberlo: «Sin datos recientes».
+const ESTADO_SENSOR = {
+  responde: ['success', 'circle-check', 'Respondiendo'],
+  calentando: ['warning', 'clock', 'Calentando'],
+  sinDatos: ['offline', 'wifi-off', 'Sin datos recientes'],
   CALIB: ['warning', 'wrench', 'Requiere calibración'],
   FALLA: ['danger', 'octagon-alert', 'Falla'],
+}
+// Una lectura es reciente si llegó dentro de tres intervalos de muestreo (al menos 2 min).
+const esReciente = (iso, intervaloSeg) => !!iso && Date.now() - new Date(iso).getTime() <= Math.max(3 * intervaloSeg, 120) * 1000
+
+function estadoSensor(s, d, lecturas, sinConexion) {
+  const ultima = lecturas
+    .filter((l) => l.sensor_modelo === s.modelo)
+    .reduce((max, l) => (!max || l.fecha_hora > max ? l.fecha_hora : max), null)
+  if (s.estado_sensor === 'FALLA' || s.estado_sensor === 'CALIB') return { clave: s.estado_sensor, ultima }
+  if (sinConexion) return { clave: 'sinDatos', ultima }
+  // El CCS811 no entrega lecturas estabilizadas en sus primeros 20 min tras arrancar.
+  if (s.modelo === 'CCS811' && d.estado_dispositivo === 'CALENT' && !esReciente(ultima, d.intervalo_muestreo_seg)) {
+    return { clave: 'calentando', ultima }
+  }
+  return { clave: esReciente(ultima, d.intervalo_muestreo_seg) ? 'responde' : 'sinDatos', ultima }
+}
+
+// Versión de firmware del equipo contra la publicada para la actualización remota.
+function estadoFirmware(d) {
+  if (!d.version_firmware) return { tone: 'neutral', icon: 'cpu', label: 'Sin informar' }
+  if (!d.version_firmware_publicada) return null
+  return d.version_firmware === d.version_firmware_publicada
+    ? { tone: 'success', icon: 'circle-check', label: 'Al día' }
+    : { tone: 'warning', icon: 'download', label: `Actualización disponible · ${d.version_firmware_publicada}` }
 }
 const MIGA = <Migas a="/dispositivos" modulo="Dispositivos" />
 const VOLVER = <BotonVolver a="/dispositivos" etiqueta="Volver a la página anterior" />
@@ -118,6 +146,76 @@ function Grafica({ d, umbrales, variable }) {
       ) : (
         <Skeleton height={140} />
       )}
+    </Card>
+  )
+}
+
+// Sensores del equipo: si cada uno responde, su última lectura y su calibración, y al pie la versión
+// de firmware del dispositivo (al día o con actualización disponible).
+function TarjetaSensores({ d, lecturas, sinConexion }) {
+  const filas = d.sensores.map((s) => ({ s, ...estadoSensor(s, d, lecturas, sinConexion) }))
+  const responden = filas.filter((f) => f.clave === 'responde').length
+  const fw = estadoFirmware(d)
+  const resumen = sinConexion
+    ? 'Sin datos recientes del dispositivo'
+    : responden === filas.length
+      ? fw?.label === 'Al día'
+        ? 'Todo funciona: sensores respondiendo y firmware al día'
+        : 'Todos los sensores responden'
+      : `${responden} de ${filas.length} sensores responden`
+  const fila = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }
+  const derecha = { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, textAlign: 'right' }
+  return (
+    <Card className="nc-grow">
+      <div className="nc-card__head" style={{ marginBottom: 4 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 className="nc-card__title">Sensores</h3>
+          <p className="nc-card__sub">{resumen}</p>
+        </div>
+      </div>
+      <div className="nc-scroll">
+        {filas.map(({ s, clave, ultima }) => {
+          const [tone, icon, label] = ESTADO_SENSOR[clave]
+          return (
+            <div key={s.num} style={fila}>
+              <IconCircle name={VAR_POR_SENSOR[s.modelo] ?? 'cpu'} size="sm" />
+              <div className="ui-titulo-fila" style={{ flex: 1 }}>
+                <strong style={{ fontSize: 14, lineHeight: '20px' }}>{s.modelo}</strong>
+                <span style={{ fontSize: 12, lineHeight: '16px' }}>
+                  {s.funcion}
+                  {s.fecha_calibracion && ` · calibrado el ${fechaLarga(s.fecha_calibracion + 'T12:00:00')}`}
+                </span>
+              </div>
+              <div style={derecha}>
+                <Badge tone={tone} icon={icon}>
+                  {label}
+                </Badge>
+                <span className="ui-muted" style={{ fontSize: 12 }}>
+                  {ultima ? `Última lectura ${haceCuanto(ultima).toLowerCase()}` : 'Sin lecturas registradas'}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+        <div style={{ ...fila, borderBottom: 0 }}>
+          <IconCircle name="cpu" size="sm" />
+          <div className="ui-titulo-fila" style={{ flex: 1 }}>
+            <strong style={{ fontSize: 14, lineHeight: '20px' }}>{d.version_firmware ? `Firmware v${d.version_firmware}` : 'Firmware'}</strong>
+            <span style={{ fontSize: 12, lineHeight: '16px' }}>
+              {d.version_firmware
+                ? `Informada ${haceCuanto(d.version_reportada_en).toLowerCase()}`
+                : 'El equipo la informa al revisar actualizaciones'}
+            </span>
+          </div>
+          {fw && (
+            <div style={derecha}>
+              <Badge tone={fw.tone} icon={fw.icon}>
+                {fw.label}
+              </Badge>
+            </div>
+          )}
+        </div>
+      </div>
     </Card>
   )
 }
@@ -233,36 +331,7 @@ export function DetalleDispositivo() {
       <div className="ui-fila" style={{ gridTemplateColumns: '1.5fr 1fr' }}>
         <Grafica d={d} umbrales={umbrales} variable="HUM" />
         <div className="ui-col">
-          <Card className="nc-grow">
-            <div className="nc-card__head" style={{ marginBottom: 4 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 className="nc-card__title">Sensores</h3>
-                <p className="nc-card__sub">Estado y calibración</p>
-              </div>
-            </div>
-            <div className="nc-scroll">
-              {d.sensores.map((s) => {
-                const [tone, icon, label] = SENSOR[s.estado_sensor]
-                return (
-                  <div key={s.num} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                    <IconCircle name={VAR_POR_SENSOR[s.modelo] ?? 'cpu'} size="sm" />
-                    <div className="ui-titulo-fila" style={{ flex: 1 }}>
-                      <strong style={{ fontSize: 14, lineHeight: '20px' }}>{s.modelo}</strong>
-                      <span style={{ fontSize: 12, lineHeight: '16px' }}>{s.funcion}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                      <Badge tone={tone} icon={icon}>
-                        {label}
-                      </Badge>
-                      <span className="ui-muted" style={{ fontSize: 12 }}>
-                        Última calibración {fechaLarga(s.fecha_calibracion + 'T12:00:00')}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Card>
+          <TarjetaSensores d={d} lecturas={datos.lecturas} sinConexion={sinConexion} />
           {editable && (
             <Card>
               <div className="nc-card__head" style={{ marginBottom: 12 }}>

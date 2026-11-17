@@ -777,10 +777,11 @@ class PuenteTomarView(_PuenteBase):
 
 class PuenteFirmwareView(_PuenteBase):
     """Manifiesto firmado del firmware publicado para este ESP (OTA). 204 si ya la tiene o si
-    no le toca (NUCLEO_FIRMWARE_DISPOSITIVOS)."""
+    no le toca (NUCLEO_FIRMWARE_DISPOSITIVOS). La versión que informa queda en el dispositivo."""
 
     def get(self, request):
         codigo = self._dispositivo(request, request.query_params.get("dispositivo", ""))
+        firmware.registrar_version(codigo, request.query_params.get("version"))
         manifiesto = firmware.manifiesto_para(codigo)
         if not manifiesto or manifiesto["version"] == request.query_params.get("version"):
             return Response(status=status.HTTP_204_NO_CONTENT)
