@@ -138,6 +138,7 @@ def ejecutar():
                     cola.agregar(mensaje)
                     cola.enviar(broker.publicar_lecturas)
             pantalla.lecturas(
+                ajustes.nombre,
                 lecturas,
                 nivel,
                 red.red if conectada else "",

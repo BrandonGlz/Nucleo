@@ -66,6 +66,13 @@ class AjustesTests(unittest.TestCase):
         self.assertEqual(despues.intervalo_seg, 45)
         self.assertEqual(despues.nivel("TEMP", 29), PELIGRO)
 
+    def test_el_nombre_de_la_plataforma_se_guarda_para_la_pantalla(self):
+        self.assertEqual(Ajustes().nombre, config.NOMBRE_PREDETERMINADO)
+        Ajustes().actualizar({"nombre": "Núcleo A-01", "umbrales": [TEMP]})
+        self.assertEqual(Ajustes().nombre, "Núcleo A-01")
+        Ajustes().actualizar({"nombre": "  ", "umbrales": [TEMP]})  # vacío: se queda el anterior
+        self.assertEqual(Ajustes().nombre, "Núcleo A-01")
+
 
 class SensoresTests(unittest.TestCase):
     def setUp(self):

@@ -20,6 +20,7 @@ class Ajustes:
 
     def __init__(self):
         self.intervalo_seg = config.INTERVALO_MUESTREO_SEG
+        self.nombre = config.NOMBRE_PREDETERMINADO  # el de la plataforma, para la pantalla
         self._limites = {}
         self._cargar()
 
@@ -41,6 +42,9 @@ class Ajustes:
             limites[u["variable"]] = orden
         self.intervalo_seg = intervalo
         self._limites = limites
+        nombre = carga.get("nombre")
+        if isinstance(nombre, str) and nombre.strip():
+            self.nombre = nombre.strip()
         self._guardar()
         return True
 
@@ -59,7 +63,10 @@ class Ajustes:
     def _guardar(self):
         try:
             with open(config.ARCHIVO_AJUSTES, "w") as archivo:
-                json.dump({"intervalo": self.intervalo_seg, "limites": self._limites}, archivo)
+                json.dump(
+                    {"intervalo": self.intervalo_seg, "limites": self._limites, "nombre": self.nombre},
+                    archivo,
+                )
         except OSError:
             pass
 
@@ -69,5 +76,6 @@ class Ajustes:
                 datos = json.load(archivo)
             self.intervalo_seg = datos["intervalo"]
             self._limites = {k: tuple(v) for k, v in datos["limites"].items()}
+            self.nombre = datos.get("nombre") or self.nombre
         except (OSError, ValueError, KeyError):
             pass

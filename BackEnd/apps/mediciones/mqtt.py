@@ -132,13 +132,14 @@ class ClienteMQTT:
 
 
 def publicar_configuracion(dispositivo):
-    """Publica el intervalo y los umbrales vigentes del dispositivo.
+    """Publica el nombre, el intervalo y los umbrales vigentes del dispositivo.
 
     El mensaje es retenido: el dispositivo lo recibe al conectarse y lo usa también sin
     conexión. Un fallo del broker se registra pero no interrumpe la API.
     """
     carga = {
         "dispositivo": dispositivo.codigo_mqtt,
+        "nombre": dispositivo.nombre,  # encabezado de la pantalla OLED
         "intervalo_muestreo_seg": dispositivo.intervalo_muestreo_seg,
         "umbrales": [
             {

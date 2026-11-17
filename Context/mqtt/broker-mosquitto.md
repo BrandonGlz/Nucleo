@@ -104,6 +104,7 @@ cuando cambian el intervalo de muestreo o los umbrales (con
 ```json
 {
   "dispositivo": "NUC-001",
+  "nombre": "Núcleo A-01",
   "intervalo_muestreo_seg": 30,
   "umbrales": [
     {"variable": "TEMP", "peligro_min": 15.0, "advertencia_min": 18.0,

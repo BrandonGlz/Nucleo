@@ -113,7 +113,10 @@ RAIZ_PUENTE = "nucleo/raices.pem"
 # --- Actualización remota (OTA) ----------------------------------------------------------------
 # Versión de este firmware; súbela antes de `manage.py publicar_firmware`. Con PUENTE_HOST y
 # PUENTE_CLAVE en secrets.py la placa revisa cada OTA_REVISAR_SEG (0 = nunca) si hay otra.
-FIRMWARE_VERSION = "1.1.2"
+FIRMWARE_VERSION = "1.1.3"
+
+# Encabezado de la pantalla hasta recibir el nombre que tiene el equipo en la plataforma
+NOMBRE_PREDETERMINADO = "Núcleo"
 OTA_PRIMERA_SEG = 120
 OTA_REVISAR_SEG = 6 * 3600
 OTA_ESPERA_SEG = 15
