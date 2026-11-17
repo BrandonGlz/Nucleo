@@ -195,7 +195,8 @@ broker (`apps/mediciones/mqtt.py`, patrón Singleton). Por cada mensaje:
    y `lectura_valor`, porque no hay llave a la otra base) y una notificación por
    responsable y canal en una sola transacción. Mientras haya una alerta pendiente del
    mismo umbral y nivel no se crea otra; si una advertencia escala a peligro se crea
-   una nueva.
+   una nueva. Si la lectura llegó rezagada (más de 10 minutos, `RETRASO_AVISO`), la
+   alerta se registra con una observación y sin notificaciones.
 5. Reciben correo los supervisores del área; si no hay, los administradores. Con
    `NUCLEO_PUSH_HABILITADO` también se envía push a los teléfonos registrados
    (`apps/alertas/notificaciones.py` llama a la API de Expo y borra el teléfono si Expo

@@ -282,6 +282,65 @@ class AlertasPorIngestaTests(PruebaBase):
         self.assertLess(notificacion.fecha_envio - alerta.lectura_fecha_hora, timedelta(minutes=2))
 
 
+class LecturasRezagadasTests(PruebaBase):
+    """Lo que el ESP guardó sin conexión (memoria o microSD) y manda al volver."""
+
+    def setUp(self):
+        self.e = Escenario()
+        self.codigo = self.e.dispositivo.codigo_mqtt
+
+    def enviar(self, valor, hace=None, **extra):
+        fecha = {} if hace is None else {"fecha_hora": (timezone.now() - hace).isoformat()}
+        return services.procesar_mensaje(
+            mensaje(self.codigo, [lectura("DHT22", "TEMP", valor)], **fecha, **extra)
+        )
+
+    def test_se_guarda_con_la_hora_en_que_midio(self):
+        self.enviar(22, hace=timedelta(days=3))
+        guardada = Lectura.objects.get()
+        esperada = timezone.now() - timedelta(days=3)
+        self.assertLess(abs(esperada - guardada.fecha_hora), timedelta(seconds=5))
+        self.e.dispositivo.refresh_from_db()
+        self.assertLess(timezone.now() - self.e.dispositivo.ultima_conexion, timedelta(seconds=5))
+
+    def test_alerta_rezagada_se_registra_sin_correo_ni_push(self):
+        resultado = self.enviar(40, hace=timedelta(hours=5))
+        self.assertEqual(len(resultado.alertas), 1)
+        alerta = Alerta.objects.get()
+        self.assertIn("Registrada al reconectarse", alerta.observaciones)
+        self.assertFalse(Notificacion.objects.exists())
+        self.assertEqual(mail.outbox, [])
+
+    def test_alerta_de_hace_poco_si_avisa(self):
+        self.enviar(40, hace=timedelta(minutes=3))
+        self.assertIsNone(Alerta.objects.get().observaciones)
+        self.assertEqual(Notificacion.objects.count(), 1)
+
+    def test_un_mensaje_repetido_no_duplica_lecturas(self):
+        fecha = (timezone.now() - timedelta(hours=1)).isoformat()
+        lecturas = [lectura("DHT22", "TEMP", 22), lectura("DHT22", "HUM", 50)]
+        datos = mensaje(self.codigo, lecturas, fecha_hora=fecha)
+        services.procesar_mensaje(datos)
+        segundo = services.procesar_mensaje(datos)
+        self.assertEqual(Lectura.objects.count(), 2)
+        self.assertEqual(segundo.lecturas, [])
+        self.assertEqual(len(segundo.descartadas), 2)
+
+    def test_misma_hora_pero_otra_variable_si_se_guarda(self):
+        fecha = (timezone.now() - timedelta(hours=1)).isoformat()
+        for variable, valor in (("TEMP", 22), ("HUM", 50)):
+            datos = mensaje(self.codigo, [lectura("DHT22", variable, valor)], fecha_hora=fecha)
+            services.procesar_mensaje(datos)
+        self.assertEqual(Lectura.objects.count(), 2)
+
+    def test_fecha_en_el_futuro_se_rechaza(self):
+        with self.assertRaises(MensajeInvalido):
+            self.enviar(22, hace=-timedelta(hours=2))
+        self.assertFalse(Lectura.objects.exists())
+        self.enviar(22, hace=-timedelta(minutes=1))  # un par de minutos de desfase se tolera
+        self.assertEqual(Lectura.objects.count(), 1)
+
+
 class ConsultaDeLecturasTests(PruebaBase):
     def setUp(self):
         self.e = Escenario()

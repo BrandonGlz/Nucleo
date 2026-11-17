@@ -4,6 +4,7 @@ import logging
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from apps.alertas import notificaciones
 from apps.alertas.models import Alerta, Notificacion
@@ -44,13 +45,14 @@ def destinatarios(dispositivo):
     return envios
 
 
-def generar_alerta(umbral, lectura):
+def generar_alerta(umbral, lectura, avisar=True):
     """Crea la alerta y sus notificaciones en una sola transacción de ``nucleo_db``.
 
     ``lectura`` es la lectura de ``nucleo_iot`` que disparó la alerta. Mientras exista una
     alerta pendiente del mismo umbral y nivel no se crea otra, para no repetir el aviso en
-    cada muestreo; si una advertencia escala a peligro se genera una nueva. Devuelve la
-    alerta o ``None``.
+    cada muestreo; si una advertencia escala a peligro se genera una nueva. Con
+    ``avisar=False`` (lectura rezagada que llegó al reconectar) se registra sin correo ni push
+    y con una observación de cuándo fue. Devuelve la alerta o ``None``.
     """
     clasificacion = umbral.clasificar(lectura.valor)
     if clasificacion is None:
@@ -69,11 +71,18 @@ def generar_alerta(umbral, lectura):
                 lectura_valor=lectura.valor,
                 nivel=nivel,
                 tipo=tipo,
+                observaciones=None
+                if avisar
+                else (
+                    "Registrada al reconectarse el dispositivo; la lectura es del "
+                    f"{timezone.localtime(lectura.fecha_hora):%d/%m/%Y %H:%M}. "
+                    "Sin aviso por correo ni push."
+                ),
             )
             alerta = Alerta.objects.select_related(
                 "umbral__variable", "umbral__dispositivo__area"
             ).get(pk=alerta.pk)
-            for usuario, canal, telefono in destinatarios(umbral.dispositivo):
+            for usuario, canal, telefono in destinatarios(umbral.dispositivo) if avisar else ():
                 if canal == Notificacion.Canal.CORREO:
                     salio = notificaciones.enviar_correo(usuario, alerta)
                 else:

@@ -86,6 +86,13 @@ Tópico `nucleo/devices/<codigo_mqtt>/measurements`:
   el dispositivo queda en estado `CALENT` y no se generan alertas por ellas. Sin el
   campo se asume `true`.
 - Una lectura inválida se descarta y el resto del mensaje se guarda.
+- **Lecturas rezagadas:** sin conexión el ESP guarda sus mensajes (20 en memoria y, con
+  microSD, días) y los manda al volver, del más antiguo al más nuevo y con la hora en que
+  midió. Se guardan con esa hora, aunque sea de hace semanas (TimescaleDB acepta escribir en
+  bloques ya comprimidos). Si una genera alerta y tiene más de 10 minutos, la alerta se
+  registra con una observación pero sin correo ni push. Un mensaje repetido (misma hora,
+  sensor y variable) no duplica lecturas, y una `fecha_hora` más de 5 minutos en el futuro
+  descarta el mensaje completo.
 
 ## Mensaje de configuración
 

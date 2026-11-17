@@ -22,6 +22,13 @@ Secuencia (SRS 3.2.6): las lecturas válidas se insertan en ``nucleo_iot``; en `
 actualiza el dispositivo; cada lectura estabilizada se compara con el umbral activo y, si
 entra en Advertencia o Peligro, se registran la alerta y sus notificaciones en una sola
 transacción.
+
+Lecturas rezagadas: sin conexión, el ESP guarda sus mensajes (en memoria o en la microSD, días
+de lecturas) y los manda al volver, con la hora en que midió. Se guardan con esa hora; si una
+de ellas genera una alerta y tiene más de ``RETRASO_AVISO``, la alerta queda registrada pero
+no se manda correo ni push (sería un aviso de algo que ya pasó). Un mensaje que llega dos veces
+no duplica lecturas, y una ``fecha_hora`` más de ``LIMITE_FUTURO`` adelantada (reloj del ESP
+desfasado) descarta el mensaje.
 """
 
 import json
@@ -47,6 +54,8 @@ logger = logging.getLogger(__name__)
 
 CENTESIMAS = Decimal("0.01")
 CALENTAMIENTO = timedelta(minutes=20)
+RETRASO_AVISO = timedelta(minutes=10)
+LIMITE_FUTURO = timedelta(minutes=5)
 
 
 class MensajeInvalido(Exception):
@@ -77,6 +86,10 @@ def _fecha_medicion(valor, recibida):
         raise MensajeInvalido("fecha_hora no tiene formato ISO 8601.")
     if timezone.is_naive(fecha):
         fecha = timezone.make_aware(fecha)
+    if fecha > recibida + LIMITE_FUTURO:
+        raise MensajeInvalido(
+            f"fecha_hora {valor} está en el futuro: el reloj del dispositivo está desfasado."
+        )
     return fecha
 
 
@@ -186,6 +199,20 @@ def procesar_mensaje(datos):
             resultado.descartadas.append(str(error))
             logger.warning("Lectura descartada de %s: %s", codigo, error)
 
+    # Un mensaje reenviado (el ESP no supo si llegó) trae lecturas ya guardadas: no se duplican.
+    if nuevas:
+        ya_guardadas = set(
+            Lectura.objects.filter(
+                sensor_num__in={n.sensor_num for n in nuevas}, fecha_hora=fecha_mensaje
+            ).values_list("sensor_num", "variable_codigo")
+        )
+        repetidas = [n for n in nuevas if (n.sensor_num, n.variable_codigo) in ya_guardadas]
+        for n in repetidas:
+            resultado.descartadas.append(
+                f"{n.variable_codigo} del {fecha_mensaje.isoformat()} ya estaba guardada."
+            )
+        nuevas = [n for n in nuevas if (n.sensor_num, n.variable_codigo) not in ya_guardadas]
+
     with transaction.atomic(using="iot"):
         resultado.lecturas = Lectura.objects.bulk_create(nuevas)
 
@@ -213,7 +240,9 @@ def procesar_mensaje(datos):
         umbral = umbrales.get(lectura.variable_codigo)
         if umbral is None or not lectura.estabilizada:
             continue
-        alerta = generar_alerta(umbral, lectura)
+        # Rezagada (llegó al reconectar): se registra, pero sin correo ni push.
+        avisar = recibida - lectura.fecha_hora <= RETRASO_AVISO
+        alerta = generar_alerta(umbral, lectura, avisar=avisar)
         if alerta is not None:
             resultado.alertas.append(alerta)
     return resultado
