@@ -424,6 +424,18 @@ class WifiTests(unittest.TestCase):
         self.red = red.Red()
         reloj["ms"] = 0
 
+    def test_diagnostico_lleva_la_temperatura_del_chip(self):
+        from nucleo import red
+
+        if not hasattr(red.gc, "mem_free"):  # solo existe en MicroPython
+            red.gc.mem_free = lambda: 1000
+            self.addCleanup(delattr, red.gc, "mem_free")
+        self.assertIn(";temp=--", self.red.diagnostico())  # en la PC no hay sensor interno
+        anterior = red.mcu_temperature
+        self.addCleanup(setattr, red, "mcu_temperature", anterior)
+        red.mcu_temperature = lambda: 40.6
+        self.assertIn(";temp=40;", self.red.diagnostico(";modo=mqtt"))
+
     def test_un_rechazo_pasa_pronto_al_intento_sin_bssid(self):
         wlan = self.red._wlan
         self.red.mantener()

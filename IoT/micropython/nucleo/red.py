@@ -12,6 +12,11 @@ import time
 import network
 import ntptime
 
+try:
+    from esp32 import mcu_temperature
+except ImportError:  # ESP32 clásico o pruebas en la PC: sin sensor interno
+    mcu_temperature = None
+
 import config
 import secrets
 
@@ -201,14 +206,16 @@ class Red:
             return ""
 
     def diagnostico(self, extra=""):
-        """``clave=valor;...``: lo guarda el servidor para separar fallas de red y del ESP."""
-        return "red=%s;rssi=%s;rec=%d;falla=%s;mem=%d;up=%d%s" % (
+        """``clave=valor;...``: lo guarda el servidor para separar fallas de red y del ESP.
+        ``temp`` es la temperatura del chip en °C (no la del ambiente; la muestra estadoServer.sh)."""
+        return "red=%s;rssi=%s;rec=%d;falla=%s;mem=%d;up=%d;temp=%s%s" % (
             _limpio(self.red),
             self.rssi(),
             self.reconexiones,
             _limpio(self.falla),
             gc.mem_free(),
             time.ticks_ms() // 1000,
+            temperatura_chip(),
             extra,
         )
 
@@ -241,3 +248,13 @@ class Red:
             return None
         a, mes, d, h, mi, s = time.gmtime()[:6]
         return "%04d-%02d-%02dT%02d:%02d:%02dZ" % (a, mes, d, h, mi, s)
+
+
+def temperatura_chip():
+    """Temperatura del chip en °C, o «--» si la placa no tiene sensor interno."""
+    if mcu_temperature is None:
+        return "--"
+    try:
+        return "%d" % mcu_temperature()
+    except (OSError, ValueError):
+        return "--"
