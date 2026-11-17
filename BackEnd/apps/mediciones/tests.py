@@ -282,6 +282,19 @@ class AlertasPorIngestaTests(PruebaBase):
         self.assertLess(notificacion.fecha_envio - alerta.lectura_fecha_hora, timedelta(minutes=2))
 
 
+class BateriaSinDatoTests(PruebaBase):
+    def test_sin_bateria_en_el_mensaje_el_nivel_queda_vacio(self):
+        e = Escenario()
+        temp = [lectura("DHT22", "TEMP", 22)]
+        services.procesar_mensaje(mensaje(e.dispositivo.codigo_mqtt, temp, bateria=81))
+        e.dispositivo.refresh_from_db()
+        self.assertEqual(e.dispositivo.nivel_bateria, 81)
+        services.procesar_mensaje(mensaje(e.dispositivo.codigo_mqtt, temp))
+        e.dispositivo.refresh_from_db()
+        self.assertIsNone(e.dispositivo.nivel_bateria)
+        self.assertEqual(e.dispositivo.estado_dispositivo_id, roles.DISPOSITIVO_EN_LINEA)
+
+
 class LecturasRezagadasTests(PruebaBase):
     """Lo que el ESP guardó sin conexión (memoria o microSD) y manda al volver."""
 

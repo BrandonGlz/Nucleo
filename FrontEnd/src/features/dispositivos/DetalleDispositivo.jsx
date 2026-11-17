@@ -76,9 +76,9 @@ function cifrasDetalle({ d, lecturas, umbrales }, sinConexion) {
           tono: sinConexion ? 'tenue' : f.nivel === 'normal' ? 'verde' : 'peligro',
         })),
       {
-        etiqueta: 'Batería', valor: d.nivel_bateria, unidad: '%',
-        sub: d.nivel_bateria <= 15 ? 'Batería baja' : d.nivel_bateria <= 30 ? 'Cambiar pronto' : 'Bien',
-        tono: d.nivel_bateria <= 15 ? 'peligro' : undefined,
+        etiqueta: 'Batería', valor: d.nivel_bateria ?? '—', unidad: d.nivel_bateria == null ? '' : '%',
+        sub: d.nivel_bateria == null ? 'Sin dato' : d.nivel_bateria <= 15 ? 'Batería baja' : d.nivel_bateria <= 30 ? 'Cambiar pronto' : 'Bien',
+        tono: d.nivel_bateria == null ? 'tenue' : d.nivel_bateria <= 15 ? 'peligro' : undefined,
       },
       ...(sinConexion ? [] : [{ etiqueta: 'Muestreo', valor: d.intervalo_muestreo_seg, unidad: 's', sub: `Última lectura ${haceCuanto(d.ultima_conexion)}` }]),
     ],

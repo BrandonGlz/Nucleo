@@ -36,7 +36,7 @@ const FILTROS = [
   ['offline', 'Sin conexión', 'wifi-off'],
 ]
 // El contrato no trae la intensidad de la señal: se estima con la última conexión.
-const senal = (d) => (!enLinea(d) ? 0 : d.nivel_bateria > 60 ? 4 : 3)
+const senal = (d) => (!enLinea(d) ? 0 : (d.nivel_bateria ?? 100) > 60 ? 4 : 3)
 
 // Tarjeta de un dispositivo: estado, sus tres lecturas y batería, señal y última conexión.
 function TarjetaDispositivo({ d, area, umbrales, abrir }) {

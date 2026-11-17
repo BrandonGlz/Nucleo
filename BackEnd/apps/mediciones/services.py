@@ -15,8 +15,9 @@ Formato del mensaje que publica el dispositivo en ``nucleo/devices/<codigo_mqtt>
     }
 
 ``fecha_hora``, ``bateria`` y ``aire_estabilizado`` son opcionales: sin fecha se usa la hora
-de recepción y sin indicador se considera que el aire ya está estabilizado. Si un valor es
-inválido se descarta y las demás lecturas del mensaje se guardan.
+de recepción y sin indicador se considera que el aire ya está estabilizado. Sin ``bateria``
+(el ESP no tiene medidor o no responde) el nivel queda vacío: así no se muestra uno viejo.
+Si un valor es inválido se descarta y las demás lecturas del mensaje se guardan.
 
 Secuencia (SRS 3.2.6): las lecturas válidas se insertan en ``nucleo_iot``; en ``nucleo_db`` se
 actualiza el dispositivo; cada lectura estabilizada se compara con el umbral activo y, si
@@ -218,14 +219,9 @@ def procesar_mensaje(datos):
 
     cambios = {
         "ultima_conexion": recibida,
-        "estado_dispositivo_id": _estado_tras_mensaje(
-            dispositivo,
-            bateria if bateria is not None else dispositivo.nivel_bateria,
-            aire_estabilizado,
-        ),
+        "estado_dispositivo_id": _estado_tras_mensaje(dispositivo, bateria, aire_estabilizado),
+        "nivel_bateria": bateria,
     }
-    if bateria is not None:
-        cambios["nivel_bateria"] = bateria
     if _inicia_calentamiento(dispositivo, aire_estabilizado, recibida):
         cambios["ultimo_arranque"] = recibida
     estado_anterior = dispositivo.estado_dispositivo_id

@@ -80,7 +80,8 @@ Tópico `nucleo/devices/<codigo_mqtt>/measurements`:
 - `valor` debe ser numérico y estar dentro del rango físico de la variable
   (TEMP −40 a 80, HUM 0 a 100, AIRE 0 a 10000).
 - `fecha_hora`, `bateria` y `aire_estabilizado` son opcionales; sin `fecha_hora` se
-  usa la hora de recepción (el firmware envía la hora UTC con `Z`).
+  usa la hora de recepción (el firmware envía la hora UTC con `Z`); sin `bateria` el nivel
+  del dispositivo queda vacío (se muestra «—»), para no mostrar un porcentaje viejo.
 - `aire_estabilizado: false` indica que el CCS811 sigue en sus 20 minutos de
   calentamiento tras el arranque: sus lecturas se guardan con `estabilizada = false`,
   el dispositivo queda en estado `CALENT` y no se generan alertas por ellas. Sin el
