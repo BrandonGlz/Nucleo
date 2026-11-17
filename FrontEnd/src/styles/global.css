@@ -3905,6 +3905,40 @@ button.ui-menuitem:not(:disabled):hover svg {
 .nc-tabs--underline.con-indicador .nc-tab.is-active {
   box-shadow: none;
 }
+/* Selector de periodo: la pastilla de la opción elegida se desliza igual que en las pestañas.
+   Copia el aspecto del chip elegido (fondo, borde y sombra); el chip solo conserva el color del texto. */
+.nc-period {
+  position: relative;
+  isolation: isolate;
+}
+.nc-period__indicador {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+:root:not([data-theme="dark"]) .nc-period__indicador {
+  background: var(--success);
+  border-color: var(--success);
+}
+.nc-period__indicador.is-deslizando {
+  transition:
+    transform var(--duration-slow) var(--ease-emphasized),
+    width var(--duration-slow) var(--ease-emphasized),
+    height var(--duration-slow) var(--ease-emphasized);
+}
+.nc-period.con-indicador .nc-chip.is-selected,
+:root:not([data-theme="dark"]) .nc-period.con-indicador .nc-chip.is-selected {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
 .nc-tab__count {
   transition:
     background var(--duration-slow) var(--ease-standard),
@@ -3919,7 +3953,8 @@ button.ui-menuitem:not(:disabled):hover svg {
   .ui-modal.is-saliendo .ui-modal__caja {
     animation: none;
   }
-  .nc-tabs__indicador.is-deslizando {
+  .nc-tabs__indicador.is-deslizando,
+  .nc-period__indicador.is-deslizando {
     transition: none;
   }
 }
