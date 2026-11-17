@@ -3928,6 +3928,17 @@ button.ui-menuitem:not(:disabled):hover svg {
 .nc-tabs--underline.con-indicador .nc-tab.is-active {
   box-shadow: none;
 }
+/* Filtro por estado de Dispositivos (selector segmentado): sin cortar etiquetas y con un viaje
+   parejo, porque las opciones están lejos entre sí. */
+.ui-filtros__estado .nc-tab {
+  white-space: nowrap;
+}
+.ui-filtros__estado .nc-tabs__indicador.is-deslizando {
+  transition:
+    transform 480ms cubic-bezier(0.45, 0, 0.15, 1),
+    width 480ms cubic-bezier(0.45, 0, 0.15, 1),
+    height 480ms cubic-bezier(0.45, 0, 0.15, 1);
+}
 /* Selector de periodo: la pastilla de la opción elegida se desliza igual que en las pestañas.
    Copia el aspecto del chip elegido (fondo, borde y sombra); el chip solo conserva el color del texto. */
 .nc-period {
@@ -4016,7 +4027,8 @@ button.ui-menuitem:not(:disabled):hover svg {
   }
   .nc-tabs__indicador.is-deslizando,
   .nc-period__indicador.is-deslizando,
-  .nc-chipfilter__indicador.is-deslizando {
+  .nc-chipfilter__indicador.is-deslizando,
+  .ui-filtros__estado .nc-tabs__indicador.is-deslizando {
     transition: none;
   }
 }
