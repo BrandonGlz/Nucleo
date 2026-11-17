@@ -19,9 +19,9 @@ pines en rojo no se usan.
 | Frente | LED RGB (KY-016) | B → **40**, G → **39**, R → **38** | superior | − → G |
 | Frente | Buzzer (KY-012) | S → **12** | inferior | + → 3V3, − → G |
 | Borde inferior | Lector microSD HW-125 (opcional) | CS → **15**, MOSI → **16**, SCK → **17**, MISO → **18** | inferior | VCC → **5V**, GND → G |
-| Energía (der.) | MAX17048 (opcional) | SDA → **47**, SCL → **21** (bus propio) | superior | VCC → 3V3, GND → G |
+| Energía (der.) | Medidor MAX17048 (en el módulo de carga) | SDA → **47**, SCL → **21** (bus propio) | superior | Sin VCC: se alimenta de la batería |
 | Energía (der.) | Ventilador 5 V (opcional) | MOSFET SIG → **9** | inferior | + → 5V, − → MOSFET → G |
-| Energía (der.) | Módulo de carga | OUT+ → **5V**, OUT− → **G** | inferior | Batería en B+ / B− |
+| Energía (der.) | Módulo de carga UNIT LiPo Boost & I2C | STEP + (VOUT, a 5.0 V) → **5V**, STEP − → **G** | inferior | Batería en su conector JST |
 | — | Riel de 3.3 V | sale del pin **3V** | inferior | — |
 
 - **Rieles:** uno de **3V3** (desde el pin 3V), uno de **5V** (desde la salida del módulo de carga)
@@ -30,8 +30,10 @@ pines en rojo no se usan.
   MAX17048 (0x36) en su propio bus 47/21, junto a la batería, para no cruzar la carcasa con
   cables. Con `PIN_I2C_BATERIA_SDA = None` vuelve a compartir el primer bus. El CCS811 necesita
   **WAK a GND** o no responde.
-- **Módulo de carga:** si es solo un TP4056 (sin salida de 5 V), entre OUT+ y el pin 5V va el
-  elevador MT3608 ajustado a 5 V. Nunca conectes la batería directo al pin 3V.
+- **Módulo de carga:** se usa el UNIT LiPo Boost & I2C (ver [Batería](#batería) abajo). Si en su
+  lugar es solo un TP4056 (sin salida de 5 V), entre OUT+ y el pin 5V va el elevador MT3608
+  ajustado a 5 V, y un MAX17048 suelto sí lleva VCC → 3V3. Nunca conectes la batería directo al
+  pin 3V.
 - **microSD:** aliméntalo desde 5V (su regulador AMS1117 necesita más de 3.3 V); su chip LVC125A
   ya adapta las señales al ESP. Tarjeta de hasta 32 GB en FAT32.
 - **Ventilador:** el pin del ESP no da corriente suficiente; va con un módulo MOSFET y en el
@@ -39,6 +41,39 @@ pines en rojo no se usan.
 - Los pines del microSD (15–18) y del ventilador (9) están reservados en
   `IoT/micropython/config.py`; el firmware todavía no los usa.
 - Sigue la serigrafía de cada módulo: el orden de sus pines cambia entre vendedores.
+
+## Batería
+
+![Batería: módulo UNIT LiPo Boost & I2C, batería LiPo y ESP32-S3](../../IoT/bateria-unit.svg)
+
+El módulo **UNIT LiPo Boost & I2C** junta en una placa el cargador (TP4056), el elevador (step
+up) y el medidor de carga (MAX17048). Con él solo hay **4 soldaduras**; la batería se enchufa en
+su conector JST blanco (rojo a **+**, negro a **−**; algunos vendedores invierten los cables del
+JST, revísalo antes).
+
+| Pin del módulo | Va a | Para qué |
+| --- | --- | --- |
+| **STEP +** (VOUT) | **5V** del ESP32 | Alimenta todo desde la batería |
+| **STEP −** (GND) | **G** del ESP32 | Tierra común |
+| **SDA** | **GPIO47** | Datos del medidor (dirección 0x36) |
+| **SCL** | **GPIO21** | Reloj del medidor |
+
+No se conectan **QST** y **ALT** (el firmware no los usa), **VBAT + / −** (es la misma batería)
+ni el **VSYS** del conector Qwiic (saca hasta 5 V: nunca al 3V3 del ESP). **CHRG** y **DONE**
+son los LED de «cargando» y «carga lista». El GND de la fila izquierda es opcional (ya hay
+tierra por STEP −). El Qwiic sirve en lugar de soldar SDA, SCL y GND.
+
+Antes de conectar el ESP:
+
+1. Switch **STEP UP en ON**. En OFF, VOUT es el voltaje de la batería (3.7 V) y no alcanza para el
+   pin 5V.
+2. Con la batería puesta y **sin el ESP conectado**, gira el potenciómetro azul hasta que el
+   multímetro marque **5.0 V** entre STEP + y STEP −. El elevador llega hasta 27 V.
+3. Atrás, **Charger Current**: 1A para baterías de 1000 mAh o más, 0.2A si es más chica.
+
+Para cargar se usa el **USB-C del módulo**; el del ESP queda para programar. El MAX17048 se
+alimenta de la batería: sin ella no responde y el firmware solo omite el nivel
+(`nucleo/bateria.py`, `BATERIA = "MAX17048"` en `config.py`).
 
 ## Relacionado
 

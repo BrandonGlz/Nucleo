@@ -57,7 +57,7 @@ IoT/
 │   │   ├── cola.py              Lecturas tomadas sin conexión, para reenviarlas
 │   │   ├── indicadores.py       LED RGB, LED de Wi-Fi y buzzer
 │   │   ├── pantalla.py          Pantalla OLED
-│   │   ├── bateria.py           Nivel de batería por ADC
+│   │   ├── bateria.py           Nivel de batería (MAX17048 o ADC)
 │   │   ├── red.py               Wi-Fi y hora por NTP
 │   │   └── comunicacion.py      Cliente MQTT con TLS
 │   ├── firmware/
@@ -204,7 +204,9 @@ módulo: el orden de los pines cambia entre vendedores. El CCS811 necesita su pi
 conectado a GND. Si el LED RGB es de ánodo común, `RGB_ACTIVO_ALTO = False`.
 
 **Batería:** `BATERIA = "MAX17048"` lee el porcentaje real y el voltaje de la celda por I2C
-(dirección 0x36). Si el medidor no responde, el mensaje solo omite el nivel. Con
+(dirección 0x36). Cómo se suelda el módulo UNIT LiPo Boost & I2C con la batería y el ESP32:
+[bateria-unit.svg](bateria-unit.svg) y la sección «Batería» de
+[Context/iot/conexiones.md](../Context/iot/conexiones.md#batería). Si el medidor no responde, el mensaje solo omite el nivel. Con
 `BATERIA = "ADC"` se usa un divisor de tensión 1:2 en `PIN_BATERIA` (porcentaje aproximado
 por voltaje) y con `None` no se informa batería.
 

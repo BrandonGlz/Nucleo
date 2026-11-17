@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1290" width="1400" height="1290" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<rect width="1400" height="1290" fill="#ffffff"/>
+<text x="700" y="36" font-size="22" font-weight="700" fill="#111827" text-anchor="middle" >Batería de Núcleo: módulo UNIT LiPo Boost &amp; I2C, batería LiPo y ESP32-S3</text>
+<text x="700" y="62" font-size="14" font-weight="400" fill="#6b7280" text-anchor="middle" >Cargador TP4056 + elevador (step up) + medidor MAX17048 en una sola placa. Solo 4 soldaduras; la batería se enchufa.</text>
+<rect x="60" y="560" width="200" height="120" rx="16" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+<text x="160" y="602" font-size="17" font-weight="700" fill="#0c4a6e" text-anchor="middle" >Batería LiPo</text>
+<text x="160" y="624" font-size="13" font-weight="400" fill="#075985" text-anchor="middle" >1 celda · 3.7 V</text>
+<text x="160" y="644" font-size="12" font-weight="400" fill="#075985" text-anchor="middle" >(4.2 V llena, 3.3 V vacía)</text>
+<text x="160" y="666" font-size="12" font-weight="400" fill="#075985" text-anchor="middle" >conector JST-PH de 2 pines</text>
+<rect x="520" y="120" width="240" height="660" rx="22" fill="#151515" stroke="#000" stroke-width="2"/>
+<circle cx="544" cy="144" r="11" fill="#ffffff" stroke="#c9a227" stroke-width="3"/>
+<circle cx="736" cy="144" r="11" fill="#ffffff" stroke="#c9a227" stroke-width="3"/>
+<circle cx="544" cy="756" r="11" fill="#ffffff" stroke="#c9a227" stroke-width="3"/>
+<circle cx="736" cy="756" r="11" fill="#ffffff" stroke="#c9a227" stroke-width="3"/>
+<rect x="600" y="106" width="80" height="62" rx="10" fill="#c0c4cc" stroke="#6b7280" stroke-width="2"/>
+<text x="640" y="142" font-size="12" font-weight="700" fill="#374151" text-anchor="middle" >USB-C</text>
+<text x="640" y="96" font-size="13" font-weight="600" fill="#111827" text-anchor="middle" >Entrada de carga 5 V (aquí se carga)</text>
+<rect x="538" y="212" width="56" height="70" rx="6" fill="#2563eb"/>
+<circle cx="566" cy="262" r="10" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
+<text x="566" y="232" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle" >VOUT</text>
+<rect x="612" y="310" width="96" height="96" rx="14" fill="#2b2b2b" stroke="#444" stroke-width="2"/>
+<text x="660" y="356" font-size="18" font-weight="700" fill="#9ca3af" text-anchor="middle" >220</text>
+<text x="660" y="376" font-size="11" font-weight="400" fill="#9ca3af" text-anchor="middle" >elevador</text>
+<rect x="590" y="440" width="70" height="44" rx="5" fill="#2b2b2b" stroke="#444"/>
+<text x="625" y="467" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" >TP4056</text>
+<rect x="590" y="498" width="70" height="40" rx="5" fill="#2b2b2b" stroke="#444"/>
+<text x="625" y="523" font-size="10" font-weight="700" fill="#9ca3af" text-anchor="middle" >MAX17048</text>
+<rect x="706" y="310" width="34" height="56" rx="5" fill="#d6c3b3" stroke="#8b7355" stroke-width="2"/>
+<rect x="712" y="314" width="22" height="22" rx="3" fill="#ffffff"/>
+<rect x="538" y="310" width="44" height="74" rx="5" fill="#f3f4f6" stroke="#9ca3af" stroke-width="2"/>
+<text x="560" y="352" font-size="10" font-weight="700" fill="#6b7280" text-anchor="middle" transform="rotate(-90 560 349)">Qwiic</text>
+<rect x="602" y="660" width="86" height="64" rx="8" fill="#f1e7da" stroke="#8b7355" stroke-width="2"/>
+<text x="624" y="700" font-size="18" font-weight="800" fill="#b91c1c" text-anchor="middle" >+</text>
+<text x="666" y="700" font-size="18" font-weight="800" fill="#111827" text-anchor="middle" >−</text>
+<rect x="710" y="486" width="14" height="10" rx="2" fill="#ef4444"/>
+<text x="700" y="496" font-size="10" font-weight="700" fill="#e5e7eb" text-anchor="end" >CHRG</text>
+<rect x="710" y="522" width="14" height="10" rx="2" fill="#22c55e"/>
+<text x="700" y="532" font-size="10" font-weight="700" fill="#e5e7eb" text-anchor="end" >DONE</text>
+<circle cx="546" cy="580" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="564" y="585" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >SDA</text>
+<circle cx="546" cy="614" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="564" y="619" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >SCL</text>
+<circle cx="546" cy="648" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="564" y="653" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >GND</text>
+<circle cx="546" cy="682" r="9" fill="#111111" stroke="#6b7280" stroke-width="4"/>
+<text x="564" y="687" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >QST</text>
+<circle cx="546" cy="716" r="9" fill="#111111" stroke="#6b7280" stroke-width="4"/>
+<text x="564" y="721" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >ALT</text>
+<circle cx="734" cy="410" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="716" y="415" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="end" >STEP +</text>
+<circle cx="734" cy="444" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="716" y="449" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="end" >STEP −</text>
+<circle cx="734" cy="590" r="9" fill="#111111" stroke="#6b7280" stroke-width="4"/>
+<text x="716" y="595" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="end" >VBAT +</text>
+<circle cx="734" cy="624" r="9" fill="#111111" stroke="#6b7280" stroke-width="4"/>
+<text x="716" y="629" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="end" >VBAT −</text>
+<text x="790" y="750" font-size="13" font-weight="700" fill="#111827" text-anchor="start" >Módulo UNIT LiPo Boost &amp; I2C</text>
+<text x="790" y="768" font-size="12" font-weight="400" fill="#6b7280" text-anchor="start" >(vista de frente, como en su pinout)</text>
+<rect x="1040" y="250" width="300" height="380" rx="16" fill="#111111"/>
+<rect x="1212" y="370" width="112" height="110" rx="6" fill="#c7cbd1" stroke="#9ca3af"/>
+<text x="1268" y="420" font-size="15" font-weight="700" fill="#374151" text-anchor="middle" >ESP32-S3</text>
+<text x="1268" y="440" font-size="12" font-weight="400" fill="#374151" text-anchor="middle" >DevKitC-1</text>
+<text x="1190.0" y="658" font-size="13" font-weight="700" fill="#111827" text-anchor="middle" >ESP32-S3 (solo los pines que usa la batería)</text>
+<circle cx="1066" cy="300" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="1084" y="305" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >5V</text>
+<circle cx="1066" cy="334" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="1084" y="339" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >G</text>
+<circle cx="1066" cy="470" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="1084" y="475" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >GPIO47 · SDA</text>
+<circle cx="1066" cy="504" r="9" fill="#111111" stroke="#d4a017" stroke-width="4"/>
+<text x="1084" y="509" font-size="12" font-weight="700" fill="#f9fafb" text-anchor="start" >GPIO21 · SCL</text>
+<path d="M260 600 H410 V850 H624 V724" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M260 640 H380 V875 H666 V724" fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="300" y="588" font-size="12" font-weight="700" fill="#dc2626" text-anchor="start" >rojo a +</text>
+<text x="300" y="672" font-size="12" font-weight="700" fill="#111827" text-anchor="start" >negro a −</text>
+<path d="M734 410 H985 V300 H1066" fill="none" stroke="#ea8a0c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M734 444 H1012 V334 H1066" fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="900" y="398" font-size="13" font-weight="800" fill="#ea8a0c" text-anchor="middle" >5.0 V</text>
+<path d="M546 580 H470 V905 H990 V470 H1066" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M546 614 H445 V930 H1015 V504 H1066" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="700" y="899" font-size="12" font-weight="700" fill="#2563eb" text-anchor="middle" >SDA → GPIO47</text>
+<text x="700" y="948" font-size="12" font-weight="700" fill="#16a34a" text-anchor="middle" >SCL → GPIO21</text>
+<text x="500" y="248" font-size="12" font-weight="600" fill="#1d4ed8" text-anchor="end" >1. Ajuste de VOUT</text>
+<text x="500" y="265" font-size="12" font-weight="400" fill="#1d4ed8" text-anchor="end" >Gíralo hasta 5.0 V</text>
+<text x="500" y="282" font-size="12" font-weight="400" fill="#1d4ed8" text-anchor="end" >con el multímetro y</text>
+<text x="500" y="299" font-size="12" font-weight="400" fill="#1d4ed8" text-anchor="end" >SIN el ESP conectado</text>
+<text x="500" y="316" font-size="12" font-weight="400" fill="#1d4ed8" text-anchor="end" >(llega hasta 27 V).</text>
+<text x="790" y="320" font-size="12" font-weight="600" fill="#92400e" text-anchor="start" >2. Switch STEP UP en ON</text>
+<text x="790" y="337" font-size="12" font-weight="400" fill="#92400e" text-anchor="start" >ON: VOUT ajustable (5 V)</text>
+<text x="790" y="354" font-size="12" font-weight="400" fill="#92400e" text-anchor="start" >OFF: VOUT = batería (3.7 V),</text>
+<text x="790" y="371" font-size="12" font-weight="400" fill="#92400e" text-anchor="start" >no alcanza para el pin 5V</text>
+<text x="500" y="352" font-size="12" font-weight="600" fill="#6b7280" text-anchor="end" >Qwiic (opcional, sin</text>
+<text x="500" y="369" font-size="12" font-weight="400" fill="#6b7280" text-anchor="end" >soldar): solo SDA, SCL</text>
+<text x="500" y="386" font-size="12" font-weight="400" fill="#6b7280" text-anchor="end" >y GND. Su VSYS NUNCA</text>
+<text x="500" y="403" font-size="12" font-weight="400" fill="#6b7280" text-anchor="end" >al 3V3 del ESP.</text>
+<text x="790" y="492" font-size="12" font-weight="600" fill="#6b7280" text-anchor="start" >CHRG / DONE: LED de</text>
+<text x="790" y="509" font-size="12" font-weight="400" fill="#6b7280" text-anchor="start" >«cargando» y «carga lista»</text>
+<text x="790" y="590" font-size="12" font-weight="600" fill="#6b7280" text-anchor="start" >VBAT + / −: la misma batería;</text>
+<text x="790" y="607" font-size="12" font-weight="400" fill="#6b7280" text-anchor="start" >no se conectan</text>
+<text x="60" y="730" font-size="12" font-weight="600" fill="#6b7280" text-anchor="start" >QST y ALT (fila izquierda del</text>
+<text x="60" y="747" font-size="12" font-weight="400" fill="#6b7280" text-anchor="start" >módulo): no se conectan, el</text>
+<text x="60" y="764" font-size="12" font-weight="400" fill="#6b7280" text-anchor="start" >firmware no los usa. El GND</text>
+<text x="60" y="781" font-size="12" font-weight="400" fill="#6b7280" text-anchor="start" >de esa fila es opcional.</text>
+<text x="1040" y="96" font-size="14" font-weight="700" fill="#111827" text-anchor="start" >Cables</text>
+<path d="M1040 118 h34" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1084" y="123" font-size="12" font-weight="400" fill="#374151" text-anchor="start" >Batería +</text>
+<path d="M1040 134 h34" fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1084" y="139" font-size="12" font-weight="400" fill="#374151" text-anchor="start" >Tierra (GND / G)</text>
+<path d="M1040 150 h34" fill="none" stroke="#ea8a0c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1084" y="155" font-size="12" font-weight="400" fill="#374151" text-anchor="start" >5 V del elevador → 5V del ESP</text>
+<path d="M1040 166 h34" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1084" y="171" font-size="12" font-weight="400" fill="#374151" text-anchor="start" >SDA (datos I2C)</text>
+<path d="M1040 182 h34" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1084" y="187" font-size="12" font-weight="400" fill="#374151" text-anchor="start" >SCL (reloj I2C)</text>
+<rect x="40" y="970" width="1320" height="1" fill="#e5e7eb"/>
+<text x="60" y="1000" font-size="18" font-weight="700" fill="#111827" text-anchor="start" >Cómo funciona</text>
+<rect x="60" y="1022" width="190" height="62" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+<text x="155.0" y="1049" font-size="13" font-weight="700" fill="#14532d" text-anchor="middle" >USB-C del módulo</text>
+<text x="155.0" y="1068" font-size="12" font-weight="400" fill="#166534" text-anchor="middle" >5 V al cargar</text>
+<path d="M254 1053 h20" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M274 1047 l8 6 l-8 6 z" fill="#16a34a"/>
+<rect x="282" y="1022" width="190" height="62" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+<text x="377.0" y="1049" font-size="13" font-weight="700" fill="#14532d" text-anchor="middle" >TP4056</text>
+<text x="377.0" y="1068" font-size="12" font-weight="400" fill="#166534" text-anchor="middle" >carga la batería</text>
+<path d="M476 1053 h20" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M496 1047 l8 6 l-8 6 z" fill="#16a34a"/>
+<rect x="504" y="1022" width="190" height="62" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+<text x="599.0" y="1049" font-size="13" font-weight="700" fill="#14532d" text-anchor="middle" >Batería LiPo</text>
+<text x="599.0" y="1068" font-size="12" font-weight="400" fill="#166534" text-anchor="middle" >3.3 – 4.2 V</text>
+<path d="M698 1053 h20" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M718 1047 l8 6 l-8 6 z" fill="#16a34a"/>
+<rect x="726" y="1022" width="190" height="62" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+<text x="821.0" y="1049" font-size="13" font-weight="700" fill="#14532d" text-anchor="middle" >Elevador (step up)</text>
+<text x="821.0" y="1068" font-size="12" font-weight="400" fill="#166534" text-anchor="middle" >sube a 5.0 V</text>
+<path d="M920 1053 h20" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M940 1047 l8 6 l-8 6 z" fill="#16a34a"/>
+<rect x="948" y="1022" width="190" height="62" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+<text x="1043.0" y="1049" font-size="13" font-weight="700" fill="#14532d" text-anchor="middle" >Pin 5V del ESP32</text>
+<text x="1043.0" y="1068" font-size="12" font-weight="400" fill="#166534" text-anchor="middle" >su regulador da 3.3 V</text>
+<path d="M1142 1053 h20" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1162 1047 l8 6 l-8 6 z" fill="#16a34a"/>
+<rect x="1170" y="1022" width="190" height="62" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+<text x="1265.0" y="1049" font-size="13" font-weight="700" fill="#14532d" text-anchor="middle" >Sensores, OLED,</text>
+<text x="1265.0" y="1068" font-size="12" font-weight="400" fill="#166534" text-anchor="middle" >LED y buzzer (3V3)</text>
+<rect x="60" y="1114" width="190" height="62" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="155.0" y="1141" font-size="13" font-weight="700" fill="#1e3a8a" text-anchor="middle" >MAX17048</text>
+<text x="155.0" y="1160" font-size="12" font-weight="400" fill="#1e40af" text-anchor="middle" >mide la celda</text>
+<path d="M254 1145 h20" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M274 1139 l8 6 l-8 6 z" fill="#2563eb"/>
+<rect x="282" y="1114" width="190" height="62" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="377.0" y="1141" font-size="13" font-weight="700" fill="#1e3a8a" text-anchor="middle" >I2C 47 / 21</text>
+<text x="377.0" y="1160" font-size="12" font-weight="400" fill="#1e40af" text-anchor="middle" >dirección 0x36</text>
+<path d="M476 1145 h20" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M496 1139 l8 6 l-8 6 z" fill="#2563eb"/>
+<rect x="504" y="1114" width="190" height="62" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="599.0" y="1141" font-size="13" font-weight="700" fill="#1e3a8a" text-anchor="middle" >nucleo/bateria.py</text>
+<text x="599.0" y="1160" font-size="12" font-weight="400" fill="#1e40af" text-anchor="middle" >lee % y voltaje</text>
+<path d="M698 1145 h20" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M718 1139 l8 6 l-8 6 z" fill="#2563eb"/>
+<rect x="726" y="1114" width="190" height="62" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="821.0" y="1141" font-size="13" font-weight="700" fill="#1e3a8a" text-anchor="middle" >Mensaje MQTT</text>
+<text x="821.0" y="1160" font-size="12" font-weight="400" fill="#1e40af" text-anchor="middle" >&quot;bateria&quot;: 87</text>
+<path d="M920 1145 h20" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M940 1139 l8 6 l-8 6 z" fill="#2563eb"/>
+<rect x="948" y="1114" width="190" height="62" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="1043.0" y="1141" font-size="13" font-weight="700" fill="#1e3a8a" text-anchor="middle" >Plataforma</text>
+<text x="1043.0" y="1160" font-size="12" font-weight="400" fill="#1e40af" text-anchor="middle" >Panel y «Batería baja»</text>
+<rect x="1170" y="1114" width="190" height="62" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+<text x="1265.0" y="1136" font-size="12" font-weight="700" fill="#991b1b" text-anchor="middle" >El medidor se alimenta</text>
+<text x="1265.0" y="1152" font-size="12" font-weight="400" fill="#991b1b" text-anchor="middle" >de la batería: sin ella</text>
+<text x="1265.0" y="1168" font-size="12" font-weight="400" fill="#991b1b" text-anchor="middle" >no responde (es normal)</text>
+<text x="60" y="1214" font-size="13" font-weight="700" fill="#b91c1c" text-anchor="start" >Antes de conectar:</text>
+<text x="205" y="1214" font-size="12" font-weight="400" fill="#374151" text-anchor="start" >switch STEP UP en ON · VOUT a 5.0 V medido sin el ESP · atrás, «Charger Current»: 1A para baterías de 1000 mAh o más, 0.2A si es más chica ·</text>
+<text x="205" y="1232" font-size="12" font-weight="400" fill="#374151" text-anchor="start" >nunca la batería, VBAT ni VSYS al pin 3V3 del ESP · para cargar se usa el USB-C del módulo (el del ESP solo para programar).</text>
+</svg>
