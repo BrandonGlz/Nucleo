@@ -1,0 +1,6 @@
+{
+  "GHSA-fc5q-39xc-vjpf": {
+    "motivo": "picomatch <=4.0.7 (ReDoS con extglobs); no hay versión corregida publicada. Solo lo usan las herramientas de compilación de Expo/React Native con patrones propios, no entra al APK ni procesa datos de usuarios.",
+    "revisar": "2026-12-15"
+  }
+}

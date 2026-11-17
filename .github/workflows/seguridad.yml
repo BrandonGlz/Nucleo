@@ -60,6 +60,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      # Solo dependencias de producción y vulnerabilidades altas o críticas.
-      - run: npm audit --omit=dev --audit-level=high
+      # Solo dependencias de producción y vulnerabilidades altas o críticas; las que aún no tienen
+      # corrección publicada se ignoran con motivo y fecha en .github/audit-ignorados.json.
+      - run: node ../.github/auditar.mjs
         working-directory: ${{ matrix.carpeta }}
