@@ -55,6 +55,7 @@ IoT/
 │   │   ├── sensores.py          DHT22 y CCS811 con su calentamiento de 20 minutos
 │   │   ├── umbrales.py          Configuración recibida y clasificación local
 │   │   ├── cola.py              Lecturas tomadas sin conexión, para reenviarlas
+│   │   ├── tarjeta.py           microSD: lecturas pendientes y bitácora del ESP
 │   │   ├── indicadores.py       LED RGB, LED de Wi-Fi y buzzer
 │   │   ├── pantalla.py          Pantalla OLED
 │   │   ├── bateria.py           Nivel de batería (MAX17048 o ADC)
@@ -191,7 +192,7 @@ ESP32-S3
 │  Fila inferior
 ├── 3V3      Riel de 3.3 V: DHT22, OLED, CCS811, MAX17048, buzzer
 ├── GPIO4    DHT22 «out»               Pull-up interno activado por si la placa no trae el suyo
-├── GPIO15–18 Lector microSD (opcional) CS 15, MOSI 16, SCK 17, MISO 18; VCC a 5 V
+├── GPIO15–18 Lector microSD HW-125   CS 15, MOSI 16, SCK 17, MISO 18; VCC a 5 V
 ├── GPIO9    Ventilador (opcional)     Por MOSFET; el ventilador a 5 V
 ├── GPIO12   Buzzer «S» (KY-012)       Pin central a 3.3 V y «−» a GND
 └── 5V / G   Salida del módulo de carga (5 V); GND común
@@ -241,7 +242,9 @@ conserva la CA) y se reinicia el broker con `docker compose up -d mosquitto`.
   de los límites de advertencia es normal; entre ellos y los de peligro es advertencia.
 - **Sin conexión:** sigue leyendo y alertando en la placa con la última configuración, que
   se guarda en `ajustes.json`. Las lecturas con hora válida de ese periodo se guardan en una
-  cola en memoria (hasta 20) y se envían al volver la conexión; sin hora no se encolan.
+  cola en memoria (hasta 20) y se envían al volver la conexión; sin hora no se encolan. Con
+  una microSD (hasta 32 GB, FAT32) lo que no cabe pasa a la tarjeta: días de lecturas que
+  sobreviven a un reinicio, más una bitácora del ESP en `nucleo/bitacora.txt`.
 - **Calentamiento:** durante 20 minutos tras cada arranque la pantalla muestra
   "Calentando", el mensaje lleva `aire_estabilizado: false` y el aire no activa el LED
   ni el buzzer. La temperatura y la humedad miden y alertan desde el arranque.

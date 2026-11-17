@@ -19,8 +19,8 @@ PIN_RGB_AZUL = 40
 PIN_LED_WIFI = 41
 PIN_BUZZER = 12
 PIN_BATERIA = 1  # solo con BATERIA = "ADC": ADC1 (el ADC2 no lee con el Wi-Fi activo)
-# Reservados para piezas opcionales (el firmware aún no los usa): lector microSD por SPI y
-# ventilador de 5 V por MOSFET. Ver «Conexiones del ESP32» en el README principal.
+# Lector microSD HW-125 por SPI (VCC a 5 V; ver nucleo/tarjeta.py) y ventilador de 5 V por
+# MOSFET (reservado: el firmware aún no lo usa). Ver «Conexiones del ESP32» en el README principal.
 PIN_SD_CS = 15
 PIN_SD_MOSI = 16
 PIN_SD_SCK = 17
@@ -64,6 +64,17 @@ BASELINE_CADA_SEG = 3600
 COLA_MAX_MENSAJES = 20
 COLA_ENVIOS_POR_CICLO = 5
 
+# --- Tarjeta microSD (opcional) --------------------------------------------------------------
+# Guarda las lecturas que no caben en la cola en memoria mientras no hay conexión (días en vez
+# de minutos, y sobreviven a un reinicio) y una bitácora del ESP. Tarjeta de hasta 32 GB en FAT32.
+SD_ACTIVA = True
+SD_PUNTO = "/sd"
+SD_FRECUENCIA = 20_000_000  # SPI a 20 MHz; bajar a 1_000_000 si los cables son largos
+SD_REINTENTO_SEG = 60  # sin tarjeta, cada cuánto se vuelve a buscar (se puede poner encendido)
+SD_LOTE = 100  # mensajes por archivo de pendientes
+SD_MAX_ARCHIVOS = 2000  # tope: 200 000 lecturas (unos 70 días a 30 s); luego se borra lo más antiguo
+SD_BITACORA_MAX = 256 * 1024  # al pasar de esto la bitácora se rota a bitacora.1.txt
+
 # --- Batería ------------------------------------------------------------------------------
 # "MAX17048": medidor de carga por I2C (porcentaje real de la celda). "ADC": divisor de
 # tensión 1:2 en PIN_BATERIA (porcentaje aproximado por voltaje). None: sin batería.
@@ -102,7 +113,7 @@ RAIZ_PUENTE = "nucleo/raices.pem"
 # --- Actualización remota (OTA) ----------------------------------------------------------------
 # Versión de este firmware; súbela antes de `manage.py publicar_firmware`. Con PUENTE_HOST y
 # PUENTE_CLAVE en secrets.py la placa revisa cada OTA_REVISAR_SEG (0 = nunca) si hay otra.
-FIRMWARE_VERSION = "1.0.1"
+FIRMWARE_VERSION = "1.1.0"
 OTA_PRIMERA_SEG = 120
 OTA_REVISAR_SEG = 6 * 3600
 OTA_ESPERA_SEG = 15

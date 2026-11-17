@@ -184,7 +184,16 @@ IoT/.venv/bin/python -m unittest discover -s IoT/tests -t IoT
   (hasta 20, `COLA_MAX_MENSAJES`; al llenarse se descarta el más antiguo) y se envían del más
   antiguo al más nuevo, 5 por ciclo (`COLA_ENVIOS_POR_CICLO`), al volver el broker. Un
   mensaje sin hora no se encola: la plataforma lo fecharía al recibirlo y falsearía la serie.
-  La cola se pierde si la placa se reinicia.
+  Con **microSD** (`nucleo/tarjeta.py`), lo que no cabe en memoria pasa a la tarjeta en vez de
+  descartarse: archivos `nucleo/<n>.jsonl` de 100 mensajes (`SD_LOTE`), hasta 2000 archivos
+  (unos 70 días a 30 s; luego se borra lo más antiguo). Sobreviven a un reinicio y se envían
+  primero, en orden; lo enviado se borra de la tarjeta al confirmarse, así que un corte a medias
+  no lo duplica. Sin tarjeta, la cola en memoria se pierde si la placa se reinicia.
+- **Bitácora en la microSD:** `nucleo/bitacora.txt` anota arranques (versión y modo) y cada
+  cambio de Wi-Fi y MQTT, con hora UTC; pasa a `bitacora.1.txt` al llegar a 256 KB. La tarjeta se
+  busca al arrancar y cada 60 s (`SD_REINTENTO_SEG`), así que se puede poner con el ESP encendido.
+  El latido informa `temp` (chip, °C), `sd` (`no` o MB libres) y `sdpend` (lecturas en la
+  tarjeta); `estadoServer.sh` los muestra en la línea «Dispositivos».
 - **Baseline del CCS811:** una vez estabilizado el aire, el firmware guarda el baseline en
   `baseline.json` cada hora y lo restaura al arrancar, para que el sensor se estabilice antes.
 - **Hora:** NTP al conectar el Wi-Fi; hace falta antes de conectar al broker para validar

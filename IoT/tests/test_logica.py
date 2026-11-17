@@ -158,6 +158,111 @@ class ColaTests(unittest.TestCase):
         self.assertEqual(len(cola), 1)
 
 
+class TarjetaTests(unittest.TestCase):
+    """La microSD se simula con una carpeta temporal (montar no hace nada)."""
+
+    def setUp(self):
+        import shutil
+        import tempfile
+
+        from nucleo import tarjeta as modulo
+
+        self.modulo = modulo
+        self.punto = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.punto, True)
+        self.montar = lambda: None
+        reloj["ms"] = 0
+
+    def nueva(self):
+        return self.modulo.Tarjeta(punto=self.punto, montar=lambda: self.montar())
+
+    def test_sin_tarjeta_la_cola_descarta_como_antes(self):
+        def falla():
+            raise OSError("sin tarjeta")
+
+        self.montar = falla
+        t = self.nueva()
+        self.assertFalse(t.montada)
+        self.assertEqual(t.diag(), "no")
+        cola = ColaDeEnvio(maximo=2, tarjeta=t)
+        for n in range(4):
+            cola.agregar({"n": n, "fecha_hora": "t"})
+        enviados = []
+        cola.enviar(lambda m: enviados.append(m["n"]) or True, maximo=10)
+        self.assertEqual(enviados, [2, 3])
+
+    def test_lo_que_no_cabe_va_a_la_tarjeta_y_se_envia_primero_en_orden(self):
+        t = self.nueva()
+        self.assertTrue(t.montada)
+        cola = ColaDeEnvio(maximo=2, tarjeta=t)
+        for n in range(6):
+            cola.agregar({"n": n, "fecha_hora": "t"})
+        cola.agregar({"n": 99})  # sin hora: se queda en memoria (empuja el 4 a la tarjeta)
+        self.assertEqual(t.pendientes, 5)
+        self.assertEqual(cola.enviar(lambda m: False), 0)  # sin conexión no se pierde nada
+        enviados = []
+        while cola.enviar(lambda m: enviados.append(m["n"]) or True, maximo=3):
+            pass
+        self.assertEqual(enviados, [0, 1, 2, 3, 4, 5, 99])
+        self.assertEqual(t.pendientes, 0)
+
+    def test_los_pendientes_sobreviven_a_un_reinicio(self):
+        cola = ColaDeEnvio(maximo=1, tarjeta=self.nueva())
+        for n in range(4):
+            cola.agregar({"n": n, "fecha_hora": "t"})
+        otra = self.nueva()  # el ESP se reinició: la cola en memoria se perdió
+        self.assertEqual(otra.pendientes, 3)
+        enviados = []
+        ColaDeEnvio(tarjeta=otra).enviar(lambda m: enviados.append(m["n"]) or True, maximo=10)
+        self.assertEqual(enviados, [0, 1, 2])
+
+    def test_un_fallo_a_medias_no_reenvia_lo_ya_enviado(self):
+        t = self.nueva()
+        t.guardar([{"n": n, "fecha_hora": "t"} for n in range(5)])
+        cola = ColaDeEnvio(tarjeta=t)
+        enviados = []
+        cola.enviar(lambda m: m["n"] < 2 and (enviados.append(m["n"]) or True), maximo=10)
+        self.assertEqual(enviados, [0, 1])
+        self.assertEqual(self.nueva().pendientes, 3)
+
+    def test_reparte_en_archivos_y_respeta_el_tope(self):
+        anteriores = (config.SD_LOTE, config.SD_MAX_ARCHIVOS)
+        self.addCleanup(lambda: (setattr(config, "SD_LOTE", anteriores[0]), setattr(config, "SD_MAX_ARCHIVOS", anteriores[1])))
+        config.SD_LOTE, config.SD_MAX_ARCHIVOS = 2, 2
+        t = self.nueva()
+        t.guardar([{"n": n, "fecha_hora": "t"} for n in range(7)])
+        self.assertEqual(t.pendientes, 3)  # caben 2 archivos ([4, 5] y [6]): se borró lo más antiguo
+        self.assertEqual([m["n"] for m in t.lote()], [4, 5])
+
+    def test_una_linea_cortada_por_un_apagon_se_salta(self):
+        t = self.nueva()
+        t.guardar([{"n": 1, "fecha_hora": "t"}])
+        with open(t._archivo(1), "a") as f:
+            f.write('{"n": 2, "fech')
+        self.assertEqual([m["n"] for m in self.nueva().lote()], [1])
+
+    def test_bitacora_y_diagnostico(self):
+        t = self.nueva()
+        t.bitacora("arranque")
+        with open(t._ruta("bitacora.txt")) as f:
+            self.assertIn("arranque", f.read())
+        self.assertRegex(t.diag(), r"^\d+MB;sdpend=0$")
+
+    def test_si_se_saca_la_tarjeta_vuelve_a_la_memoria_y_reintenta(self):
+        import shutil
+
+        t = self.nueva()
+        shutil.rmtree(self.punto)
+        self.assertFalse(t.guardar([{"n": 1, "fecha_hora": "t"}]))
+        self.assertFalse(t.montada)
+        os.makedirs(self.punto)
+        t.mantener()
+        self.assertFalse(t.montada)  # todavía no toca reintentar
+        reloj["ms"] = config.SD_REINTENTO_SEG * 1000
+        t.mantener()
+        self.assertTrue(t.montada)
+
+
 class MensajeTests(unittest.TestCase):
     class Red:
         def __init__(self, hora):

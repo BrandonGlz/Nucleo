@@ -18,7 +18,7 @@ pines en rojo no se usan.
 | Frente | LED de Wi-Fi (opcional) | ánodo → **41** (con resistencia de 220 Ω) | superior | cátodo → G |
 | Frente | LED RGB (KY-016) | B → **40**, G → **39**, R → **38** | superior | − → G |
 | Frente | Buzzer (KY-012) | S → **12** | inferior | + → 3V3, − → G |
-| Borde inferior | Lector microSD HW-125 (opcional) | CS → **15**, MOSI → **16**, SCK → **17**, MISO → **18** | inferior | VCC → **5V**, GND → G |
+| Borde inferior | Lector microSD HW-125 | CS → **15**, MOSI → **16**, SCK → **17**, MISO → **18** | inferior | VCC → **5V**, GND → G |
 | Energía (der.) | Medidor MAX17048 (en el módulo de carga) | SDA → **47**, SCL → **21** (bus propio) | superior | Sin VCC: se alimenta de la batería |
 | Energía (der.) | Ventilador 5 V (opcional) | MOSFET SIG → **9** | inferior | + → 5V, − → MOSFET → G |
 | Energía (der.) | Módulo de carga UNIT LiPo Boost & I2C | STEP + (VOUT, a 5.0 V) → **5V**, STEP − → **G** | inferior | Batería en su conector JST |
@@ -35,11 +35,13 @@ pines en rojo no se usan.
   ajustado a 5 V, y un MAX17048 suelto sí lleva VCC → 3V3. Nunca conectes la batería directo al
   pin 3V.
 - **microSD:** aliméntalo desde 5V (su regulador AMS1117 necesita más de 3.3 V); su chip LVC125A
-  ya adapta las señales al ESP. Tarjeta de hasta 32 GB en FAT32.
+  ya adapta las señales al ESP. Tarjeta de hasta 32 GB en FAT32. Sin tarjeta, el lector deja MISO
+  (18) en 0: es lo normal, no una falla. El firmware la usa para las lecturas sin conexión y una
+  bitácora (`nucleo/tarjeta.py`).
 - **Ventilador:** el pin del ESP no da corriente suficiente; va con un módulo MOSFET y en el
   compartimento de energía, lejos del DHT22 y del CCS811.
-- Los pines del microSD (15–18) y del ventilador (9) están reservados en
-  `IoT/micropython/config.py`; el firmware todavía no los usa.
+- El pin del ventilador (9) está reservado en `IoT/micropython/config.py`; el firmware todavía no
+  lo usa.
 - Sigue la serigrafía de cada módulo: el orden de sus pines cambia entre vendedores.
 
 ## Batería

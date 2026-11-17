@@ -101,6 +101,7 @@ def hora_por_https():
 
 class Red:
     def __init__(self):
+        self.tarjeta = None  # microSD (nucleo/tarjeta.py); la asigna aplicacion.py para el diagnóstico
         self._wlan = network.WLAN(network.STA_IF)
         self._wlan.active(True)
         try:
@@ -207,8 +208,9 @@ class Red:
 
     def diagnostico(self, extra=""):
         """``clave=valor;...``: lo guarda el servidor para separar fallas de red y del ESP.
-        ``temp`` es la temperatura del chip en °C (no la del ambiente; la muestra estadoServer.sh)."""
-        return "red=%s;rssi=%s;rec=%d;falla=%s;mem=%d;up=%d;temp=%s%s" % (
+        ``temp`` es la temperatura del chip en °C (no la del ambiente) y ``sd`` el estado de la
+        microSD (``no``, o MB libres y ``sdpend`` lecturas pendientes); los muestra estadoServer.sh."""
+        return "red=%s;rssi=%s;rec=%d;falla=%s;mem=%d;up=%d;temp=%s;sd=%s%s" % (
             _limpio(self.red),
             self.rssi(),
             self.reconexiones,
@@ -216,6 +218,7 @@ class Red:
             gc.mem_free(),
             time.ticks_ms() // 1000,
             temperatura_chip(),
+            self.tarjeta.diag() if self.tarjeta is not None else "--",
             extra,
         )
 

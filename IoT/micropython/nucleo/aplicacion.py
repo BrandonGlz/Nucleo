@@ -16,6 +16,7 @@ from nucleo.pantalla import Pantalla
 from nucleo.red import Red
 from nucleo.respaldo import RespaldoHTTPS
 from nucleo.sensores import Sensores
+from nucleo.tarjeta import Tarjeta
 from nucleo.umbrales import NORMAL, Ajustes
 
 _PAUSA_MS = 100
@@ -76,13 +77,17 @@ def ejecutar():
     red = Red()
     broker = Broker(ajustes.actualizar, red, indicadores.parpadeo)
     respaldo = RespaldoHTTPS(red)
-    cola = ColaDeEnvio()
+    tarjeta = Tarjeta()  # microSD opcional: pendientes sin conexión y bitácora
+    red.tarjeta = tarjeta
+    tarjeta.bitacora("arranque · firmware %s · modo %s" % (config.FIRMWARE_VERSION, "sensores" if con_sensores else "puente"))
+    cola = ColaDeEnvio(tarjeta=tarjeta)
     ota = Actualizador(red, perro.feed if perro else None)
     confirmada = False
 
     lecturas = {}
     nivel = NORMAL
     ultimo_muestreo = None
+    antes_wifi = antes_mqtt = False  # para anotar en la bitácora solo los cambios
 
     while True:
         if perro:
@@ -100,6 +105,13 @@ def ejecutar():
                 if respaldo.mantener():
                     indicadores.parpadeo()
         broker.revisar()
+        tarjeta.mantener()  # sin tarjeta, la busca cada SD_REINTENTO_SEG
+        if conectada != antes_wifi:
+            antes_wifi = conectada
+            tarjeta.bitacora("Wi-Fi conectado a %s" % red.red if conectada else "Wi-Fi perdido (%s)" % red.falla)
+        if broker.conectado() != antes_mqtt:
+            antes_mqtt = broker.conectado()
+            tarjeta.bitacora("MQTT conectado" if antes_mqtt else "MQTT desconectado · %d lecturas en cola" % len(cola))
         if not confirmada and (broker.conectado() or respaldo.respondio):
             # La versión nueva llegó a la plataforma: se queda (sin esto, vuelve atrás sola).
             actualizacion.confirmar()
