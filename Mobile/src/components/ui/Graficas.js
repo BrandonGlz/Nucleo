@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { InteractionManager, View } from 'react-native'
+import { View } from 'react-native'
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg'
 import { useTema } from '../../context/TemaContext'
 import { font } from '../../theme'
@@ -48,18 +48,28 @@ export function Sparkline({ data = [], width = 96, height = 32, color }) {
 
 // Tendencia con ejes, umbrales y cursor. Se toca o arrastra para mover el cursor.
 // data: [{ label, time, value }]; threshold: { min, max }.
-// true cuando terminan las transiciones en curso: el SVG se dibuja después de que la pantalla
-// ya entró, para no quitarle cuadros a la animación.
+// true cuando el hilo de JS queda libre: el SVG se dibuja después de que la pantalla ya entró, para
+// no quitarle cuadros a la animación. No usa InteractionManager: RN 0.88 lo quitó y en el APK de
+// producción `InteractionManager` es undefined (la app se cerraba al abrir una gráfica).
 function useTrasTransicion() {
   const [listo, setListo] = useState(false)
   useEffect(() => {
-    const t = InteractionManager.runAfterInteractions(() => setListo(true))
-    return () => t.cancel()
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(() => setListo(true), { timeout: 500 })
+      return () => cancelIdleCallback(id)
+    }
+    const id = setTimeout(() => setListo(true), 0)
+    return () => clearTimeout(id)
   }, [])
   return listo
 }
 
-export function TrendChart({ data = [], unit = '', threshold = {}, min, max, height = 200, activeIndex, decimals = 1, tooltip = true }) {
+// Solo números finitos: un NaN en un path o en un estilo nativo cierra la app en Android.
+const finito = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+
+export function TrendChart({ data: crudos = [], unit = '', threshold: umbral, min, max, height = 200, activeIndex, decimals = 1, tooltip = true }) {
+  const data = crudos.filter((d) => finito(d?.value) != null)
+  const threshold = { min: finito(umbral?.min), max: finito(umbral?.max) }
   const { c } = useTema()
   const id = useId().replace(/:/g, '')
   const [W, setW] = useState(0)

@@ -43,9 +43,13 @@ export function HistoricoScreen() {
     [d?.num, variable, rangoId],
   )
   const puntos = serie.datos
-  const valores = (puntos ?? []).map((p) => Number(p.promedio))
-  const minimo = puntos?.length ? Math.min(...puntos.map((p) => Number(p.minimo ?? p.promedio))) : null
-  const maximo = puntos?.length ? Math.max(...puntos.map((p) => Number(p.maximo ?? p.promedio))) : null
+  // Solo números finitos: un promedio vacío no debe dar NaN en las cifras ni en la gráfica.
+  const finitos = (xs) => xs.map(Number).filter(Number.isFinite)
+  const valores = finitos((puntos ?? []).map((p) => p.promedio))
+  const minimos = finitos((puntos ?? []).map((p) => p.minimo ?? p.promedio))
+  const maximos = finitos((puntos ?? []).map((p) => p.maximo ?? p.promedio))
+  const minimo = minimos.length ? Math.min(...minimos) : null
+  const maximo = maximos.length ? Math.max(...maximos) : null
   const prom = valores.length ? valores.reduce((a, b) => a + b, 0) / valores.length : null
   const enRango = (v) => (u?.advertencia_min == null || v >= Number(u.advertencia_min)) && (u?.advertencia_max == null || v <= Number(u.advertencia_max))
   const dentro = valores.length > 0 && u ? Math.round((valores.filter(enRango).length / valores.length) * 100) : null
