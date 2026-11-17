@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Avatar, Badge, Button, Card, Chip, Icon, IconButton, Input, Skeleton,
+  Avatar, Badge, Button, Card, ChipFilter, Icon, IconButton, Input, Skeleton,
 } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { Select } from '../../components/Desplegable'
@@ -199,13 +199,14 @@ export function UsuariosPage() {
       cifras={cifras}
     >
       <div className="ui-filtros" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div className="ui-filtros__chips" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {FILTROS.map(([id, label]) => (
-            <Chip key={id} selected={filtro === id} count={id === 'todos' ? usuarios.length : cuenta(id)} onClick={() => setFiltro(id)}>
-              {label}
-            </Chip>
-          ))}
-        </div>
+        <ChipFilter
+          className="ui-filtros__chips"
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+          label="Rol"
+          value={filtro}
+          onChange={setFiltro}
+          items={FILTROS.map(([id, label]) => ({ id, label, count: id === 'todos' ? usuarios.length : cuenta(id) }))}
+        />
         <div style={{ flex: 1 }} />
         {aviso && (
           <span className={`ui-aviso ui-aviso--${aviso.tono}`} role="status">

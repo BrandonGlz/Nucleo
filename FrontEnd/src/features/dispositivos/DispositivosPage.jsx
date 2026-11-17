@@ -2,7 +2,7 @@ import { useSesion } from '../../context/SesionContext'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Battery, Card, Chip, DeviceTable, Icon, IconButton, IconCircle, SignalBars, Skeleton, StatusBadge, Tabs,
+  Battery, Card, ChipFilter, DeviceTable, Icon, IconButton, IconCircle, SignalBars, Skeleton, StatusBadge, Tabs,
 } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { Select } from '../../components/Desplegable'
@@ -163,19 +163,19 @@ export function DispositivosPage() {
             options={[{ value: '', label: 'Todas las áreas' }, ...areas.map((a) => ({ value: String(a.num), label: a.nombre }))]}
           />
         </div>
-        <div className="ui-filtros__chips" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2, flexWrap: 'wrap' }}>
-          {FILTROS.map(([id, label, icon]) => (
-            <Chip
-              key={id}
-              icon={icon}
-              selected={filtro === id}
-              count={id === 'all' ? delArea.length : delArea.filter((d) => d.status === id).length}
-              onClick={() => setFiltro(id)}
-            >
-              {label}
-            </Chip>
-          ))}
-        </div>
+        <ChipFilter
+          className="ui-filtros__chips"
+          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2, flexWrap: 'wrap' }}
+          label="Estado"
+          value={filtro}
+          onChange={setFiltro}
+          items={FILTROS.map(([id, label, icon]) => ({
+            id,
+            label,
+            icon,
+            count: id === 'all' ? delArea.length : delArea.filter((d) => d.status === id).length,
+          }))}
+        />
         <div style={{ paddingBottom: 2 }}>
           <Buscador valor={busqueda} cambiar={setBusqueda} placeholder="Buscar dispositivo o código…" ancho={260} />
         </div>

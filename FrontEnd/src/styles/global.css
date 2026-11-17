@@ -3939,6 +3939,42 @@ button.ui-menuitem:not(:disabled):hover svg {
   border-color: transparent;
   box-shadow: none;
 }
+/* Chips de filtro (ChipFilter): los chips sin elegir son opacos, así que la pastilla pasa por encima
+   de ellos al deslizarse y el chip elegido (transparente) queda encima de ella para mostrar su texto. */
+.nc-chipfilter {
+  position: relative;
+  isolation: isolate;
+}
+.nc-chipfilter .nc-chip {
+  position: relative;
+}
+.nc-chipfilter__indicador {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  border: 1px solid var(--text-primary);
+  border-radius: var(--radius-full);
+  background: var(--text-primary);
+  pointer-events: none;
+}
+:root:not([data-theme="dark"]) .nc-chipfilter__indicador {
+  background: var(--success);
+  border-color: var(--success);
+}
+.nc-chipfilter__indicador.is-deslizando {
+  transition:
+    transform var(--duration-slow) var(--ease-emphasized),
+    width var(--duration-slow) var(--ease-emphasized),
+    height var(--duration-slow) var(--ease-emphasized);
+}
+.nc-chipfilter.con-indicador .nc-chip.is-selected,
+:root:not([data-theme="dark"]) .nc-chipfilter.con-indicador .nc-chip.is-selected {
+  z-index: 2;
+  background: transparent;
+  border-color: transparent;
+}
 .nc-tab__count {
   transition:
     background var(--duration-slow) var(--ease-standard),
@@ -3954,7 +3990,8 @@ button.ui-menuitem:not(:disabled):hover svg {
     animation: none;
   }
   .nc-tabs__indicador.is-deslizando,
-  .nc-period__indicador.is-deslizando {
+  .nc-period__indicador.is-deslizando,
+  .nc-chipfilter__indicador.is-deslizando {
     transition: none;
   }
 }
