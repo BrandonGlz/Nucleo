@@ -39,6 +39,7 @@ Nucleo/
 ├── docker-compose.yml     PostgreSQL, TimescaleDB, Redis y Mosquitto en Docker
 ├── .env.example           Plantilla de configuración, sin secretos
 ├── .gitignore             Archivos que Git debe ignorar
+├── CHANGELOG.md           Plan de versiones e historial de cambios
 └── README.md              Este documento
 ```
 
@@ -145,3 +146,110 @@ medidas aproximadas).
 
 Las vistas exteriores e interiores, el esqueleto vacío, el cableado completo, las piezas una por
 una y los planos con medidas en centímetros están en [Docs/nucleo3d](Docs/nucleo3d/README.md).
+
+<!-- avance:inicio (generado con Docs/progreso/generar.py) -->
+## Avance contra el SRS
+
+Núcleo cumple **56 de 68 criterios (82 %)** de la [especificación de requisitos](Docs/PDFs/SRS.pdf); 10 están en progreso y 2 pendientes.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Docs/progreso/srs-oscuro.svg">
+  <img src="Docs/progreso/srs-claro.svg" alt="Avance contra el SRS: 56 de 68 criterios cumplidos" width="100%">
+</picture>
+
+| Área del SRS | Cumplido | En progreso | Pendiente |
+| --- | ---: | ---: | ---: |
+| Interfaces (SRS 3.1) | 21 | 6 | 0 |
+| Requisitos funcionales (SRS 3.2) | 25 | 1 | 1 |
+| No funcionales y otros (SRS 3.3 y 3.4) | 10 | 3 | 1 |
+| **Total** | **56** | **10** | **2** |
+
+**Lo que falta para cumplir el SRS:**
+
+- En progreso · Modo de bajo consumo en la app (SRS 3.1.1): Solo existe «Reducir animaciones».
+- En progreso · LED RGB de nivel en la unidad física (SRS 3.1.1): Programado; falta confirmarlo en la placa.
+- En progreso · LED de estado Wi-Fi (SRS 3.1.1): Programado; falta confirmarlo en la placa.
+- En progreso · Zumbador de alertas (SRS 3.1.1): Programado; falta confirmarlo en la placa.
+- En progreso · Batería de litio con módulo de carga (SRS 3.1.2): Programada; falta conectarla y probarla.
+- En progreso · Carcasa impresa en 3D (SRS 3.1.2): Diseño beta; falta la pieza final.
+- Pendiente · Acondicionamiento inicial de 48 horas (SRS 3.2.1): Falta registrarlo por sensor.
+- En progreso · Respuesta con LED RGB y alarma sonora (SRS 3.2.2): Programada; falta confirmarla en la placa.
+- Pendiente · 100 horas continuas sin fallas (SRS 3.3.3): Falta la prueba de duración.
+- En progreso · Disponibilidad del 99 % (SRS 3.3.4): Hay vigía externo; falta medirla en un periodo.
+- En progreso · Chrome, Edge, Firefox y Safari (SRS 3.3.6): Falta la prueba formal en los cuatro navegadores.
+- En progreso · Hardware completamente portátil (SRS 3.3.6): Depende de la batería.
+
+<details>
+<summary>Ver los criterios cumplidos</summary>
+
+| SRS | Criterio | Versión |
+| --- | --- | --- |
+| 3.1.1 | Web en modo claro y oscuro | 0.2.0 |
+| 3.1.1 | Panel web con datos en tiempo real | 0.3.0 |
+| 3.1.1 | Gráficas con filtros de fecha, ubicación y sensor | 0.3.0 |
+| 3.1.1 | Panel de alertas por severidad y estado | 0.3.0 |
+| 3.1.1 | Formularios de parámetros y umbrales | 0.3.0 |
+| 3.1.1 | Reportes e históricos con IA | 0.3.0 |
+| 3.1.1 | Agente de IA en la web | 0.3.0 |
+| 3.1.1 | App en modo claro y oscuro | 0.8.0 |
+| 3.1.1 | App con lecturas actuales | 0.3.0 |
+| 3.1.1 | App con dispositivos del área para el supervisor | 0.5.0 |
+| 3.1.1 | App con alertas visuales, sonoras y push | 0.5.0 |
+| 3.1.1 | App con tendencias de 24 horas | 0.3.0 |
+| 3.1.1 | App adaptable a distintas pantallas | 0.3.0 |
+| 3.1.1 | Pantalla OLED en la unidad física | 0.8.0 |
+| 3.1.2 | Sensores DHT22 y CCS811 en el ESP32 | 0.9.0 |
+| 3.1.3 | PostgreSQL y TimescaleDB separadas | 0.1.0 |
+| 3.1.4 | MQTT con TLS y sin acceso anónimo | 0.1.0 |
+| 3.1.4 | Configuración retenida para el dispositivo | 0.1.0 |
+| 3.1.4 | Consulta de lecturas cada 30 segundos | 0.3.0 |
+| 3.1.4 | Canal en vivo autenticado con token | 0.3.0 |
+| 3.1.4 | App en segundo plano recibe alertas por push | 0.5.0 |
+| 3.2.1 | Lectura automática con intervalo configurable | 0.8.0 |
+| 3.2.1 | Calentamiento del CCS811 de 20 minutos | 0.8.0 |
+| 3.2.2 | Clasificación normal, advertencia y peligro | 0.1.0 |
+| 3.2.2 | Registro de nivel, estado, responsable y hora | 0.1.0 |
+| 3.2.2 | Sin alertas repetidas y con escalamiento | 0.1.0 |
+| 3.2.2 | Correo a los responsables | 0.3.0 |
+| 3.2.2 | Push a los responsables | 0.5.0 |
+| 3.2.3 | Datos en web, app y dispositivo | 0.8.0 |
+| 3.2.4 | Cinco roles con funciones definidas | 0.1.0 |
+| 3.2.4 | Aislamiento de datos por organización | 0.1.0 |
+| 3.2.4 | Administración de organizaciones | 0.3.0 |
+| 3.2.4 | Alcance por área y dispositivo asignado | 0.1.0 |
+| 3.2.5 | Validación del orden de los umbrales | 0.1.0 |
+| 3.2.5 | Rangos físicos y descarte de lecturas inválidas | 0.1.0 |
+| 3.2.6 | Flujo completo del sensor a las aplicaciones | 0.8.0 |
+| 3.2.7 | Dispositivo sigue alertando sin conexión | 0.8.0 |
+| 3.2.7 | Estado «Sin conexión» tras 3 intervalos | 0.1.0 |
+| 3.2.8 | Salidas en PDF y correo programado | 0.3.0 |
+| 3.2.9 | Respuesta automática ante condiciones inseguras | 0.3.0 |
+| 3.2.10 | Almacenamiento completo de cada medición | 0.1.0 |
+| 3.2.11 | Histórico y gráficas de tendencia | 0.3.0 |
+| 3.2.12 | Reportes con cifras del backend y texto de IA | 0.3.0 |
+| 3.2.12 | Reportes programados por frecuencia y área | 0.3.0 |
+| 3.2.12 | Respuesta 503 sin servicio de IA | 0.1.0 |
+| 3.2.12 | Agente de solo lectura en lenguaje natural | 0.3.0 |
+| 3.3.1 | Varios dispositivos y organizaciones sin cambiar código | 0.3.0 |
+| 3.3.1 | Tiempos e índices para comprobar los 2 minutos | 0.1.0 |
+| 3.3.2 | Comunicación por HTTPS y TLS | 0.6.0 |
+| 3.3.2 | Bases privadas y contraseñas cifradas | 0.4.0 |
+| 3.3.2 | Usuario propio para cada base de datos | 0.1.0 |
+| 3.3.2 | Límite de intentos y caducidad del token | 0.1.0 |
+| 3.3.3 | Restricciones de integridad en la base de datos | 0.1.0 |
+| 3.3.5 | Estado y calibración de cada sensor | 0.1.0 |
+| 3.3.6 | App disponible para Android | 0.4.0 |
+| 3.4 | Reportes y respuestas sin capacitación previa | 0.3.0 |
+
+</details>
+
+## Plan de versiones
+
+La versión actual del proyecto es **0.9.0**. Cada versión marca un avance real contra el SRS y el detalle está en el **[CHANGELOG](CHANGELOG.md)**.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Docs/progreso/versiones-oscuro.svg">
+  <img src="Docs/progreso/versiones-claro.svg" alt="Plan de versiones de Núcleo según el avance del SRS" width="100%">
+</picture>
+
+<!-- avance:fin -->
