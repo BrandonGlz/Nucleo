@@ -20,8 +20,8 @@ extensión **Pymakr**. La placa ejecuta primero `boot.py` (inicio) y después
   la placa son su `codigo_mqtt`.
 - **Pruebas de la lógica:** `tests/` ejecuta en la computadora las pruebas del firmware
   (umbrales, calentamiento, baseline, cola, mensaje, batería y actualización remota) con módulos de MicroPython simulados.
-- **Sin validar en hardware:** los pines, la batería y el TLS en la placa se confirman al
-  montar el dispositivo.
+- **Probado en la placa (firmware 1.1.3):** Wi-Fi, MQTT con TLS dentro de WebSocket, DHT22,
+  CCS811 y llave de Nico AI. **Falta probar:** el medidor de batería MAX17048 y la microSD.
 
 ## Hardware y bibliotecas
 
@@ -45,6 +45,7 @@ IoT/
 ├── micropython/                 Proyecto que se abre con Pymakr
 │   ├── boot.py                  Arranque mínimo
 │   ├── main.py                  Inicia la aplicación y reinicia la placa ante un error
+│   ├── actualizacion.py         Aplica la actualización remota y vuelve atrás si falla
 │   ├── config.py                Pines, intervalos, rangos, tópicos y opciones
 │   ├── secrets.example.py       Plantilla de credenciales (copiar como secrets.py)
 │   ├── secrets.py               Wi-Fi, código MQTT y broker; no se versiona
@@ -60,9 +61,14 @@ IoT/
 │   │   ├── pantalla.py          Pantalla OLED
 │   │   ├── bateria.py           Nivel de batería (MAX17048 o ADC)
 │   │   ├── red.py               Wi-Fi y hora por NTP
-│   │   └── comunicacion.py      Cliente MQTT con TLS
+│   │   ├── comunicacion.py      Cliente MQTT con TLS
+│   │   ├── websocket.py         MQTT dentro de WebSocket para pasar por Cloudflare
+│   │   ├── respaldo.py          Latido de Nico AI por HTTPS si la red bloquea el broker
+│   │   ├── ota.py               Busca y descarga la actualización remota
+│   │   └── raices.pem           Raíces para validar el certificado del servidor
 │   ├── firmware/
-│   │   └── ESP32_GENERIC-20260824-v1.29.0.bin   Sistema que se graba en el ESP32
+│   │   ├── ESP32_GENERIC_S3-SPIRAM_OCT-20260824-v1.29.0.bin   Sistema que se graba en la ESP32-S3
+│   │   └── ESP32_GENERIC-20260824-v1.29.0.bin                 Sistema para un ESP32 normal
 │   ├── lib/                     Bibliotecas que se copian a la placa
 │   │   ├── ccs811.py
 │   │   ├── mq135.py
@@ -201,8 +207,21 @@ ESP32-S3
 Todos los sensores se alimentan a 3.3 V. El diagrama completo, con cada componente frente a sus
 pines en las dos filas y sin cables cruzados, está en
 [Context/iot/conexiones.md](../Context/iot/conexiones.md). Antes de conectar, sigue la serigrafía de cada
-módulo: el orden de los pines cambia entre vendedores. El CCS811 necesita su pin **nWAKE**
-conectado a GND. Si el LED RGB es de ánodo común, `RGB_ACTIVO_ALTO = False`.
+módulo: el orden de los pines cambia entre vendedores. Si el LED RGB es de ánodo común,
+`RGB_ACTIVO_ALTO = False`.
+
+**CCS811:** lleva seis conexiones; `RST` e `INT` se quedan libres.
+
+| Pin del CCS811 | Va a | Para qué |
+| --- | --- | --- |
+| `VCC` | 3V3 | Alimentación |
+| `GND` | GND | Tierra común |
+| `SDA` | GPIO2 | Datos I2C |
+| `SCL` | GPIO42 | Reloj I2C |
+| `WAK` (nWAKE) | GND | Mantiene activa la comunicación; suelto, el sensor puede no responder |
+| `ADD` (ADDR) | GND | Fija la dirección `0x5A`; en alto sería `0x5B` |
+| `RST` | Sin conectar | Reinicio por hardware; el firmware no lo usa |
+| `INT` | Sin conectar | Aviso de dato nuevo; el firmware consulta por I2C |
 
 **Batería:** `BATERIA = "MAX17048"` lee el porcentaje real y el voltaje de la celda por I2C
 (dirección 0x36). Cómo se suelda el módulo UNIT LiPo Boost & I2C con la batería y el ESP32:
@@ -294,7 +313,7 @@ humedad = sensor.humidity()          # %
 ```python
 from machine import Pin, SoftI2C
 
-i2c = SoftI2C(sda=Pin(21), scl=Pin(22))
+i2c = SoftI2C(sda=Pin(2), scl=Pin(42))
 i2c.scan()   # [60, 90] -> 0x3C pantalla, 0x5A CCS811
 ```
 

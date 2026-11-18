@@ -4,7 +4,7 @@
 
 - React 19.3.1 y React DOM 19.3.1.
 - React Router (`react-router-dom` 7) para la navegación entre módulos.
-- Vite 8.3.5.
+- Vite 8.3.8.
 - `lucide-react` 1.59.0 (versión fija) como única fuente de íconos ([lucide.dev](https://lucide.dev/icons/)).
 - JavaScript con JSX.
 - npm 11.16.0; `package-lock.json` fija el árbol instalado.

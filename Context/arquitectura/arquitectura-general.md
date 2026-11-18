@@ -34,6 +34,9 @@ reportes, y expone una API REST que consumen la web y la app móvil.
     medidor de batería y MQTT con TLS (dentro de WebSocket en producción); cola de lecturas sin
     conexión, baseline del CCS811 y la llave de Nico AI. Conexiones en
     [iot/conexiones.md](../iot/conexiones.md).
+- **`Landing/`**
+  - Página pública estática de https://info.bynucleo.com: presenta el producto, los planes y las
+    preguntas frecuentes, sin build ni dependencias externas.
 - **`Mosquitto/`**
   - Configuración del broker, ACL por usuario, `preparar.sh` (certificados y usuarios de
     desarrollo) y `dispositivo.sh` (alta de un usuario por dispositivo).
@@ -181,7 +184,7 @@ Origen → Destino                                Protocolo                  Est
 
 - Proveedor de un servicio de IA externo (hoy la redacción es local, con plantillas).
 - Estrategia de retención de lecturas a largo plazo.
-- Validación del modelo exacto de ESP32, pinout y circuito de alimentación.
+- Validación en la placa del circuito de batería y de la microSD.
 
 Las decisiones tomadas se registran en
 `Context/decisiones-tecnicas/stack-tecnologico.md`.

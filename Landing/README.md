@@ -2,7 +2,8 @@
 
 «Descubre Núcleo»: página pública que presenta la plataforma web, la app móvil, el dispositivo y
 Nico AI, con los pasos para integrarse y los planes. Nico la narra: cada sección abre con su
-explicación y un Nico guía flotante cambia de frase según la sección visible.
+explicación y un Nico guía flotante cambia de frase según la sección visible. En la portada, Nico es el
+protagonista: aparece de cuerpo completo sobre un escenario en relieve y saluda con su burbuja.
 
 Diseño: modo oscuro y claro (sigue al sistema; el botón del menú lo cambia y lo recuerda) con los mismos
 tokens de color de la plataforma (`FrontEnd/src/design-system/estilos/colors.css`). Bento grids de 12 columnas,
@@ -20,8 +21,8 @@ Landing/
 ├── favicon.png     Cara de Nico (también apple-touch-icon.png)
 ├── fuentes/        Plus Jakarta Sans (.woff2)
 └── medios/
-    ├── nico/        Nico sin fondo, con el nombre de la sección donde aparece (conoce-saluda, funciona-senala,
-    │                plataforma-holograma, app-pulgar, ai-responde, planes-celebra, preguntas-saluda, guia-cara, pie-sello)
+    ├── nico/        Nico sin fondo: conoce-saluda (portada), funciona-senala (Conoce a Nico y Cómo funciona),
+    │                plataforma-holograma, app-pulgar, ai-responde, planes-celebra, preguntas-saluda, guia-cara y pie-sello
     ├── escenas/     calidad-aire (sección del dispositivo) y cierre-aire (llamado final)
     ├── pasos/       paso-1-coloca, paso-2-recibe y paso-3-actua (de «Intégrate a Núcleo en tres pasos»)
     ├── capturas/    Capturas reales de la web y la app, en claro/ y oscuro/ (empresa demo de sembrar_demo)

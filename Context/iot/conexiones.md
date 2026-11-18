@@ -12,7 +12,7 @@ pines en rojo no se usan.
 
 | Zona de la carcasa | Componente | Pines del componente → ESP32-S3 | Fila | Alimentación |
 | --- | --- | --- | --- | --- |
-| Sensores (izq.) | CCS811 | SDA → **2**, SCL → **42**, WAK → G | superior | VCC → 3V3, GND → G |
+| Sensores (izq.) | CCS811 | SDA → **2**, SCL → **42**, WAK → G, ADD → G (RST e INT libres) | superior | VCC → 3V3, GND → G |
 | Sensores (izq.) | DHT22 | out → **4** | inferior | + → 3V3, − → G |
 | Frente | Pantalla OLED SSD1306 | SDA → **2**, SCL → **42** (en cadena con el CCS811) | superior | VCC → 3V3, GND → G |
 | Frente | LED de Wi-Fi (opcional) | ánodo → **41** (con resistencia de 220 Ω) | superior | cátodo → G |
@@ -29,7 +29,7 @@ pines en rojo no se usan.
 - **Dos buses I2C:** la OLED (0x3C) y el CCS811 (0x5A) en 2/42, del lado de los sensores; el
   MAX17048 (0x36) en su propio bus 47/21, junto a la batería, para no cruzar la carcasa con
   cables. Con `PIN_I2C_BATERIA_SDA = None` vuelve a compartir el primer bus. El CCS811 necesita
-  **WAK a GND** o no responde.
+  **WAK a GND** o no responde, y **ADD a GND** fija su dirección en 0x5A; RST e INT no se usan.
 - **Módulo de carga:** se usa el UNIT LiPo Boost & I2C (ver [Batería](#batería) abajo). Si en su
   lugar es solo un TP4056 (sin salida de 5 V), entre OUT+ y el pin 5V va el elevador MT3608
   ajustado a 5 V, y un MAX17048 suelto sí lleva VCC → 3V3. Nunca conectes la batería directo al

@@ -45,8 +45,8 @@ Las pruebas de la lógica están en `IoT/tests/` (módulos de MicroPython simula
 - **ESP32-S3:** controlador y conectividad. Wi-Fi 2.4 GHz.
 - **DHT22:** temperatura y humedad, en placa de 3 pines. Pull-up (el de la placa o el
   interno del ESP) y mínimo 2 s entre lecturas.
-- **CCS811:** eCO2 (ppm) y TVOC (ppb). I2C 0x5A (0x5B si ADDR en alto); pin
-  nWAKE a GND; 48 h de acondicionamiento previo y 20 min de estabilización tras cada
+- **CCS811:** eCO2 (ppm) y TVOC (ppb). I2C 0x5A (0x5B si ADDR en alto); pines
+  nWAKE y ADDR a GND, RST e INT sin conectar; 48 h de acondicionamiento previo y 20 min de estabilización tras cada
   arranque.
 - **OLED SSD1306 0.96":** visualización local. I2C 128×64, dirección 0x3C.
 - **LED RGB:** nivel de la lectura. Verde normal, amarillo advertencia, rojo peligro.
@@ -158,8 +158,9 @@ openssl x509 -in ../../Mosquitto/certs/ca.crt -outform DER -out certs/ca.der
 ```
 
 El offset `0x1000` es el correcto para el ESP32 clásico. La lógica (umbrales, calentamiento,
-baseline, cola y forma del mensaje) tiene 16 pruebas en `IoT/tests/`; el firmware todavía no
-se ha probado en hardware real.
+baseline, cola y forma del mensaje) tiene 50 pruebas en `IoT/tests/`. En la placa ya se probaron
+Wi-Fi, MQTT con TLS dentro de WebSocket, DHT22, CCS811 y la llave de Nico AI; faltan el medidor de
+batería MAX17048 y la microSD.
 
 ```bash
 IoT/.venv/bin/python -m unittest discover -s IoT/tests -t IoT

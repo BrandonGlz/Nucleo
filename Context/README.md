@@ -62,4 +62,6 @@ crearán en `Docs/`, no aquí.
 - [Web](../FrontEnd/README.md)
 - [Mobile](../Mobile/README.md)
 - [IoT](../IoT/README.md)
+- [Landing](../Landing/README.md)
+- [Servidor](../deploy/README.md)
 - [Base de datos](../Database/README.md)

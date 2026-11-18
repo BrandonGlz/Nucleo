@@ -24,7 +24,7 @@
 
 **Frontend**
 
-- React 19.3.1 + Vite 8.3.5 — *Aceptada*. Stack solicitado, compilación verificada.
+- React 19.3.1 + Vite 8.3.8 — *Aceptada*. Stack solicitado, compilación verificada.
 - React Router 7 — *Aceptada*. Navegación entre módulos; las rutas y el menú salen del registro `src/features/index.js`.
 - JavaScript + JSX — *Aceptada*. Era la opción pedida; no había razón para TypeScript.
 - npm + `package-lock.json` — *Aceptada*. Reproducibilidad.
