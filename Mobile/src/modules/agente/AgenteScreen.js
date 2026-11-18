@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
+import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ReporteChat } from '../../components/ReporteChat'
@@ -14,6 +14,9 @@ import { planDe, respuestaRapida, siguientes } from './proceso'
 import { ComparativaChat, GraficaChat } from './Piezas'
 import { diaCorto, hora } from '../../utils/formato'
 import { font, marca } from '../../theme'
+
+// Cara de Nico (recorte redondo con fondo transparente) para el avatar del encabezado y el saludo.
+const CARA_NICO = require('../../../assets/nico-cara.png')
 
 // Tarjetas de inicio (como en la web). Quienes generan reportes también pueden pedírselos al agente.
 const SUGERENCIAS = [
@@ -203,7 +206,7 @@ export function AgenteScreen() {
         <View style={[s.zona, { paddingTop: inset.top + 16 }]}>
           <View style={s.fila12}>
             <View style={s.marca}>
-              <Icon name="sparkles" size={20} color={marca.verde} />
+              <Image source={CARA_NICO} style={s.cara} accessibilityIgnoresInvertColors />
             </View>
             <View style={{ flex: 1 }}>
               <T peso={700} size={22} lh={28} style={{ letterSpacing: -0.5 }}>
@@ -237,7 +240,7 @@ export function AgenteScreen() {
             <View style={{ flex: 1, justifyContent: 'center', gap: 14 }}>
               <View style={{ alignItems: 'center', gap: 6 }}>
                 <View style={s.insignia}>
-                  <Icon name="sparkles" size={24} color={marca.verde} />
+                  <Image source={CARA_NICO} style={s.cara} accessibilityIgnoresInvertColors />
                 </View>
                 <T peso={800} size={24} lh={30} style={{ textAlign: 'center', letterSpacing: -0.6 }}>
                   Hola, <T peso={800} size={24} color={c.success}>{usuario.nombre}</T>
@@ -431,10 +434,11 @@ function Pasos({ pasos }) {
 const s = StyleSheet.create({
   zona: { paddingHorizontal: 20, paddingBottom: 24, gap: 16 },
   fila12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  marca: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(43,196,122,0.14)' },
+  marca: { width: 44, height: 44, borderRadius: 22, padding: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(43,196,122,0.14)' },
+  cara: { width: '100%', height: '100%', borderRadius: 999 },
   hoja: { flex: 1, marginTop: -4, borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden' },
   nueva: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: marca.verde },
-  insignia: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: marca.tinta },
+  insignia: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: marca.tinta, borderWidth: 4, borderColor: 'rgba(43,196,122,0.22)' },
   rejilla: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
   celda: { width: '48.5%' },
   tarjeta: { gap: 6, padding: 12, borderRadius: 18, borderWidth: 1, minHeight: 112 },
