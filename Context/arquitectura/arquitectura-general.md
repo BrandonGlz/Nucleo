@@ -56,7 +56,7 @@ flowchart LR
     M -->|"2 · recibe y valida"| B["Backend Django<br/>escuchar_mqtt"]
     B -->|guarda la lectura| T[("TimescaleDB<br/>lecturas")]
     B -->|"3 · fuera de umbral"| A[("PostgreSQL<br/>alerta")]
-    B -->|correo al supervisor| G["Gmail SMTP"]
+    B -->|correo a los responsables| G["Gmail SMTP"]
     B -->|"4 · evento"| R[("Redis")]
     R -->|WebSocket /ws/panel/| W["Web React"]
     R -->|WebSocket /ws/panel/| P["App Android"]
@@ -83,7 +83,8 @@ flowchart LR
    el LED RGB y el buzzer según los umbrales y publica las mediciones por MQTT con TLS.
 2. El backend las recibe del broker, las valida y las guarda en TimescaleDB.
 3. Si una lectura sale de los límites de advertencia o de peligro de su dispositivo,
-   crea la alerta en PostgreSQL y avisa por correo al supervisor del área.
+   crea la alerta en PostgreSQL y avisa por correo a los responsables (supervisores del área,
+   administradores y operador asignado).
 4. El backend publica la alerta y los cambios de estado en Redis y llegan por WebSocket a
    la web y la app. Con la app cerrada, la alerta llega al teléfono por push (Expo y
    Firebase).
@@ -137,7 +138,8 @@ separada de la base transaccional y sin llaves foráneas entre ambas; `nucleo_te
 2. **Alerta:** cada lectura estabilizada se clasifica con el umbral activo de su
    dispositivo y variable. Si sale de los límites de advertencia o de peligro se crea, en
    una transacción de `nucleo_db`, la alerta (con una copia de la lectura) y una
-   notificación por responsable; el correo sale al supervisor del área.
+   notificación por responsable; el correo sale a los supervisores del área, los
+   administradores y el operador asignado.
 3. **Consulta:** web y móvil piden lecturas, tendencias, alertas y reportes a la
    API REST con su token; cada respuesta se limita a la organización y al alcance
    del rol.

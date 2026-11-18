@@ -161,10 +161,19 @@ class PushExpoTests(PruebaBase):
         with override_settings(NUCLEO_PUSH_HABILITADO=True):
             envios = services.destinatarios(self.e.dispositivo)
         canales = sorted((u.pk, c) for u, c, _ in envios)
+        # Correo a supervisor, administrador y operador; push solo a quien tiene teléfono.
         self.assertEqual(
-            canales, sorted([(self.e.supervisor.pk, "CORREO"), (self.e.supervisor.pk, "PUSH")])
+            canales,
+            sorted(
+                [
+                    (self.e.admin.pk, "CORREO"),
+                    (self.e.supervisor.pk, "CORREO"),
+                    (self.e.operador.pk, "CORREO"),
+                    (self.e.supervisor.pk, "PUSH"),
+                ]
+            ),
         )
         with mock.patch("apps.alertas.notificaciones._post_expo") as post:
             envios = services.destinatarios(self.e.dispositivo)
             self.assertEqual(post.call_count, 0)
-        self.assertEqual([c for _, c, _ in envios], ["CORREO"])
+        self.assertEqual([c for _, c, _ in envios], ["CORREO", "CORREO", "CORREO"])

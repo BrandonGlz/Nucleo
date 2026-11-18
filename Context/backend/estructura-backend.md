@@ -197,8 +197,9 @@ broker (`apps/mediciones/mqtt.py`, patrón Singleton). Por cada mensaje:
    mismo umbral y nivel no se crea otra; si una advertencia escala a peligro se crea
    una nueva. Si la lectura llegó rezagada (más de 10 minutos, `RETRASO_AVISO`), la
    alerta se registra con una observación y sin notificaciones.
-5. Reciben correo los supervisores del área; si no hay, los administradores. Con
-   `NUCLEO_PUSH_HABILITADO` también se envía push a los teléfonos registrados
+5. Reciben correo los responsables del dispositivo en su organización: los supervisores
+   de su área, los administradores y el operador asignado (solo usuarios activos). Con
+   `NUCLEO_PUSH_HABILITADO` también se envía push a sus teléfonos registrados
    (`apps/alertas/notificaciones.py` llama a la API de Expo y borra el teléfono si Expo
    responde `DeviceNotRegistered`; un fallo nunca interrumpe la ingesta).
 6. La alerta nueva y el cambio de estado del dispositivo se publican en el canal en vivo.

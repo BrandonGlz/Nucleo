@@ -206,12 +206,20 @@ class AlertasPorIngestaTests(PruebaBase):
         self.assertEqual(alerta.lectura_num, guardada.num)
         self.assertEqual(alerta.lectura_valor, Decimal("26.50"))
         self.assertEqual(alerta.lectura_fecha_hora, guardada.fecha_hora)
-        notificacion = Notificacion.objects.get()
-        self.assertEqual(notificacion.usuario, self.e.supervisor)
-        self.assertEqual(notificacion.canal, Notificacion.Canal.CORREO)
-        self.assertIsNone(notificacion.telefono_push)
-        self.assertEqual(notificacion.estado_envio, Notificacion.EstadoEnvio.ENVIADA)
-        self.assertEqual(mail.outbox[0].to, [self.e.supervisor.correo])
+        # Un correo por responsable: supervisor del área, administrador y operador.
+        notificaciones = Notificacion.objects.all()
+        self.assertEqual(
+            {n.usuario_id for n in notificaciones},
+            {self.e.supervisor.pk, self.e.admin.pk, self.e.operador.pk},
+        )
+        for notificacion in notificaciones:
+            self.assertEqual(notificacion.canal, Notificacion.Canal.CORREO)
+            self.assertIsNone(notificacion.telefono_push)
+            self.assertEqual(notificacion.estado_envio, Notificacion.EstadoEnvio.ENVIADA)
+        self.assertEqual(
+            sorted(c.to[0] for c in mail.outbox),
+            sorted([self.e.supervisor.correo, self.e.admin.correo, self.e.operador.correo]),
+        )
         self.assertIn("Advertencia", mail.outbox[0].subject)
 
     def test_peligro_por_encima_y_por_debajo(self):
@@ -256,10 +264,13 @@ class AlertasPorIngestaTests(PruebaBase):
                 tipo="POR_ENCIMA",
             )
 
-    def test_sin_supervisor_avisa_a_los_administradores(self):
+    def test_sin_supervisor_avisa_a_administradores_y_operador(self):
         self.e.supervisor.delete()
         self.enviar(40)
-        self.assertEqual(Notificacion.objects.get().usuario, self.e.admin)
+        self.assertEqual(
+            set(Notificacion.objects.values_list("usuario_id", flat=True)),
+            {self.e.admin.pk, self.e.operador.pk},
+        )
 
     def test_un_umbral_inactivo_no_genera_alertas(self):
         self.e.umbral_temp.activo = False
@@ -272,14 +283,17 @@ class AlertasPorIngestaTests(PruebaBase):
 
         with mock.patch("apps.alertas.notificaciones.send_mail", side_effect=OSError("smtp")):
             self.enviar(40)
-        self.assertEqual(Notificacion.objects.get().estado_envio, Notificacion.EstadoEnvio.FALLIDA)
+        estados = set(Notificacion.objects.values_list("estado_envio", flat=True))
+        self.assertEqual(estados, {Notificacion.EstadoEnvio.FALLIDA})
         self.assertEqual(Alerta.objects.count(), 1)
 
     def test_el_aviso_llega_en_menos_de_dos_minutos(self):
         self.enviar(40)
         alerta = Alerta.objects.get()
-        notificacion = Notificacion.objects.get()
-        self.assertLess(notificacion.fecha_envio - alerta.lectura_fecha_hora, timedelta(minutes=2))
+        for notificacion in Notificacion.objects.all():
+            self.assertLess(
+                notificacion.fecha_envio - alerta.lectura_fecha_hora, timedelta(minutes=2)
+            )
 
 
 class BateriaSinDatoTests(PruebaBase):
@@ -327,7 +341,7 @@ class LecturasRezagadasTests(PruebaBase):
     def test_alerta_de_hace_poco_si_avisa(self):
         self.enviar(40, hace=timedelta(minutes=3))
         self.assertIsNone(Alerta.objects.get().observaciones)
-        self.assertEqual(Notificacion.objects.count(), 1)
+        self.assertEqual(Notificacion.objects.count(), 3)  # supervisor, administrador y operador
 
     def test_un_mensaje_repetido_no_duplica_lecturas(self):
         fecha = (timezone.now() - timedelta(hours=1)).isoformat()

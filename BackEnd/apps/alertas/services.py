@@ -19,25 +19,33 @@ logger = logging.getLogger(__name__)
 def destinatarios(dispositivo):
     """Envíos de una alerta como tuplas ``(usuario, canal, telefono_push)``.
 
-    El correo va a los supervisores del área o, si no hay, a los administradores. Cuando el
-    canal push está habilitado, cada teléfono registrado de esos responsables y del
-    operador asignado recibe además una notificación push.
+    Reciben la alerta los responsables del dispositivo dentro de su organización: los
+    supervisores de su área, los administradores de la organización y el operador asignado
+    (solo usuarios activos). Cada uno recibe un correo y, cuando el canal push está
+    habilitado, una notificación en cada teléfono que tenga registrado.
     """
+    organizacion_id = dispositivo.area.organizacion_id
     base = Usuario.objects.filter(
-        organizacion_id=dispositivo.area.organizacion_id,
+        organizacion_id=organizacion_id,
         estado_usuario_id=roles.USUARIO_ACTIVO,
     )
-    responsables = list(base.filter(rol_id=roles.SUPERVISOR, area_id=dispositivo.area_id))
-    if not responsables:
-        responsables = list(base.filter(rol_id=roles.ADMIN))
+    responsables = {}
+    for usuario in base.filter(rol_id=roles.SUPERVISOR, area_id=dispositivo.area_id).order_by("pk"):
+        responsables.setdefault(usuario.pk, usuario)
+    for usuario in base.filter(rol_id=roles.ADMIN).order_by("pk"):
+        responsables.setdefault(usuario.pk, usuario)
+    operador = dispositivo.operador
+    if (
+        operador is not None
+        and operador.is_active
+        and operador.organizacion_id == organizacion_id
+        and operador.estado_usuario_id == roles.USUARIO_ACTIVO
+    ):
+        responsables.setdefault(operador.pk, operador)
 
-    envios = [(usuario, Notificacion.Canal.CORREO, None) for usuario in responsables]
+    envios = [(usuario, Notificacion.Canal.CORREO, None) for usuario in responsables.values()]
     if settings.NUCLEO_PUSH_HABILITADO:
-        con_push = {usuario.pk: usuario for usuario in responsables}
-        operador = dispositivo.operador
-        if operador is not None and operador.is_active:
-            con_push.setdefault(operador.pk, operador)
-        for usuario in con_push.values():
+        for usuario in responsables.values():
             envios.extend(
                 (usuario, Notificacion.Canal.PUSH, telefono)
                 for telefono in usuario.telefonos_push.all()
