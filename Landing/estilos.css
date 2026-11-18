@@ -771,3 +771,14 @@ html { scroll-padding-top: calc(var(--nav-alto) + 4px); }
 .zona--anillo { --x: 56%; --y: 41.5%; --w: 11.6%; --h: 19.5%; }
 .zona--zumbador { --x: 57.8%; --y: 66.4%; --w: 8%; --h: 13.6%; }
 .zona--usb { --x: 72.8%; --y: 48.2%; --w: 7.2%; --h: 14.3%; }
+/* Precio del Núcleo: ocupa el espacio libre bajo el título, no estira la burbuja de Nico */
+.cabecera .precio-nucleo { flex-direction: row; align-items: center; gap: 18px; max-width: 600px; padding: 14px 18px; }
+.cabecera .precio-nucleo[hidden] { display: none; }
+.cabecera .precio-nucleo strong { display: flex; flex-direction: column; flex: none; font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -.02em; color: var(--lima-texto); }
+.cabecera .precio-nucleo strong small { margin-top: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0; color: var(--texto-3); }
+.cabecera .precio-nucleo > span { padding-left: 18px; border-left: 1px solid var(--borde-2); }
+@media (max-width: 560px) {
+  .cabecera .precio-nucleo { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .cabecera .precio-nucleo > span { padding: 0; border: 0; }
+}
+#precioNucleoValor { font-size: inherit; color: inherit; line-height: inherit; }
