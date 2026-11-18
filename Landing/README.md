@@ -4,11 +4,10 @@
 Nico AI, con los pasos para integrarse y los planes. Nico la narra: cada sección abre con su
 explicación y un Nico guía flotante cambia de frase según la sección visible.
 
-Diseño: modo oscuro y claro (sigue al sistema; el botón del menú lo cambia y lo recuerda), con la
-regla 60/30/10 con los mismos tokens de color de la plataforma (`FrontEnd/src/design-system/estilos/colors.css`): neutros, verde Núcleo `#2BC47A` y sus tonos de acento. Cada sección
-está pensada para caber en una pantalla de escritorio, bento grids de 12 columnas, Nico en soft 3D (halo, sombra de
-contacto, flotación e inclinación con el puntero) y animaciones de entrada y salida con el scroll
-(clases `.anim` + `data-anim`, títulos `.titulo-partido`). Todo respeta «reducir movimiento».
+Diseño: modo oscuro y claro (sigue al sistema; el botón del menú lo cambia y lo recuerda) con los mismos
+tokens de color de la plataforma (`FrontEnd/src/design-system/estilos/colors.css`). Bento grids de 12 columnas,
+tipografía gigante y superficies en soft 3D (relieves suaves, sin brillos ni retículas). Las animaciones de
+entrada usan `.anim` + `data-anim` y `.titulo-partido`; todo respeta «reducir movimiento».
 
 Son archivos estáticos, sin build ni dependencias externas:
 

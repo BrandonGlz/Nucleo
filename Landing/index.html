@@ -97,48 +97,33 @@
 
     <!-- ===== Hero ===== -->
     <section class="hero" id="inicio" data-guia="¡Hola! Baja conmigo, te enseño todo Núcleo.">
-      <div class="malla" aria-hidden="true"></div>
-      <div class="contenedor hero__grid">
-        <div class="hero__texto">
-          <span class="codigo anim" data-anim="subir"><span class="punto-vivo"></span> NC-0501 · en línea · Nico AI activo</span>
-          <h1 class="titulo-partido">Tus espacios, medidos y <em>explicados</em> por Nico</h1>
-          <p class="hero__sub anim" data-anim="subir" style="--d:.35s">Núcleo mide la temperatura, la humedad y la calidad del aire, te avisa en cuanto algo se sale de rango y Nico AI te lo explica en palabras simples. Dispositivo, plataforma web y app móvil en un solo servicio.</p>
-          <div class="hero__ctas anim" data-anim="subir" style="--d:.45s">
-            <a class="btn btn--lima" href="#planes">Ver planes <svg class="ico"><use href="#i-flecha"/></svg></a>
-            <a class="btn btn--contorno" href="#nico">Conoce a Nico</a>
-          </div>
-          <dl class="hero__datos anim" data-anim="subir" style="--d:.55s">
-            <div><dt>Lecturas cada</dt><dd><span data-contar="60">60</span> s</dd></div>
-            <div><dt>Variables</dt><dd data-contar="3">3</dd></div>
-            <div><dt>Alertas</dt><dd>24/7</dd></div>
-          </dl>
-        </div>
-
-        <div class="hero__visual anim" data-anim="escala" style="--d:.2s">
-          <div class="portal">
-            <span class="portal__aro portal__aro--1" aria-hidden="true"></span>
-            <span class="portal__aro portal__aro--2" aria-hidden="true"></span>
-            <span class="portal__aro portal__aro--3" aria-hidden="true"></span>
-            <div class="portal__video">
-              <video autoplay muted loop playsinline preload="auto" poster="medios/video/hero-presentacion.webp" aria-label="Nico saluda rodeado de hojas y luces verdes">
-                <source src="medios/video/hero-presentacion.mp4" type="video/mp4">
-              </video>
+      <div class="contenedor">
+        <h1 class="titulo-partido">Tus espacios, <em>explicados.</em></h1>
+        <div class="bento bento--hero">
+          <article class="celda celda--video anim" data-anim="subir">
+            <video autoplay muted loop playsinline preload="auto" poster="medios/video/hero-presentacion.webp" aria-label="Nico saluda rodeado de hojas y luces verdes">
+              <source src="medios/video/hero-presentacion.mp4" type="video/mp4">
+            </video>
+            <div class="burbuja--hero" role="status" aria-live="polite">
+              <b>Nico</b>
+              <span id="saludo">¡Hola! Soy Nico, el guía de Núcleo.</span>
             </div>
-            <div class="hud hud--temp" aria-hidden="true"><svg class="ico"><use href="#i-temp"/></svg><span><small>Temperatura</small><b>22.4 °C</b></span></div>
-            <div class="hud hud--hum" aria-hidden="true"><svg class="ico"><use href="#i-gota"/></svg><span><small>Humedad</small><b>48 %HR</b></span></div>
-            <div class="hud hud--aire" aria-hidden="true"><svg class="ico"><use href="#i-aire"/></svg><span><small>Aire</small><b>424 ppm</b></span></div>
-          </div>
-          <div class="burbuja burbuja--hero" role="status" aria-live="polite">
-            <b>Nico</b>
-            <span id="saludo">¡Hola! Soy Nico, el guía de Núcleo.</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="cinta" aria-hidden="true">
-        <div class="cinta__pista">
-          <span>NC-0501 · Almacén <b>22.4 °C</b></span><span>NC-0502 · Almacén <b>67.5 %HR</b></span><span>NC-0288 · Guardería <b>21.1 °C</b></span><span>NC-0417 · Laboratorio <b>612 ppm</b></span><span>NC-0503 · Moldeo <b>48.4 %HR</b></span><span>NC-0290 · Guardería <b>20.8 °C</b></span><span>NC-0301 · Laboratorio <b>424 ppm</b></span><span>NC-0640 · Oficina <b>23.0 °C</b></span>
-          <span>NC-0501 · Almacén <b>22.4 °C</b></span><span>NC-0502 · Almacén <b>67.5 %HR</b></span><span>NC-0288 · Guardería <b>21.1 °C</b></span><span>NC-0417 · Laboratorio <b>612 ppm</b></span><span>NC-0503 · Moldeo <b>48.4 %HR</b></span><span>NC-0290 · Guardería <b>20.8 °C</b></span><span>NC-0301 · Laboratorio <b>424 ppm</b></span><span>NC-0640 · Oficina <b>23.0 °C</b></span>
+          </article>
+          <article class="celda celda--intro anim" data-anim="subir" style="--d:.1s">
+            <p class="hero__sub">Núcleo mide la temperatura, la humedad y la calidad del aire, te avisa en cuanto algo se sale de rango y Nico AI te lo explica en palabras simples.</p>
+            <div class="hero__ctas">
+              <a class="btn btn--lima" href="#planes">Ver planes <svg class="ico"><use href="#i-flecha"/></svg></a>
+              <a class="btn btn--contorno" href="#nico">Conoce a Nico</a>
+            </div>
+          </article>
+          <article class="celda celda--numero celda--verde anim" data-anim="subir" style="--d:.2s">
+            <strong class="numero"><span data-contar="60">60</span> s</strong>
+            <span>entre cada lectura</span>
+          </article>
+          <article class="celda celda--numero anim" data-anim="subir" style="--d:.3s">
+            <strong class="numero">24/7</strong>
+            <span>alertas al correo y al celular</span>
+          </article>
         </div>
       </div>
     </section>
@@ -148,7 +133,7 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">01 · Conoce a Nico</span>
+            <span class="codigo anim" data-anim="subir">Conoce a Nico</span>
             <h2 class="titulo-partido">Un guía que vive dentro de cada <em>Núcleo</em></h2>
           </div>
           <p class="cabecera__lead anim" data-anim="subir" style="--d:.2s">Nico es la cara de Núcleo: está en el dispositivo, en la web y en la app, y convierte miles de lecturas en respuestas claras.</p>
@@ -157,7 +142,7 @@
         <div class="bento bento--nico">
           <article class="celda celda--nico anim" data-anim="escala">
             <div class="soft3d" data-inclinar>
-              <span class="soft3d__halo" aria-hidden="true"></span>
+              
               <img class="soft3d__img" src="medios/nico/conoce-saluda.webp" alt="Nico, la mascota verde de Núcleo, saludando" width="663" height="960" loading="lazy">
               <span class="soft3d__piso" aria-hidden="true"></span>
             </div>
@@ -193,11 +178,11 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">02 · Cómo funciona</span>
+            <span class="codigo anim" data-anim="subir">Cómo funciona</span>
             <h2 class="titulo-partido">Del sensor a tu pantalla <em>en segundos</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
-            <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/funciona-senala.webp" alt="" width="511" height="640" loading="lazy"></div>
+            <div class="narra__nico soft3d soft3d--chico"><img class="soft3d__img" src="medios/nico/funciona-senala.webp" alt="" width="511" height="640" loading="lazy"></div>
             <p><b>Nico</b>El dispositivo mide, la lectura viaja cifrada, tú la ves en vivo y yo te ayudo a entenderla.</p>
           </div>
         </header>
@@ -226,11 +211,11 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">03 · Plataforma web</span>
+            <span class="codigo anim" data-anim="subir">Plataforma web</span>
             <h2 class="titulo-partido">Todo tu monitoreo en <em>un solo tablero</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
-            <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/plataforma-holograma.webp" alt="" width="691" height="640" loading="lazy"></div>
+            <div class="narra__nico soft3d soft3d--chico"><img class="soft3d__img" src="medios/nico/plataforma-holograma.webp" alt="" width="691" height="640" loading="lazy"></div>
             <p><b>Nico</b>Este es mi tablero. Toca las pestañas: así se ve Núcleo por dentro, con datos de una empresa de prueba.</p>
           </div>
         </header>
@@ -268,11 +253,11 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">04 · App móvil</span>
+            <span class="codigo anim" data-anim="subir">App móvil</span>
             <h2 class="titulo-partido">Tus espacios, <em>en el bolsillo</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
-            <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/app-pulgar.webp" alt="" width="423" height="640" loading="lazy"></div>
+            <div class="narra__nico soft3d soft3d--chico"><img class="soft3d__img" src="medios/nico/app-pulgar.webp" alt="" width="423" height="640" loading="lazy"></div>
             <p><b>Nico</b>¿Saliste de la oficina? Yo sigo vigilando. Si algo se sale de rango te mando una notificación y desde ahí mismo la atiendes.</p>
           </div>
         </header>
@@ -305,7 +290,7 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">05 · El dispositivo</span>
+            <span class="codigo anim" data-anim="subir">El dispositivo</span>
             <h2 class="titulo-partido">Núcleo: el sensor que hace <em>todo el trabajo</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
@@ -359,11 +344,11 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">06 · Agente de IA</span>
+            <span class="codigo anim" data-anim="subir">Agente de IA</span>
             <h2 class="titulo-partido">Nico AI responde con <em>tus datos reales</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
-            <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/ai-responde.webp" alt="" width="508" height="640" loading="lazy"></div>
+            <div class="narra__nico soft3d soft3d--chico"><img class="soft3d__img" src="medios/nico/ai-responde.webp" alt="" width="508" height="640" loading="lazy"></div>
             <p><b>Nico</b>Yo consulto las cifras en el sistema y te las explico. Nunca invento un número: si no lo sé, te lo digo.</p>
           </div>
         </header>
@@ -400,7 +385,7 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">07 · Funciones</span>
+            <span class="codigo anim" data-anim="subir">Funciones</span>
             <h2 class="titulo-partido">Hecho para equipos que <em>no pueden fallar</em></h2>
           </div>
           <p class="cabecera__lead anim" data-anim="subir" style="--d:.2s">Cada lectura fuera de rango se vuelve una alerta con dueño, seguimiento y evidencia.</p>
@@ -431,26 +416,26 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">08 · Cómo empezar</span>
+            <span class="codigo anim" data-anim="subir">Cómo empezar</span>
             <h2 class="titulo-partido">Intégrate a Núcleo en <em>tres pasos</em></h2>
           </div>
           <p class="cabecera__lead anim" data-anim="subir" style="--d:.2s">Sin instaladores ni cableado: en unos minutos tu primer espacio ya está midiendo.</p>
         </header>
         <ol class="pasos">
           <li class="paso anim" data-anim="subir">
-            <figure class="paso__img"><img src="medios/pasos/paso-1-coloca.webp" alt="Nico coloca un dispositivo Núcleo sobre una mesa" width="960" height="750" loading="lazy"><span class="paso__num">01</span></figure>
+            <figure class="paso__img"><img src="medios/pasos/paso-1-coloca.webp" alt="Nico coloca un dispositivo Núcleo sobre una mesa" width="960" height="750" loading="lazy"><span class="paso__num">1</span></figure>
             <h3>Coloca tu dispositivo</h3>
             <p>Ponlo en el área que quieres vigilar, conéctalo por USB-C y únelo a tu Wi-Fi. Regístralo en la plataforma con el código de su pantalla.</p>
             <p class="paso__nico"><b>Nico</b>Lejos del sol directo y de las salidas de aire, porfa.</p>
           </li>
           <li class="paso anim" data-anim="subir" style="--d:.12s">
-            <figure class="paso__img"><img src="medios/pasos/paso-2-recibe.webp" alt="Nico envía datos a un celular y a una laptop" width="960" height="750" loading="lazy"><span class="paso__num">02</span></figure>
+            <figure class="paso__img"><img src="medios/pasos/paso-2-recibe.webp" alt="Nico envía datos a un celular y a una laptop" width="960" height="750" loading="lazy"><span class="paso__num">2</span></figure>
             <h3>Recibe los datos</h3>
             <p>Cada minuto llegan temperatura, humedad y aire a la web y a la app. Ajusta umbrales y elige quién recibe cada alerta.</p>
             <p class="paso__nico"><b>Nico</b>Si algo se sale de rango, te aviso al momento.</p>
           </li>
           <li class="paso anim" data-anim="subir" style="--d:.24s">
-            <figure class="paso__img"><img src="medios/pasos/paso-3-actua.webp" alt="Nico señala un consejo en la pantalla de un celular" width="960" height="750" loading="lazy"><span class="paso__num">03</span></figure>
+            <figure class="paso__img"><img src="medios/pasos/paso-3-actua.webp" alt="Nico señala un consejo en la pantalla de un celular" width="960" height="750" loading="lazy"><span class="paso__num">3</span></figure>
             <h3>Actúa con Nico AI</h3>
             <p>Atiende alertas, pide resúmenes o reportes y decide con las cifras reales de tus espacios.</p>
             <p class="paso__nico"><b>Nico</b>Pregúntame como se lo dirías a un compañero.</p>
@@ -464,7 +449,7 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">09 · Planes</span>
+            <span class="codigo anim" data-anim="subir">Planes</span>
             <h2 class="titulo-partido">Elige el plan para <em>tu operación</em></h2>
             <div class="periodo anim" data-anim="subir" role="group" aria-label="Periodo de pago">
               <button class="periodo__op" aria-pressed="true" data-periodo="mes">Mensual</button>
@@ -476,7 +461,7 @@
             </div>
           </div>
           <div class="narra anim" data-anim="der">
-            <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/planes-celebra.webp" alt="" width="540" height="640" loading="lazy"></div>
+            <div class="narra__nico soft3d soft3d--chico"><img class="soft3d__img" src="medios/nico/planes-celebra.webp" alt="" width="540" height="640" loading="lazy"></div>
             <div class="narra__cuerpo">
               <p><b>Nico</b>Los planes son del servicio y <strong>no incluyen el dispositivo Núcleo</strong>: cambian por cuántos Núcleos puedes dar de alta, cuánto guardas y cuántas preguntas me haces.</p>
               <button class="btn btn--contorno btn--chico" id="precioBtn" aria-expanded="false" aria-controls="precioNucleo">¿Cuánto vale un Núcleo? <svg class="ico"><use href="#i-chip"/></svg></button>
@@ -498,7 +483,7 @@
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">10 · Compara</span>
+            <span class="codigo anim" data-anim="subir">Compara</span>
             <h2 class="titulo-partido">Todo lo que incluye <em>cada plan</em></h2>
           </div>
           <p class="cabecera__lead anim" data-anim="subir" style="--d:.2s">Los mismos límites de las tarjetas, lado a lado, y el plan Empresa para operaciones más grandes.</p>
@@ -529,11 +514,11 @@
     <section class="seccion" id="preguntas" data-guia="Estas son las que más me hacen.">
       <div class="contenedor preguntas">
         <div class="preguntas__nico anim" data-anim="izq">
-          <div class="soft3d" data-inclinar><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/preguntas-saluda.webp" alt="" width="446" height="640" loading="lazy"><span class="soft3d__piso" aria-hidden="true"></span></div>
+          <div class="soft3d" data-inclinar><img class="soft3d__img" src="medios/nico/preguntas-saluda.webp" alt="" width="446" height="640" loading="lazy"><span class="soft3d__piso" aria-hidden="true"></span></div>
           <p class="narra__solo"><b>Nico</b>Estas son las preguntas que más me hacen.</p>
         </div>
         <div>
-          <span class="codigo anim" data-anim="subir">11 · Preguntas frecuentes</span>
+          <span class="codigo anim" data-anim="subir">Preguntas frecuentes</span>
           <h2 class="titulo-partido">Lo que más <em>me preguntan</em></h2>
           <div class="lista-preguntas">
             <details class="pregunta anim" data-anim="subir"><summary>¿Qué pasa si se va el internet?</summary><p>El Núcleo sigue midiendo, guarda las lecturas con su hora y las envía al volver la conexión. Mientras tanto, la luz y el zumbador avisan en el lugar con el último umbral que recibió.</p></details>
@@ -549,22 +534,17 @@
 
     <!-- ===== Cierre ===== -->
     <section class="cierre" data-guia="¡Te espero dentro!">
-      <div class="malla" aria-hidden="true"></div>
-      <div class="contenedor cierre__in">
-        <div class="portal portal--chico anim" data-anim="escala">
-          <span class="portal__aro portal__aro--1" aria-hidden="true"></span>
-          <span class="portal__aro portal__aro--2" aria-hidden="true"></span>
-          <div class="portal__video">
-            <img src="medios/escenas/cierre-aire.webp" alt="Nico celebra junto a un dispositivo Núcleo entre nubes y árboles" width="680" height="680" loading="lazy">
+      <div class="contenedor">
+        <div class="cierre__tarjeta">
+          <div class="cierre__texto">
+            <h2 class="titulo-partido">¿Listo para que Nico cuide tus espacios?</h2>
+            <p class="anim" data-anim="subir" style="--d:.2s">Escríbenos y te ayudamos a conectar tu primer Núcleo. Si ya tienes cuenta, entra a la plataforma.</p>
+            <div class="hero__ctas anim" data-anim="subir" style="--d:.3s">
+              <a class="btn btn--oscuro" data-contacto="Solicitud de demo" href="#">Solicitar una demo <svg class="ico"><use href="#i-correo"/></svg></a>
+              <a class="btn btn--linea" href="https://bynucleo.com">Entrar a la plataforma <svg class="ico"><use href="#i-flecha"/></svg></a>
+            </div>
           </div>
-        </div>
-        <div class="cierre__texto">
-          <h2 class="titulo-partido">¿Listo para que Nico <em>cuide tus espacios</em>?</h2>
-          <p class="anim" data-anim="subir" style="--d:.2s">Escríbenos y te ayudamos a conectar tu primer Núcleo. Si ya tienes cuenta, entra a la plataforma.</p>
-          <div class="hero__ctas anim" data-anim="subir" style="--d:.3s">
-            <a class="btn btn--lima" data-contacto="Solicitud de demo" href="#">Solicitar una demo <svg class="ico"><use href="#i-correo"/></svg></a>
-            <a class="btn btn--contorno" href="https://bynucleo.com">Entrar a la plataforma <svg class="ico"><use href="#i-flecha"/></svg></a>
-          </div>
+          <figure class="cierre__imagen anim" data-anim="subir"><img src="medios/escenas/cierre-aire.webp" alt="Nico celebra junto a un dispositivo Núcleo entre nubes y árboles" width="680" height="680" loading="lazy"></figure>
         </div>
       </div>
     </section>
@@ -583,6 +563,7 @@
       </nav>
       <small>© <span id="anio">2026</span> Núcleo · Monitoreo ambiental IoT</small>
     </div>
+    <div class="pie__marca" aria-hidden="true">núcleo</div>
   </footer>
 
   <!-- Nico guía -->
