@@ -292,7 +292,7 @@ const SALUDOS = [
 ]
 const saludo = $('#saludo')
 if (reducido) {
-  saludo.textContent = SALUDOS.join(' ')
+  saludo.textContent = SALUDOS[0]
   saludo.classList.add('listo')
 } else {
   let i = 0

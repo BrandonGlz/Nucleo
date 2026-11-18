@@ -98,31 +98,37 @@
     <!-- ===== Hero ===== -->
     <section class="hero" id="inicio" data-guia="¡Hola! Baja conmigo, te enseño todo Núcleo.">
       <div class="contenedor">
-        <h1 class="titulo-partido">Tus espacios, <em>explicados.</em></h1>
-        <div class="bento bento--hero">
-          <article class="celda celda--video anim" data-anim="subir">
-            <video autoplay muted loop playsinline preload="auto" poster="medios/video/hero-presentacion.webp" aria-label="Nico saluda rodeado de hojas y luces verdes">
-              <source src="medios/video/hero-presentacion.mp4" type="video/mp4">
-            </video>
+        <div class="escenario">
+          <div class="escenario__texto">
+            <h1 class="titulo-partido">Tus espacios, <em>explicados.</em></h1>
+            <p class="hero__sub anim" data-anim="subir" style="--d:.15s">Núcleo mide la temperatura, la humedad y la calidad del aire. Nico te avisa cuando algo se sale de rango y te lo explica en palabras simples.</p>
+            <div class="hero__ctas anim" data-anim="subir" style="--d:.25s">
+              <a class="btn btn--lima" href="#planes">Ver planes <svg class="ico"><use href="#i-flecha"/></svg></a>
+              <a class="btn btn--contorno" href="#nico">Conoce a Nico</a>
+            </div>
+          </div>
+          <div class="escenario__nico soft3d" data-inclinar>
+            <span class="escenario__disco" aria-hidden="true"></span>
+            <span class="soft3d__piso" aria-hidden="true"></span>
+            <img class="soft3d__img" src="medios/nico/conoce-saluda.webp" alt="Nico, la mascota de Núcleo, saluda con la mano" width="663" height="960" fetchpriority="high">
             <div class="burbuja--hero" role="status" aria-live="polite">
               <b>Nico</b>
               <span id="saludo">¡Hola! Soy Nico, el guía de Núcleo.</span>
             </div>
-          </article>
-          <article class="celda celda--intro anim" data-anim="subir" style="--d:.1s">
-            <p class="hero__sub">Núcleo mide la temperatura, la humedad y la calidad del aire, te avisa en cuanto algo se sale de rango y Nico AI te lo explica en palabras simples.</p>
-            <div class="hero__ctas">
-              <a class="btn btn--lima" href="#planes">Ver planes <svg class="ico"><use href="#i-flecha"/></svg></a>
-              <a class="btn btn--contorno" href="#nico">Conoce a Nico</a>
-            </div>
-          </article>
-          <article class="celda celda--numero celda--verde anim" data-anim="subir" style="--d:.2s">
+          </div>
+        </div>
+        <div class="bento bento--hero">
+          <article class="celda celda--numero celda--verde anim" data-anim="subir" style="--d:.1s">
             <strong class="numero"><span data-contar="60">60</span> s</strong>
             <span>entre cada lectura</span>
           </article>
-          <article class="celda celda--numero anim" data-anim="subir" style="--d:.3s">
+          <article class="celda celda--numero anim" data-anim="subir" style="--d:.2s">
             <strong class="numero">24/7</strong>
             <span>alertas al correo y al celular</span>
+          </article>
+          <article class="celda celda--numero anim" data-anim="subir" style="--d:.3s">
+            <strong class="numero">3</strong>
+            <span>variables: temperatura, humedad y aire</span>
           </article>
         </div>
       </div>
@@ -143,7 +149,7 @@
           <article class="celda celda--nico anim" data-anim="escala">
             <div class="soft3d" data-inclinar>
               
-              <img class="soft3d__img" src="medios/nico/conoce-saluda.webp" alt="Nico, la mascota verde de Núcleo, saludando" width="663" height="960" loading="lazy">
+              <img class="soft3d__img" src="medios/nico/funciona-senala.webp" alt="Nico, la mascota verde de Núcleo, saludando" width="511" height="640" loading="lazy">
               <span class="soft3d__piso" aria-hidden="true"></span>
             </div>
             <div class="nico-dice">

@@ -25,7 +25,7 @@ Landing/
     ├── escenas/     calidad-aire (sección del dispositivo) y cierre-aire (llamado final)
     ├── pasos/       paso-1-coloca, paso-2-recibe y paso-3-actua (de «Intégrate a Núcleo en tres pasos»)
     ├── capturas/    Capturas reales de la web y la app, en claro/ y oscuro/ (empresa demo de sembrar_demo)
-    ├── video/       hero-presentacion: video de la portada y su cuadro de espera
+    ├── video/       hero-presentacion: video de Nico y el cuadro que se muestra al compartir la página
     └── dispositivo/ Dibujo y cuatro vistas del dispositivo (de Docs/nucleo3d)
 ```
 
