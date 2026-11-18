@@ -137,16 +137,6 @@ dispositivo: sin el ESP conectado, ese agente no usa la IA. Conexiones y firmwar
 [iot/firmware-y-hardware.md](Context/iot/firmware-y-hardware.md) e
 [iot/conexiones.md](Context/iot/conexiones.md).
 
-## Prototipo final esperado (beta)
-
-Propuesta de cómo se vería Núcleo ya como producto, en una carcasa impresa en 3D (versión beta,
-medidas aproximadas).
-
-![Prototipo beta de Núcleo](Docs/nucleo3d/portada.svg)
-
-Las vistas exteriores e interiores, el esqueleto vacío, el cableado completo, las piezas una por
-una y los planos con medidas en centímetros están en [Docs/nucleo3d](Docs/nucleo3d/README.md).
-
 <!-- avance:inicio (generado con Docs/progreso/generar.py) -->
 ## Avance contra el SRS
 
@@ -253,3 +243,13 @@ La versión actual del proyecto es **0.9.0**. Cada versión marca un avance real
 </picture>
 
 <!-- avance:fin -->
+
+## Prototipo final esperado (beta)
+
+Propuesta de cómo se vería Núcleo ya como producto, en una carcasa impresa en 3D (versión beta,
+medidas aproximadas).
+
+![Prototipo beta de Núcleo](Docs/nucleo3d/portada.svg)
+
+Las vistas exteriores e interiores, el esqueleto vacío, el cableado completo, las piezas una por
+una y los planos con medidas en centímetros están en [Docs/nucleo3d](Docs/nucleo3d/README.md).

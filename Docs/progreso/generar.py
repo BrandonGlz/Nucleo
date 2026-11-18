@@ -221,8 +221,10 @@ def main():
         (CARPETA / f"versiones-{tema}.svg").write_text(diagrama_versiones(t), encoding="utf-8")
     actual = README.read_text(encoding="utf-8")
     if "<!-- avance:inicio" in actual:
-        actual = actual[:actual.index("<!-- avance:inicio")].rstrip() + "\n"
-    README.write_text(actual.rstrip() + "\n\n" + bloque_readme(), encoding="utf-8")
+        fin = "<!-- avance:fin -->"
+        actual = actual[:actual.index("<!-- avance:inicio")] + actual[actual.index(fin) + len(fin):].lstrip()
+    prototipo = actual.index("## Prototipo final esperado")
+    README.write_text(actual[:prototipo] + bloque_readme() + "\n" + actual[prototipo:].rstrip() + "\n", encoding="utf-8")
     c = cuenta(CRITERIOS)
     print(len(CRITERIOS), c, [(v[0], acumulado(v[0]), porcentaje(acumulado(v[0]), len(CRITERIOS))) for v in VERSIONES])
 
