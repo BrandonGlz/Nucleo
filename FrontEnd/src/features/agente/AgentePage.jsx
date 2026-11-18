@@ -30,6 +30,7 @@ import { filtrar, normalizar, resaltar } from './sugerenciasEscritura'
 import { aplicar, interpretar, plantillas } from './edicion'
 import { Archivos, Comparativa, Edicion, ElegirPlantilla, GraficaChat } from './Piezas'
 import { periodo } from '../../utils/formato'
+import caraNico from '../../assets/nico/nico-cara.webp'
 
 const SUGERENCIAS = [
   { icono: 'droplets', titulo: 'Picos de humedad', texto: '¿A qué hora hubo picos de humedad esta semana en Sala limpia?' },
@@ -44,11 +45,11 @@ const ROLES_REPORTE = ['ADMIN', 'SUPER', 'ANALISTA']
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
 const sinMovimiento = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// Marca del agente: el brote de Núcleo dentro de un círculo; gira mientras piensa.
+// Marca del agente: la cara de Nico dentro de un círculo; un anillo gira alrededor mientras piensa.
 function Marca({ pensando, grande, llega }) {
   return (
     <span className={`ui-ia-marca${pensando ? ' is-pensando' : ''}${grande ? ' ui-ia-marca--grande' : ''}${llega ? ' is-llega' : ''}`} aria-hidden>
-      <Icon name="sparkles" size={grande ? 28 : 16} />
+      <img src={caraNico} alt="" draggable={false} />
     </span>
   )
 }
