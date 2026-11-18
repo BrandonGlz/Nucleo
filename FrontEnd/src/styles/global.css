@@ -555,13 +555,13 @@ button.ui-menuitem:hover {
   transform: rotate(-10deg);
 }
 /* Nico asomado en soft 3D: su borde recortado queda en el borde del panel, que lo tapa.
-   Halo verde detrás, sombras en capas con luz de borde lima y una flotación suave. */
+   Halo verde detrás, sombra suave y una flotación lenta. */
 .acceso__anillo::before {
   content: '';
   position: absolute;
   inset: 12%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(43, 196, 122, 0.32), rgba(43, 196, 122, 0.08) 60%, transparent);
+  background: radial-gradient(closest-side, rgba(43, 196, 122, 0.22), rgba(43, 196, 122, 0.06) 60%, transparent);
   filter: blur(30px);
   pointer-events: none;
 }
@@ -572,11 +572,7 @@ button.ui-menuitem:hover {
   height: 84%;
   width: auto;
   transform: translateY(-50%);
-  filter:
-    drop-shadow(-1px -1px 0 rgba(214, 245, 120, 0.35))
-    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35))
-    drop-shadow(0 22px 30px rgba(0, 0, 0, 0.5))
-    drop-shadow(0 0 34px rgba(43, 196, 122, 0.28));
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 18px rgba(43, 196, 122, 0.14));
   animation:
     acceso-nico-asoma 0.9s cubic-bezier(0.2, 0.75, 0.2, 1) both,
     acceso-nico-flota 6s ease-in-out 0.9s infinite;
