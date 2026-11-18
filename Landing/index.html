@@ -301,7 +301,7 @@
     </section>
 
     <!-- ===== 05 · Dispositivo ===== -->
-    <section class="seccion" id="dispositivo" data-guia="Toca una vista para verme de cerca.">
+    <section class="seccion" id="dispositivo" data-guia="Toca una parte y te digo qué hace.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
@@ -310,18 +310,26 @@
           </div>
           <div class="narra anim" data-anim="der">
             <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/sensor.webp" alt="" width="230" height="260" loading="lazy"></div>
-            <p><b>Nico</b>Este es mi cuerpo: mide, muestra la lectura en su pantalla y avisa con luz y sonido aunque no haya internet.</p>
+            <p><b>Nico</b>Este es mi cuerpo. Toca cualquier parte del dibujo y te cuento para qué sirve.</p>
           </div>
         </header>
 
         <div class="bento bento--equipo">
           <article class="celda celda--dibujo anim" data-anim="escala">
             <div class="dibujo">
-              <img src="medios/dispositivo/portada.svg" alt="Dibujo en perspectiva del dispositivo Núcleo con pantalla, anillo de luz y rejilla de sensores" width="900" height="560" loading="lazy">
+              <div class="lienzo">
+                <img src="medios/dispositivo/portada.svg" alt="Dibujo en perspectiva del dispositivo Núcleo con pantalla, anillo de luz y rejilla de sensores" width="900" height="560" loading="lazy">
+                <button class="zona zona--camara" data-parte="camara" data-titulo="Cámara de sensores" data-info="DHT22 (temperatura y humedad) y CCS811 (eCO₂ y TVOC), separada del cuerpo para que el calor del ESP32 no altere la lectura." aria-label="Cámara de sensores"></button>
+                <button class="zona zona--pantalla" data-parte="pantalla" data-titulo="Pantalla OLED" data-info="0.96 pulgadas: muestra el código del equipo, la red y la última lectura sin abrir la app." aria-label="Pantalla OLED"></button>
+                <button class="zona zona--anillo" data-parte="anillo" data-titulo="Anillo de luz" data-info="Verde normal, amarillo advertencia y rojo peligro. Avisa en el lugar aunque no haya internet." aria-label="Anillo de luz"></button>
+                <button class="zona zona--zumbador" data-parte="zumbador" data-titulo="Zumbador" data-info="Suena a pulsos cuando una lectura entra en peligro." aria-label="Zumbador"></button>
+                <button class="zona zona--usb" data-parte="usb" data-titulo="USB-C y batería" data-info="Se alimenta por USB-C y su batería LiPo de 1000 mAh lo mantiene midiendo durante un corte de luz." aria-label="USB-C y batería"></button>
+              </div>
             </div>
             <ul class="partes" aria-label="Partes del dispositivo">
-              <li>Cámara de sensores</li><li>Pantalla OLED</li><li>Anillo de luz</li><li>Zumbador</li><li>USB-C y batería</li>
+              <li><button class="parte" data-parte="camara" aria-pressed="false">Cámara de sensores</button></li><li><button class="parte" data-parte="pantalla" aria-pressed="false">Pantalla OLED</button></li><li><button class="parte" data-parte="anillo" aria-pressed="false">Anillo de luz</button></li><li><button class="parte" data-parte="zumbador" aria-pressed="false">Zumbador</button></li><li><button class="parte" data-parte="usb" aria-pressed="false">USB-C y batería</button></li>
             </ul>
+            <p class="parte-info" id="parteInfo" aria-live="polite"><b>Toca una parte del dispositivo</b> y te digo para qué sirve.</p>
           </article>
           <article class="celda celda--vistas anim" data-anim="subir" style="--d:.2s">
             <div class="vistas__cab"><h3>Las cuatro vistas</h3><span class="codigo">Toca para ampliar</span></div>
@@ -465,7 +473,14 @@
           </div>
           <div class="narra anim" data-anim="der">
             <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/senala.webp" alt="" width="230" height="260" loading="lazy"></div>
-            <p><b>Nico</b>Los planes cambian por cuántos Núcleos conectas, cuánto guardas y cuántas preguntas me haces al día y por hora.</p>
+            <div class="narra__cuerpo">
+              <p><b>Nico</b>Los planes son del servicio y <strong>no incluyen el dispositivo Núcleo</strong>: cambian por cuántos Núcleos puedes dar de alta, cuánto guardas y cuántas preguntas me haces.</p>
+              <button class="btn btn--contorno btn--chico" id="precioBtn" aria-expanded="false" aria-controls="precioNucleo">¿Cuánto vale un Núcleo? <svg class="ico"><use href="#i-chip"/></svg></button>
+              <div class="precio-nucleo" id="precioNucleo" hidden>
+                <strong><span id="precioNucleoValor"></span><small> MXN por Núcleo</small></strong>
+                <span>Pago único por equipo, aparte del plan. Incluye ESP32-S3, sensores DHT22 y CCS811, pantalla, anillo de luz, zumbador, batería y carcasa.</span>
+              </div>
+            </div>
           </div>
         </header>
 

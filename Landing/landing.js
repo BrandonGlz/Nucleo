@@ -6,7 +6,7 @@
 // Precios mensuales en MXN sin IVA; el anual aplica DESCUENTO_ANUAL.
 const CORREO_CONTACTO = 'nucleo.avisos@gmail.com'
 const DESCUENTO_ANUAL = 0.2
-const PRECIO_EQUIPO = 1450
+const PRECIO_EQUIPO = 1600
 const PLANES = [
   {
     nombre: 'Semilla', desc: 'Para probar Núcleo en un espacio.', precio: 0, cta: 'Pedir acceso gratis',
@@ -105,6 +105,12 @@ $('#tablaPlanes').innerHTML = `
   <thead><tr><th scope="col">Incluye</th>${PLANES.map((p) => `<th scope="col">${p.nombre}</th>`).join('')}<th scope="col">Empresa</th></tr></thead>
   <tbody>${COMPARAR.map(([etq, fn, emp]) => `<tr><th scope="row">${etq}</th>${PLANES.map((p) => celda(fn(p))).join('')}${celda(emp)}</tr>`).join('')}</tbody>`
 $('#precioEquipo').textContent = pesos(PRECIO_EQUIPO) + ' MXN'
+$('#precioNucleoValor').textContent = pesos(PRECIO_EQUIPO)
+$('#precioBtn').addEventListener('click', (e) => {
+  const abierto = e.currentTarget.getAttribute('aria-expanded') === 'true'
+  e.currentTarget.setAttribute('aria-expanded', String(!abierto))
+  $('#precioNucleo').hidden = abierto
+})
 $$('.periodo__op').forEach((b) => b.addEventListener('click', () => {
   periodo = b.dataset.periodo
   $$('.periodo__op').forEach((o) => o.setAttribute('aria-pressed', String(o === b)))
@@ -367,15 +373,19 @@ if (!reducido) {
   }, { threshold: 0.35 }).observe($('#vista'))
 }
 
-// ---------- Puntos del dispositivo ----------
-const puntos = $$('.punto')
-puntos.forEach((p) => {
-  p.setAttribute('aria-pressed', 'false')
-  p.addEventListener('click', () => {
-    puntos.forEach((q) => q.setAttribute('aria-pressed', String(q === p)))
-    $('#puntoTitulo').textContent = p.dataset.titulo
-    $('#puntoInfo').textContent = p.dataset.punto
-  })
+// ---------- Partes del dispositivo: tocar el dibujo o la etiqueta explica su función ----------
+const zonas = $$('.zona')
+const elegirParte = (clave) => {
+  const z = zonas.find((q) => q.dataset.parte === clave)
+  $$('.zona, .parte').forEach((q) => q.setAttribute('aria-pressed', String(q.dataset.parte === clave)))
+  const info = $('#parteInfo')
+  info.innerHTML = ''
+  const b = document.createElement('b'); b.textContent = z.dataset.titulo
+  info.append(b, ' ' + z.dataset.info)
+}
+$$('.zona, .parte').forEach((q) => {
+  q.setAttribute('aria-pressed', 'false')
+  q.addEventListener('click', () => elegirParte(q.dataset.parte))
 })
 
 // ---------- Visor de las cuatro vistas ----------

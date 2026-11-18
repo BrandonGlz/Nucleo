@@ -742,3 +742,32 @@ html { scroll-padding-top: calc(var(--nav-alto) + 4px); }
 @media (max-width: 1100px) { .bento--equipo { grid-template-rows: none; } }
 .partes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .partes li { padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--texto-2); background: var(--vidrio); border: 1px solid var(--borde-2); }
+
+/* Partes del dispositivo: zonas invisibles sobre el dibujo */
+.lienzo { position: relative; display: inline-block; max-width: 100%; }
+.celda--dibujo .dibujo .lienzo > img { display: block; width: auto; max-width: 100%; max-height: calc(100svh - 400px); min-height: 240px; filter: drop-shadow(0 30px 40px rgba(0, 0, 0, .55)) drop-shadow(0 0 40px rgba(43, 196, 122, .15)); }
+[data-tema="claro"] .celda--dibujo .dibujo .lienzo > img { filter: drop-shadow(0 24px 30px rgba(16, 48, 30, .2)); }
+.zona { position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--h); padding: 0; border: 2px solid transparent; border-radius: 14px; background: transparent; cursor: pointer; transition: border-color .2s, background-color .2s, box-shadow .2s; }
+.zona:hover { border-color: var(--verde-borde); background: rgba(43, 196, 122, .08); }
+.zona[aria-pressed="true"] { border-color: var(--lima); background: rgba(198, 239, 78, .12); box-shadow: 0 0 24px rgba(198, 239, 78, .35); }
+.zona--anillo { border-radius: 50%; }
+.partes button { font: inherit; padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--texto-2); background: var(--vidrio); border: 1px solid var(--borde-2); transition: border-color .2s, color .2s, background-color .2s; }
+.partes li { padding: 0; border: 0; background: none; }
+.partes button:hover { border-color: var(--verde); color: var(--texto); }
+.partes button[aria-pressed="true"] { background: var(--lima); color: #0B0D0C; border-color: transparent; }
+.parte-info { text-align: center; color: var(--texto-2); font-size: 14px; min-height: 2.9em; max-width: 560px; margin: 0 auto; }
+.parte-info b { color: var(--verde-texto); }
+
+/* Precio del Núcleo en la cabecera de planes */
+.narra__cuerpo { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.narra__cuerpo strong { color: var(--texto); font-weight: 700; }
+.precio-nucleo { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--celda); border: 1px solid var(--verde-borde); animation: menuEntra .3s var(--facil); }
+.narra .precio-nucleo strong { display: block; line-height: 1.1; font-size: 28px; font-weight: 800; letter-spacing: -.02em; color: var(--lima-texto); }
+.narra .precio-nucleo strong small { font-size: 13px; font-weight: 600; color: var(--texto-3); letter-spacing: 0; }
+.precio-nucleo span { font-size: 13px; color: var(--texto-3); line-height: 1.45; }
+#precioBtn[aria-expanded="true"] { border-color: var(--lima); }
+.zona--camara { --x: 15%; --y: 7%; --w: 13%; --h: 65%; }
+.zona--pantalla { --x: 31.5%; --y: 33%; --w: 11.5%; --h: 16%; }
+.zona--anillo { --x: 56%; --y: 41.5%; --w: 11.6%; --h: 19.5%; }
+.zona--zumbador { --x: 57.8%; --y: 66.4%; --w: 8%; --h: 13.6%; }
+.zona--usb { --x: 72.8%; --y: 48.2%; --w: 7.2%; --h: 14.3%; }
