@@ -345,7 +345,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .paso > p { color: var(--texto-3); font-size: 14.5px; }
 .paso__img { position: relative; margin: 0 0 8px; border-radius: 18px; overflow: hidden; aspect-ratio: 760 / 594; }
 .paso__img img { width: 100%; height: 100%; object-fit: cover; transition: transform .8s var(--facil); }
-.paso:hover .paso__img img { transform: scale(1.05); }
+.paso:hover .paso__img img { transform: scale(1.02); }
 .paso__img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(11, 13, 12, .55)); }
 .paso__num { position: absolute; z-index: 1; left: 14px; bottom: 12px; font-size: 13px; font-weight: 800; letter-spacing: .14em; color: #0B4128; background: var(--lima); padding: 5px 10px; border-radius: 999px; }
 .paso > .paso__nico { margin-top: auto; padding: 12px 14px; border-radius: 14px; background: var(--verde-tinte); border: 1px solid rgba(43, 196, 122, .2); color: var(--texto-2); font-size: 13.5px; }
@@ -616,7 +616,7 @@ h2 { font-size: clamp(30px, 3.9vw, 50px); }
 .pila-alertas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 
 /* 08 · Pasos: imágenes más bajas */
-.paso__img { aspect-ratio: 16 / 10; }
+.paso__img { aspect-ratio: 960 / 750; }
 
 /* 09 · Planes: selector bajo el título */
 .cabecera .periodo { margin: 4px 0 0; }
@@ -812,6 +812,7 @@ h3 { font-size: 20px; letter-spacing: -.02em; }
 .narra__nico { width: 72px; height: 72px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--celda-verde); box-shadow: var(--hundido); overflow: hidden; }
 .narra__nico .soft3d__img { width: 58px; max-height: 66px; object-fit: contain; animation: none; filter: drop-shadow(0 4px 4px var(--sombra-nico)); }
 .narra__nico--escena { width: 72px; height: 72px; margin: 0; box-shadow: var(--hundido); }
+.narra__nico--busto .soft3d__img { align-self: end; }
 .narra__solo, .precio-nucleo, .nico-dice, .paso > .paso__nico, .mini-alerta, .pila-alertas li { background: var(--celda-2); border: 0; box-shadow: var(--hundido); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .pila-alertas li:hover { translate: 4px 0; transform: none; }
 
@@ -948,7 +949,7 @@ h2, .preguntas h2, .cierre__texto h2 { font-size: clamp(34px, min(4.6vw, 7.6svh)
 }
 
 /* Portada: Nico es el protagonista del escenario */
-:root { --disco: #1B4A33; --esc: clamp(400px, calc(100svh - 340px), 610px); }
+:root { --disco: #1B4A33; --esc: clamp(400px, min(100svh - 340px, 40vw), 570px); --nico-alto: calc(var(--esc) - 44px); }
 :root[data-tema="claro"] { --disco: #FFFFFF; }
 .hero { padding: calc(var(--nav-alto) + 52px) 0 16px; }
 .escenario { position: relative; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); height: var(--esc); margin-bottom: 16px; border-radius: 44px; background: var(--celda-verde); box-shadow: var(--suave-alta); }
@@ -957,15 +958,17 @@ h2, .preguntas h2, .cierre__texto h2 { font-size: clamp(34px, min(4.6vw, 7.6svh)
 .hero__sub { max-width: 560px; font-size: clamp(17px, 1.45vw, 21px); line-height: 1.38; font-weight: 500; letter-spacing: -.01em; color: var(--texto-2); }
 .escenario__nico { display: block; min-width: 0; height: 100%; }
 .escenario__disco { position: absolute; left: 43%; bottom: 7%; width: calc(var(--esc) * .84); aspect-ratio: 1; translate: -50% 0; border-radius: 50%; background: var(--disco); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .12), inset 0 -18px 36px rgba(11, 65, 40, .16), 0 24px 44px -24px rgba(11, 65, 40, .5); }
-.escenario__nico .soft3d__img { position: absolute; left: 50%; bottom: 20px; width: auto; max-width: none; height: calc(var(--esc) * 1.07); margin-left: calc(var(--esc) * -.44); }
+.escenario__nico .soft3d__img { position: absolute; left: 43%; bottom: 20px; width: auto; max-width: none; height: var(--nico-alto); margin-left: calc(var(--nico-alto) * -.3453); }
 .escenario__nico .soft3d__piso { left: 43%; bottom: 10px; z-index: 0; width: calc(var(--esc) * .46); height: 26px; }
 .burbuja--hero b { display: block; font-size: 13px; color: var(--verde-texto); }
-.burbuja--hero { position: absolute; z-index: 2; right: 14px; bottom: 18px; width: 196px; min-height: 84px; padding: 10px 14px; border-radius: 22px 22px 22px 6px; background: var(--celda); box-shadow: var(--suave-alta); font-size: 14.5px; line-height: 1.35; }
+.burbuja--hero { position: absolute; z-index: 2; top: 18px; right: 14px; width: 196px; min-height: 84px; padding: 10px 14px; border-radius: 22px 22px 22px 6px; background: var(--celda); box-shadow: var(--suave-alta); font-size: 14.5px; line-height: 1.35; }
 .bento--hero > .celda--numero { grid-column: span 4; flex-direction: row; align-items: center; justify-content: flex-start; gap: 18px; padding: 20px 26px; }
 .bento--hero .numero { flex: none; font-size: clamp(44px, 4vw, 60px); }
 
 @media (max-width: 1100px) {
-  .burbuja--hero { right: 8px; width: 170px; font-size: 13.5px; }
+  .burbuja--hero { top: 10px; right: 8px; width: 150px; padding: 8px 12px; font-size: 13px; }
+  .escenario__disco, .escenario__nico .soft3d__img, .escenario__nico .soft3d__piso { left: 38%; }
+  .escenario__texto { padding-right: 44px; }
 }
 @media (max-width: 900px) {
   :root { --esc: 400px; }
@@ -974,9 +977,9 @@ h2, .preguntas h2, .cierre__texto h2 { font-size: clamp(34px, min(4.6vw, 7.6svh)
   .hero h1 { font-size: clamp(46px, 11vw, 88px); }
   .escenario__nico { height: calc(var(--esc) + 112px); margin-top: 28px; }
   .escenario__disco { left: 50%; bottom: 118px; }
-  .escenario__nico .soft3d__img { bottom: 112px; height: var(--esc); margin-left: calc(var(--esc) * -.345); }
+  .escenario__nico .soft3d__img { left: 50%; bottom: 112px; height: var(--esc); margin-left: calc(var(--esc) * -.345); }
   .escenario__nico .soft3d__piso { left: 50%; bottom: 102px; }
-  .burbuja--hero { left: 14px; right: 14px; bottom: 14px; width: auto; min-height: 84px; border-radius: 22px; font-size: 15px; }
+  .burbuja--hero { top: auto; left: 14px; right: 14px; bottom: 14px; width: auto; min-height: 84px; border-radius: 22px; font-size: 15px; }
   .bento--hero > .celda--numero { grid-column: span 2; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px; }
 }
 @media (max-width: 560px) {
