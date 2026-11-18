@@ -34,7 +34,8 @@ Cada componente conserva su propio número porque se publica por separado.
 - Confirmar en la placa el LED RGB, el LED de Wi-Fi y el zumbador.
 - Conectar y probar la batería para que el equipo sea portátil.
 - Terminar la carcasa impresa en 3D.
-- Agregar el modo de bajo consumo en la app.
+- Probar la microSD con una tarjeta real y confirmar en la placa la actualización remota.
+- Completar la primera prueba de restauración de respaldos.
 - Registrar el acondicionamiento de 48 horas de cada CCS811.
 - Completar la prueba de 100 horas continuas y medir la disponibilidad del 99 %.
 - Probar la web en Chrome, Edge, Firefox y Safari.
@@ -44,64 +45,71 @@ Cada componente conserva su propio número porque se publica por separado.
 ### Agregado
 
 - Landing pública en `info.bynucleo.com` con planes, dispositivo interactivo y Nico como guía.
+- Respaldo de lecturas sin conexión en microSD, pendiente de probar con una tarjeta real.
 
 ### Cambiado
 
 - Los avisos de alerta llegan a los supervisores del área, los administradores y el operador asignado.
+- El SRS pasa a la revisión 2, alineada con el sistema real y pendiente de validación por las partes; la revisión
+  anterior se conserva en `Docs/PDFs/SRS-rev1.pdf`. El avance de todas las versiones se recalculó con sus criterios.
 
 ### Corregido
 
 - El CCS811 físico vuelve a reportar la calidad del aire a la plataforma.
 
-## [0.8.0] - 2026-11-16 · SRS 81 %
+## [0.8.0] - 2026-11-16 · SRS 80 %
 
 ### Agregado
 
 - ESP32-S3 físico midiendo temperatura y humedad en producción.
-- Lecturas sin conexión en microSD y actualización remota del firmware.
+- Consola de administración con seguridad, accesos, equipos y auditoría.
+- Vigía externo que revisa los servicios cada 15 minutos.
 - Modo claro y oscuro en la app y estado de los sensores en la plataforma.
 
-## [0.7.0] - 2026-11-15 · SRS 71 %
+## [0.7.0] - 2026-11-15 · SRS 67 %
 
 ### Agregado
 
 - Respaldos cifrados con prueba mensual de restauración.
-- Firewall, auditoría, avisos de fallas y vigía externo.
+- Firewall, auditoría y avisos de fallas.
+- Actualización remota del firmware, pendiente de confirmar en la placa.
+- MQTT dentro de WebSocket para los ESP32.
 
-## [0.6.0] - 2026-11-11 · SRS 71 %
+## [0.6.0] - 2026-11-11 · SRS 64 %
 
 ### Agregado
 
 - Producción en `bynucleo.com` con HTTPS mediante Cloudflare Tunnel.
-- MQTT dentro de WebSocket para los ESP32 y el dispositivo como llave de Nico AI.
+- El dispositivo como llave de Nico AI.
+- Opción «Reducir animaciones» en la app.
 
-## [0.5.0] - 2026-11-10 · SRS 69 %
+## [0.5.0] - 2026-11-10 · SRS 62 %
 
 ### Agregado
 
 - Notificaciones push con la app cerrada y avisos con sonido.
 - Selector de dispositivos en la app para supervisores.
 
-## [0.4.0] - 2026-11-09 · SRS 63 %
+## [0.4.0] - 2026-11-09 · SRS 57 %
 
 ### Agregado
 
 - Primer despliegue en el servidor y publicación del APK para Android.
 
-## [0.3.0] - 2026-11-08 · SRS 60 %
+## [0.3.0] - 2026-11-08 · SRS 54 %
 
 ### Agregado
 
 - Web y app conectadas a la API con canal en vivo.
 - Agente de IA, reportes y simulador de dispositivos.
 
-## [0.2.0] - 2026-11-04 · SRS 29 %
+## [0.2.0] - 2026-11-04 · SRS 26 %
 
 ### Agregado
 
 - Interfaces web y móvil con datos simulados.
 
-## [0.1.0] - 2026-10-24 · SRS 28 %
+## [0.1.0] - 2026-10-24 · SRS 25 %
 
 ### Agregado
 

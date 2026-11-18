@@ -140,30 +140,32 @@ dispositivo: sin el ESP conectado, ese agente no usa la IA. Conexiones y firmwar
 <!-- avance:inicio (generado con Docs/progreso/generar.py) -->
 ## Avance contra el SRS
 
-Núcleo cumple **56 de 68 criterios (82 %)** de la [especificación de requisitos](Docs/PDFs/SRS.pdf); 10 están en progreso y 2 pendientes.
+Núcleo cumple **62 de 76 criterios (82 %)** de la [especificación de requisitos](Docs/PDFs/SRS.pdf); 12 están en progreso y 2 pendientes.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Docs/progreso/srs-oscuro.svg">
-  <img src="Docs/progreso/srs-claro.svg" alt="Avance contra el SRS: 56 de 68 criterios cumplidos" width="100%">
+  <img src="Docs/progreso/srs-claro.svg" alt="Avance contra el SRS: 62 de 76 criterios cumplidos" width="100%">
 </picture>
 
 | Área del SRS | Cumplido | En progreso | Pendiente |
 | --- | ---: | ---: | ---: |
-| Interfaces (SRS 3.1) | 21 | 6 | 0 |
-| Requisitos funcionales (SRS 3.2) | 25 | 1 | 1 |
+| Interfaces (SRS 3.1) | 23 | 5 | 0 |
+| Requisitos funcionales (SRS 3.2) | 29 | 4 | 1 |
 | No funcionales y otros (SRS 3.3 y 3.4) | 10 | 3 | 1 |
-| **Total** | **56** | **10** | **2** |
+| **Total** | **62** | **12** | **2** |
 
 **Lo que falta para cumplir el SRS:**
 
-- En progreso · Modo de bajo consumo en la app (SRS 3.1.1): Solo existe «Reducir animaciones».
 - En progreso · LED RGB de nivel en la unidad física (SRS 3.1.1): Programado; falta confirmarlo en la placa.
 - En progreso · LED de estado Wi-Fi (SRS 3.1.1): Programado; falta confirmarlo en la placa.
 - En progreso · Zumbador de alertas (SRS 3.1.1): Programado; falta confirmarlo en la placa.
 - En progreso · Batería de litio con módulo de carga (SRS 3.1.2): Programada; falta conectarla y probarla.
 - En progreso · Carcasa impresa en 3D (SRS 3.1.2): Diseño beta; falta la pieza final.
-- Pendiente · Acondicionamiento inicial de 48 horas (SRS 3.2.1): Falta registrarlo por sensor.
+- Pendiente · Acondicionamiento inicial de 48 horas (SRS 3.2.1): Falta registrarlo en la plataforma.
 - En progreso · Respuesta con LED RGB y alarma sonora (SRS 3.2.2): Programada; falta confirmarla en la placa.
+- En progreso · Respaldo de lecturas en microSD (SRS 3.2.7): Programado; falta probarlo con una tarjeta real.
+- En progreso · Actualización remota del firmware (SRS 3.2.14): Programada y con pruebas; falta confirmarla en la placa.
+- En progreso · Prueba periódica de restauración (SRS 3.2.14): Programada; su primera ejecución es el 6 de diciembre.
 - Pendiente · 100 horas continuas sin fallas (SRS 3.3.3): Falta la prueba de duración.
 - En progreso · Disponibilidad del 99 % (SRS 3.3.4): Hay vigía externo; falta medirla en un periodo.
 - En progreso · Chrome, Edge, Firefox y Safari (SRS 3.3.6): Falta la prueba formal en los cuatro navegadores.
@@ -187,10 +189,12 @@ Núcleo cumple **56 de 68 criterios (82 %)** de la [especificación de requisito
 | 3.1.1 | App con alertas visuales, sonoras y push | 0.5.0 |
 | 3.1.1 | App con tendencias de 24 horas | 0.3.0 |
 | 3.1.1 | App adaptable a distintas pantallas | 0.3.0 |
+| 3.1.1 | Opción «Reducir animaciones» en la app | 0.6.0 |
 | 3.1.1 | Pantalla OLED en la unidad física | 0.8.0 |
 | 3.1.2 | Sensores DHT22 y CCS811 en el ESP32 | 0.9.0 |
 | 3.1.3 | PostgreSQL y TimescaleDB separadas | 0.1.0 |
 | 3.1.4 | MQTT con TLS y sin acceso anónimo | 0.1.0 |
+| 3.1.4 | MQTT en WebSocket seguro por el puerto 443 en producción | 0.7.0 |
 | 3.1.4 | Configuración retenida para el dispositivo | 0.1.0 |
 | 3.1.4 | Consulta de lecturas cada 30 segundos | 0.3.0 |
 | 3.1.4 | Canal en vivo autenticado con token | 0.3.0 |
@@ -212,6 +216,7 @@ Núcleo cumple **56 de 68 criterios (82 %)** de la [especificación de requisito
 | 3.2.6 | Flujo completo del sensor a las aplicaciones | 0.8.0 |
 | 3.2.7 | Dispositivo sigue alertando sin conexión | 0.8.0 |
 | 3.2.7 | Estado «Sin conexión» tras 3 intervalos | 0.1.0 |
+| 3.2.7 | Cola de lecturas sin conexión | 0.8.0 |
 | 3.2.8 | Salidas en PDF y correo programado | 0.3.0 |
 | 3.2.9 | Respuesta automática ante condiciones inseguras | 0.3.0 |
 | 3.2.10 | Almacenamiento completo de cada medición | 0.1.0 |
@@ -220,6 +225,9 @@ Núcleo cumple **56 de 68 criterios (82 %)** de la [especificación de requisito
 | 3.2.12 | Reportes programados por frecuencia y área | 0.3.0 |
 | 3.2.12 | Respuesta 503 sin servicio de IA | 0.1.0 |
 | 3.2.12 | Agente de solo lectura en lenguaje natural | 0.3.0 |
+| 3.2.13 | Consola de seguridad, accesos, equipos y auditoría | 0.8.0 |
+| 3.2.14 | Respaldos cifrados fuera del servidor | 0.7.0 |
+| 3.2.14 | Vigía externo cada 15 minutos | 0.8.0 |
 | 3.3.1 | Varios dispositivos y organizaciones sin cambiar código | 0.3.0 |
 | 3.3.1 | Tiempos e índices para comprobar los 2 minutos | 0.1.0 |
 | 3.3.2 | Comunicación por HTTPS y TLS | 0.6.0 |
