@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Descubre Núcleo · Nico te lo explica</title>
   <meta name="description" content="Nico te presenta Núcleo: un dispositivo IoT, una plataforma web, una app móvil y un agente de IA para vigilar la temperatura, la humedad y la calidad del aire de tus espacios.">
-  <meta name="theme-color" content="#0B0D0C">
+  <meta name="theme-color" content="#0B0D0C" id="colorTema">
   <meta property="og:title" content="Descubre Núcleo · Nico te lo explica">
   <meta property="og:description" content="Dispositivo IoT, plataforma web, app móvil y Nico AI para monitorear tus espacios.">
   <meta property="og:image" content="https://info.bynucleo.com/medios/video/presentacion.webp">
@@ -14,6 +14,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="preload" href="fuentes/PlusJakartaSans-800.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="estilos.css">
+  <script src="tema.js"></script>
 </head>
 <body>
   <!-- Íconos (trazos estilo lucide) -->
@@ -69,6 +70,10 @@
         <a href="#planes">Planes</a>
       </nav>
       <div class="nav__acciones">
+        <button class="tema" id="temaBtn" type="button" aria-label="Cambiar a modo claro">
+          <svg class="ico tema__sol" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="ico tema__luna" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
         <a class="btn btn--fantasma btn--chico" href="https://bynucleo.com" title="Iniciar sesión en la plataforma">Entrar</a>
         <a class="btn btn--lima btn--chico" href="#planes">Ver planes</a>
         <button class="nav__menu" id="menuBtn" aria-label="Abrir menú" aria-expanded="false" aria-controls="menuMovil"><span></span><span></span></button>
@@ -76,6 +81,7 @@
     </div>
     <div class="menu-movil" id="menuMovil" hidden>
       <a href="#nico">Conoce a Nico</a>
+      <a href="#funciona">Cómo funciona</a>
       <a href="#plataforma">Plataforma web</a>
       <a href="#app">App móvil</a>
       <a href="#dispositivo">Dispositivo</a>
@@ -178,6 +184,24 @@
             <p>Respuestas en lenguaje natural, siempre con cifras reales.</p>
             <div class="mini-chat"><span>¿Cómo está el aire hoy?</span><span>En buen nivel: 424 ppm.</span></div>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 02 · Cómo funciona ===== -->
+    <section class="seccion" id="funciona" data-guia="Del sensor a tu pantalla en segundos.">
+      <div class="contenedor">
+        <header class="cabecera">
+          <div class="cabecera__texto">
+            <span class="codigo anim" data-anim="subir">02 · Cómo funciona</span>
+            <h2 class="titulo-partido">Del sensor a tu pantalla <em>en segundos</em></h2>
+          </div>
+          <div class="narra anim" data-anim="der">
+            <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/saluda.webp" alt="" width="230" height="260" loading="lazy"></div>
+            <p><b>Nico</b>El dispositivo mide, la lectura viaja cifrada, tú la ves en vivo y yo te ayudo a entenderla.</p>
+          </div>
+        </header>
+        <div class="bento">
           <article class="celda celda--flujo anim" data-anim="subir" style="--d:.15s">
             <div class="flujo__cab">
               <h3>Así trabajo</h3>
@@ -190,16 +214,19 @@
               <li><span class="nodo nodo--lima"><svg class="ico"><use href="#i-chispa"/></svg></span><b>Nico lo explica</b><small>Nico AI</small></li>
             </ol>
           </article>
+          <article class="celda celda--linea anim" data-anim="subir"><span class="icono"><svg class="ico"><use href="#i-usuarios"/></svg></span><div><h3>Roles por empresa y área</h3><p>Administrador, supervisor, analista y operador ven solo lo suyo.</p></div></article>
+          <article class="celda celda--linea anim" data-anim="subir" style="--d:.1s"><span class="icono"><svg class="ico"><use href="#i-ojo"/></svg></span><div><h3>En tiempo real</h3><p>Lecturas y alertas por WebSocket, sin recargar la página.</p></div></article>
+          <article class="celda celda--linea anim" data-anim="subir" style="--d:.2s"><span class="icono"><svg class="ico"><use href="#i-bajar"/></svg></span><div><h3>Tus datos son tuyos</h3><p>Exporta histórico y alertas a CSV y reportes a PDF.</p></div></article>
         </div>
       </div>
     </section>
 
-    <!-- ===== 02 · Plataforma ===== -->
+    <!-- ===== 03 · Plataforma ===== -->
     <section class="seccion" id="plataforma" data-guia="Toca las pestañas: es el sistema real.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">02 · Plataforma web</span>
+            <span class="codigo anim" data-anim="subir">03 · Plataforma web</span>
             <h2 class="titulo-partido">Todo tu monitoreo en <em>un solo tablero</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
@@ -224,7 +251,7 @@
             <span class="navegador__vivo"><span class="punto-vivo"></span>En vivo</span>
           </div>
           <div class="navegador__pantalla">
-            <img id="vistaImg" src="medios/capturas/web-panel.webp" alt="Panel de Núcleo con temperatura en vivo, tendencia y alertas recientes" width="1600" height="1000" loading="lazy">
+            <img id="vistaImg" src="medios/capturas/oscuro/web-panel.webp" alt="Panel de Núcleo con temperatura en vivo, tendencia y alertas recientes" width="1600" height="1000" loading="lazy">
             <span class="escaneo" aria-hidden="true"></span>
           </div>
           <div class="navegador__pie">
@@ -233,20 +260,15 @@
           </div>
         </div>
 
-        <div class="bento bento--3">
-          <article class="celda celda--linea anim" data-anim="subir"><span class="icono"><svg class="ico"><use href="#i-usuarios"/></svg></span><div><h3>Roles por empresa y área</h3><p>Administrador, supervisor, analista y operador ven solo lo suyo.</p></div></article>
-          <article class="celda celda--linea anim" data-anim="subir" style="--d:.1s"><span class="icono"><svg class="ico"><use href="#i-ojo"/></svg></span><div><h3>En tiempo real</h3><p>Lecturas y alertas por WebSocket, sin recargar la página.</p></div></article>
-          <article class="celda celda--linea anim" data-anim="subir" style="--d:.2s"><span class="icono"><svg class="ico"><use href="#i-bajar"/></svg></span><div><h3>Tus datos son tuyos</h3><p>Exporta histórico y alertas a CSV y reportes a PDF.</p></div></article>
-        </div>
       </div>
     </section>
 
-    <!-- ===== 03 · App ===== -->
+    <!-- ===== 04 · App ===== -->
     <section class="seccion" id="app" data-guia="Te aviso al celular aunque la app esté cerrada.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">03 · App móvil</span>
+            <span class="codigo anim" data-anim="subir">04 · App móvil</span>
             <h2 class="titulo-partido">Tus espacios, <em>en el bolsillo</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
@@ -258,30 +280,32 @@
         <div class="bento bento--app">
           <article class="celda celda--telefonos anim" data-anim="escala">
             <div class="telefonos" aria-label="Pantallas de la app">
-              <figure class="telefono telefono--a" data-parallax="-0.06"><img src="medios/capturas/app-alertas.webp" alt="App: lista de alertas pendientes" width="585" height="1266" loading="lazy"></figure>
-              <figure class="telefono telefono--b"><img src="medios/capturas/app-inicio.webp" alt="App: inicio con la temperatura en vivo de Núcleo A-01" width="585" height="1266" loading="lazy"></figure>
-              <figure class="telefono telefono--c" data-parallax="-0.1"><img src="medios/capturas/app-nico.webp" alt="App: chat de Nico AI con preguntas sugeridas" width="585" height="1266" loading="lazy"></figure>
+              <figure class="telefono telefono--a" data-parallax="-0.06"><img src="medios/capturas/oscuro/app-alertas.webp" alt="App: lista de alertas pendientes" width="585" height="1266" loading="lazy"></figure>
+              <figure class="telefono telefono--b"><img src="medios/capturas/oscuro/app-inicio.webp" alt="App: inicio con la temperatura en vivo de Núcleo A-01" width="585" height="1266" loading="lazy"></figure>
+              <figure class="telefono telefono--c" data-parallax="-0.1"><img src="medios/capturas/oscuro/app-nico.webp" alt="App: chat de Nico AI con preguntas sugeridas" width="585" height="1266" loading="lazy"></figure>
             </div>
           </article>
-          <article class="celda celda--descarga anim" data-anim="subir" style="--d:.1s">
+          <article class="celda celda--descarga anim" data-anim="der" style="--d:.1s">
             <span class="icono icono--lima"><svg class="ico"><use href="#i-cel"/></svg></span>
             <h3>Descárgala para Android</h3>
             <p>APK directo desde nuestro servidor. Android 7 o superior.</p>
+            <ul class="lista-iconos">
+              <li><span class="icono"><svg class="ico"><use href="#i-campana"/></svg></span><div><b>Notificaciones push</b><small>Críticas y de advertencia, con la app cerrada.</small></div></li>
+              <li><span class="icono"><svg class="ico"><use href="#i-umbral"/></svg></span><div><b>Histórico a la mano</b><small>24 h, 7 y 30 días por variable y dispositivo.</small></div></li>
+              <li><span class="icono"><svg class="ico"><use href="#i-chat"/></svg></span><div><b>Nico en el celular</b><small>Pregúntale lo que quieras desde cualquier lugar.</small></div></li>
+            </ul>
             <a class="btn btn--lima" href="https://app.bynucleo.com">Descargar la app <svg class="ico"><use href="#i-bajar"/></svg></a>
           </article>
-          <article class="celda celda--fila anim" data-anim="subir" style="--d:.15s"><span class="icono"><svg class="ico"><use href="#i-campana"/></svg></span><h3>Notificaciones push</h3><p>Críticas y de advertencia, con la app cerrada.</p></article>
-          <article class="celda celda--fila anim" data-anim="subir" style="--d:.2s"><span class="icono"><svg class="ico"><use href="#i-umbral"/></svg></span><h3>Histórico a la mano</h3><p>24 h, 7 y 30 días por variable y dispositivo.</p></article>
-          <article class="celda celda--fila anim" data-anim="subir" style="--d:.25s"><span class="icono"><svg class="ico"><use href="#i-chat"/></svg></span><h3>Nico en el celular</h3><p>Pregúntale lo que quieras desde cualquier lugar.</p></article>
         </div>
       </div>
     </section>
 
-    <!-- ===== 04 · Dispositivo ===== -->
+    <!-- ===== 05 · Dispositivo ===== -->
     <section class="seccion" id="dispositivo" data-guia="Toca los puntos verdes del dispositivo.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">04 · El dispositivo</span>
+            <span class="codigo anim" data-anim="subir">05 · El dispositivo</span>
             <h2 class="titulo-partido">Núcleo: el sensor que hace <em>todo el trabajo</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
@@ -305,11 +329,6 @@
               <span id="puntoInfo">Cada punto verde es una parte del dispositivo.</span>
             </div>
           </article>
-          <article class="celda celda--medidas anim" data-anim="subir" style="--d:.1s">
-            <span class="codigo">Medidas</span>
-            <strong class="cifra cifra--grande">14.4 × 5.5 × 8<small> cm</small></strong>
-            <p>Carcasa para colgar en la pared, con cámara de sensores ventilada.</p>
-          </article>
           <article class="celda celda--vistas anim" data-anim="subir" style="--d:.2s">
             <div class="vistas__cab"><h3>Las cuatro vistas</h3><span class="codigo">Toca para ampliar</span></div>
             <div class="vistas">
@@ -319,20 +338,26 @@
               <button class="vista" data-vista-equipo="3" aria-label="Ver por debajo"><img src="medios/dispositivo/vista-4.webp" alt="" loading="lazy" width="1100" height="900"></button>
             </div>
           </article>
-          <article class="celda celda--spec anim" data-anim="subir"><span class="icono"><svg class="ico"><use href="#i-chip"/></svg></span><h3>ESP32-S3</h3><p>Wi-Fi 2.4 GHz y firmware que se actualiza a distancia.</p></article>
-          <article class="celda celda--spec anim" data-anim="subir" style="--d:.08s"><span class="icono"><svg class="ico"><use href="#i-aire"/></svg></span><h3>Calidad del aire</h3><p>eCO₂ en ppm y TVOC en ppb con el CCS811.</p></article>
-          <article class="celda celda--spec anim" data-anim="subir" style="--d:.16s"><span class="icono"><svg class="ico"><use href="#i-wifi"/></svg></span><h3>Sin conexión</h3><p>Guarda lecturas y alerta en local con su último umbral.</p></article>
-          <article class="celda celda--spec anim" data-anim="subir" style="--d:.24s"><span class="icono"><svg class="ico"><use href="#i-candado"/></svg></span><h3>Conexión segura</h3><p>MQTT con TLS y respaldo por HTTPS.</p></article>
+          <article class="celda celda--specs anim" data-anim="subir" style="--d:.25s">
+            <h3>Especificaciones</h3>
+            <dl class="specs">
+              <div><dt><svg class="ico"><use href="#i-chip"/></svg>Controlador</dt><dd>ESP32-S3 · Wi-Fi 2.4 GHz</dd></div>
+              <div><dt><svg class="ico"><use href="#i-aire"/></svg>Sensores</dt><dd>DHT22 y CCS811</dd></div>
+              <div><dt><svg class="ico"><use href="#i-wifi"/></svg>Sin conexión</dt><dd>Guarda y alerta en local</dd></div>
+              <div><dt><svg class="ico"><use href="#i-candado"/></svg>Conexión</dt><dd>MQTT con TLS</dd></div>
+              <div><dt><svg class="ico"><use href="#i-ampliar"/></svg>Medidas</dt><dd>14.4 × 5.5 × 8 cm</dd></div>
+            </dl>
+          </article>
         </div>
       </div>
     </section>
 
-    <!-- ===== 05 · Nico AI ===== -->
+    <!-- ===== 06 · Nico AI ===== -->
     <section class="seccion seccion--ai" id="nico-ai" data-guia="Pregúntame lo que sea de tus sensores.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">05 · Agente de IA</span>
+            <span class="codigo anim" data-anim="subir">06 · Agente de IA</span>
             <h2 class="titulo-partido">Nico AI responde con <em>tus datos reales</em></h2>
           </div>
           <div class="narra anim" data-anim="der">
@@ -345,11 +370,8 @@
           <article class="celda celda--chat anim" data-anim="escala">
             <div class="navegador navegador--plano">
               <div class="navegador__barra" aria-hidden="true"><span class="navegador__puntos"><i></i><i></i><i></i></span><span class="navegador__url"><svg class="ico"><use href="#i-candado"/></svg>bynucleo.com/agente</span></div>
-              <div class="navegador__pantalla"><img src="medios/capturas/web-agente-chat.webp" alt="Nico AI responde cómo estuvo la humedad hoy en Núcleo A-01, con promedio, mínimo y máximo" width="1600" height="1000" loading="lazy"></div>
+              <div class="navegador__pantalla"><img src="medios/capturas/oscuro/web-agente-chat.webp" alt="Nico AI responde cómo estuvo la humedad hoy en Núcleo A-01, con promedio, mínimo y máximo" width="1600" height="1000" loading="lazy"></div>
             </div>
-          </article>
-          <article class="celda celda--conoce anim" data-anim="subir" style="--d:.1s">
-            <img src="medios/nico/conoce.webp" alt="Nico responde a «¿Cómo está el aire hoy?»: «Está en buen nivel. ¡Puedes continuar trabajando!»" width="1100" height="512" loading="lazy">
           </article>
           <article class="celda celda--preguntas anim" data-anim="subir" style="--d:.2s">
             <span class="codigo">Pregúntale, por ejemplo</span>
@@ -359,20 +381,24 @@
               <li>Genera el reporte de esta semana</li>
             </ul>
           </article>
-          <article class="celda celda--cuarto anim" data-anim="subir"><span class="icono"><svg class="ico"><use href="#i-chat"/></svg></span><h3>Lenguaje natural</h3><p>Responde con texto, gráficas o tablas.</p></article>
-          <article class="celda celda--cuarto anim" data-anim="subir" style="--d:.08s"><span class="icono"><svg class="ico"><use href="#i-ojo"/></svg></span><h3>Solo lectura</h3><p>Consulta; no cambia nada por su cuenta.</p></article>
-          <article class="celda celda--cuarto anim" data-anim="subir" style="--d:.16s"><span class="icono"><svg class="ico"><use href="#i-escudo"/></svg></span><h3>Firmado por el equipo</h3><p>Cada uso de la IA lo autoriza el Núcleo con una firma.</p></article>
-          <article class="celda celda--cuarto anim" data-anim="subir" style="--d:.24s"><span class="icono"><svg class="ico"><use href="#i-servidor"/></svg></span><h3>IA en nuestro servidor</h3><p>Tus datos no salen a terceros.</p></article>
+          <article class="celda celda--rasgos anim" data-anim="subir" style="--d:.3s">
+            <ul class="lista-iconos lista-iconos--compacta">
+              <li><span class="icono"><svg class="ico"><use href="#i-chat"/></svg></span><div><b>Lenguaje natural</b><small>Texto, gráficas o tablas.</small></div></li>
+              <li><span class="icono"><svg class="ico"><use href="#i-ojo"/></svg></span><div><b>Solo lectura</b><small>Consulta; no cambia nada.</small></div></li>
+              <li><span class="icono"><svg class="ico"><use href="#i-escudo"/></svg></span><div><b>Firmado por el equipo</b><small>Cada uso lo autoriza el Núcleo.</small></div></li>
+              <li><span class="icono"><svg class="ico"><use href="#i-servidor"/></svg></span><div><b>IA en nuestro servidor</b><small>Tus datos no salen a terceros.</small></div></li>
+            </ul>
+          </article>
         </div>
       </div>
     </section>
 
-    <!-- ===== 06 · Funciones ===== -->
+    <!-- ===== 07 · Funciones ===== -->
     <section class="seccion" id="funciones" data-guia="Y esto viene en todos los planes.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">06 · Funciones</span>
+            <span class="codigo anim" data-anim="subir">07 · Funciones</span>
             <h2 class="titulo-partido">Hecho para equipos que <em>no pueden fallar</em></h2>
           </div>
           <p class="cabecera__lead anim" data-anim="subir" style="--d:.2s">Cada lectura fuera de rango se vuelve una alerta con dueño, seguimiento y evidencia.</p>
@@ -398,12 +424,12 @@
       </div>
     </section>
 
-    <!-- ===== 07 · Empezar ===== -->
+    <!-- ===== 08 · Empezar ===== -->
     <section class="seccion" id="empezar" data-guia="Solo tres pasos y me pongo a trabajar.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">07 · Cómo empezar</span>
+            <span class="codigo anim" data-anim="subir">08 · Cómo empezar</span>
             <h2 class="titulo-partido">Intégrate a Núcleo en <em>tres pasos</em></h2>
           </div>
           <p class="cabecera__lead anim" data-anim="subir" style="--d:.2s">Sin instaladores ni cableado: en unos minutos tu primer espacio ya está midiendo.</p>
@@ -431,13 +457,17 @@
       </div>
     </section>
 
-    <!-- ===== 08 · Planes ===== -->
-    <section class="seccion" id="planes" data-guia="¿Dudas? Abre la tabla para comparar.">
+    <!-- ===== 09 · Planes ===== -->
+    <section class="seccion" id="planes" data-guia="En anual te ahorras un 20 %.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
-            <span class="codigo anim" data-anim="subir">08 · Planes</span>
+            <span class="codigo anim" data-anim="subir">09 · Planes</span>
             <h2 class="titulo-partido">Elige el plan para <em>tu operación</em></h2>
+            <div class="periodo anim" data-anim="subir" role="group" aria-label="Periodo de pago">
+              <button class="periodo__op" aria-pressed="true" data-periodo="mes">Mensual</button>
+              <button class="periodo__op" aria-pressed="false" data-periodo="anio">Anual <span class="chip chip--lima">−20 %</span></button>
+            </div>
           </div>
           <div class="narra anim" data-anim="der">
             <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/senala.webp" alt="" width="230" height="260" loading="lazy"></div>
@@ -445,38 +475,48 @@
           </div>
         </header>
 
-        <div class="periodo anim" data-anim="subir" role="group" aria-label="Periodo de pago">
-          <button class="periodo__op" aria-pressed="true" data-periodo="mes">Mensual</button>
-          <button class="periodo__op" aria-pressed="false" data-periodo="anio">Anual <span class="chip chip--lima">−20 %</span></button>
-        </div>
 
         <div class="planes" id="planesLista"></div>
 
-        <article class="empresa anim" data-anim="subir">
-          <div>
-            <span class="codigo">Empresa</span>
-            <h3>Más de 25 dispositivos o varias plantas</h3>
-            <p>Límites, retención y acompañamiento a la medida de tu operación.</p>
-          </div>
-          <ul class="lista-check lista-check--doble">
-            <li>Núcleos ilimitados</li>
-            <li>Almacenamiento a medida</li>
-            <li>Límites de Nico AI acordados</li>
-            <li>Acompañamiento en la instalación</li>
-          </ul>
-          <a class="btn btn--contorno" data-contacto="Plan Empresa" href="#">Hablar con ventas <svg class="ico"><use href="#i-correo"/></svg></a>
-        </article>
 
-        <details class="comparar anim" data-anim="subir">
-          <summary>Comparar todos los planes</summary>
-          <div class="tabla-scroll"><table class="tabla" id="tablaPlanes"></table></div>
-        </details>
 
         <p class="nota-planes">Precios en pesos mexicanos, más IVA. El dispositivo Núcleo se adquiere aparte (<span id="precioEquipo"></span> por equipo, pago único) o en comodato desde el plan Bosque.</p>
       </div>
     </section>
 
-    <!-- ===== 09 · Preguntas ===== -->
+    <!-- ===== 10 · Compara ===== -->
+    <section class="seccion" id="comparar" data-guia="Aquí está todo lo que incluye cada plan.">
+      <div class="contenedor">
+        <header class="cabecera">
+          <div class="cabecera__texto">
+            <span class="codigo anim" data-anim="subir">10 · Compara</span>
+            <h2 class="titulo-partido">Todo lo que incluye <em>cada plan</em></h2>
+          </div>
+          <p class="cabecera__lead anim" data-anim="subir" style="--d:.2s">Los mismos límites de las tarjetas, lado a lado, y el plan Empresa para operaciones más grandes.</p>
+        </header>
+        <div class="bento bento--comparar">
+          <div class="celda celda--tabla anim" data-anim="subir">
+            <div class="tabla-scroll"><table class="tabla" id="tablaPlanes"></table></div>
+          </div>
+          <article class="celda empresa anim" data-anim="der" style="--d:.15s">
+            <div>
+              <span class="codigo">Empresa</span>
+              <h3>Más de 25 dispositivos o varias plantas</h3>
+              <p>Límites, retención y acompañamiento a la medida de tu operación.</p>
+            </div>
+            <ul class="lista-check lista-check--doble">
+              <li>Núcleos ilimitados</li>
+              <li>Almacenamiento a medida</li>
+              <li>Límites de Nico AI acordados</li>
+              <li>Acompañamiento en la instalación</li>
+            </ul>
+            <a class="btn btn--contorno" data-contacto="Plan Empresa" href="#">Hablar con ventas <svg class="ico"><use href="#i-correo"/></svg></a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 11 · Preguntas ===== -->
     <section class="seccion" id="preguntas" data-guia="Estas son las que más me hacen.">
       <div class="contenedor preguntas">
         <div class="preguntas__nico anim" data-anim="izq">
@@ -484,7 +524,7 @@
           <p class="narra__solo"><b>Nico</b>Estas son las preguntas que más me hacen.</p>
         </div>
         <div>
-          <span class="codigo anim" data-anim="subir">09 · Preguntas frecuentes</span>
+          <span class="codigo anim" data-anim="subir">11 · Preguntas frecuentes</span>
           <h2 class="titulo-partido">Lo que más <em>me preguntan</em></h2>
           <div class="lista-preguntas">
             <details class="pregunta anim" data-anim="subir"><summary>¿Qué pasa si se va el internet?</summary><p>El Núcleo sigue midiendo, guarda las lecturas con su hora y las envía al volver la conexión. Mientras tanto, la luz y el zumbador avisan en el lugar con el último umbral que recibió.</p></details>

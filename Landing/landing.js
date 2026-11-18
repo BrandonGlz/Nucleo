@@ -40,6 +40,33 @@ const COMPARAR = [
 
 const reducido = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const punteroFino = window.matchMedia('(pointer: fine)').matches
+
+/* ---------- Tema claro / oscuro ---------- */
+const raiz = document.documentElement
+const carpetaTema = () => (raiz.dataset.tema === 'claro' ? 'claro' : 'oscuro')
+const temaBtn = document.getElementById('temaBtn')
+function aplicarTema (tema, guardar) {
+  raiz.dataset.tema = tema
+  if (guardar) { try { localStorage.setItem('tema', tema) } catch { /* sin almacenamiento */ } }
+  const carpeta = carpetaTema()
+  document.querySelectorAll('img[src*="medios/capturas/"]').forEach((img) => {
+    img.src = img.getAttribute('src').replace(/capturas\/(claro|oscuro)\//, `capturas/${carpeta}/`)
+  })
+  const meta = document.getElementById('colorTema')
+  if (meta) meta.content = tema === 'claro' ? '#F3F6F2' : '#0B0D0C'
+  if (temaBtn) temaBtn.setAttribute('aria-label', tema === 'claro' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro')
+}
+aplicarTema(carpetaTema(), false)
+temaBtn?.addEventListener('click', () => {
+  raiz.classList.add('cambiando-tema')
+  aplicarTema(carpetaTema() === 'claro' ? 'oscuro' : 'claro', true)
+  setTimeout(() => raiz.classList.remove('cambiando-tema'), 450)
+})
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+  let guardado = null
+  try { guardado = localStorage.getItem('tema') } catch { /* sin almacenamiento */ }
+  if (!guardado) aplicarTema(e.matches ? 'claro' : 'oscuro', false)
+})
 const $ = (s, r = document) => r.querySelector(s)
 const $$ = (s, r = document) => [...r.querySelectorAll(s)]
 const pesos = (n) => '$' + Math.round(n).toLocaleString('es-MX')
@@ -313,7 +340,7 @@ const mostrarVista = (n) => {
     vistaImg.classList.remove('cambiando')
     escaneo.classList.remove('activo'); void escaneo.offsetWidth; escaneo.classList.add('activo')
   }
-  nueva.src = `medios/capturas/${archivo}.webp`
+  nueva.src = `medios/capturas/${carpetaTema()}/${archivo}.webp`
   reiniciarAvance()
 }
 const detenerAuto = () => { tocada = true; clearInterval(autoVistas); autoVistas = null; avance.style.transition = 'none'; avance.style.width = '0' }
@@ -398,7 +425,7 @@ const decir = (texto) => {
   setTimeout(() => { guiaTexto.textContent = texto; guiaTexto.classList.remove('cambiando') }, 220)
   guia.classList.remove('mini')
   clearTimeout(plegar)
-  if (movil.matches) plegar = setTimeout(() => guia.classList.add('mini'), 4500)
+  plegar = setTimeout(() => guia.classList.add('mini'), movil.matches ? 4500 : 5000)
 }
 const observarGuia = new IntersectionObserver((entradas) => {
   entradas.forEach((en) => {
