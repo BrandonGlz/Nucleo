@@ -5,7 +5,7 @@ Nico AI, con los pasos para integrarse y los planes. Nico la narra: cada secció
 explicación y un Nico guía flotante cambia de frase según la sección visible.
 
 Diseño: modo oscuro y claro (sigue al sistema; el botón del menú lo cambia y lo recuerda), con la
-regla 60/30/10 (neutros / verde Núcleo `#2BC47A` / lima `#C6EF4E` solo de acento). Cada sección
+regla 60/30/10 con los mismos tokens de color de la plataforma (`FrontEnd/src/design-system/estilos/colors.css`): neutros, verde Núcleo `#2BC47A` y sus tonos de acento. Cada sección
 está pensada para caber en una pantalla de escritorio, bento grids de 12 columnas, Nico en soft 3D (halo, sombra de
 contacto, flotación e inclinación con el puntero) y animaciones de entrada y salida con el scroll
 (clases `.anim` + `data-anim`, títulos `.titulo-partido`). Todo respeta «reducir movimiento».
@@ -21,10 +21,12 @@ Landing/
 ├── favicon.png     Cara de Nico (también apple-touch-icon.png)
 ├── fuentes/        Plus Jakarta Sans (.woff2)
 └── medios/
-    ├── nico/        Nico recortado sin fondo (.webp)
-    ├── pasos/       Ilustraciones de «Intégrate a Núcleo en tres pasos»
+    ├── nico/        Nico sin fondo, con el nombre de la sección donde aparece (conoce-saluda, funciona-senala,
+    │                plataforma-holograma, app-pulgar, ai-responde, planes-celebra, preguntas-saluda, guia-cara, pie-sello)
+    ├── escenas/     calidad-aire (sección del dispositivo) y cierre-aire (llamado final)
+    ├── pasos/       paso-1-coloca, paso-2-recibe y paso-3-actua (de «Intégrate a Núcleo en tres pasos»)
     ├── capturas/    Capturas reales de la web y la app, en claro/ y oscuro/ (empresa demo de sembrar_demo)
-    ├── video/       Videos de Nico y su primer cuadro
+    ├── video/       hero-presentacion: video de la portada y su cuadro de espera
     └── dispositivo/ Dibujo y cuatro vistas del dispositivo (de Docs/nucleo3d)
 ```
 

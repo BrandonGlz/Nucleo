@@ -53,7 +53,7 @@ function aplicarTema (tema, guardar) {
     img.src = img.getAttribute('src').replace(/capturas\/(claro|oscuro)\//, `capturas/${carpeta}/`)
   })
   const meta = document.getElementById('colorTema')
-  if (meta) meta.content = tema === 'claro' ? '#F3F6F2' : '#0B0D0C'
+  if (meta) meta.content = tema === 'claro' ? '#EAECE6' : '#0E0F0F'
   if (temaBtn) temaBtn.setAttribute('aria-label', tema === 'claro' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro')
 }
 aplicarTema(carpetaTema(), false)
