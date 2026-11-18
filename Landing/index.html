@@ -301,7 +301,7 @@
     </section>
 
     <!-- ===== 05 · Dispositivo ===== -->
-    <section class="seccion" id="dispositivo" data-guia="Toca los puntos verdes del dispositivo.">
+    <section class="seccion" id="dispositivo" data-guia="Toca una vista para verme de cerca.">
       <div class="contenedor">
         <header class="cabecera">
           <div class="cabecera__texto">
@@ -310,7 +310,7 @@
           </div>
           <div class="narra anim" data-anim="der">
             <div class="narra__nico soft3d soft3d--chico"><span class="soft3d__halo" aria-hidden="true"></span><img class="soft3d__img" src="medios/nico/sensor.webp" alt="" width="230" height="260" loading="lazy"></div>
-            <p><b>Nico</b>Este es mi cuerpo. Toca los puntos verdes y te cuento qué hace cada parte.</p>
+            <p><b>Nico</b>Este es mi cuerpo: mide, muestra la lectura en su pantalla y avisa con luz y sonido aunque no haya internet.</p>
           </div>
         </header>
 
@@ -318,16 +318,10 @@
           <article class="celda celda--dibujo anim" data-anim="escala">
             <div class="dibujo">
               <img src="medios/dispositivo/portada.svg" alt="Dibujo en perspectiva del dispositivo Núcleo con pantalla, anillo de luz y rejilla de sensores" width="900" height="560" loading="lazy">
-              <button class="punto" style="--x:22%;--y:42%" data-titulo="Cámara de sensores" data-punto="DHT22 (temperatura y humedad) y CCS811 (eCO₂ y TVOC), separada del cuerpo para que el calor del ESP32 no altere la lectura." aria-label="Cámara de sensores"></button>
-              <button class="punto" style="--x:37%;--y:36%" data-titulo="Pantalla OLED" data-punto="0.96 pulgadas: muestra el código, la red y la última lectura sin abrir la app." aria-label="Pantalla"></button>
-              <button class="punto" style="--x:63%;--y:47%" data-titulo="Anillo de luz" data-punto="Verde normal, amarillo advertencia y rojo peligro. Avisa en el lugar aunque no haya internet." aria-label="Anillo de luz"></button>
-              <button class="punto" style="--x:62%;--y:69%" data-titulo="Zumbador" data-punto="Suena a pulsos cuando una lectura entra en peligro." aria-label="Zumbador"></button>
-              <button class="punto" style="--x:77%;--y:50%" data-titulo="USB-C y batería" data-punto="Batería LiPo de 1000 mAh: sigue midiendo durante un corte de luz." aria-label="Batería y USB-C"></button>
             </div>
-            <div class="dibujo__info" aria-live="polite">
-              <b id="puntoTitulo">Toca un punto</b>
-              <span id="puntoInfo">Cada punto verde es una parte del dispositivo.</span>
-            </div>
+            <ul class="partes" aria-label="Partes del dispositivo">
+              <li>Cámara de sensores</li><li>Pantalla OLED</li><li>Anillo de luz</li><li>Zumbador</li><li>USB-C y batería</li>
+            </ul>
           </article>
           <article class="celda celda--vistas anim" data-anim="subir" style="--d:.2s">
             <div class="vistas__cab"><h3>Las cuatro vistas</h3><span class="codigo">Toca para ampliar</span></div>
