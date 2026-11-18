@@ -52,6 +52,8 @@ Cada componente conserva su propio número porque se publica por separado.
 - Los avisos de alerta llegan a los supervisores del área, los administradores y el operador asignado.
 - El SRS pasa a la revisión 2, alineada con el sistema real y pendiente de validación por las partes; la revisión
   anterior se conserva en `Docs/PDFs/SRS-rev1.pdf`. El avance de todas las versiones se recalculó con sus criterios.
+- El SRS define los proveedores: Ollama como IA local, Gmail para el correo y Firebase Cloud Messaging para las
+  notificaciones push.
 
 ### Corregido
 
