@@ -9,6 +9,7 @@ SSH y la instalación desde cero están en [`deploy/README.md`](../../deploy/REA
 | --- | --- |
 | **https://bynucleo.com** | Web, API de la app (`/api/v1`), panel en vivo y admin |
 | **https://app.bynucleo.com** | Descarga de la app Android |
+| **https://info.bynucleo.com** | Landing pública: web, app, dispositivo, Nico AI y planes (`Landing/`) |
 | `dispositivos.bynucleo.com` | Solo para los ESP32: MQTT (dentro de WebSocket) y llave de Nico AI |
 
 Todo llega por un Cloudflare Tunnel, sin abrir puertos en el router. Abrir `dispositivos.` en el

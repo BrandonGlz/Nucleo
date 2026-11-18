@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Núcleo · Monitoreo ambiental con Nico AI</title>
+  <meta name="description" content="Núcleo mide la temperatura, la humedad y la calidad del aire de tus espacios, te avisa cuando algo se sale de rango y Nico AI te lo explica. Plataforma web, app móvil y dispositivo IoT.">
+  <meta name="theme-color" content="#0E100F">
+  <meta property="og:title" content="Núcleo · Monitoreo ambiental con Nico AI">
+  <meta property="og:description" content="Dispositivo IoT, plataforma web, app móvil y un agente de IA que te explica tus lecturas.">
+  <meta property="og:image" content="https://info.bynucleo.com/medios/video/presentacion.webp">
+  <meta property="og:url" content="https://info.bynucleo.com/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="fuentes/PlusJakartaSans-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+  <!-- ===== Navegación ===== -->
+  <header class="nav" id="nav">
+    <div class="nav__in">
+      <a class="nav__logo" href="#inicio" aria-label="Núcleo, inicio"><img src="medios/nucleo-logo-verde.svg" alt="Núcleo" width="96" height="42"></a>
+      <nav class="nav__links" aria-label="Secciones">
+        <a href="#nico">Nico</a>
+        <a href="#plataforma">Plataforma</a>
+        <a href="#app">App</a>
+        <a href="#dispositivo">Dispositivo</a>
+        <a href="#empezar">Empezar</a>
+        <a href="#planes">Planes</a>
+      </nav>
+      <div class="nav__acciones">
+        <a class="btn btn--fantasma btn--chico" href="https://bynucleo.com">Entrar</a>
+        <a class="btn btn--lima btn--chico" href="#planes">Ver planes</a>
+        <button class="nav__menu" id="menuBtn" aria-label="Abrir menú" aria-expanded="false" aria-controls="menuMovil"><span></span><span></span></button>
+      </div>
+    </div>
+    <div class="menu-movil" id="menuMovil" hidden>
+      <a href="#nico">Conoce a Nico</a>
+      <a href="#plataforma">Plataforma web</a>
+      <a href="#app">App móvil</a>
+      <a href="#dispositivo">Dispositivo</a>
+      <a href="#nico-ai">Nico AI</a>
+      <a href="#empezar">Cómo empezar</a>
+      <a href="#planes">Planes</a>
+      <a href="#preguntas">Preguntas</a>
+      <a class="btn btn--lima" href="https://bynucleo.com">Entrar a Núcleo</a>
+    </div>
+  </header>
+
+  <main id="contenido">
+
+    <!-- ===== Hero: Nico se presenta ===== -->
+    <section class="hero oscuro" id="inicio" data-guia="¡Hola! Baja conmigo, te enseño todo Núcleo.">
+      <div class="hero__fondo" aria-hidden="true"></div>
+      <div class="contenedor hero__grid">
+        <div class="hero__texto">
+          <span class="pildora"><span class="punto-vivo"></span> Monitoreo ambiental con IA</span>
+          <h1>Tus espacios, medidos <span class="lima">y explicados</span> por Nico</h1>
+          <p class="hero__sub">Núcleo mide la temperatura, la humedad y la calidad del aire de tus áreas, te avisa en cuanto algo se sale de rango y Nico AI te lo explica en palabras simples. Todo en una plataforma web, una app móvil y un dispositivo que cabe en tu mano.</p>
+          <div class="hero__ctas">
+            <a class="btn btn--lima" href="#planes">Ver planes <span aria-hidden="true">→</span></a>
+            <a class="btn btn--contorno" href="#nico">Conoce a Nico</a>
+          </div>
+          <ul class="hero__datos">
+            <li><strong>60 s</strong><span>entre lecturas</span></li>
+            <li><strong>3</strong><span>variables por equipo</span></li>
+            <li><strong>24/7</strong><span>alertas en vivo</span></li>
+          </ul>
+        </div>
+
+        <div class="hero__visual">
+          <div class="hero__marco">
+            <video class="hero__video" autoplay muted loop playsinline preload="auto" poster="medios/video/presentacion.webp" aria-label="Nico saluda en un parque">
+              <source src="medios/video/presentacion.mp4" type="video/mp4">
+            </video>
+            <div class="burbuja burbuja--hero" role="status" aria-live="polite">
+              <b>Nico</b>
+              <span id="saludo">¡Hola! Soy Nico, el guía de Núcleo.</span>
+            </div>
+          </div>
+          <div class="flotante flotante--temp" aria-hidden="true">
+            <span class="flotante__eti">Temperatura · Almacén</span>
+            <span class="flotante__valor">22.4<small>°C</small></span>
+            <span class="chip chip--ok">En rango</span>
+          </div>
+          <div class="flotante flotante--alerta" aria-hidden="true">
+            <span class="icono-circulo icono-circulo--aviso">!</span>
+            <span><b>Humedad alta</b><small>Laboratorio · hace 2 min</small></span>
+          </div>
+          <div class="flotante flotante--aire" aria-hidden="true">
+            <span class="flotante__eti">Aire</span>
+            <span class="flotante__valor">424<small>ppm</small></span>
+            <svg viewBox="0 0 80 24" class="mini-linea"><path d="M0 18 L10 15 L20 16 L30 10 L40 12 L50 7 L60 9 L70 5 L80 6"/></svg>
+          </div>
+        </div>
+      </div>
+      <a class="hero__bajar" href="#nico" aria-label="Bajar a la siguiente sección"><span></span></a>
+    </section>
+
+    <!-- ===== Conoce a Nico ===== -->
+    <section class="seccion claro" id="nico" data-guia="Ese de ahí soy yo. ¡Encantado!">
+      <div class="contenedor nico-intro">
+        <figure class="nico-intro__figura revelar">
+          <div class="nico-intro__aro" aria-hidden="true"></div>
+          <img src="medios/nico/saluda.webp" alt="Nico, la mascota verde de Núcleo, saludando" width="419" height="681" loading="lazy">
+        </figure>
+        <div class="nico-intro__texto">
+          <span class="etiqueta">Conoce a Nico</span>
+          <h2>Un guía que vive dentro de cada Núcleo</h2>
+          <div class="nico-dice revelar" data-escribir>
+            <p>¡Hola! Me llamo <b>Nico</b>. Estoy en cada dispositivo, en la web y en la app. Leo los sensores de tus espacios, vigilo que todo esté en rango y, cuando algo cambia, te lo cuento como lo haría un compañero de equipo: claro y sin tecnicismos.</p>
+            <p>A lo largo de esta página te voy a explicar cada parte de Núcleo. ¿Vamos?</p>
+          </div>
+          <div class="tarjetas-mini">
+            <div class="tarjeta-mini revelar"><span class="tarjeta-mini__ico">◎</span><b>Mide</b><span>Temperatura, humedad y aire, cada minuto.</span></div>
+            <div class="tarjeta-mini revelar"><span class="tarjeta-mini__ico">◉</span><b>Avisa</b><span>Alertas al correo, al celular y en pantalla.</span></div>
+            <div class="tarjeta-mini revelar"><span class="tarjeta-mini__ico">✦</span><b>Explica</b><span>Respuestas en lenguaje natural con cifras reales.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Así funciona -->
+      <div class="contenedor flujo">
+        <div class="cabecera-nico revelar">
+          <img src="medios/nico/senala.webp" alt="" width="200" height="260" loading="lazy">
+          <div class="burbuja burbuja--izq">
+            <b>Nico</b>
+            <span>Así trabajo: el dispositivo mide, la nube lo guarda, tú lo ves en la web o en el celular y yo te ayudo a entenderlo.</span>
+          </div>
+        </div>
+        <ol class="flujo__pasos">
+          <li class="paso revelar"><span class="paso__num">01</span><b>El Núcleo mide</b><span>Sensores de temperatura, humedad, eCO₂ y TVOC en cada área.</span></li>
+          <li class="paso revelar"><span class="paso__num">02</span><b>Viaja cifrado</b><span>Envía cada lectura por MQTT con TLS; si se cae la red, la guarda y la manda después.</span></li>
+          <li class="paso revelar"><span class="paso__num">03</span><b>Lo ves en vivo</b><span>Panel web y app móvil se actualizan al instante, sin recargar.</span></li>
+          <li class="paso revelar"><span class="paso__num">04</span><b>Nico te lo explica</b><span>Pregunta lo que quieras y te respondo con datos, gráficas y reportes.</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ===== Plataforma web ===== -->
+    <section class="seccion claro claro--2" id="plataforma" data-guia="Prueba las pestañas: es el sistema real.">
+      <div class="contenedor">
+        <div class="titular">
+          <div class="titular__texto">
+            <span class="etiqueta">Plataforma web</span>
+            <h2>Todo tu monitoreo en un solo tablero</h2>
+            <p>Dispositivos, histórico, alertas, reportes y Nico AI, con roles por empresa y área para que cada quien vea lo que le toca.</p>
+          </div>
+          <div class="cabecera-nico cabecera-nico--der revelar">
+            <div class="burbuja burbuja--der">
+              <b>Nico</b>
+              <span>Este es mi tablero. Toca las pestañas: así se ve Núcleo por dentro, con datos de una empresa de prueba.</span>
+            </div>
+            <img src="medios/nico/holograma.webp" alt="" width="230" height="260" loading="lazy">
+          </div>
+        </div>
+
+        <div class="pestanas" role="tablist" aria-label="Vistas de la plataforma">
+          <button role="tab" aria-selected="true" data-vista="0" aria-controls="vista">Panel</button>
+          <button role="tab" aria-selected="false" data-vista="1" aria-controls="vista">Dispositivos</button>
+          <button role="tab" aria-selected="false" data-vista="2" aria-controls="vista">Histórico</button>
+          <button role="tab" aria-selected="false" data-vista="3" aria-controls="vista">Alertas</button>
+          <button role="tab" aria-selected="false" data-vista="4" aria-controls="vista">Nico AI</button>
+          <button role="tab" aria-selected="false" data-vista="5" aria-controls="vista">Reportes</button>
+        </div>
+
+        <div class="navegador revelar" id="vista" role="tabpanel">
+          <div class="navegador__barra" aria-hidden="true">
+            <span class="navegador__puntos"><i></i><i></i><i></i></span>
+            <span class="navegador__url" id="vistaUrl">bynucleo.com/panel</span>
+          </div>
+          <div class="navegador__pantalla">
+            <img id="vistaImg" src="medios/capturas/web-panel.webp" alt="Panel de Núcleo con temperatura en vivo, tendencia y alertas recientes" width="1600" height="1000" loading="lazy">
+          </div>
+          <p class="navegador__nota" id="vistaNota">Temperatura en vivo, tendencia del día, alertas recientes y los dispositivos que requieren atención.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== App móvil ===== -->
+    <section class="seccion oscuro" id="app" data-guia="Te aviso al celular aunque la app esté cerrada.">
+      <div class="contenedor app">
+        <div class="app__texto">
+          <span class="etiqueta etiqueta--oscura">App móvil</span>
+          <h2>Tu planta, almacén o laboratorio <span class="lima">en el bolsillo</span></h2>
+          <div class="cabecera-nico cabecera-nico--compacta revelar">
+            <img src="medios/nico/pulgar.webp" alt="" width="160" height="200" loading="lazy">
+            <div class="burbuja burbuja--izq burbuja--oscura">
+              <b>Nico</b>
+              <span>¿Saliste de la oficina? Yo sigo vigilando. Si algo se sale de rango te mando una notificación y desde ahí mismo puedes atender la alerta.</span>
+            </div>
+          </div>
+          <ul class="lista-check">
+            <li>Lectura en vivo del dispositivo que elijas, con su rango.</li>
+            <li>Notificaciones push de alertas críticas y de advertencia.</li>
+            <li>Histórico de 24 h, 7 y 30 días por variable.</li>
+            <li>Chat con Nico AI desde el celular.</li>
+            <li>Modo oscuro y opción de reducir animaciones.</li>
+          </ul>
+          <div class="app__ctas">
+            <a class="btn btn--lima" href="https://app.bynucleo.com">Descargar para Android <span aria-hidden="true">↓</span></a>
+            <span class="nota-chica">APK directo · Android 8 o superior</span>
+          </div>
+        </div>
+        <div class="telefonos" aria-label="Pantallas de la app">
+          <figure class="telefono telefono--a revelar"><img src="medios/capturas/app-alertas.webp" alt="App: lista de alertas pendientes" width="585" height="1266" loading="lazy"></figure>
+          <figure class="telefono telefono--b revelar"><img src="medios/capturas/app-inicio.webp" alt="App: inicio con la temperatura en vivo de Núcleo A-01" width="585" height="1266" loading="lazy"></figure>
+          <figure class="telefono telefono--c revelar"><img src="medios/capturas/app-nico.webp" alt="App: chat de Nico AI con preguntas sugeridas" width="585" height="1266" loading="lazy"></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Dispositivo ===== -->
+    <section class="seccion claro" id="dispositivo" data-guia="Toca los puntos verdes del dispositivo.">
+      <div class="contenedor">
+        <div class="titular titular--centro">
+          <div class="titular__texto">
+            <span class="etiqueta">El dispositivo</span>
+            <h2>Núcleo: el sensor que hace todo el trabajo</h2>
+            <p>Un ESP32-S3 con sensores ambientales, pantalla, luces de estado y batería, en una carcasa de 14.4 × 5.5 × 8 cm que se cuelga en la pared.</p>
+          </div>
+        </div>
+        <div class="equipo">
+          <div class="equipo__nico revelar">
+            <img src="medios/nico/sensor.webp" alt="Nico sosteniendo un dispositivo de medición" width="300" height="400" loading="lazy">
+            <div class="burbuja burbuja--arriba">
+              <b>Nico</b>
+              <span>Este es mi cuerpo. Toca los puntos verdes y te cuento qué hace cada parte.</span>
+            </div>
+          </div>
+          <div class="equipo__dibujo revelar">
+            <img src="medios/dispositivo/portada.svg" alt="Dibujo en perspectiva del dispositivo Núcleo con pantalla, anillo de luz y rejilla de sensores" width="900" height="560" loading="lazy">
+            <button class="punto" style="--x:22%;--y:42%" data-punto="Cámara de sensores: DHT22 (temperatura y humedad) y CCS811 (eCO₂ y TVOC), separada del cuerpo para que el calor del ESP32 no altere la lectura." aria-label="Cámara de sensores"></button>
+            <button class="punto" style="--x:37%;--y:36%" data-punto="Pantalla OLED de 0.96&quot;: muestra el código, la red y la última lectura sin abrir la app." aria-label="Pantalla"></button>
+            <button class="punto" style="--x:63%;--y:47%" data-punto="Anillo de luz: verde normal, amarillo advertencia y rojo peligro. Junto con el zumbador avisa aunque no haya internet." aria-label="Anillo de luz"></button>
+            <button class="punto" style="--x:62%;--y:69%" data-punto="Zumbador: suena a pulsos cuando una lectura entra en peligro." aria-label="Zumbador"></button>
+            <button class="punto" style="--x:77%;--y:50%" data-punto="USB-C y batería LiPo de 1000 mAh: sigue midiendo durante un corte de luz." aria-label="Batería y USB-C"></button>
+            <p class="equipo__info" id="puntoInfo" aria-live="polite">Toca un punto para ver el detalle.</p>
+          </div>
+        </div>
+        <ul class="specs">
+          <li class="revelar"><b>ESP32-S3</b><span>Wi-Fi 2.4 GHz y actualización remota del firmware</span></li>
+          <li class="revelar"><b>Temperatura y humedad</b><span>Sensor DHT22</span></li>
+          <li class="revelar"><b>Calidad del aire</b><span>eCO₂ (ppm) y TVOC (ppb) con CCS811</span></li>
+          <li class="revelar"><b>Sin conexión</b><span>Guarda lecturas y alerta en local con su último umbral</span></li>
+          <li class="revelar"><b>Conexión segura</b><span>MQTT con TLS y respaldo por HTTPS</span></li>
+          <li class="revelar"><b>Instalación</b><span>Ranuras para colgar, microSD e interruptor</span></li>
+        </ul>
+        <p class="centro"><a class="enlace" href="medios/dispositivo/exterior.svg" target="_blank" rel="noopener">Ver las cuatro vistas del dispositivo →</a></p>
+      </div>
+    </section>
+
+    <!-- ===== Nico AI ===== -->
+    <section class="seccion oscuro oscuro--ai" id="nico-ai" data-guia="Pregúntame lo que sea de tus sensores.">
+      <div class="contenedor">
+        <div class="ai">
+          <div class="ai__texto">
+            <span class="etiqueta etiqueta--oscura">Agente de IA</span>
+            <h2>Nico AI responde con <span class="lima">tus datos reales</span></h2>
+            <figure class="ai__conoce revelar">
+              <img src="medios/nico/conoce.webp" alt="Nico responde a «¿Cómo está el aire hoy?»: «Está en buen nivel. ¡Puedes continuar trabajando!»" width="1100" height="512" loading="lazy">
+            </figure>
+            <div class="burbuja burbuja--arriba burbuja--oscura ai__dice revelar">
+              <b>Nico</b>
+              <span>Yo consulto las cifras en el sistema y te las explico. Nunca invento un número: si no lo sé, te lo digo.</span>
+            </div>
+          </div>
+          <div class="ai__chat revelar">
+            <div class="navegador navegador--oscuro">
+              <div class="navegador__barra" aria-hidden="true"><span class="navegador__puntos"><i></i><i></i><i></i></span><span class="navegador__url">bynucleo.com/agente</span></div>
+              <div class="navegador__pantalla"><img src="medios/capturas/web-agente-chat.webp" alt="Nico AI responde cómo estuvo la humedad hoy en Núcleo A-01, con promedio, mínimo y máximo" width="1600" height="1000" loading="lazy"></div>
+            </div>
+            <div class="chat-demo" aria-label="Ejemplos de preguntas">
+              <div class="chat-demo__preg">¿Qué dispositivo tuvo más alertas este mes?</div>
+              <div class="chat-demo__preg">¿Cómo estuvo la calidad del aire ayer en el laboratorio?</div>
+              <div class="chat-demo__preg">Genera el reporte de esta semana</div>
+            </div>
+          </div>
+        </div>
+        <ul class="rejilla-3">
+          <li class="revelar"><b>Lenguaje natural</b><span>Pregunta como hablas. Responde con texto, gráficas o tablas.</span></li>
+          <li class="revelar"><b>Solo lectura</b><span>Consulta lecturas, alertas, umbrales y reportes; no cambia nada por su cuenta.</span></li>
+          <li class="revelar"><b>Firmado por el dispositivo</b><span>Cada uso de la IA lo autoriza el Núcleo con una firma criptográfica.</span></li>
+          <li class="revelar"><b>IA en nuestro servidor</b><span>El modelo corre en la infraestructura de Núcleo; tus datos no salen a terceros.</span></li>
+          <li class="revelar"><b>Respeta tus permisos</b><span>Solo ve los dispositivos de tu empresa, área y rol.</span></li>
+          <li class="revelar"><b>Cómo lo resolví</b><span>Cada respuesta muestra de dónde salió la cifra.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===== Funciones ===== -->
+    <section class="seccion claro claro--2" id="funciones" data-guia="Y esto viene incluido en todos los planes.">
+      <div class="contenedor">
+        <div class="titular titular--centro">
+          <div class="titular__texto">
+            <span class="etiqueta">Funciones</span>
+            <h2>Hecho para equipos que no pueden fallar</h2>
+          </div>
+        </div>
+        <div class="funciones">
+          <article class="funcion funcion--grande revelar">
+            <div class="funcion__demo funcion__demo--alertas" aria-hidden="true">
+              <div class="fila-alerta"><span class="chip chip--critico">Crítico</span><b>Temperatura fuera de rango</b><small>Núcleo T-02 · 28.1 °C</small></div>
+              <div class="fila-alerta"><span class="chip chip--aviso">Advertencia</span><b>Humedad cerca del umbral</b><small>Núcleo A-02 · 70.9 %HR</small></div>
+              <div class="fila-alerta"><span class="chip chip--ok">Atendida</span><b>Calidad del aire</b><small>Núcleo L-01 · 1,120 ppm</small></div>
+            </div>
+            <div>
+              <h3>Alertas con seguimiento</h3>
+              <p>Cada lectura fuera de rango crea una alerta con su línea de tiempo: detectada, notificada, atendida o descartada con nota. Llega por correo, push y en pantalla.</p>
+            </div>
+          </article>
+          <article class="funcion revelar"><span class="funcion__ico">⇅</span><h3>Umbrales por dispositivo</h3><p>Rango normal y de advertencia por variable, editables desde la web.</p></article>
+          <article class="funcion revelar"><span class="funcion__ico">▤</span><h3>Reportes PDF</h3><p>Programados por día, semana o mes, enviados por correo.</p></article>
+          <article class="funcion revelar"><span class="funcion__ico">◫</span><h3>Empresas, áreas y roles</h3><p>Administrador, supervisor, analista y operador, cada uno con su alcance.</p></article>
+          <article class="funcion revelar"><span class="funcion__ico">⛨</span><h3>Seguridad</h3><p>Segundo factor, sesiones por equipo y bitácora de auditoría.</p></article>
+          <article class="funcion revelar"><span class="funcion__ico">⇄</span><h3>Integraciones</h3><p>API con tokens y webhooks para conectar tus sistemas.</p></article>
+          <article class="funcion revelar"><span class="funcion__ico">⤓</span><h3>Exporta tus datos</h3><p>Histórico y alertas en CSV cuando los necesites.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Cómo empezar ===== -->
+    <section class="seccion claro" id="empezar" data-guia="Solo tres pasos y me pongo a trabajar.">
+      <div class="contenedor">
+        <div class="titular titular--centro">
+          <div class="titular__texto">
+            <span class="etiqueta">Cómo empezar</span>
+            <h2>Intégrate a Núcleo en tres pasos</h2>
+            <p>Sin cables raros ni instaladores: en unos minutos tu primer espacio ya está midiendo.</p>
+          </div>
+        </div>
+        <ol class="pasos">
+          <li class="paso-ilus revelar">
+            <figure class="paso-ilus__img"><img src="medios/pasos/paso-1.webp" alt="Nico coloca un dispositivo Núcleo sobre una mesa" width="760" height="594" loading="lazy"></figure>
+            <div class="paso-ilus__texto">
+              <span class="paso-ilus__num">1</span>
+              <h3>Coloca tu dispositivo</h3>
+              <p>Ponlo en el área que quieres vigilar, conéctalo por USB-C y únelo a tu Wi-Fi. Luego regístralo en la plataforma con el código que muestra su pantalla.</p>
+              <p class="paso-ilus__nico"><b>Nico:</b> «Lejos del sol directo y de las salidas de aire, porfa.»</p>
+            </div>
+          </li>
+          <li class="paso-ilus revelar">
+            <figure class="paso-ilus__img"><img src="medios/pasos/paso-2.webp" alt="Nico envía datos a un celular y a una laptop" width="760" height="594" loading="lazy"></figure>
+            <div class="paso-ilus__texto">
+              <span class="paso-ilus__num">2</span>
+              <h3>Recibe los datos</h3>
+              <p>Cada minuto llegan la temperatura, la humedad y la calidad del aire a la web y a la app. Ajusta los umbrales y elige quién recibe cada alerta.</p>
+              <p class="paso-ilus__nico"><b>Nico:</b> «Si algo se sale de rango, te aviso al momento.»</p>
+            </div>
+          </li>
+          <li class="paso-ilus revelar">
+            <figure class="paso-ilus__img"><img src="medios/pasos/paso-3.webp" alt="Nico señala un consejo en la pantalla de un celular" width="760" height="594" loading="lazy"></figure>
+            <div class="paso-ilus__texto">
+              <span class="paso-ilus__num">3</span>
+              <h3>Actúa con Nico AI</h3>
+              <p>Atiende las alertas, pídele a Nico un resumen o un reporte y toma decisiones con las cifras reales de tus espacios.</p>
+              <p class="paso-ilus__nico"><b>Nico:</b> «Pregúntame lo que quieras, como se lo dirías a un compañero.»</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ===== Planes ===== -->
+    <section class="seccion claro claro--2" id="planes" data-guia="¿Dudas con los planes? Mira la tabla de abajo.">
+      <div class="contenedor">
+        <div class="titular titular--centro">
+          <div class="titular__texto">
+            <span class="etiqueta">Planes</span>
+            <h2>Elige el plan para tu operación</h2>
+          </div>
+        </div>
+        <div class="cabecera-nico cabecera-nico--centro revelar">
+          <img src="medios/nico/frente.webp" alt="" width="160" height="200" loading="lazy">
+          <div class="burbuja burbuja--izq">
+            <b>Nico</b>
+            <span>Los planes cambian por cuántos Núcleos conectas, cuánto historial guardas y cuántas preguntas me puedes hacer al día y por hora. Cambia de plan cuando quieras.</span>
+          </div>
+        </div>
+
+        <div class="periodo" role="group" aria-label="Periodo de pago">
+          <button class="periodo__op" aria-pressed="true" data-periodo="mes">Mensual</button>
+          <button class="periodo__op" aria-pressed="false" data-periodo="anio">Anual <span class="chip chip--lima">−20 %</span></button>
+        </div>
+
+        <div class="planes" id="planesLista"></div>
+
+        <div class="empresa revelar">
+          <div>
+            <h3>Empresa</h3>
+            <p>Para más de 25 dispositivos, varias plantas o requisitos propios de seguridad y retención.</p>
+          </div>
+          <ul class="lista-check lista-check--doble">
+            <li>Núcleos ilimitados</li>
+            <li>Almacenamiento a medida</li>
+            <li>Límites de Nico AI acordados</li>
+            <li>Acompañamiento en la instalación</li>
+          </ul>
+          <a class="btn btn--oscuro" data-contacto="Plan Empresa" href="#">Hablar con ventas</a>
+        </div>
+
+        <details class="comparar">
+          <summary>Comparar todos los planes</summary>
+          <div class="tabla-scroll"><table class="tabla" id="tablaPlanes"></table></div>
+        </details>
+
+        <p class="nota-planes">Precios en pesos mexicanos, más IVA. El dispositivo Núcleo se adquiere aparte (<span id="precioEquipo"></span> por equipo, pago único) o en comodato desde el plan Bosque.</p>
+      </div>
+    </section>
+
+    <!-- ===== Preguntas ===== -->
+    <section class="seccion claro" id="preguntas" data-guia="Estas son las que más me hacen.">
+      <div class="contenedor preguntas">
+        <div class="preguntas__nico revelar">
+          <img src="medios/nico/perfil.webp" alt="" width="260" height="360" loading="lazy">
+          <div class="burbuja burbuja--arriba"><b>Nico</b><span>Estas son las preguntas que más me hacen.</span></div>
+        </div>
+        <div class="preguntas__lista">
+          <span class="etiqueta">Preguntas frecuentes</span>
+          <h2>Lo que más me preguntan</h2>
+          <details class="pregunta"><summary>¿Qué pasa si se va el internet?</summary><p>El Núcleo sigue midiendo, guarda las lecturas con su hora y las envía al volver la conexión. Mientras tanto, la luz y el zumbador avisan en el lugar con el último umbral que recibió.</p></details>
+          <details class="pregunta"><summary>¿Qué cuenta como una petición a Nico AI?</summary><p>Cada pregunta que me haces en el chat de la web o la app. Las respuestas que salen solo de reglas y cifras también cuentan. Si llegas al límite del día o de la hora, sigues viendo todo el panel; solo esperas a que se renueve.</p></details>
+          <details class="pregunta"><summary>¿Qué ocupa el almacenamiento?</summary><p>Las lecturas de tus dispositivos, los reportes PDF y los archivos que adjuntas. Una lectura cada minuto por equipo ocupa alrededor de 0.5 GB al año.</p></details>
+          <details class="pregunta"><summary>¿Necesito instalar algo?</summary><p>La plataforma funciona en el navegador. La app de Android se descarga desde app.bynucleo.com. El Núcleo solo necesita Wi-Fi de 2.4 GHz y corriente por USB-C.</p></details>
+          <details class="pregunta"><summary>¿Quién puede ver mis datos?</summary><p>Solo las personas de tu empresa, según su rol y área. La comunicación va cifrada de punta a punta y la IA corre en nuestro propio servidor.</p></details>
+          <details class="pregunta"><summary>¿Puedo cambiar de plan?</summary><p>Sí, cuando quieras. Al subir de plan los nuevos límites aplican al momento; al bajar, desde el siguiente periodo.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Cierre ===== -->
+    <section class="cierre oscuro" data-guia="¡Te espero dentro!">
+      <div class="contenedor cierre__in">
+        <div class="cierre__video revelar">
+          <video autoplay muted loop playsinline preload="none" poster="medios/video/nico-ai.webp" aria-label="Nico rodeado de hojas y luces verdes">
+            <source src="medios/video/nico-ai.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div>
+          <h2>¿Listo para que Nico <span class="lima">cuide tus espacios</span>?</h2>
+          <p>Conecta tu primer Núcleo gratis y recibe tu primera alerta en minutos.</p>
+          <div class="hero__ctas">
+            <a class="btn btn--lima" href="https://bynucleo.com">Entrar a Núcleo <span aria-hidden="true">→</span></a>
+            <a class="btn btn--contorno" data-contacto="Solicitud de demo" href="#">Solicitar una demo</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div class="contenedor pie__in">
+      <img src="medios/nucleo-logo-verde.svg" alt="Núcleo" width="88" height="39">
+      <nav aria-label="Enlaces">
+        <a href="https://bynucleo.com">Plataforma web</a>
+        <a href="https://app.bynucleo.com">App Android</a>
+        <a href="#planes">Planes</a>
+        <a href="#preguntas">Preguntas</a>
+      </nav>
+      <small>© <span id="anio">2026</span> Núcleo · Monitoreo ambiental IoT</small>
+    </div>
+  </footer>
+
+  <!-- Nico guía: acompaña el scroll con una frase por sección -->
+  <aside class="guia" id="guia" aria-live="polite" hidden>
+    <button class="guia__cerrar" id="guiaCerrar" aria-label="Ocultar a Nico">×</button>
+    <img src="medios/nico/cara.webp" alt="" width="56" height="56">
+    <p class="guia__texto" id="guiaTexto"></p>
+  </aside>
+
+  <script src="landing.js" defer></script>
+</body>
+</html>

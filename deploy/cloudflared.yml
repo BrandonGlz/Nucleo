@@ -2,6 +2,7 @@
 #   bynucleo.com (y www): web, API y admin · app.bynucleo.com: descarga del APK
 #   nicoai.bynucleo.com: consola de Nico AI (la misma web; main.jsx la elige por el host)
 #   admin.bynucleo.com: consola de administración (seguridad, accesos y equipos; igual que nicoai)
+#   info.bynucleo.com: landing pública (Landing/, archivos estáticos)
 #   dispositivos.bynucleo.com: los ESP32 (/mqtt va directo al WebSocket de Mosquitto).
 #   hostprojects.bynucleo.com: panel del servidor (Caddy 127.0.0.1:8082, con usuario y contraseña); no es parte
 #   de Núcleo, solo usa este túnel. Lo instala y documenta el propio servidor (/etc/caddy/sitios/hostprojects.caddy).
@@ -22,6 +23,8 @@ ingress:
   - hostname: nicoai.bynucleo.com
     service: http://127.0.0.1:8081
   - hostname: admin.bynucleo.com
+    service: http://127.0.0.1:8081
+  - hostname: info.bynucleo.com
     service: http://127.0.0.1:8081
   - hostname: dispositivos.bynucleo.com
     path: ^/mqtt$

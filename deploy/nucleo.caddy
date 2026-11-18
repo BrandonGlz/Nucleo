@@ -1,4 +1,4 @@
-# Núcleo: Cloudflare Tunnel (bynucleo.com, app., nicoai., admin. y dispositivos.) -> Caddy 127.0.0.1:8081
+# Núcleo: Cloudflare Tunnel (bynucleo.com, app., info., nicoai., admin. y dispositivos.) -> Caddy 127.0.0.1:8081
 # __RAIZ__ lo reemplaza deploy/instalar.sh por la carpeta del proyecto.
 # /media no se publica: los PDF de reportes se descargan por la API con token.
 http://:8081 {
@@ -38,6 +38,23 @@ http://:8081 {
 		header @apk Content-Type application/vnd.android.package-archive
 		header @apk Content-Disposition attachment
 		header Cache-Control no-cache
+		file_server
+	}
+
+	# info.bynucleo.com: landing pública, archivos estáticos de Landing/ (sin build). Solo scripts propios;
+	# los videos y fotos van en medios/ y se pueden guardar un día en caché.
+	@info host info.bynucleo.com
+	handle @info {
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self' https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+			X-Frame-Options DENY
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		}
+		@info_pagina not path /medios/* /fuentes/*
+		header @info_pagina Cache-Control no-cache
+		header /medios/* Cache-Control "public, max-age=86400"
+		header /fuentes/* Cache-Control "public, max-age=31536000, immutable"
+		root * __RAIZ__/Landing
 		file_server
 	}
 
