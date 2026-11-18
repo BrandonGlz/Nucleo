@@ -548,11 +548,35 @@ button.ui-menuitem:hover {
   align-items: center;
   justify-content: center;
 }
-/* Ladeado para que se vean completas tres ramas: arriba, izquierda y abajo */
+/* Ladeado para que se vean completas tres ramas: arriba, izquierda y abajo (consola) */
 .acceso__anillo svg {
   width: 76%;
   height: auto;
   transform: rotate(-10deg);
+}
+/* Nico asomado: su borde recortado queda justo en el borde del panel, que lo tapa */
+.acceso__nico {
+  position: absolute;
+  right: calc(33% - 2px);
+  top: 50%;
+  height: 84%;
+  width: auto;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 40px rgba(43, 196, 122, 0.18));
+  animation: acceso-nico-asoma 0.9s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+  pointer-events: none;
+  user-select: none;
+}
+@keyframes acceso-nico-asoma {
+  from {
+    opacity: 0;
+    transform: translate(30%, -50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acceso__nico {
+    animation: none;
+  }
 }
 .acceso__lema {
   position: relative;

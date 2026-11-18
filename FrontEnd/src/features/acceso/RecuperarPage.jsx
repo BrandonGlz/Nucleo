@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Button, Input, Logo, LogoMark } from '../../design-system/componentes/index.js'
+import { Button, Input, Logo } from '../../design-system/componentes/index.js'
+import nicoAsoma from '../../assets/nico/nico-asoma.webp'
 import * as auth from '../../services/auth'
 
 // Sin sesión: /recuperar pide el enlace por correo y /restablecer?uid&token (el enlace del correo)
@@ -12,7 +13,7 @@ export function RecuperarPage() {
   return (
     <div className="acceso">
       <div className="acceso__anillo" aria-hidden="true">
-        <LogoMark tone="verde" size={500} />
+        <img className="acceso__nico" src={nicoAsoma} alt="" />
       </div>
       <div className="acceso__lema">
         <Logo size={48} inverse />

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Avatar, Button, Icon, Input, Logo, LogoMark } from '../../design-system/componentes/index.js'
+import { Avatar, Button, Icon, Input, Logo } from '../../design-system/componentes/index.js'
+import nicoAsoma from '../../assets/nico/nico-asoma.webp'
 import { useSesion } from '../../context/SesionContext'
 import { inicioDe } from '../index'
 import { cuentasDemo, PASSWORD_DEMO } from '../../services/auth'
@@ -111,9 +112,9 @@ export function AccesoPage() {
 
   return (
     <div className="acceso">
-      {/* Anillo con el ícono, centrado en el borde del panel: el panel tapa la mitad derecha */}
+      {/* Anillo centrado en el borde del panel; Nico se asoma desde detrás del panel */}
       <div className="acceso__anillo" aria-hidden="true">
-        <LogoMark tone="verde" size={500} />
+        <img className="acceso__nico" src={nicoAsoma} alt="" />
       </div>
       <div className="acceso__lema">
         <Logo size={48} inverse />
