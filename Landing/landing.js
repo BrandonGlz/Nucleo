@@ -3,7 +3,7 @@
 
 // Planes: cambia aquí precios y límites; las tarjetas y la tabla se generan con estos datos.
 // Precios mensuales en MXN sin IVA; el anual aplica DESCUENTO_ANUAL.
-const CORREO_CONTACTO = 'contacto@bynucleo.com'
+const CORREO_CONTACTO = 'nucleo.avisos@gmail.com'
 const DESCUENTO_ANUAL = 0.2
 const PRECIO_EQUIPO = 1450
 const PLANES = [
