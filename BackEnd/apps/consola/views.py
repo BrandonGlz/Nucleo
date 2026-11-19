@@ -9,7 +9,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
-from django.core.mail import send_mail
 from django.db.models import Count, Q
 from django.db.models.functions import ExtractHour, TruncDate
 from django.utils import timezone
@@ -27,7 +26,7 @@ from apps.dispositivos.models import Dispositivo
 from apps.organizaciones.models import Area, Organizacion
 from apps.usuarios.models import SegundoFactor, Sesion, Usuario
 from apps.usuarios.seguridad import enlace_recuperacion
-from common import roles
+from common import correo, roles
 from common.autenticacion import cerrar_sesiones
 
 from .alertas import cuentas_sin_2fa
@@ -327,15 +326,20 @@ class UsuarioConsolaViewSet(
         if not u.is_active:
             raise ValidationError({"detail": "La cuenta no está activa."})
         minutos = settings.PASSWORD_RESET_TIMEOUT // 60
-        send_mail(
-            "[Núcleo] Crea una contraseña nueva",
-            (
-                f"Hola, {u.nombre}.\n\nEl administrador de Núcleo pidió que cambies tu contraseña. "
-                f"Abre este enlace para elegir una nueva (vale una sola vez y caduca en {minutos} "
-                f"minutos):\n\n{enlace_recuperacion(u)}\n"
-            ),
-            settings.DEFAULT_FROM_EMAIL,
+        correo.enviar(
             [u.correo],
+            "Crea una contraseña nueva para tu cuenta de Núcleo",
+            icono="key-round",
+            titulo="Creación de nueva contraseña",
+            intro=(
+                f"Hola, {u.nombre}. Le escribe Nico: el administrador de Núcleo me pidió "
+                "ayudarle a establecer una nueva contraseña para su cuenta."
+            ),
+            parrafos=[f"Le preparé un enlace de un solo uso que vence en {minutos} minutos."],
+            boton=("Crear contraseña", enlace_recuperacion(u)),
+            motivo=(
+                "Si no esperaba este mensaje, comuníquese con el administrador de su organización."
+            ),
         )
         self._accion("Envió el enlace para restablecer la contraseña", u)
         return Response({"detail": f"Se envió el enlace a {u.correo}."})

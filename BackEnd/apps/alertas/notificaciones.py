@@ -5,40 +5,86 @@ import logging
 import urllib.request
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.utils import timezone
+
+from common import correo
 
 logger = logging.getLogger(__name__)
 
 
-def _texto_alerta(alerta):
+def _variable_corta(nombre):
+    """«Calidad del aire (eCO2)» → «calidad del aire»."""
+    corto = nombre.split("(")[0].strip()
+    return corto[:1].lower() + corto[1:]
+
+
+def _datos_alerta(alerta):
+    """Asunto y contenido del correo de una alerta ambiental."""
     umbral = alerta.umbral
     dispositivo = umbral.dispositivo
-    unidad = umbral.variable.unidad
+    variable = umbral.variable
+    unidad = variable.unidad
     nivel = alerta.get_nivel_display()
-    sentido = "por encima" if alerta.tipo == "POR_ENCIMA" else "por debajo"
+    peligro = alerta.nivel == alerta.Nivel.PELIGRO
+    encima = alerta.tipo == "POR_ENCIMA"
+    if encima:
+        limite = umbral.peligro_max if peligro else umbral.advertencia_max
+    else:
+        limite = umbral.peligro_min if peligro else umbral.advertencia_min
+    valor = correo.numero(alerta.lectura_valor)
+    limite_txt = correo.numero(limite)
+    sentido = "por encima" if encima else "por debajo"
     asunto = (
-        f"[Núcleo] {nivel}: {umbral.variable.nombre} {sentido} del límite en {dispositivo.nombre}"
+        f"{nivel} · {dispositivo.nombre}: {_variable_corta(variable.nombre)} "
+        f"en {valor} {unidad} (límite {limite_txt})"
     )
-    cuerpo = (
-        f"Se detectó una lectura en nivel de {nivel.lower()}.\n\n"
-        f"Dispositivo: {dispositivo.nombre} ({dispositivo.codigo_mqtt})\n"
-        f"Área: {dispositivo.area.nombre}\n"
-        f"Variable: {umbral.variable.nombre}\n"
-        f"Valor: {alerta.lectura_valor} {unidad}\n"
-        f"Límites de advertencia: {umbral.advertencia_min} a {umbral.advertencia_max} {unidad}\n"
-        f"Límites de peligro: {umbral.peligro_min} a {umbral.peligro_max} {unidad}\n"
-        f"Medida: {timezone.localtime(alerta.lectura_fecha_hora):%Y-%m-%d %H:%M:%S %Z}\n\n"
-        f"Atienda la alerta desde la plataforma web."
+    medida = timezone.localtime(alerta.lectura_fecha_hora)
+    datos = dict(
+        titulo=f"{variable.nombre} {sentido} del límite",
+        intro=(
+            f"Le escribe Nico. Detecté una lectura en nivel de {nivel.lower()} en el "
+            f"dispositivo {dispositivo.nombre}, ubicado en {dispositivo.area.nombre}. "
+            "Le recomiendo revisar el área a la brevedad."
+        ),
+        nivel="peligro" if peligro else "advertencia",
+        etiqueta=nivel,
+        icono="octagon-alert" if peligro else "triangle-alert",
+        destacado=dict(
+            etiqueta=variable.nombre,
+            valor=valor,
+            unidad=unidad,
+            nota=f"Límite de {nivel.lower()}: {limite_txt} {unidad}",
+        ),
+        filas=[
+            ("Dispositivo", f"{dispositivo.nombre} ({dispositivo.codigo_mqtt})"),
+            ("Área", dispositivo.area.nombre),
+            ("Medida", f"{medida:%d/%m/%Y, %H:%M:%S}"),
+            (
+                "Rango de advertencia",
+                f"{correo.numero(umbral.advertencia_min)} a "
+                f"{correo.numero(umbral.advertencia_max)} {unidad}",
+            ),
+            (
+                "Rango de peligro",
+                f"{correo.numero(umbral.peligro_min)} a "
+                f"{correo.numero(umbral.peligro_max)} {unidad}",
+            ),
+        ],
+        boton=("Atender alerta", correo.url_web("/alertas")),
+        motivo="Recibe este aviso porque es responsable de esta área en Núcleo.",
+        previa=(
+            f"{variable.nombre}: {valor} {unidad} en {dispositivo.nombre}. "
+            f"Límite {limite_txt} {unidad}."
+        ),
     )
-    return asunto, cuerpo
+    return asunto, datos
 
 
 def enviar_correo(usuario, alerta):
     """Devuelve ``True`` si el correo salió; nunca lanza excepciones."""
-    asunto, cuerpo = _texto_alerta(alerta)
     try:
-        enviados = send_mail(asunto, cuerpo, settings.DEFAULT_FROM_EMAIL, [usuario.correo])
+        asunto, datos = _datos_alerta(alerta)
+        enviados = correo.enviar([usuario.correo], asunto, **datos)
     except Exception:
         logger.exception(
             "No se pudo enviar el correo de la alerta %s a %s", alerta.pk, usuario.correo

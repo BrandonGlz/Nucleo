@@ -12,7 +12,6 @@ import logging
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -24,7 +23,7 @@ from rest_framework.views import APIView
 from apps.auditoria.models import RegistroAuditoria
 from apps.auditoria.servicios import registrar
 from apps.usuarios.models import SegundoFactor, Usuario
-from common import totp
+from common import correo, totp
 from common.autenticacion import cerrar_sesiones
 from common.red import LimitePorIP
 
@@ -255,23 +254,28 @@ class RecuperarPasswordView(APIView):
     def post(self, request):
         entrada = RecuperarSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
-        correo = entrada.validated_data["correo"]
-        usuario = Usuario.objects.filter(correo__iexact=correo).first()
+        direccion = entrada.validated_data["correo"]
+        usuario = Usuario.objects.filter(correo__iexact=direccion).first()
         if usuario is not None and usuario.is_active:
             minutos = settings.PASSWORD_RESET_TIMEOUT // 60
-            cuerpo = (
-                f"Hola, {usuario.nombre}.\n\n"
-                "Pediste cambiar la contraseña de tu cuenta de Núcleo. Abre este enlace para "
-                f"elegir una nueva (vale una sola vez y caduca en {minutos} minutos):\n\n"
-                f"{enlace_recuperacion(usuario)}\n\n"
-                "Si no lo pediste, ignora este correo: tu contraseña no cambia."
-            )
             try:
-                send_mail(
-                    "[Núcleo] Recupera tu contraseña",
-                    cuerpo,
-                    settings.DEFAULT_FROM_EMAIL,
+                correo.enviar(
                     [usuario.correo],
+                    "Restablece tu contraseña de Núcleo",
+                    icono="key-round",
+                    titulo="Restablecimiento de contraseña",
+                    intro=(
+                        f"Hola, {usuario.nombre}. Le escribe Nico: recibí una solicitud "
+                        "para restablecer la contraseña de su cuenta de Núcleo."
+                    ),
+                    parrafos=[
+                        f"Le preparé un enlace de un solo uso que vence en {minutos} minutos."
+                    ],
+                    boton=("Restablecer contraseña", enlace_recuperacion(usuario)),
+                    motivo=(
+                        "Si usted no realizó esta solicitud, puede ignorar este mensaje; "
+                        "su contraseña no cambiará."
+                    ),
                 )
             except Exception:
                 logger.exception("No se pudo enviar el correo de recuperación a %s", usuario.pk)

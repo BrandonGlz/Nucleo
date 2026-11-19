@@ -4,11 +4,10 @@ import calendar
 from datetime import timedelta
 from decimal import Decimal
 
-from django.conf import settings
-from django.core.mail import EmailMessage
 from django.db import transaction
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.db.models.functions import TruncDay, TruncHour
+from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.catalogos.models import VariableAmbiental
@@ -17,7 +16,7 @@ from apps.mediciones.models import Lectura
 from apps.reportes import ia, pdf
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.usuarios.models import Usuario
-from common import roles
+from common import correo, roles
 
 
 def _numero(valor):
@@ -186,14 +185,27 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
         ).values_list("correo", flat=True)
     )
     if correos:
-        mensaje = EmailMessage(
-            subject=asunto or f"[Núcleo] Reporte de {reporte.organizacion.nombre}",
-            body=reporte.contenido,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=correos,
+        org = reporte.organizacion.nombre
+        alcance = reporte.area.nombre if reporte.area_id else "Todas las áreas"
+        inicio = timezone.localtime(reporte.periodo_inicio)
+        fin = timezone.localtime(reporte.periodo_fin)
+        periodo = f"{inicio:%d/%m/%Y} al {fin:%d/%m/%Y}"
+        correo.enviar(
+            correos,
+            asunto or f"Reporte de {org} · {periodo}",
+            titulo=f"Reporte de {org}",
+            icono="file-text",
+            etiqueta="Reporte",
+            intro=(
+                "Le escribe Nico. Preparé el reporte de monitoreo ambiental de este "
+                "periodo; el documento completo va adjunto en PDF."
+            ),
+            filas=[("Organización", org), ("Alcance", alcance), ("Periodo", periodo)],
+            parrafos=[reporte.contenido],
+            boton=("Consultar reportes", correo.url_web("/reportes")),
+            motivo="Recibe este reporte porque figura entre sus destinatarios en Núcleo.",
+            adjuntos=[(f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf")],
         )
-        mensaje.attach(f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf")
-        mensaje.send()
     return correos
 
 
@@ -225,7 +237,7 @@ def ejecutar_programacion(programacion, ahora):
     correos = enviar_reporte(
         reporte,
         programacion.destinatarios,
-        f"[Núcleo] Reporte {programacion.get_frecuencia_display().lower()} "
+        f"Reporte {programacion.get_frecuencia_display().lower()} "
         f"de {programacion.organizacion.nombre}",
     )
 

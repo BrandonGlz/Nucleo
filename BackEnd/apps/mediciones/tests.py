@@ -281,7 +281,7 @@ class AlertasPorIngestaTests(PruebaBase):
     def test_fallo_del_correo_queda_registrado_como_fallida(self):
         from unittest import mock
 
-        with mock.patch("apps.alertas.notificaciones.send_mail", side_effect=OSError("smtp")):
+        with mock.patch("apps.alertas.notificaciones.correo.enviar", side_effect=OSError("smtp")):
             self.enviar(40)
         estados = set(Notificacion.objects.values_list("estado_envio", flat=True))
         self.assertEqual(estados, {Notificacion.EstadoEnvio.FALLIDA})

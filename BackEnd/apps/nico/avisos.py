@@ -22,11 +22,10 @@ from datetime import timedelta
 from urllib.parse import quote, urlparse
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db import close_old_connections, transaction
 from django.utils import timezone
 
-from common import roles
+from common import correo, roles
 
 from .models import MarcaAvisoNico, NotificacionNico, PreferenciaAvisosNico
 
@@ -34,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 Tipo = NotificacionNico.Tipo
 Nivel = NotificacionNico.Nivel
+NIVEL_CORREO = {Nivel.PELIGRO: "peligro", Nivel.ADVERTENCIA: "advertencia", Nivel.OK: "normal"}
 
 # Etiqueta, descripción y valores por defecto de cada tipo (pantalla de preferencias).
 TIPOS = {
@@ -159,11 +159,11 @@ def url_consola():
 
 
 def _enviar_correos(envios):
-    for num, correo, asunto, cuerpo in envios:
+    for num, destino, asunto, datos in envios:
         try:
-            salio = send_mail(asunto, cuerpo, settings.DEFAULT_FROM_EMAIL, [correo]) > 0
+            salio = correo.enviar([destino], asunto, **datos) > 0
         except Exception:
-            logger.exception("No se pudo enviar el aviso de Nico AI a %s", correo)
+            logger.exception("No se pudo enviar el aviso de Nico AI a %s", destino)
             salio = False
         if salio and num:
             NotificacionNico.objects.filter(pk=num).update(correo_enviado=True)
@@ -201,8 +201,17 @@ def avisar(tipo, titulo, texto="", enlace="", nivel=Nivel.INFO, en_hilo=True):
                 creadas.append(n)
             if pref["correo"] and usuario.correo:
                 enlace_completo = f"{url_consola()}{enlace or '/'}"
-                cuerpo = f"{texto}\n\nÁbrelo en la consola de Nico AI: {enlace_completo}"
-                envios.append((n.pk if n else None, usuario.correo, f"[Nico AI] {titulo}", cuerpo))
+                datos = dict(
+                    titulo=titulo,
+                    nivel=NIVEL_CORREO.get(nivel, "info"),
+                    etiqueta=f"Nico AI · {Nivel(nivel).label}",
+                    icono="sparkles",
+                    intro="Le escribe Nico con un aviso de la consola de Nico AI.",
+                    parrafos=[texto],
+                    boton=("Abrir consola de Nico AI", enlace_completo),
+                    motivo="Recibe este aviso porque lo activó en las preferencias de Nico AI.",
+                )
+                envios.append((n.pk if n else None, usuario.correo, f"Nico AI · {titulo}", datos))
         if envios:
             if en_hilo and getattr(settings, "NICO_AVISOS_EN_HILO", True):
                 transaction.on_commit(lambda: _en_segundo_plano(envios))

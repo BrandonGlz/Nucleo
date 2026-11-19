@@ -11,11 +11,10 @@ Lo usan ``deploy/aviso_fallo.sh`` (cuando un servicio de systemd falla) y
 import sys
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.usuarios.models import Usuario
-from common import roles
+from common import correo, roles
 
 
 def destinatarios():
@@ -44,5 +43,18 @@ class Command(BaseCommand):
         para = destinatarios()
         if not para:
             raise CommandError("No hay destinatarios (NUCLEO_CORREOS_AVISOS ni ADMINPLAT).")
-        send_mail(f"[Núcleo · servidor] {asunto}", cuerpo, settings.DEFAULT_FROM_EMAIL, para)
+        correo.enviar(
+            para,
+            f"Servidor de Núcleo: {asunto}",
+            titulo=asunto,
+            intro=(
+                "Le escribe Nico. Detecté un problema en el servidor de producción "
+                "y le comparto los detalles:"
+            ),
+            nivel="advertencia",
+            etiqueta="Servidor",
+            icono="activity",
+            parrafos=[cuerpo],
+            motivo="Recibe este aviso porque es responsable de la plataforma Núcleo.",
+        )
         self.stdout.write(f"Aviso enviado a {len(para)} destinatario(s).")

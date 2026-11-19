@@ -19,8 +19,6 @@ la app móvil no es para el superusuario). ``sin_2fa`` no se guarda: se calcula 
 import logging
 from datetime import timedelta
 
-from django.conf import settings
-from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.db.models.signals import post_save, pre_save
 from django.utils import timezone
@@ -28,7 +26,7 @@ from django.utils import timezone
 from apps.auditoria.models import RegistroAuditoria
 from apps.auditoria.servicios import actor_actual
 from apps.usuarios.models import Usuario
-from common import roles
+from common import correo, roles
 
 from .models import AlertaSeguridad, NotificacionSeguridad, PreferenciaAvisosSeguridad
 
@@ -65,21 +63,31 @@ def superusuarios():
 # ── Avisos ──────────────────────────────────────────────────────────────────────────────────
 
 
-def _texto_correo(alerta):
+def _datos_correo(alerta):
     nivel = alerta.get_nivel_display()
-    asunto = f"[Núcleo] Seguridad · {nivel}: {alerta.titulo}"
-    lineas = [f"Se abrió una alerta de seguridad de nivel {nivel.lower()}.", "", alerta.titulo]
-    if alerta.detalle:
-        lineas.append(alerta.detalle)
-    lineas.append("")
+    asunto = f"Seguridad · {nivel}: {alerta.titulo}"
+    filas = []
     if alerta.usuario_correo:
-        lineas.append(f"Cuenta: {alerta.usuario_correo}")
+        filas.append(("Cuenta", alerta.usuario_correo))
     if alerta.ip:
-        lineas.append(f"IP: {alerta.ip}")
-    lineas.append(f"Eventos: {alerta.eventos}")
-    lineas.append(f"Último evento: {timezone.localtime(alerta.ultimo_evento):%Y-%m-%d %H:%M %Z}")
-    lineas += ["", "Revísala en la consola de administración, sección Alertas."]
-    return asunto, "\n".join(lineas)
+        filas.append(("IP", alerta.ip))
+    filas.append(("Eventos", alerta.eventos))
+    filas.append(("Último evento", f"{timezone.localtime(alerta.ultimo_evento):%d/%m/%Y, %H:%M}"))
+    datos = dict(
+        titulo=alerta.titulo,
+        intro=(
+            "Le escribe Nico. Detecté actividad inusual y abrí una alerta de seguridad "
+            f"de nivel {nivel.lower()}. Esto es lo que encontré:"
+        ),
+        nivel="peligro" if alerta.nivel == alerta.Nivel.CRITICO else "advertencia",
+        etiqueta=f"Seguridad · {nivel}",
+        icono="shield-alert",
+        parrafos=[alerta.detalle],
+        filas=filas,
+        boton=("Revisar en la consola", correo.url_subdominio("admin", "/alertas")),
+        motivo="Recibe este aviso porque administra la plataforma Núcleo.",
+    )
+    return asunto, datos
 
 
 def _enviar_correos(alerta_num, destinos):
@@ -87,10 +95,10 @@ def _enviar_correos(alerta_num, destinos):
     alerta = AlertaSeguridad.objects.filter(pk=alerta_num).first()
     if alerta is None:
         return
-    asunto, cuerpo = _texto_correo(alerta)
-    for notif_num, correo in destinos:
+    asunto, datos = _datos_correo(alerta)
+    for notif_num, destino in destinos:
         try:
-            salio = send_mail(asunto, cuerpo, settings.DEFAULT_FROM_EMAIL, [correo]) > 0
+            salio = correo.enviar([destino], asunto, **datos) > 0
         except Exception:
             logger.exception("No se pudo enviar el correo de la alerta de seguridad %s", alerta_num)
             salio = False

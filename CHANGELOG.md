@@ -56,6 +56,8 @@ Cada componente conserva su propio número porque se publica por separado.
   notificaciones push.
 - El SRS define el intervalo de muestreo como programable según las necesidades de cada área, de 5 a 120 segundos.
 - Los dispositivos nuevos miden cada 60 segundos por defecto; los ya registrados conservan su intervalo.
+- Los correos de Núcleo usan la paleta oficial y los íconos de la web, llegan firmados por Nico y con un asunto
+  más claro.
 
 ### Corregido
 
