@@ -958,7 +958,7 @@ h2, .preguntas h2, .cierre__texto h2 { font-size: clamp(34px, min(4.6vw, 7.6svh)
 .hero__sub { max-width: 560px; font-size: clamp(17px, 1.45vw, 21px); line-height: 1.38; font-weight: 500; letter-spacing: -.01em; color: var(--texto-2); }
 .escenario__nico { display: block; min-width: 0; height: 100%; }
 .escenario__disco { position: absolute; left: 43%; bottom: 7%; width: calc(var(--esc) * .84); aspect-ratio: 1; translate: -50% 0; border-radius: 50%; background: var(--disco); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .12), inset 0 -18px 36px rgba(11, 65, 40, .16), 0 24px 44px -24px rgba(11, 65, 40, .5); }
-.escenario__nico .soft3d__img { position: absolute; left: 43%; bottom: 20px; width: auto; max-width: none; height: var(--nico-alto); margin-left: calc(var(--nico-alto) * -.3453); }
+.escenario__nico .soft3d__img { position: absolute; left: 43%; bottom: 20px; width: auto; max-width: none; height: var(--nico-alto); margin-left: calc(var(--nico-alto) * -.351); }
 .escenario__nico .soft3d__piso { left: 43%; bottom: 10px; z-index: 0; width: calc(var(--esc) * .46); height: 26px; }
 .burbuja--hero b { display: block; font-size: 13px; color: var(--verde-texto); }
 .burbuja--hero { position: absolute; z-index: 2; top: 18px; right: 14px; width: 196px; min-height: 84px; padding: 10px 14px; border-radius: 22px 22px 22px 6px; background: var(--celda); box-shadow: var(--suave-alta); font-size: 14.5px; line-height: 1.35; }
@@ -977,7 +977,7 @@ h2, .preguntas h2, .cierre__texto h2 { font-size: clamp(34px, min(4.6vw, 7.6svh)
   .hero h1 { font-size: clamp(46px, 11vw, 88px); }
   .escenario__nico { height: calc(var(--esc) + 112px); margin-top: 28px; }
   .escenario__disco { left: 50%; bottom: 118px; }
-  .escenario__nico .soft3d__img { left: 50%; bottom: 112px; height: var(--esc); margin-left: calc(var(--esc) * -.345); }
+  .escenario__nico .soft3d__img { left: 50%; bottom: 112px; height: var(--esc); margin-left: calc(var(--esc) * -.351); }
   .escenario__nico .soft3d__piso { left: 50%; bottom: 102px; }
   .burbuja--hero { top: auto; left: 14px; right: 14px; bottom: 14px; width: auto; min-height: 84px; border-radius: 22px; font-size: 15px; }
   .bento--hero > .celda--numero { grid-column: span 2; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px; }
@@ -1011,3 +1011,9 @@ h2, .preguntas h2, .cierre__texto h2 { font-size: clamp(34px, min(4.6vw, 7.6svh)
   .niveles-nico li { flex-direction: row; gap: 8px; }
   .niveles-nico img { width: 34px; height: 34px; }
 }
+
+/* Cierre: Nico sale desde el borde inferior de la tarjeta */
+.cierre__tarjeta { --cierre-pad: clamp(28px, 4vw, 56px); overflow: hidden; padding: var(--cierre-pad); }
+.cierre__imagen { align-self: end; justify-self: center; width: 100%; max-width: 430px; margin: 0 0 calc(var(--cierre-pad) * -1); border-radius: 0; overflow: visible; box-shadow: none; }
+.cierre__imagen img { display: block; width: 100%; height: auto; filter: drop-shadow(0 14px 22px rgba(11, 65, 40, .35)); }
+@media (max-width: 900px) { .cierre__imagen { max-width: 320px; } }

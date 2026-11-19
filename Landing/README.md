@@ -22,9 +22,8 @@ Landing/
 ├── fuentes/        Plus Jakarta Sans (.woff2)
 └── medios/
     ├── nico/        Nico sin fondo: conoce-saluda (portada), funciona-senala (Conoce a Nico), funciona-aparato (Cómo funciona),
-    │                plataforma-holograma, app-pulgar, dispositivo-guino, ai-responde, planes-celebra, comparar-asoma,
-    │                preguntas-piensa, guia-cara, pie-sello y nivel-normal, nivel-advertencia y nivel-peligro (caras de cada alerta)
-    ├── escenas/     cierre-aire (llamado final)
+    │                plataforma-salta, app-pulgar, dispositivo-nucleo, planes-celebra, comparar-asoma,
+    │                preguntas-piensa, cierre-guino (llamado final), guia-cara, pie-sello y nivel-normal, nivel-advertencia y nivel-peligro (caras de cada alerta)
     ├── pasos/       paso-1-coloca, paso-2-recibe y paso-3-actua (de «Intégrate a Núcleo en tres pasos»)
     ├── capturas/    Capturas reales de la web y la app, en claro/ y oscuro/ (empresa demo de sembrar_demo)
     ├── video/       hero-presentacion: video de Nico y el cuadro que se muestra al compartir la página
