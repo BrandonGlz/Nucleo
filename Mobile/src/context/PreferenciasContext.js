@@ -4,7 +4,8 @@ import { AccessibilityInfo } from 'react-native'
 
 const CLAVE = 'nucleo.preferencias'
 // tema: null sigue al sistema. reducirAnimaciones quita los movimientos de pantallas, pestañas y menús.
-export const PREFERENCIAS = { reducirAnimaciones: false, push: true, sonido: true, tema: null }
+// leerRespuestas: Nico lee en voz alta también las respuestas a lo escrito (a lo dictado, siempre).
+export const PREFERENCIAS = { reducirAnimaciones: false, push: true, sonido: true, tema: null, leerRespuestas: false }
 
 const PreferenciasContext = createContext({ prefs: PREFERENCIAS, cambiar: () => {}, listas: true })
 

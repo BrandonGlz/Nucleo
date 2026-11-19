@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ReporteChat } from '../../components/ReporteChat'
 import { SelectorDispositivo } from '../../components/SelectorDispositivo'
 import { Aparece, Icon, T } from '../../components/ui'
-import { useAnimaciones } from '../../context/PreferenciasContext'
+import { useAnimaciones, usePreferencias } from '../../context/PreferenciasContext'
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
 import { useOperador } from '../../hooks/useOperador'
@@ -45,15 +45,26 @@ export function AgenteScreen() {
   const [elegido, setElegido] = useState(null)
   const [texto, setTexto] = useState('')
   // Dictado por voz: `porVoz` indica que el texto del campo salió (al menos en parte) del
-  // micrófono; si se envía así, Nico lee su respuesta en voz alta.
+  // micrófono; si se envía así, Nico lee su respuesta en voz alta. Al terminar de hablar, el
+  // mensaje se envía solo (`enviarDictado`).
   const voz = useVozNico()
   const porVoz = useRef(false)
+  const enviarDictado = useRef(null)
   const dictado = useDictado({
     alTexto: (t) => {
       porVoz.current = true
       setTexto(t)
     },
+    alTerminar: (t) => enviarDictado.current?.(t),
   })
+  // «Leer respuestas»: Nico lee en voz alta también lo que contesta a mensajes escritos. Se consulta
+  // al llegar cada respuesta, así activarlo no relee la última ni repite una ya leída.
+  const { prefs, cambiar: cambiarPrefs } = usePreferencias()
+  const leerSiempre = Boolean(prefs.leerRespuestas)
+  const leerRef = useRef(leerSiempre)
+  useEffect(() => {
+    leerRef.current = leerSiempre
+  }, [leerSiempre])
   const cambiarTexto = (t) => {
     if (!t.trim()) porVoz.current = false
     setTexto(t)
@@ -163,7 +174,7 @@ export function AgenteScreen() {
     const rapida = (mensajes[num] ?? []).at(-1)?.accion ? null : respuestaRapida(p, { nombre: usuario.nombre?.split(' ')[0], dispositivo: d.nombre })
     if (rapida && !rapida.ir) {
       agregar({ de: 'agente', texto: rapida.texto, hora: hora(new Date().toISOString()) })
-      if (conVoz) voz.hablar(rapida.texto)
+      if (conVoz || leerRef.current) voz.hablar(rapida.texto)
       return
     }
     const nuevo = planDe(p, d.nombre, anteriores.at(-1)?.texto ?? '')
@@ -186,7 +197,7 @@ export function AgenteScreen() {
         accion: r.accion ?? null,
         hora: hora(new Date().toISOString()),
       })
-      if (conVoz && r.texto) voz.hablar(r.texto)
+      if ((conVoz || leerRef.current) && r.texto) voz.hablar(r.texto)
     } catch (e) {
       await pausa
       if (e.datos?.inactivo) setPuente((x) => ({ ...x, activos: x.activos.filter((n) => n !== num) }))
@@ -203,6 +214,10 @@ export function AgenteScreen() {
       setPlan(null)
     }
   }
+  // Lo dictado se envía con la versión actual de `preguntar` (dispositivo y conversación vigentes).
+  useEffect(() => {
+    enviarDictado.current = (t) => preguntar(t, true)
+  })
 
   // 👍/👎: se guarda en el teléfono y en el servidor, donde Nico AI aprende de ellas.
   const calificar = (i, voto) => {
@@ -452,6 +467,12 @@ export function AgenteScreen() {
               <Icon name="volume-x" size={18} color={c.accent} />
             </Pressable>
           )}
+          {!voz.hablando && (
+            <BotonLeer
+              activo={leerSiempre}
+              alTocar={() => cambiarPrefs({ leerRespuestas: !leerSiempre })}
+            />
+          )}
           {dictado.soportado && (
             <BotonMicrofono
               escuchando={dictado.escuchando}
@@ -475,6 +496,29 @@ export function AgenteScreen() {
         </View>
       </View>
     </KeyboardAvoidingView>
+  )
+}
+
+// «Leer respuestas»: con la bocina encendida, Nico lee en voz alta también lo que contesta a los
+// mensajes escritos (a los dictados siempre contesta con voz).
+function BotonLeer({ activo, alTocar }) {
+  const { c } = useTema()
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel="Leer las respuestas en voz alta"
+      accessibilityHint={activo ? 'Nico lee todas sus respuestas. Toca para desactivarlo.' : 'A los mensajes de voz siempre contesta con voz.'}
+      accessibilityState={{ checked: activo }}
+      onPress={alTocar}
+      hitSlop={4}
+      style={({ pressed }) => [
+        s.enviar,
+        activo ? { backgroundColor: c.accentSoft } : { borderWidth: 1, borderColor: c.border },
+        pressed && { opacity: 0.75 },
+      ]}
+    >
+      <Icon name={activo ? 'volume-2' : 'volume-x'} size={18} color={activo ? c.accent : c.textSecondary} />
+    </Pressable>
   )
 }
 

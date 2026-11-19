@@ -24,6 +24,13 @@
     "plugins": [
       "expo-font",
       [
+        "expo-audio",
+        {
+          "microphonePermission": "Núcleo usa el micrófono para que dictes tus preguntas a Nico AI.",
+          "enableBackgroundPlayback": false
+        }
+      ],
+      [
         "expo-speech-recognition",
         {
           "microphonePermission": "Núcleo usa el micrófono para que dictes tus preguntas a Nico AI.",

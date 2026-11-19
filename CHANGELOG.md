@@ -45,7 +45,12 @@ Cada componente conserva su propio número porque se publica por separado.
 ### Agregado
 
 - Dictado por voz en los chats de Nico AI de la web y de la app (0.2.7): un micrófono junto al botón de enviar
-  transcribe en español lo que se dice y, si la pregunta se dictó, Nico lee la respuesta en voz alta.
+  transcribe en español lo que se dice y, al terminar de hablar, el mensaje se envía solo; a lo dictado Nico
+  siempre contesta en voz alta.
+- Voz propia de Nico, masculina y amigable, generada en el servidor e igual en la web y en la app; se lee por
+  fragmentos para que suene continua y, si el servidor no responde, se usa la voz del navegador o del teléfono.
+- Opción «Leer respuestas» (bocina junto al micrófono) para que Nico lea en voz alta también las respuestas a
+  mensajes escritos; la preferencia se recuerda.
 
 ## [0.9.0] - 2026-11-18 · SRS 82 %
 
