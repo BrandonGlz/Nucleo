@@ -992,3 +992,22 @@ h2, .preguntas h2, .cierre__texto h2 { font-size: clamp(34px, min(4.6vw, 7.6svh)
   .bento--hero .numero { font-size: 46px; }
   .celda--numero > span { font-size: 14px; }
 }
+
+/* Nico reacciona según el nivel de alerta */
+.niveles-nico { margin: auto 0 0; padding: 10px 8px; list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border-radius: 14px; background: var(--celda-2); box-shadow: var(--hundido); }
+.niveles-nico li { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.niveles-nico img { width: 52px; height: 52px; border-radius: 50%; background: var(--celda-verde); box-shadow: var(--hundido); transition: transform .3s var(--facil); }
+.niveles-nico li:hover img { transform: translateY(-3px) scale(1.06); }
+.niveles-nico .chip { font-size: 10.5px; padding: 2px 7px; }
+
+/* Nico se asoma desde el borde del círculo */
+.narra__nico--asoma { position: relative; display: block; }
+.narra__nico--asoma img { position: absolute; right: 0; bottom: -10px; height: 92px; width: auto; max-width: none; filter: drop-shadow(0 4px 4px var(--sombra-nico)); animation: asomar 4s var(--facil) infinite; }
+@keyframes asomar { 0%, 100% { transform: translateX(6px); } 45%, 70% { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .narra__nico--asoma img { animation: none; } }
+@media (max-width: 560px) { .niveles-nico img { width: 44px; height: 44px; } }
+@media (min-width: 901px) and (max-width: 1279px) {
+  .niveles-nico { grid-template-columns: 1fr; padding: 8px 10px; }
+  .niveles-nico li { flex-direction: row; gap: 8px; }
+  .niveles-nico img { width: 34px; height: 34px; }
+}
