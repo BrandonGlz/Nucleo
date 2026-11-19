@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Avatar, Badge, Button, Card, IconCircle, Input, Tabs, Toggle } from '../../design-system/componentes/index.js'
+import { Alert, Avatar, Badge, Button, Card, IconCircle, Input, Tabs, Toggle } from '../../design-system/componentes/index.js'
 import { Pantalla } from '../../components/Pantalla'
 import { useAvisos } from '../../context/AvisosContext'
 import { useSesion } from '../../context/SesionContext'
@@ -128,6 +128,12 @@ export function PerfilPage() {
               <Input label="Correo" type="email" icon="mail" value={usuario.correo} readOnly hint="Lo cambia el administrador." />
             </div>
             <div className="ui-separado" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {usuario.debe_cambiar_password && (
+                <Alert level="warning" title="Cambia tu contraseña temporal">
+                  Por seguridad, elige una contraseña que solo tú conozcas antes de usar Núcleo. Escribe como
+                  actual la contraseña temporal que te llegó por correo.
+                </Alert>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <strong style={{ fontSize: 15 }}>Contraseña</strong>
                 <span className="ui-muted" style={{ fontSize: 13 }}>

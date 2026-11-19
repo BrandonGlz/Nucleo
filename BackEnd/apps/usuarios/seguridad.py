@@ -317,7 +317,8 @@ class RestablecerPasswordView(APIView):
             mensajes = getattr(error, "messages", [str(error)])
             return Response({"password_nueva": mensajes}, status=status.HTTP_400_BAD_REQUEST)
         usuario.set_password(datos["password_nueva"])
-        usuario.save(update_fields=["password"])
+        usuario.debe_cambiar_password = False
+        usuario.save(update_fields=["password", "debe_cambiar_password"])
         cerrar_sesiones(usuario)
         registrar(
             Accion.RECUPERAR,

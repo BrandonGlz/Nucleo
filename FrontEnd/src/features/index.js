@@ -15,6 +15,8 @@ const PerfilPage = lazy(() => import('./perfil/PerfilPage').then((m) => ({ defau
 const ReportesPage = lazy(() => import('./reportes/ReportesPage').then((m) => ({ default: m.ReportesPage })))
 const UmbralesPage = lazy(() => import('./umbrales/UmbralesPage').then((m) => ({ default: m.UmbralesPage })))
 const RecuperarPage = lazy(() => import('./acceso/RecuperarPage').then((m) => ({ default: m.RecuperarPage })))
+const SolicitarAccesoPage = lazy(() => import('./acceso/SolicitarAccesoPage').then((m) => ({ default: m.SolicitarAccesoPage })))
+const SolicitudPage = lazy(() => import('./solicitudes/SolicitudPage').then((m) => ({ default: m.SolicitudPage })))
 const UsuariosPage = lazy(() => import('./usuarios/UsuariosPage').then((m) => ({ default: m.UsuariosPage })))
 
 // Registro único de módulos: App.jsx crea las rutas y MainLayout el menú a partir de esta lista.
@@ -34,6 +36,8 @@ export const modulos = [
   { ruta: '/umbrales', titulo: 'Umbrales', Pagina: UmbralesPage, seccion: 'Configuración', icono: 'sliders-horizontal' },
   { ruta: '/usuarios', titulo: 'Usuarios', Pagina: UsuariosPage, seccion: 'Configuración', icono: 'users', roles: ['ADMIN', 'SUPER'] },
   { ruta: '/areas', titulo: 'Empresa y áreas', Pagina: AreasPage, seccion: 'Áreas', icono: 'map-pin', roles: ['ADMIN', 'SUPER'] },
+  // Alta a partir de una solicitud de acceso (enlace del correo que Nico manda a los administradores).
+  { ruta: '/solicitudes/:num', titulo: 'Solicitud de acceso', Pagina: SolicitudPage, roles: ['ADMIN', 'ADMINPLAT'] },
   { ruta: '/perfil', titulo: 'Mi perfil', Pagina: PerfilPage },
   { ruta: '/notificaciones', titulo: 'Notificaciones', Pagina: NotificacionesPage },
 ]
@@ -46,3 +50,5 @@ export const inicioDe = (rol) => (rol === 'ADMINPLAT' ? '/organizaciones' : '/pa
 export const acceso = { ruta: '/acceso', titulo: 'Acceso', Pagina: AccesoPage }
 // Recuperar la contraseña, también fuera del marco y sin sesión.
 export const recuperar = { titulo: 'Recuperar contraseña', Pagina: RecuperarPage }
+// Solicitar una cuenta al administrador, sin sesión.
+export const solicitarAcceso = { ruta: '/solicitar-acceso', titulo: 'Solicitar acceso', Pagina: SolicitarAccesoPage }

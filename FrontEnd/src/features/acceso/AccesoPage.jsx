@@ -184,7 +184,10 @@ export function AccesoPage() {
             {enviando ? 'Entrando…' : pideCodigo ? 'Verificar y entrar' : 'Iniciar sesión'}
           </Button>
           <p style={{ margin: 0, fontSize: 14, lineHeight: '22px', color: 'var(--text-muted)' }}>
-            ¿Necesitas acceso? Pídelo al administrador de tu organización.
+            ¿Necesitas acceso?{' '}
+            <Link to="/solicitar-acceso" style={{ fontWeight: 600 }}>
+              Solicítalo al administrador
+            </Link>
           </p>
           <div className="acceso__app">
             <p>¿Prefieres el celular? Descarga la app móvil de Núcleo para Android.</p>

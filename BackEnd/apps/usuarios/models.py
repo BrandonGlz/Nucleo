@@ -81,6 +81,8 @@ class Usuario(AbstractBaseUser):
     # Un operador usa el agente IA en la app solo si un administrador o supervisor se lo
     # permite; los demás roles siempre lo tienen.
     acceso_agente = models.BooleanField(db_default=False, default=False)
+    # Cuenta creada con contraseña temporal: la web pide cambiarla al entrar.
+    debe_cambiar_password = models.BooleanField(db_default=False, default=False)
     last_login = models.DateTimeField(db_column="ultimo_acceso", null=True, blank=True)
     fecha_registro = models.DateTimeField(db_default=Now(), editable=False)
 
@@ -271,3 +273,65 @@ class Sesion(models.Model):
 
     def __str__(self):
         return f"{self.usuario_id} · {self.cliente or '—'} · {self.ultimo_uso:%Y-%m-%d %H:%M}"
+
+
+class SolicitudAcceso(models.Model):
+    """Solicitud de una persona sin cuenta para entrar a su organización y área.
+
+    La pide desde la pantalla de acceso; un administrador de la organización (o de la
+    plataforma) la aprueba creando la cuenta con contraseña temporal, o la rechaza.
+    """
+
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        APROBADA = "APROBADA", "Aprobada"
+        RECHAZADA = "RECHAZADA", "Rechazada"
+
+    num = models.AutoField(primary_key=True)
+    organizacion = models.ForeignKey(
+        "organizaciones.Organizacion",
+        on_delete=models.CASCADE,
+        db_column="organizacion_num",
+        related_name="solicitudes_acceso",
+    )
+    area = models.ForeignKey(
+        "organizaciones.Area",
+        on_delete=models.SET_NULL,
+        db_column="area_num",
+        related_name="solicitudes_acceso",
+        null=True,
+        blank=True,
+    )
+    nombre = models.CharField(max_length=60)
+    primer_apellido = models.CharField(max_length=60)
+    segundo_apellido = models.CharField(max_length=60, blank=True, default="")
+    correo = models.EmailField(max_length=150)
+    estado = models.CharField(max_length=10, choices=Estado.choices, default=Estado.PENDIENTE)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    fecha_solicitud = models.DateTimeField(db_default=Now(), editable=False)
+    atendida_por = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        db_column="atendida_por_num",
+        related_name="solicitudes_atendidas",
+        null=True,
+        blank=True,
+    )
+    fecha_atencion = models.DateTimeField(null=True, blank=True)
+    usuario_creado = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        db_column="usuario_creado_num",
+        related_name="+",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        db_table = "solicitud_acceso"
+        ordering = ["-fecha_solicitud"]
+        verbose_name = "solicitud de acceso"
+        verbose_name_plural = "solicitudes de acceso"
+
+    def __str__(self):
+        return f"{self.nombre} {self.primer_apellido} <{self.correo}> ({self.estado})"

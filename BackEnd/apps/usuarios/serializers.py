@@ -26,11 +26,12 @@ class UsuarioSerializer(serializers.ModelSerializer):
             "correo",
             "telefono",
             "acceso_agente",
+            "debe_cambiar_password",
             "password",
             "ultimo_acceso",
             "fecha_registro",
         ]
-        read_only_fields = ["num", "organizacion", "fecha_registro"]
+        read_only_fields = ["num", "organizacion", "debe_cambiar_password", "fecha_registro"]
         extra_kwargs = {
             "acceso_agente": {"required": False},
             "telefono": {"max_length": 15, "allow_null": True, "required": False},

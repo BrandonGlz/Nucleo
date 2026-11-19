@@ -11,6 +11,12 @@ from .seguridad import (
     SegundoFactorView,
 )
 from .sesiones import MiSesionView, MisSesionesView
+from .solicitudes import (
+    AprobarSolicitudView,
+    RechazarSolicitudView,
+    SolicitarAccesoView,
+    SolicitudAccesoView,
+)
 from .views import (
     CambiarPasswordView,
     LoginView,
@@ -38,5 +44,17 @@ urlpatterns = [
     path("auth/2fa/activar/", ActivarSegundoFactorView.as_view(), name="auth-2fa-activar"),
     path("auth/2fa/desactivar/", DesactivarSegundoFactorView.as_view(), name="auth-2fa-desactivar"),
     path("auth/2fa/codigos/", CodigosRecuperacionView.as_view(), name="auth-2fa-codigos"),
+    path("auth/solicitar-acceso/", SolicitarAccesoView.as_view(), name="auth-solicitar-acceso"),
+    path("solicitudes-acceso/<int:num>/", SolicitudAccesoView.as_view(), name="solicitud-acceso"),
+    path(
+        "solicitudes-acceso/<int:num>/aprobar/",
+        AprobarSolicitudView.as_view(),
+        name="solicitud-acceso-aprobar",
+    ),
+    path(
+        "solicitudes-acceso/<int:num>/rechazar/",
+        RechazarSolicitudView.as_view(),
+        name="solicitud-acceso-rechazar",
+    ),
     path("", include(router.urls)),
 ]

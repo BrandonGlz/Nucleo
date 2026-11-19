@@ -44,6 +44,8 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Solicitud de acceso desde el inicio de sesión: el administrador la aprueba desde el enlace del correo y Nico
+  envía la bienvenida con una contraseña temporal que se cambia al entrar.
 - Landing pública en `info.bynucleo.com` con planes, dispositivo interactivo y Nico como guía.
 - Respaldo de lecturas sin conexión en microSD, pendiente de probar con una tarjeta real.
 

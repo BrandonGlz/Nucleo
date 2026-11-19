@@ -177,7 +177,8 @@ class CambiarPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         request.user.set_password(entrada.validated_data["password_nueva"])
-        request.user.save(update_fields=["password"])
+        request.user.debe_cambiar_password = False
+        request.user.save(update_fields=["password", "debe_cambiar_password"])
         cerrar_sesiones(request.user)
         return quitar_cookie_sesion(Response(status=status.HTTP_204_NO_CONTENT))
 

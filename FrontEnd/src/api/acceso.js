@@ -15,3 +15,10 @@ export const AUTH_2FA_CONFIGURAR = '/auth/2fa/configurar/' // POST → {secreto,
 export const AUTH_2FA_ACTIVAR = '/auth/2fa/activar/' // POST {codigo} → {codigos_recuperacion}
 export const AUTH_2FA_DESACTIVAR = '/auth/2fa/desactivar/' // POST {password, codigo} (no en roles obligatorios)
 export const AUTH_2FA_CODIGOS = '/auth/2fa/codigos/' // POST {codigo} → {codigos_recuperacion} nuevos
+// Solicitud de acceso (sin sesión): GET → [{num, nombre, areas: [{num, nombre}]}] de las organizaciones activas;
+// POST {organizacion, area, nombre, primer_apellido, segundo_apellido?, correo} → 201 (avisa a los administradores)
+export const AUTH_SOLICITAR_ACCESO = '/auth/solicitar-acceso/'
+// Revisión de una solicitud (ADMIN de la organización o ADMINPLAT)
+export const SOLICITUD_ACCESO = (num) => `/solicitudes-acceso/${num}/` // GET → datos, áreas y roles asignables
+export const SOLICITUD_APROBAR = (num) => `/solicitudes-acceso/${num}/aprobar/` // POST {area, rol, nombre, primer_apellido, segundo_apellido?} → crea la cuenta y manda la bienvenida
+export const SOLICITUD_RECHAZAR = (num) => `/solicitudes-acceso/${num}/rechazar/` // POST → avisa a la persona
