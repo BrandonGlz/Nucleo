@@ -1034,3 +1034,11 @@ h2, .preguntas h2, .cierre__texto h2 { font-size: clamp(34px, min(4.6vw, 7.6svh)
   #plataforma .pestanas button { padding: 9px 6px; font-size: 13.5px; border-radius: 14px; }
   #plataforma .navegador { grid-column: 2; grid-row: 1 / span 2; justify-self: center; width: min(100%, max(600px, calc((100svh - var(--nav-alto) - 140px) * 1.6))); margin: 0; }
 }
+
+/* Misma separación entre todas las secciones, también al salir de la portada y antes del cierre */
+.hero { padding-bottom: 56px; }
+.cierre { padding-top: 56px; }
+@media (max-width: 560px) {
+  .hero { padding-bottom: 44px; }
+  .cierre { padding-top: 44px; }
+}
