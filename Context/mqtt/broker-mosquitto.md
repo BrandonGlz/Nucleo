@@ -105,7 +105,7 @@ cuando cambian el intervalo de muestreo o los umbrales (con
 {
   "dispositivo": "NUC-001",
   "nombre": "Núcleo A-01",
-  "intervalo_muestreo_seg": 30,
+  "intervalo_muestreo_seg": 60,
   "umbrales": [
     {"variable": "TEMP", "peligro_min": 15.0, "advertencia_min": 18.0,
      "advertencia_max": 25.0, "peligro_max": 28.0}

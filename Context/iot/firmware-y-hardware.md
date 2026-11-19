@@ -168,7 +168,7 @@ IoT/.venv/bin/python -m unittest discover -s IoT/tests -t IoT
 
 ## Funcionamiento del firmware
 
-- **Ciclo** (`nucleo/aplicacion.py`): cada intervalo de muestreo (30 s por defecto, de
+- **Ciclo** (`nucleo/aplicacion.py`): cada intervalo de muestreo (60 s por defecto, de
   5 a 120 s) lee los sensores, clasifica los valores, actualiza LED, pantalla y
   buzzer, y publica. Entre muestras atiende Wi-Fi, MQTT y el buzzer cada 100 ms.
 - **Un sensor que falla** no impide leer ni publicar los demás; las lecturas fuera del
@@ -188,7 +188,7 @@ IoT/.venv/bin/python -m unittest discover -s IoT/tests -t IoT
   mensaje sin hora no se encola: la plataforma lo fecharía al recibirlo y falsearía la serie.
   Con **microSD** (`nucleo/tarjeta.py`), lo que no cabe en memoria pasa a la tarjeta en vez de
   descartarse: archivos `nucleo/<n>.jsonl` de 100 mensajes (`SD_LOTE`), hasta 2000 archivos
-  (unos 70 días a 30 s; luego se borra lo más antiguo). Sobreviven a un reinicio y se envían
+  (unos 140 días a 60 s; luego se borra lo más antiguo). Sobreviven a un reinicio y se envían
   primero, en orden; lo enviado se borra de la tarjeta al confirmarse, así que un corte a medias
   no lo duplica. Sin tarjeta, la cola en memoria se pierde si la placa se reinicia.
 - **Bitácora en la microSD:** `nucleo/bitacora.txt` anota arranques (versión y modo) y cada

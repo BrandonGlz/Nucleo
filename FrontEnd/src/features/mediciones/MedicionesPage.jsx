@@ -109,7 +109,7 @@ export function MedicionesPage() {
         cifras: [
           { etiqueta: 'Mínimo', valor: num(vista.min, info.decimales), unidad },
           { etiqueta: 'Promedio', valor: num(vista.prom, info.decimales), unidad, tono: 'verde' },
-          { etiqueta: 'Lecturas', valor: miles(lect.datos.lecturas.length / 3), sub: `Cada ${actual?.intervalo_muestreo_seg ?? 30} s` },
+          { etiqueta: 'Lecturas', valor: miles(lect.datos.lecturas.length / 3), sub: `Cada ${actual?.intervalo_muestreo_seg ?? 60} s` },
         ],
       }
     : {
@@ -122,7 +122,7 @@ export function MedicionesPage() {
       }
 
   return (
-    <Pantalla eyebrow={`${organizacion} · lecturas cada ${actual?.intervalo_muestreo_seg ?? 30} s`} titulo="Histórico" cifras={cifras}>
+    <Pantalla eyebrow={`${organizacion} · lecturas cada ${actual?.intervalo_muestreo_seg ?? 60} s`} titulo="Histórico" cifras={cifras}>
       <Card>
         <div className="ui-rejilla-filtros" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 16 }}>
           <Select

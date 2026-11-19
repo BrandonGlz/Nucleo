@@ -35,7 +35,7 @@ class RestriccionesTests(PruebaBase):
 
     def test_valores_por_defecto_de_la_base(self):
         self.e.dispositivo.refresh_from_db()
-        self.assertEqual(self.e.dispositivo.intervalo_muestreo_seg, 30)
+        self.assertEqual(self.e.dispositivo.intervalo_muestreo_seg, 60)
         self.assertIsNotNone(self.e.dispositivo.fecha_alta)
 
 

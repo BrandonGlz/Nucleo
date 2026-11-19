@@ -48,7 +48,7 @@ CALENTAMIENTO_AIRE_SEG = 20 * 60
 
 # --- Muestreo -----------------------------------------------------------------------------
 # La plataforma puede cambiarlo (5 a 120 s) con el mensaje retenido de configuración.
-INTERVALO_MUESTREO_SEG = 30
+INTERVALO_MUESTREO_SEG = 60
 INTERVALO_MIN_SEG = 5
 INTERVALO_MAX_SEG = 120
 ARCHIVO_AJUSTES = "ajustes.json"  # última configuración recibida, para usarla sin conexión
@@ -72,7 +72,7 @@ SD_PUNTO = "/sd"
 SD_FRECUENCIA = 20_000_000  # SPI a 20 MHz; bajar a 1_000_000 si los cables son largos
 SD_REINTENTO_SEG = 60  # sin tarjeta, cada cuánto se vuelve a buscar (se puede poner encendido)
 SD_LOTE = 100  # mensajes por archivo de pendientes
-SD_MAX_ARCHIVOS = 2000  # tope: 200 000 lecturas (unos 70 días a 30 s); luego se borra lo más antiguo
+SD_MAX_ARCHIVOS = 2000  # tope: 200 000 lecturas (unos 140 días a 60 s); luego se borra lo más antiguo
 SD_BITACORA_MAX = 256 * 1024  # al pasar de esto la bitácora se rota a bitacora.1.txt
 
 # --- Batería ------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ RAIZ_PUENTE = "nucleo/raices.pem"
 # --- Actualización remota (OTA) ----------------------------------------------------------------
 # Versión de este firmware; súbela antes de `manage.py publicar_firmware`. Con PUENTE_HOST y
 # PUENTE_CLAVE en secrets.py la placa revisa cada OTA_REVISAR_SEG (0 = nunca) si hay otra.
-FIRMWARE_VERSION = "1.1.3"
+FIRMWARE_VERSION = "1.1.4"
 
 # Encabezado de la pantalla hasta recibir el nombre que tiene el equipo en la plataforma
 NOMBRE_PREDETERMINADO = "Núcleo"

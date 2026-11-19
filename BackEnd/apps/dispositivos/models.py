@@ -46,7 +46,7 @@ class Dispositivo(models.Model):
     )
     nombre = models.CharField(max_length=60)
     codigo_mqtt = models.CharField(max_length=40, unique=True)
-    intervalo_muestreo_seg = models.SmallIntegerField(db_default=30)
+    intervalo_muestreo_seg = models.SmallIntegerField(db_default=60)
     nivel_bateria = models.SmallIntegerField(null=True, blank=True)
     ultima_conexion = models.DateTimeField(null=True, blank=True)
     ultimo_arranque = models.DateTimeField(null=True, blank=True)

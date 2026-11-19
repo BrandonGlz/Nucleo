@@ -25,7 +25,7 @@ Cada componente conserva su propio número porque se publica por separado.
 | --- | --- |
 | Proyecto | 0.9.0 |
 | App Android | 0.2.6 (código 18) |
-| Firmware del ESP32 | 1.1.3 |
+| Firmware del ESP32 | 1.1.4 |
 | Web | 0.1.0 |
 | API | 0.1.0 |
 
@@ -55,6 +55,7 @@ Cada componente conserva su propio número porque se publica por separado.
 - El SRS define los proveedores: Ollama como IA local, Gmail para el correo y Firebase Cloud Messaging para las
   notificaciones push.
 - El SRS define el intervalo de muestreo como programable según las necesidades de cada área, de 5 a 120 segundos.
+- Los dispositivos nuevos miden cada 60 segundos por defecto; los ya registrados conservan su intervalo.
 
 ### Corregido
 

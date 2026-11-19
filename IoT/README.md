@@ -254,7 +254,7 @@ conserva la CA) y se reinicia el broker con `docker compose up -d mosquitto`.
 
 ## Cómo funciona
 
-- **Ciclo:** cada `intervalo_seg` (30 s por defecto, de 5 a 120 s) lee los sensores,
+- **Ciclo:** cada `intervalo_seg` (60 s por defecto, de 5 a 120 s) lee los sensores,
   actualiza el LED RGB y la pantalla, y publica. El resto del tiempo atiende Wi-Fi, MQTT
   y el buzzer.
 - **Niveles:** verde normal, amarillo advertencia, rojo peligro con buzzer. Un valor dentro
