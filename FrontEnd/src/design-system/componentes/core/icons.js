@@ -88,6 +88,10 @@ import {
   MonitorSmartphone,
   CloudDownload,
   Usb,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 
 const ICONS = {
@@ -178,6 +182,10 @@ const ICONS = {
   'moon': Moon,
   'sun': Sun,
   'usb': Usb,
+  'mic': Mic,
+  'mic-off': MicOff,
+  'volume-2': Volume2,
+  'volume-x': VolumeX,
 }
 
 export { ICONS }

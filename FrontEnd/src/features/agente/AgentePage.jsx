@@ -28,6 +28,8 @@ import * as agenteApi from '../../services/agente'
 import { esReporte, planDe, respuestaRapida, siguientes } from './proceso'
 import { filtrar, normalizar, resaltar } from './sugerenciasEscritura'
 import { aplicar, interpretar, plantillas } from './edicion'
+import { useDictado } from './useDictado'
+import { useVozNico } from './voz'
 import { Archivos, Comparativa, Edicion, ElegirPlantilla, GraficaChat } from './Piezas'
 import { periodo } from '../../utils/formato'
 import caraNico from '../../assets/nico/nico-cara.webp'
@@ -447,8 +449,46 @@ function SugerenciasEscritura({ lista, escrito, elegida, elegir, resaltarEn }) {
   )
 }
 
+// Botón de dictado a la izquierda de enviar: escucha con el micrófono del equipo y escribe en el
+// campo lo que se dice (con el texto provisional mientras se habla). Si el navegador no tiene
+// dictado (Firefox) queda deshabilitado con un tooltip que lo explica.
+function BotonMicrofono({ dictado, valor, deshabilitado, alEmpezar }) {
+  if (!dictado.soportado) {
+    return (
+      <button
+        type="button"
+        className="ui-ia-microfono"
+        aria-disabled="true"
+        aria-label="Dictado por voz no disponible en este navegador"
+        title="Tu navegador no permite dictar por voz. Usa Chrome, Edge o Safari."
+        onClick={(e) => e.preventDefault()}
+      >
+        <Icon name="mic-off" size={18} />
+      </button>
+    )
+  }
+  const { escuchando } = dictado
+  return (
+    <button
+      type="button"
+      className={`ui-ia-microfono${escuchando ? ' is-escuchando' : ''}`}
+      aria-pressed={escuchando}
+      aria-label={escuchando ? 'Dejar de escuchar' : 'Dictar por voz'}
+      title={escuchando ? 'Escuchando… toca para terminar' : 'Dictar por voz'}
+      disabled={deshabilitado}
+      onClick={() => {
+        if (escuchando) return dictado.detener()
+        alEmpezar?.()
+        dictado.iniciar(valor)
+      }}
+    >
+      <Icon name="mic" size={18} />
+    </button>
+  )
+}
+
 // Caja para escribir: crece con el texto, Enter envía y Shift+Enter hace un salto de línea.
-function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, enfocar, alcance, aviso, sugerencias }) {
+function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, enfocar, alcance, aviso, sugerencias, dictado, voz }) {
   const area = useRef(null)
   const [elegida, setElegida] = useState(-1)
   const [cerradaEn, setCerradaEn] = useState(null)
@@ -461,9 +501,11 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
     setElegida(-1)
   }
   const elegir = (s) => {
+    dictado.cancelar()
     setCerradaEn(s.texto)
     enviar(s.texto)
   }
+  const escuchando = dictado.escuchando
   useLayoutEffect(() => {
     const el = area.current
     el.style.height = 'auto'
@@ -474,9 +516,10 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
   }, [enfocar])
   return (
     <form
-      className={`ui-ia-compositor${deshabilitado ? ' is-deshabilitado' : ''}`}
+      className={`ui-ia-compositor${deshabilitado ? ' is-deshabilitado' : ''}${escuchando ? ' is-escuchando' : ''}`}
       onSubmit={(e) => {
         e.preventDefault()
+        dictado.cancelar()
         enviar()
       }}
     >
@@ -486,7 +529,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
         rows={1}
         value={valor}
         disabled={deshabilitado}
-        placeholder={aviso ?? 'Pregunta sobre tus sensores, alertas o lecturas…'}
+        placeholder={aviso ?? (escuchando ? 'Te escucho… habla ahora' : 'Pregunta sobre tus sensores, alertas o lecturas…')}
         aria-label="Pregunta para Nico AI"
         onChange={(e) => cambiar(e.target.value)}
         role="combobox"
@@ -514,6 +557,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
           }
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault()
+            dictado.cancelar()
             if (abierta && elegida >= 0) elegir(lista[elegida])
             else enviar()
           }
@@ -521,8 +565,21 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
       />
       <div className="ui-ia-compositor__barra">
         <span className="ui-ia-alcance">
-          <Icon name="cpu" size={14} /> {alcance}
+          <Icon name="cpu" size={14} /> <span className="ui-ia-alcance__texto">{alcance}</span>
         </span>
+        <span className="ui-ia-compositor__botones">
+        {voz.hablando && (
+          <button type="button" className="ui-ia-callar" aria-label="Callar a Nico" title="Callar a Nico" onClick={voz.callar}>
+            <Icon name="volume-x" size={16} />
+            <span>Callar</span>
+          </button>
+        )}
+        <BotonMicrofono
+          dictado={dictado}
+          valor={valor}
+          deshabilitado={deshabilitado || pensando}
+          alEmpezar={voz.callar}
+        />
         {pensando ? (
           <button type="button" className="ui-ia-enviar is-detener" aria-label="Detener" onClick={detener}>
             <Square size={14} fill="currentColor" />
@@ -532,7 +589,17 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
             <ArrowUp size={18} />
           </button>
         )}
+        </span>
       </div>
+      {dictado.error && (
+        <p className="ui-ia-dictado-aviso" role="alert">
+          <Icon name="mic-off" size={14} />
+          <span>{dictado.error}</span>
+          <button type="button" aria-label="Cerrar aviso" onClick={dictado.limpiarError}>
+            <Icon name="x" size={14} />
+          </button>
+        </p>
+      )}
     </form>
   )
 }
@@ -545,6 +612,21 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   const ag = useAgente()
   const { conversaciones, actual, conv, pensando, animada, dispositivos, dispositivoAgente } = ag
   const [texto, setTexto] = useState('')
+  // Dictado por voz: `porVoz` indica que el texto del campo salió (al menos en parte) del
+  // micrófono; si se envía así, Nico lee su respuesta en voz alta (`esperaVoz`).
+  const voz = useVozNico()
+  const porVoz = useRef(false)
+  const esperaVoz = useRef(false)
+  const dictado = useDictado({
+    alTexto: (t) => {
+      porVoz.current = true
+      setTexto(t)
+    },
+  })
+  const cambiarTexto = (t) => {
+    if (!t.trim()) porVoz.current = false
+    setTexto(t)
+  }
   // En el celular las conversaciones se abren encima del chat, así que empiezan ocultas.
   const movil = useEsMovil()
   const [panel, setPanel] = useState(() => !window.matchMedia?.(CONSULTA_MOVIL).matches)
@@ -638,9 +720,12 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     }
     return null
   }
-  const preguntar = (pregunta, base) => {
+  const preguntar = (pregunta, base, conVoz = false) => {
     if (!pregunta.trim() || pensando) return
     setTexto('')
+    esperaVoz.current = conVoz
+    porVoz.current = false
+    voz.callar()
     const r = base ? null : local(pregunta)
     if (r) {
       ag.responderLocal(pregunta, r)
@@ -667,10 +752,14 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     for (const m of delHilo ?? []) if (m.reporte?.num && m.formato) asignarFormato(m.reporte.num, m.formato)
   }, [delHilo])
   const descargarReporte = (r) => reportesApi.descargarArchivo(r.num, nombreReporte(r)).catch(() => {})
-  const detener = ag.detener
+  const detener = () => {
+    esperaVoz.current = false
+    ag.detener()
+  }
   const nueva = () => {
     ag.nueva()
     setTexto('')
+    voz.callar()
   }
   const regenerar = () => {
     const i = mensajes.findLastIndex((m) => m.de === 'yo')
@@ -691,6 +780,16 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     }, 240)
   }
   const ultimo = mensajes.at(-1)
+  // Si la pregunta se dictó, Nico lee en voz alta la respuesta en cuanto llega.
+  const hablar = voz.hablar
+  const claveUltima = ultimo?.clave
+  const deUltimo = ultimo?.de
+  const textoUltimo = ultimo?.texto
+  useEffect(() => {
+    if (pensando || !deUltimo || deUltimo === 'yo') return
+    if (esperaVoz.current && deUltimo === 'agente' && textoUltimo) hablar(textoUltimo)
+    esperaVoz.current = false
+  }, [claveUltima, deUltimo, textoUltimo, pensando, hablar])
   const listo = ultimo?.de === 'agente' && !pensando && (ultimo.clave !== animada || terminada === ultimo.clave)
   // Mientras se elige plantilla no se sugiere nada; tras una edición, se sugieren más ediciones.
   const sugerencias =
@@ -716,8 +815,10 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   const compositor = (
     <Compositor
       valor={texto}
-      cambiar={setTexto}
-      enviar={(elegido) => preguntar(typeof elegido === 'string' ? elegido : texto)}
+      cambiar={cambiarTexto}
+      enviar={(elegido) => (typeof elegido === 'string' ? preguntar(elegido) : preguntar(texto, undefined, porVoz.current))}
+      dictado={dictado}
+      voz={voz}
       detener={detener}
       sugerencias={escritura?.num === numAgente ? escritura : null}
       pensando={pensando}
@@ -752,6 +853,7 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
                     type="button"
                     onClick={() => {
                       ag.abrir(c.id)
+                      voz.callar()
                       if (movil) setPanel(false)
                     }}
                     title={c.titulo}
