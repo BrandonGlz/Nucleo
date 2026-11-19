@@ -47,7 +47,10 @@ class VozTests(PruebaBase):
     @mock.patch("apps.nico.voz.sintetizar_mp3", return_value=b"ID3audio")
     def test_devuelve_mp3(self, _):
         r = cliente_de(self.e.analista).post(
-            "/api/v1/nico/voz/", {"texto": "Hola, soy Nico."}, format="json"
+            "/api/v1/nico/voz/",
+            {"texto": "Hola, soy Nico."},
+            format="json",
+            HTTP_ACCEPT="audio/mpeg",
         )
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r["Content-Type"], "audio/mpeg")

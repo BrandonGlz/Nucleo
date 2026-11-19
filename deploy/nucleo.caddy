@@ -97,7 +97,7 @@ http://:8081 {
 	# web, para el dictado por voz en los chats de Nico.
 	handle {
 		header {
-			Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss://{host} https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+			Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' wss://{host} https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 			X-Frame-Options DENY
 			Permissions-Policy "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), clipboard-write=(self)"
 		}

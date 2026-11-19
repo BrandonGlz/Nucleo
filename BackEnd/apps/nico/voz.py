@@ -109,6 +109,11 @@ class VozView(APIView):
     permission_classes = [PuedeDictar]
     throttle_classes = [LimiteVoz]
 
+    def perform_content_negotiation(self, request, force=False):
+        # La web y la app piden «Accept: audio/mpeg»; la API solo tiene el renderizador JSON (para
+        # los errores), así que sin forzar respondería 406 antes de llegar a generar el audio.
+        return super().perform_content_negotiation(request, force=True)
+
     def post(self, request):
         entrada = VozSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
