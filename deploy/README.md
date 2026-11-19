@@ -237,10 +237,26 @@ Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.j
 `NUCLEO_ABIS=arm64-v8a,armeabi-v7a`). El enlace no cambia y no hace falta reiniciar nada.
 
 Es incremental: si `Mobile/` no cambió desde el último APK no compila; reinstala `node_modules` solo si cambió
-`package-lock.json` y regenera `android/` solo si cambió la configuración nativa (`app.json`, `eas.json`,
-dependencias). Un cambio solo de pantallas tarda alrededor de 1 min (unos 2 GB de RAM); desde cero va con una
-tarea a la vez para cuidar la memoria y tarda más. La memoria se usa solo mientras corre. Opciones: `--forzar` (compila aunque no haya cambios) y `--limpio` (borra `node_modules` y
+`package-lock.json` y regenera `android/` (`expo prebuild --clean`) solo si cambió la configuración nativa
+(dependencias, plugins, `eas.json` o cualquier parte de `app.json` que no sea la versión). Subir `expo.version` y
+`expo.android.versionCode` no regenera nada: el script las escribe en `android/app/build.gradle` (`versionName` y
+`versionCode`) y Gradle reutiliza lo ya compilado; si no encuentra esas líneas se detiene y pide `--limpio`. Un
+cambio solo de pantallas o de versión tarda unos minutos (unos 2 GB de RAM, 2 tareas a la vez); desde cero va con
+una tarea a la vez para cuidar la memoria y tarda más (`NUCLEO_HILOS=2` fuerza 2 para medir). La memoria se usa
+solo mientras corre. Opciones: `--forzar` (compila aunque no haya cambios) y `--limpio` (borra `node_modules` y
 `android/` y compila todo, por si algo sale raro).
+
+Para que tarde menos en la laptop (CPU de 2 núcleos):
+
+- El APK piloto va sin R8: el script pone `android.enableMinifyInReleaseBuilds=false` y
+  `android.enableShrinkResourcesInReleaseBuilds=false` en `android/gradle.properties`. R8 era el paso más largo
+  (~6 min); a cambio el APK pesa algo más y el código Java/Kotlin no va ofuscado.
+- No corre `lintVitalRelease` (`-x lintVitalRelease`), que no cambia el APK.
+- El C++ (la app y React Native) pasa por ccache si está instalado: `CCACHE_DIR=~/.cache/ccache`, tope 3 GB,
+  `NDK_CCACHE` para lo que use ndk-build. Así una regeneración de `android/` reutiliza lo ya compilado. `ccache -s` muestra los aciertos.
+- Crea una sola vez `~/.gradle/init.d/nucleo-cache-30-dias.gradle`, que guarda 30 días (en lugar de 7) lo
+  que no se usó de la caché local de Gradle, para que una build tras semanas sin compilar no empiece de cero.
+- Corre con `nice -n 19 ionice -c2 -n7`: prioridad baja, pero sin quedarse parada si el disco está ocupado.
 
 #### Notificaciones push
 
@@ -260,7 +276,7 @@ Si se pierde `google-services.json`, se vuelve a descargar en Firebase → Confi
 proyecto → General → Tus apps, se copia a `Mobile/` y se recompila el APK. Para probar un push,
 la app debe estar cerrada.
 
-Requisitos (una vez): `sudo apt install openjdk-21-jdk-headless unzip` y las herramientas de línea de comandos
+Requisitos (una vez): `sudo apt install openjdk-21-jdk-headless unzip ccache` y las herramientas de línea de comandos
 de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
 (`yes | sdkmanager --licenses`); Gradle descarga el resto. La llave de firma vive en `~/nucleo-app`
 (fuera de git) y entra en el respaldo diario: sin ella no se puede actualizar la app ya instalada.
