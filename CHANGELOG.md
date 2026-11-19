@@ -54,6 +54,7 @@ Cada componente conserva su propio número porque se publica por separado.
   anterior se conserva en `Docs/PDFs/SRS-rev1.pdf`. El avance de todas las versiones se recalculó con sus criterios.
 - El SRS define los proveedores: Ollama como IA local, Gmail para el correo y Firebase Cloud Messaging para las
   notificaciones push.
+- El SRS define el intervalo de muestreo como programable según las necesidades de cada área, de 5 a 120 segundos.
 
 ### Corregido
 
