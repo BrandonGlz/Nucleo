@@ -88,7 +88,10 @@ services:
     image: ollama/ollama:0.40.16
     container_name: nucleo_ollama
     profiles: ["ia"]
-    mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    # 2g: el modelo de Nico (qwen2.5:1.5b) ocupa ~1.1 GB cargado; deja margen sin quitarle RAM al resto.
+    # Durante la build del APK, compilar_apk.sh lo baja a 1.5g y al terminar lo regresa a este valor.
+    mem_limit: ${OLLAMA_MEM_LIMIT:-2g}
+    memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-3g}
     restart: unless-stopped
     environment:
       OLLAMA_NUM_PARALLEL: 2

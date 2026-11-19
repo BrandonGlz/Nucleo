@@ -107,12 +107,18 @@ if (( ! forzar )) && [[ -f "$descargas/index.html" && "$(cat "$ultima" 2>/dev/nu
   echo "Sin cambios en Mobile/ desde el último APK publicado; no se compila (usa --forzar para compilar igual)."
   exit 0
 fi
-# Mientras compila se apaga la IA de Nico AI (Ollama) para dejarle la memoria a Gradle; al
-# terminar (bien o mal) se vuelve a encender si estaba corriendo.
+# Mientras compila, Nico AI (Ollama) sigue funcionando pero con menos memoria: se descarga su
+# modelo y su límite baja a 1.5g (el modelo ocupa ~1.1 GB al volver a cargarse), así Gradle tiene
+# lugar sin detener nada. Al terminar (bien o mal) vuelve a su límite normal de docker-compose.yml.
 if docker ps --format '{{.Names}}' | grep -qx nucleo_ollama; then
-  echo "Se apaga la IA de Nico AI mientras compila"
-  docker stop nucleo_ollama >/dev/null
-  trap 'echo "Se enciende de nuevo la IA de Nico AI"; docker start nucleo_ollama >/dev/null' EXIT
+  limite_ia="$(docker inspect nucleo_ollama --format '{{.HostConfig.Memory}} {{.HostConfig.MemorySwap}}')"
+  echo "Nico AI sigue activa con memoria reducida (1.5 GB) mientras compila"
+  for modelo in $(docker exec nucleo_ollama ollama ps 2>/dev/null | awk 'NR>1 {print $1}'); do
+    docker exec nucleo_ollama ollama stop "$modelo" >/dev/null 2>&1 || true
+  done
+  docker update --memory 1536m --memory-swap 2g nucleo_ollama >/dev/null
+  read -r mem_ia swap_ia <<<"$limite_ia"
+  trap 'echo "Nico AI vuelve a su límite normal de memoria"; docker update --memory "$mem_ia" --memory-swap "$swap_ia" nucleo_ollama >/dev/null' EXIT
 fi
 if (( limpio )); then
   echo "Compilación desde cero: se borran node_modules y android/"
