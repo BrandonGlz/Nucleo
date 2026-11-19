@@ -1,5 +1,6 @@
-import { AGENTE, AGENTE_CALIFICAR, AGENTE_ESTADO, AGENTE_SUGERENCIAS, NICO_CALIFICAR, NICO_CHAT, NICO_CHAT_SUGERENCIAS, NICO_ESTADO } from '../api'
+import { AGENTE, AGENTE_CALIFICAR, AGENTE_ESTADO, AGENTE_SUGERENCIAS, NICO_CALIFICAR, NICO_CHAT, NICO_CHAT_SUGERENCIAS, NICO_ESTADO, NICO_TRANSCRIBIR } from '../api'
 import { USAR_MOCKS, pedir } from './config'
+import { apiRequest } from './api/client'
 import * as mock from './mock/handlers'
 
 // La web usa el agente de su organización; la consola de Nico AI (nicoai.bynucleo.com) el de
@@ -32,4 +33,12 @@ export async function estado() {
 export async function sugerenciasEscritura(dispositivo) {
   if (USAR_MOCKS) return { activas: false, maximo: 6, sugerencias: [] }
   return pedir(rutas.sugerencias, { params: { dispositivo } })
+}
+
+// Convierte a texto el audio del dictado de respaldo (Whisper en el servidor).
+export async function transcribir(audio) {
+  if (USAR_MOCKS) return { texto: '¿Cómo estuvo la temperatura hoy?' }
+  const datos = new FormData()
+  datos.append('audio', audio, audio.type.includes('ogg') ? 'dictado.ogg' : audio.type.includes('mp4') ? 'dictado.mp4' : 'dictado.webm')
+  return apiRequest(NICO_TRANSCRIBIR, { method: 'POST', body: datos })
 }

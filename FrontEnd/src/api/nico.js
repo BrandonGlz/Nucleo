@@ -27,3 +27,7 @@ export const NICO_NOTIFICACIONES = '/nico/notificaciones/'
 export const NICO_NOTIFICACIONES_LEER = '/nico/notificaciones/leer/' // POST {nums?} → {marcadas, no_leidas}; sin nums, todas
 // GET → {correo, tipos: [{tipo, etiqueta, descripcion, consola, correo}]}; PATCH {tipos: {TIPO: {consola, correo}}}
 export const NICO_NOTIFICACIONES_PREFERENCIAS = '/nico/notificaciones/preferencias/'
+// Dictado por voz de respaldo (Brave, Firefox…): POST multipart {audio} → {texto}. Para todo rol con Nico AI.
+export const NICO_TRANSCRIBIR = '/nico/transcribir/'
+// Voz de Nico (Piper en el servidor): POST {texto ≤ 600} → audio/mpeg. Para todo rol con Nico AI.
+export const NICO_VOZ = '/nico/voz/'

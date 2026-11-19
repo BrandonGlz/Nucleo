@@ -48,6 +48,18 @@ paso "Backend: entorno de Python 3.12 y dependencias"
 cd "$raiz/BackEnd"
 [[ -x .venv/bin/python ]] || uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
+# Modelo de Whisper para el dictado por voz de respaldo: se descarga aquí y no en la primera petición.
+.venv/bin/python -c "from faster_whisper.utils import download_model; download_model('${NUCLEO_WHISPER_MODELO:-base}')" >/dev/null
+# Voz de Nico (Piper, es_MX-ald-medium, masculina). Su .json trae "PhonemeType.ESPEAK" y Piper 1.8
+# espera "espeak": se corrige al descargarla.
+voces="$HOME/.local/share/nucleo/voces"
+if [[ ! -s "$voces/es_MX-ald-medium.onnx" ]]; then
+  mkdir -p "$voces"
+  base_voz="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/es/es_MX/ald/medium/es_MX-ald-medium"
+  curl -fsSL -o "$voces/es_MX-ald-medium.onnx.json" "$base_voz.onnx.json"
+  curl -fsSL -o "$voces/es_MX-ald-medium.onnx" "$base_voz.onnx"
+  sed -i 's/"PhonemeType.ESPEAK"/"espeak"/' "$voces/es_MX-ald-medium.onnx.json"
+fi
 .venv/bin/python manage.py check
 .venv/bin/python manage.py migrate --noinput
 .venv/bin/python manage.py migrate --database=iot --noinput

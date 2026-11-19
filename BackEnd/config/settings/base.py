@@ -245,6 +245,14 @@ NUCLEO_AGENTE_MANTENIMIENTO = env(
     "NUCLEO_AGENTE_MANTENIMIENTO", default=str(BASE_DIR / "var" / "agente-mantenimiento")
 )
 NUCLEO_BATERIA_BAJA_PCT = env.int("NUCLEO_BATERIA_BAJA_PCT", default=20)
+# Dictado por voz de respaldo (apps/nico/transcripcion.py): modelo de Whisper e hilos de CPU.
+NUCLEO_WHISPER_MODELO = env("NUCLEO_WHISPER_MODELO", default="base")
+NUCLEO_WHISPER_HILOS = env.int("NUCLEO_WHISPER_HILOS", default=2)
+# Voz de Nico (apps/nico/voz.py): voz masculina de Piper, carpeta del modelo
+# y ritmo (< 1 = más ágil).
+NUCLEO_PIPER_VOZ = env("NUCLEO_PIPER_VOZ", default="es_MX-ald-medium")
+NUCLEO_PIPER_DIR = env("NUCLEO_PIPER_DIR", default="~/.local/share/nucleo/voces")
+NUCLEO_PIPER_RITMO = env.float("NUCLEO_PIPER_RITMO", default=0.92)
 NUCLEO_ALERTAS_MAX_SEGUNDOS = 120
 NUCLEO_TOKEN_DIAS_SIN_USO = env.int("NUCLEO_TOKEN_DIAS_SIN_USO", default=7)
 # Cookie HttpOnly de la sesión web (common/autenticacion.py). Segura (solo HTTPS) fuera de DEBUG.

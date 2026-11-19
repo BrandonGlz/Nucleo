@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .transcripcion import TranscribirView
 from .views import (
     AjusteSugerenciasView,
     ArbolView,
@@ -19,6 +20,7 @@ from .views import (
     RegistroViewSet,
     ResumenView,
 )
+from .voz import VozView
 
 router = DefaultRouter()
 router.register("banco", BancoViewSet, basename="nico-banco")
@@ -27,6 +29,8 @@ router.register("documentos", DocumentoViewSet, basename="nico-documento")
 
 urlpatterns = [
     path("chat/", ConsolaAgenteView.as_view(), name="nico-chat"),
+    path("transcribir/", TranscribirView.as_view(), name="nico-transcribir"),
+    path("voz/", VozView.as_view(), name="nico-voz"),
     path("calificar/", ConsolaCalificarView.as_view(), name="nico-calificar"),
     path("estado/", ConsolaEstadoView.as_view(), name="nico-estado"),
     path("chat/sugerencias/", ConsolaSugerenciasView.as_view(), name="nico-chat-sugerencias"),

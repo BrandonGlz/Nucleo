@@ -11,3 +11,8 @@ paho-mqtt==2.2.0
 reportlab==5.1.0
 drf-spectacular==0.30.0
 drf-spectacular-sidecar==2026.10.1
+# Dictado por voz de respaldo (Whisper local); av fijo porque faster-whisper 1.2.1 falla con av 19
+faster-whisper==1.2.1
+av==15.1.0
+# Voz de Nico (Piper, local)
+piper-tts==1.8.0

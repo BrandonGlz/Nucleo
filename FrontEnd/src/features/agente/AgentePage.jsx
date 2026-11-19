@@ -29,7 +29,7 @@ import { esReporte, planDe, respuestaRapida, siguientes } from './proceso'
 import { filtrar, normalizar, resaltar } from './sugerenciasEscritura'
 import { aplicar, interpretar, plantillas } from './edicion'
 import { useDictado } from './useDictado'
-import { useVozNico } from './voz'
+import { useLeerRespuestas, useVozNico } from './voz'
 import { Archivos, Comparativa, Edicion, ElegirPlantilla, GraficaChat } from './Piezas'
 import { periodo } from '../../utils/formato'
 import caraNico from '../../assets/nico/nico-cara.webp'
@@ -460,22 +460,22 @@ function BotonMicrofono({ dictado, valor, deshabilitado, alEmpezar }) {
         className="ui-ia-microfono"
         aria-disabled="true"
         aria-label="Dictado por voz no disponible en este navegador"
-        title="Tu navegador no permite dictar por voz. Usa Chrome, Edge o Safari."
+        title="Tu navegador no permite usar el micrófono para dictar."
         onClick={(e) => e.preventDefault()}
       >
         <Icon name="mic-off" size={18} />
       </button>
     )
   }
-  const { escuchando } = dictado
+  const { escuchando, procesando } = dictado
   return (
     <button
       type="button"
       className={`ui-ia-microfono${escuchando ? ' is-escuchando' : ''}`}
       aria-pressed={escuchando}
       aria-label={escuchando ? 'Dejar de escuchar' : 'Dictar por voz'}
-      title={escuchando ? 'Escuchando… toca para terminar' : 'Dictar por voz'}
-      disabled={deshabilitado}
+      title={escuchando ? 'Escuchando… al terminar de hablar se envía solo' : procesando ? 'Convirtiendo tu voz a texto…' : 'Dictar por voz'}
+      disabled={deshabilitado || procesando}
       onClick={() => {
         if (escuchando) return dictado.detener()
         alEmpezar?.()
@@ -488,7 +488,7 @@ function BotonMicrofono({ dictado, valor, deshabilitado, alEmpezar }) {
 }
 
 // Caja para escribir: crece con el texto, Enter envía y Shift+Enter hace un salto de línea.
-function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, enfocar, alcance, aviso, sugerencias, dictado, voz }) {
+function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, enfocar, alcance, aviso, sugerencias, dictado, voz, leer, cambiarLeer }) {
   const area = useRef(null)
   const [elegida, setElegida] = useState(-1)
   const [cerradaEn, setCerradaEn] = useState(null)
@@ -529,7 +529,14 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
         rows={1}
         value={valor}
         disabled={deshabilitado}
-        placeholder={aviso ?? (escuchando ? 'Te escucho… habla ahora' : 'Pregunta sobre tus sensores, alertas o lecturas…')}
+        placeholder={
+          aviso ??
+          (escuchando
+            ? 'Te escucho… habla ahora'
+            : dictado.procesando
+              ? 'Convirtiendo tu voz a texto…'
+              : 'Pregunta sobre tus sensores, alertas o lecturas…')
+        }
         aria-label="Pregunta para Nico AI"
         onChange={(e) => cambiar(e.target.value)}
         role="combobox"
@@ -568,6 +575,18 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
           <Icon name="cpu" size={14} /> <span className="ui-ia-alcance__texto">{alcance}</span>
         </span>
         <span className="ui-ia-compositor__botones">
+        {voz.soportada && !voz.hablando && (
+          <button
+            type="button"
+            className={`ui-ia-leer${leer ? ' is-activo' : ''}`}
+            aria-pressed={leer}
+            aria-label="Leer las respuestas en voz alta"
+            title={leer ? 'Nico lee todas sus respuestas en voz alta. Toca para desactivarlo.' : 'Que Nico lea sus respuestas en voz alta (a los mensajes de voz siempre contesta con voz)'}
+            onClick={() => cambiarLeer(!leer)}
+          >
+            <Icon name={leer ? 'volume-2' : 'volume-x'} size={16} />
+          </button>
+        )}
         {voz.hablando && (
           <button type="button" className="ui-ia-callar" aria-label="Callar a Nico" title="Callar a Nico" onClick={voz.callar}>
             <Icon name="volume-x" size={16} />
@@ -615,13 +634,17 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   // Dictado por voz: `porVoz` indica que el texto del campo salió (al menos en parte) del
   // micrófono; si se envía así, Nico lee su respuesta en voz alta (`esperaVoz`).
   const voz = useVozNico()
+  const [leerSiempre, setLeerSiempre] = useLeerRespuestas()
   const porVoz = useRef(false)
   const esperaVoz = useRef(false)
+  // Al terminar de hablar, el mensaje se envía solo (y Nico contesta con voz).
+  const enviarDictado = useRef(null)
   const dictado = useDictado({
     alTexto: (t) => {
       porVoz.current = true
       setTexto(t)
     },
+    alTerminar: (t) => enviarDictado.current?.(t),
   })
   const cambiarTexto = (t) => {
     if (!t.trim()) porVoz.current = false
@@ -740,6 +763,9 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     const formato = pendiente?.de === 'agente' && (pendiente.accion || pendiente.faltan) ? pendiente.formato : null
     ag.preguntar(pregunta, base, nuevo.ms, formato ? { extra: { formato } } : undefined)
   }
+  useEffect(() => {
+    enviarDictado.current = (t) => preguntar(t, undefined, true)
+  })
   const elegirPlantilla = (pregunta, opcion) => {
     if (pensando) return
     const nuevo = planDe(pregunta, nombreAgente)
@@ -780,15 +806,24 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     }, 240)
   }
   const ultimo = mensajes.at(-1)
-  // Si la pregunta se dictó, Nico lee en voz alta la respuesta en cuanto llega.
+  // Si la pregunta se dictó (o si la persona lo activó para todas), Nico lee en voz alta la
+  // respuesta en cuanto llega.
   const hablar = voz.hablar
   const claveUltima = ultimo?.clave
+  // Respuesta que ya se leyó (o que ya estaba al abrir la conversación): no se vuelve a leer.
+  const leida = useRef(claveUltima)
   const deUltimo = ultimo?.de
   const textoUltimo = ultimo?.texto
   useEffect(() => {
     if (pensando || !deUltimo || deUltimo === 'yo') return
-    if (esperaVoz.current && deUltimo === 'agente' && textoUltimo) hablar(textoUltimo)
+    const nueva = leida.current !== claveUltima
+    if ((esperaVoz.current || (leerSiempre && nueva)) && deUltimo === 'agente' && textoUltimo) {
+      leida.current = claveUltima
+      hablar(textoUltimo)
+    }
     esperaVoz.current = false
+    // Solo al llegar una respuesta nueva: activar la lectura no relee la última.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveUltima, deUltimo, textoUltimo, pensando, hablar])
   const listo = ultimo?.de === 'agente' && !pensando && (ultimo.clave !== animada || terminada === ultimo.clave)
   // Mientras se elige plantilla no se sugiere nada; tras una edición, se sugieren más ediciones.
@@ -819,6 +854,11 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
       enviar={(elegido) => (typeof elegido === 'string' ? preguntar(elegido) : preguntar(texto, undefined, porVoz.current))}
       dictado={dictado}
       voz={voz}
+      leer={leerSiempre}
+      cambiarLeer={(v) => {
+        setLeerSiempre(v)
+        if (!v) voz.callar()
+      }}
       detener={detener}
       sugerencias={escritura?.num === numAgente ? escritura : null}
       pensando={pensando}

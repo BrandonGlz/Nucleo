@@ -3147,6 +3147,33 @@ article.ui-hoja,
     box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent);
   }
 }
+/* Interruptor «leer respuestas en voz alta»: atenuado si está apagado, verde suave si está encendido. */
+.ui-ia-leer {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.ui-ia-leer:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+.ui-ia-leer.is-activo {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+.ui-ia-leer:focus-visible {
+  outline: 2px solid var(--accent-secondary);
+  outline-offset: 2px;
+}
 .ui-ia-callar {
   display: inline-flex;
   align-items: center;

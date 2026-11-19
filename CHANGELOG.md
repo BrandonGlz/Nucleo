@@ -51,6 +51,9 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Voz de Nico en la web: el mensaje dictado se envía solo al terminar de hablar, Nico contesta con su propia voz
+  masculina (Piper, en el servidor) y se puede activar que lea también las respuestas a lo escrito. En Brave,
+  Firefox y otros navegadores sin servicio de dictado, el audio se transcribe en el servidor con Whisper.
 - Solicitud de acceso desde el inicio de sesión: el administrador la aprueba desde el enlace del correo y Nico
   envía la bienvenida con una contraseña temporal que se cambia al entrar.
 - Landing pública en `info.bynucleo.com` con planes, dispositivo interactivo y Nico como guía.
