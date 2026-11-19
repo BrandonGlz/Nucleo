@@ -43,7 +43,7 @@ class SolicitudAccesoTests(PruebaBase):
 
     def test_avisa_a_los_administradores_de_la_organizacion(self):
         r = self.solicitar()
-        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.status_code, 204, r.content)
         solicitud = SolicitudAcceso.objects.get()
         self.assertEqual(solicitud.correo, "ana.lopez@ejemplo.com")
         self.assertEqual(len(mail.outbox), 1)
@@ -52,13 +52,13 @@ class SolicitudAccesoTests(PruebaBase):
 
     def test_no_revela_si_el_correo_ya_tiene_cuenta(self):
         r = self.solicitar(correo=self.e.analista.correo)
-        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.status_code, 204)
         self.assertFalse(SolicitudAcceso.objects.exists())
         self.assertEqual(len(mail.outbox), 0)
 
     def test_rechaza_area_de_otra_organizacion_y_bots(self):
         self.assertEqual(self.solicitar(area=self.otra.area.pk).status_code, 400)
-        self.assertEqual(self.solicitar(sitio="http://spam").status_code, 201)
+        self.assertEqual(self.solicitar(sitio="http://spam").status_code, 204)
         self.assertFalse(SolicitudAcceso.objects.exists())
 
     def test_admin_aprueba_y_la_persona_recibe_su_bienvenida(self):

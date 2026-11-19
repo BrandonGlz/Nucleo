@@ -66,7 +66,7 @@ class SolicitudSerializer(serializers.Serializer):
 class SolicitarAccesoView(APIView):
     """GET: organizaciones activas con sus áreas. POST: envía la solicitud.
 
-    Responde 201 siempre que los datos sean válidos, exista o no la cuenta, para no
+    Responde 204 siempre que los datos sean válidos, exista o no la cuenta, para no
     revelar qué correos están dados de alta.
     """
 
@@ -105,7 +105,7 @@ class SolicitarAccesoView(APIView):
             ).exists()
         )
         if datos.get("sitio") or ya_existe:
-            return Response(status=status.HTTP_201_CREATED)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         solicitud = SolicitudAcceso.objects.create(
             organizacion=datos["organizacion"],
             area=datos["area"],
@@ -116,7 +116,7 @@ class SolicitarAccesoView(APIView):
             ip=ip_cliente(request),
         )
         avisar_administradores(solicitud)
-        return Response(status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def _nombre(s):
