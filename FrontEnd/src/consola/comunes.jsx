@@ -21,14 +21,9 @@ export function AreaTexto({ label, hint, error, filas = 4, mono = false, ...rest
   )
 }
 
-// Desplegable con etiqueta encima, como los demás campos.
-export function Campo({ label, ...resto }) {
-  return (
-    <div className="nc-field">
-      <span className="nc-field__label">{label}</span>
-      <Desplegable {...resto} />
-    </div>
-  )
+// Desplegable con etiqueta encima, como los demás campos (la etiqueta queda ligada al botón).
+export function Campo(props) {
+  return <Desplegable {...props} />
 }
 
 

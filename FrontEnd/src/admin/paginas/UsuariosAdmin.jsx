@@ -85,16 +85,14 @@ function AltaUsuario({ organizaciones, cerrar, creado }) {
             placeholder="Elige una organización"
             options={organizaciones.map((o) => ({ value: String(o.num), label: o.nombre }))}
             onChange={(e) => setF({ ...f, organizacion: e.target.value, area: '' })}
+            error={errores.organizacion}
           />
-          {errores.organizacion && <p className="ui-admin-error">{errores.organizacion}</p>}
         </div>
         <div>
-          <Select label="Área" icon="map-pin" value={f.area} disabled={!org} options={opcionesAreas(org)} onChange={campo('area')} />
-          {errores.area && <p className="ui-admin-error">{errores.area}</p>}
+          <Select label="Área" icon="map-pin" value={f.area} disabled={!org} options={opcionesAreas(org)} onChange={campo('area')} error={errores.area} />
         </div>
       </div>
-      <Select label="Rol" value={f.rol} options={opcionesRol()} onChange={campo('rol')} />
-      {errores.rol && <p className="ui-admin-error">{errores.rol}</p>}
+      <Select label="Rol" value={f.rol} options={opcionesRol()} onChange={campo('rol')} error={errores.rol} />
       <div className="ui-grid-2">
         <Input label="Nombre" value={f.nombre} error={errores.nombre} onChange={campo('nombre')} />
         <Input label="Primer apellido" value={f.primer_apellido} error={errores.primer_apellido} onChange={campo('primer_apellido')} />
@@ -171,8 +169,8 @@ function EditarUsuario({ usuario, organizaciones, propio, cerrar, guardado }) {
             disabled={propio}
             options={opcionesRol(usuario.rol === 'ADMINPLAT' ? ROLES : undefined)}
             onChange={(e) => setF({ ...f, rol: e.target.value })}
+            error={errores.rol}
           />
-          {errores.rol && <p className="ui-admin-error">{errores.rol}</p>}
         </div>
         <div>
           <Select
@@ -182,8 +180,8 @@ function EditarUsuario({ usuario, organizaciones, propio, cerrar, guardado }) {
             disabled={!org}
             options={opcionesAreas(org)}
             onChange={(e) => setF({ ...f, area: e.target.value })}
+            error={errores.area}
           />
-          {errores.area && <p className="ui-admin-error">{errores.area}</p>}
         </div>
       </div>
       <Select
@@ -192,8 +190,8 @@ function EditarUsuario({ usuario, organizaciones, propio, cerrar, guardado }) {
         disabled={propio}
         options={estados}
         onChange={(e) => setF({ ...f, estado_usuario: e.target.value })}
+        error={errores.estado_usuario}
       />
-      {errores.estado_usuario && <p className="ui-admin-error">{errores.estado_usuario}</p>}
       {propio && <p className="ui-muted ui-consola-ayuda">Es tu cuenta: no puedes cambiar tu propio rol ni tu estado.</p>}
       {otros.map(([k, v]) => (
         <p key={k} className="ui-admin-error" role="alert">

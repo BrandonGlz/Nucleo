@@ -9,7 +9,7 @@ import { useSalida } from '../hooks/useSalida'
 // Los valores pueden llegar como número o texto (p. ej. el número de un área).
 const igual = (a, b) => String(a) === String(b)
 
-export function Desplegable({ label, icon, value, onChange, options, accion, placeholder, disabled }) {
+export function Desplegable({ label, icon, value, onChange, options, accion, placeholder, disabled, error, hint }) {
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(0)
   const caja = useRef(null)
@@ -64,68 +64,79 @@ export function Desplegable({ label, icon, value, onChange, options, accion, pla
   }
 
   return (
-    <div className="nc-field ui-desplegable" ref={caja}>
+    <div className={`nc-field ui-desplegable${error ? ' is-error' : ''}${disabled ? ' is-disabled' : ''}`} ref={caja}>
       {label && (
         <span className="nc-field__label" id={`${id}-etiqueta`}>
           {label}
         </span>
       )}
-      <button
-        type="button"
-        className={`nc-input ui-desplegable__boton${abierto ? ' is-focus' : ''}${disabled ? ' is-disabled' : ''}`}
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={abierto}
-        aria-labelledby={label ? `${id}-etiqueta ${id}-valor` : undefined}
-        aria-activedescendant={abierto ? `${id}-${activo}` : undefined}
-        aria-controls={`${id}-lista`}
-        onClick={() => (abierto ? setAbierto(false) : abrir())}
-        onKeyDown={tecla}
-      >
-        {icon && <Icon name={icon} size={18} />}
-        <span className={`ui-desplegable__valor${actual ? '' : ' is-vacio'}`} id={`${id}-valor`}>
-          {actual?.label ?? placeholder}
-        </span>
-        <Icon name="chevron-down" size={18} className="nc-select__chev" />
-      </button>
-      {lista.montado && (
-        <ul
-          className={`ui-desplegable__lista${lista.saliendo ? ' is-saliendo' : ''}`}
-          role="listbox"
-          id={`${id}-lista`}
-          aria-labelledby={label ? `${id}-etiqueta` : undefined}
+      <div className="ui-desplegable__caja">
+        <button
+          type="button"
+          className={`nc-input ui-desplegable__boton${abierto ? ' is-focus' : ''}${disabled ? ' is-disabled' : ''}${error ? ' is-error' : ''}`}
+          disabled={disabled}
+          aria-invalid={error ? true : undefined}
+          aria-haspopup="listbox"
+          aria-expanded={abierto}
+          aria-labelledby={label ? `${id}-etiqueta ${id}-valor` : undefined}
+          aria-activedescendant={abierto ? `${id}-${activo}` : undefined}
+          aria-controls={`${id}-lista`}
+          onClick={() => (abierto ? setAbierto(false) : abrir())}
+          onKeyDown={tecla}
         >
-          {options.map((o, i) => (
-            <li
-              key={o.value}
-              id={`${id}-${i}`}
-              role="option"
-              aria-selected={igual(o.value, value)}
-              className={`ui-desplegable__opcion${i === activo ? ' is-activa' : ''}${igual(o.value, value) ? ' is-elegida' : ''}`}
-              onMouseEnter={() => setActivo(i)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => elegir(i)}
-            >
-              <span>{o.label}</span>
-              {igual(o.value, value) && <Check size={16} />}
-            </li>
-          ))}
-          {accion && (
-            <li
-              id={`${id}-${options.length}`}
-              role="option"
-              aria-selected={false}
-              className={`ui-desplegable__opcion ui-desplegable__accion${activo === options.length ? ' is-activa' : ''}`}
-              onMouseEnter={() => setActivo(options.length)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => elegir(options.length)}
-            >
-              {accion.icon && <Icon name={accion.icon} size={16} />}
-              <span>{accion.label}</span>
-            </li>
-          )}
-        </ul>
-      )}
+          {icon && <Icon name={icon} size={18} />}
+          <span className={`ui-desplegable__valor${actual ? '' : ' is-vacio'}`} id={`${id}-valor`}>
+            {actual?.label ?? placeholder}
+          </span>
+          <Icon name="chevron-down" size={18} className="nc-select__chev" />
+        </button>
+        {lista.montado && (
+          <ul
+            className={`ui-desplegable__lista${lista.saliendo ? ' is-saliendo' : ''}`}
+            role="listbox"
+            id={`${id}-lista`}
+            aria-labelledby={label ? `${id}-etiqueta` : undefined}
+          >
+            {options.map((o, i) => (
+              <li
+                key={o.value}
+                id={`${id}-${i}`}
+                role="option"
+                aria-selected={igual(o.value, value)}
+                className={`ui-desplegable__opcion${i === activo ? ' is-activa' : ''}${igual(o.value, value) ? ' is-elegida' : ''}`}
+                onMouseEnter={() => setActivo(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => elegir(i)}
+              >
+                <span>{o.label}</span>
+                {igual(o.value, value) && <Check size={16} />}
+              </li>
+            ))}
+            {accion && (
+              <li
+                id={`${id}-${options.length}`}
+                role="option"
+                aria-selected={false}
+                className={`ui-desplegable__opcion ui-desplegable__accion${activo === options.length ? ' is-activa' : ''}`}
+                onMouseEnter={() => setActivo(options.length)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => elegir(options.length)}
+              >
+                {accion.icon && <Icon name={accion.icon} size={16} />}
+                <span>{accion.label}</span>
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+      {error ? (
+        <span className="nc-field__msg nc-field__msg--error">
+          <Icon name="octagon-alert" size={14} />
+          {error}
+        </span>
+      ) : hint ? (
+        <span className="nc-field__msg">{hint}</span>
+      ) : null}
     </div>
   )
 }

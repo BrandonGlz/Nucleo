@@ -20,7 +20,14 @@
   margin: 0;
   font-size: 13px;
   line-height: 19px;
+  font-weight: 500;
   color: var(--danger);
+}
+/* Error general del formulario (no de un campo): franja suave con el rojo de la paleta */
+.ui-modal__caja > .ui-admin-error[role='alert'] {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
 }
 .ui-admin-fallo {
   display: flex;
@@ -386,16 +393,22 @@
 .ui-flasheo-nota { margin: 0; font-size: .875rem; opacity: .75; }
 .ui-flasheo-pasos { margin: 0; padding-left: 20px; display: grid; gap: 8px; line-height: 1.5; }
 .ui-flasheo-form { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 16px; }
-.ui-flasheo-form:disabled { opacity: .55; }
+.ui-flasheo-form:disabled .nc-field__label,
+.ui-flasheo-form:disabled .nc-field__msg,
+.ui-flasheo-form:disabled .nc-togglefield { color: var(--text-muted); }
+.ui-admin-campos .nc-togglefield { align-self: end; min-height: 44px; }
 .ui-flasheo-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ui-flasheo-modos button {
   display: grid; gap: 4px; text-align: left; padding: 14px 16px; border-radius: 14px; cursor: pointer;
-  border: 1.5px solid var(--nc-border, rgba(127,127,127,.25)); background: transparent; color: inherit; font: inherit;
-  transition: border-color .15s, background-color .15s;
+  border: 1px solid var(--border-strong); background: var(--surface); color: inherit; font: inherit;
+  transition: border-color .15s, background-color .15s, box-shadow .15s;
 }
+.ui-flasheo-modos button:not(:disabled):hover { border-color: var(--text-secondary); }
+.ui-flasheo-modos button:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
 .ui-flasheo-modos button span { font-size: .85rem; opacity: .75; }
-.ui-flasheo-modos button.is-activo { border-color: var(--nc-green, #2ec27e); background: color-mix(in srgb, var(--nc-green, #2ec27e) 10%, transparent); }
-.ui-flasheo-modos button:disabled { cursor: not-allowed; opacity: .5; }
+.ui-flasheo-modos button.is-activo { border-color: var(--accent-secondary); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-secondary); }
+.ui-flasheo-modos button:disabled { cursor: not-allowed; background: var(--surface-muted); border-color: var(--border); color: var(--text-muted); }
+.ui-flasheo-modos button.is-activo:disabled { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); box-shadow: none; background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface-muted)); }
 .ui-flasheo-acciones { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ui-flasheo-avance { margin-top: 16px; display: grid; gap: 6px; }
 .ui-flasheo-avance__texto { display: flex; justify-content: space-between; font-size: .875rem; font-weight: 600; }
