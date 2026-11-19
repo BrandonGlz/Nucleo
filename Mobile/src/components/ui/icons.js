@@ -66,6 +66,10 @@ import {
   ThumbsUp,
   Wrench,
   X,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
 } from 'lucide-react-native'
 
 const ICONS = {
@@ -134,6 +138,10 @@ const ICONS = {
   'message-square': MessageSquare,
   'square-pen': SquarePen,
   'chart-line': ChartLine,
+  'mic': Mic,
+  'mic-off': MicOff,
+  'volume-2': Volume2,
+  'volume-x': VolumeX,
 }
 
 export { ICONS }

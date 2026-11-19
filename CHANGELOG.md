@@ -24,7 +24,7 @@ Cada componente conserva su propio número porque se publica por separado.
 | Componente | Versión actual |
 | --- | --- |
 | Proyecto | 0.9.0 |
-| App Android | 0.2.6 (código 18) |
+| App Android | 0.2.7 (código 19) |
 | Firmware del ESP32 | 1.1.4 |
 | Web | 0.1.0 |
 | API | 0.1.0 |
@@ -39,6 +39,13 @@ Cada componente conserva su propio número porque se publica por separado.
 - Registrar el acondicionamiento de 48 horas de cada CCS811.
 - Completar la prueba de 100 horas continuas y medir la disponibilidad del 99 %.
 - Probar la web en Chrome, Edge, Firefox y Safari.
+
+## [Sin publicar]
+
+### Agregado
+
+- Dictado por voz en los chats de Nico AI de la web y de la app (0.2.7): un micrófono junto al botón de enviar
+  transcribe en español lo que se dice y, si la pregunta se dictó, Nico lee la respuesta en voz alta.
 
 ## [0.9.0] - 2026-11-18 · SRS 82 %
 

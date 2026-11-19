@@ -3,7 +3,7 @@
     "name": "Núcleo",
     "slug": "-nucleo-mobile",
     "owner": "nucleo-expo",
-    "version": "0.2.6",
+    "version": "0.2.7",
     "orientation": "portrait",
     "scheme": "nucleo",
     "userInterfaceStyle": "automatic",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.nucleo.mobile",
-      "versionCode": 18,
+      "versionCode": 19,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icono-adaptativo.png",
         "monochromeImage": "./assets/icono-monocromo.png",
@@ -23,6 +23,13 @@
     },
     "plugins": [
       "expo-font",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Núcleo usa el micrófono para que dictes tus preguntas a Nico AI.",
+          "speechRecognitionPermission": "Núcleo convierte tu voz en texto para que dictes tus preguntas a Nico AI."
+        }
+      ],
       [
         "expo-notifications",
         {

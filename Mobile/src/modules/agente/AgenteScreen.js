@@ -1,17 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
+import { ActivityIndicator, Animated, Easing, Image, Keyboard, KeyboardAvoidingView, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ReporteChat } from '../../components/ReporteChat'
 import { SelectorDispositivo } from '../../components/SelectorDispositivo'
 import { Aparece, Icon, T } from '../../components/ui'
+import { useAnimaciones } from '../../context/PreferenciasContext'
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
 import { useOperador } from '../../hooks/useOperador'
 import * as agenteApi from '../../services/agente'
 import { planDe, respuestaRapida, siguientes } from './proceso'
 import { ComparativaChat, GraficaChat } from './Piezas'
+import { useDictado } from './dictado'
+import { useVozNico } from './voz'
 import { diaCorto, hora } from '../../utils/formato'
 import { font, marca } from '../../theme'
 
@@ -41,6 +44,20 @@ export function AgenteScreen() {
   const hilo = useRef(null)
   const [elegido, setElegido] = useState(null)
   const [texto, setTexto] = useState('')
+  // Dictado por voz: `porVoz` indica que el texto del campo salió (al menos en parte) del
+  // micrófono; si se envía así, Nico lee su respuesta en voz alta.
+  const voz = useVozNico()
+  const porVoz = useRef(false)
+  const dictado = useDictado({
+    alTexto: (t) => {
+      porVoz.current = true
+      setTexto(t)
+    },
+  })
+  const cambiarTexto = (t) => {
+    if (!t.trim()) porVoz.current = false
+    setTexto(t)
+  }
   const [mensajes, setMensajes] = useState({})
   const [pensando, setPensando] = useState(false)
   // Conversación abierta por dispositivo (su id) y las guardadas.
@@ -100,6 +117,7 @@ export function AgenteScreen() {
 
   const nuevaConversacion = () => {
     if (!d || pensando) return
+    voz.callar()
     setMensajes((x) => ({ ...x, [d.num]: [] }))
     setAbierta((x) => ({ ...x, [d.num]: null }))
   }
@@ -129,9 +147,12 @@ export function AgenteScreen() {
     }
   }, [])
 
-  const preguntar = async (pregunta) => {
+  const preguntar = async (pregunta, conVoz = false) => {
     const p = pregunta.trim()
     if (!p || pensando || !d || !activo) return
+    dictado.cancelar()
+    voz.callar()
+    porVoz.current = false
     const num = d.num
     const agregar = (m) => setMensajes((x) => ({ ...x, [num]: [...(x[num] ?? []), m] }))
     const anteriores = (mensajes[num] ?? []).filter((m) => m.de === 'yo')
@@ -142,6 +163,7 @@ export function AgenteScreen() {
     const rapida = (mensajes[num] ?? []).at(-1)?.accion ? null : respuestaRapida(p, { nombre: usuario.nombre?.split(' ')[0], dispositivo: d.nombre })
     if (rapida && !rapida.ir) {
       agregar({ de: 'agente', texto: rapida.texto, hora: hora(new Date().toISOString()) })
+      if (conVoz) voz.hablar(rapida.texto)
       return
     }
     const nuevo = planDe(p, d.nombre, anteriores.at(-1)?.texto ?? '')
@@ -164,6 +186,7 @@ export function AgenteScreen() {
         accion: r.accion ?? null,
         hora: hora(new Date().toISOString()),
       })
+      if (conVoz && r.texto) voz.hablar(r.texto)
     } catch (e) {
       await pausa
       if (e.datos?.inactivo) setPuente((x) => ({ ...x, activos: x.activos.filter((n) => n !== num) }))
@@ -383,22 +406,68 @@ export function AgenteScreen() {
             ))}
           </ScrollView>
         )}
-        <View style={[s.compositor, { backgroundColor: c.surface, borderColor: c.border, marginBottom: teclado ? 10 : 104 + inset.bottom }]}>
+        {dictado.error && (
+          <View style={[s.aviso, { backgroundColor: c.dangerSoft }]} accessibilityRole="alert">
+            <Icon name="mic-off" size={15} color={c.danger} />
+            <T size={12} lh={17} style={{ flex: 1 }}>
+              {dictado.error.texto}
+            </T>
+            {dictado.error.ajustes && (
+              <Pressable onPress={() => Linking.openSettings().catch(() => {})} accessibilityRole="button" hitSlop={6}>
+                <T size={12} peso={700} color={c.accent}>
+                  Ajustes
+                </T>
+              </Pressable>
+            )}
+            <Pressable onPress={dictado.limpiarError} accessibilityRole="button" accessibilityLabel="Cerrar aviso" hitSlop={8}>
+              <Icon name="x" size={15} color={c.textMuted} />
+            </Pressable>
+          </View>
+        )}
+        <View
+          style={[
+            s.compositor,
+            { backgroundColor: c.surface, borderColor: dictado.escuchando ? c.accent : c.border, marginBottom: teclado ? 10 : 104 + inset.bottom },
+          ]}
+        >
           <TextInput
             value={texto}
-            onChangeText={setTexto}
-            placeholder={d && !activo ? `Nico AI no disponible: ${d.nombre} no está activo` : 'Pregunta sobre tu dispositivo…'}
+            onChangeText={cambiarTexto}
+            placeholder={
+              d && !activo ? `Nico AI no disponible: ${d.nombre} no está activo` : dictado.escuchando ? 'Te escucho… habla ahora' : 'Pregunta sobre tu dispositivo…'
+            }
             placeholderTextColor={c.textMuted}
             style={[s.entrada, { color: c.textPrimary, fontFamily: font[500] }]}
             multiline
             editable={!!d && activo}
-            onSubmitEditing={() => preguntar(texto)}
+            onSubmitEditing={() => preguntar(texto, porVoz.current)}
           />
+          {voz.hablando && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Callar a Nico"
+              onPress={voz.callar}
+              style={({ pressed }) => [s.enviar, { backgroundColor: c.accentSoft }, pressed && { opacity: 0.7 }]}
+            >
+              <Icon name="volume-x" size={18} color={c.accent} />
+            </Pressable>
+          )}
+          {dictado.soportado && (
+            <BotonMicrofono
+              escuchando={dictado.escuchando}
+              deshabilitado={pensando || !d || !activo}
+              alTocar={() => {
+                if (dictado.escuchando) return dictado.detener()
+                voz.callar()
+                dictado.iniciar(texto)
+              }}
+            />
+          )}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Enviar pregunta"
             disabled={!texto.trim() || pensando || !d || !activo}
-            onPress={() => preguntar(texto)}
+            onPress={() => preguntar(texto, porVoz.current)}
             style={[s.enviar, { backgroundColor: texto.trim() && !pensando ? c.accent : c.surfaceMuted }]}
           >
             <Icon name="send" size={18} color={texto.trim() && !pensando ? c.accentContrast : c.textMuted} />
@@ -406,6 +475,52 @@ export function AgenteScreen() {
         </View>
       </View>
     </KeyboardAvoidingView>
+  )
+}
+
+// Micrófono a la izquierda de enviar: al escuchar se pinta de acento con un halo que late
+// (fijo si está activada «Reducir animaciones» o el ajuste equivalente del teléfono).
+function BotonMicrofono({ escuchando, deshabilitado, alTocar }) {
+  const { c } = useTema()
+  const animar = useAnimaciones()
+  const [p] = useState(() => new Animated.Value(0))
+  useEffect(() => {
+    if (!escuchando || !animar) return undefined
+    p.setValue(0)
+    const ciclo = Animated.loop(Animated.timing(p, { toValue: 1, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true }))
+    ciclo.start()
+    return () => ciclo.stop()
+  }, [escuchando, animar, p])
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={escuchando ? 'Dejar de escuchar' : 'Dictar por voz'}
+      accessibilityState={{ selected: escuchando, disabled: deshabilitado }}
+      disabled={deshabilitado}
+      onPress={alTocar}
+      style={({ pressed }) => [
+        s.enviar,
+        escuchando ? { backgroundColor: c.accent } : { borderWidth: 1, borderColor: c.border },
+        (pressed || deshabilitado) && { opacity: deshabilitado ? 0.45 : 0.75 },
+      ]}
+    >
+      {escuchando && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            s.halo,
+            { borderColor: c.accent },
+            animar
+              ? {
+                  opacity: p.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.6, 0, 0] }),
+                  transform: [{ scale: p.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] }) }],
+                }
+              : { opacity: 0.35, transform: [{ scale: 1.15 }] },
+          ]}
+        />
+      )}
+      <Icon name="mic" size={18} color={escuchando ? c.accentContrast : c.textSecondary} />
+    </Pressable>
   )
 }
 
@@ -455,4 +570,6 @@ const s = StyleSheet.create({
   seguir: { gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1 },
   enviar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  halo: { position: 'absolute', width: 40, height: 40, borderRadius: 20, borderWidth: 3 },
+  aviso: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 14 },
 })

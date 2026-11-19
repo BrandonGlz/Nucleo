@@ -27,6 +27,8 @@
     "expo-font": "~58.0.11",
     "expo-notifications": "~58.1.8",
     "expo-sharing": "~58.0.22",
+    "expo-speech": "~58.0.4",
+    "expo-speech-recognition": "^58.0.1",
     "expo-status-bar": "~58.0.4",
     "lucide-react-native": "^1.68.0",
     "react": "19.3.0",
