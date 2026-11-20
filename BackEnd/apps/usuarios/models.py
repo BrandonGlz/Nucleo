@@ -8,6 +8,7 @@ from django.db.models.functions import Now
 
 from common import roles
 from common.cifrado import CampoCifrado
+from common.validadores import validar_correo
 
 
 class UsuarioManager(BaseUserManager):
@@ -75,7 +76,7 @@ class Usuario(AbstractBaseUser):
     nombre = models.CharField(max_length=60)
     primer_apellido = models.CharField(max_length=60)
     segundo_apellido = models.CharField(max_length=60, null=True, blank=True)
-    correo = models.EmailField(max_length=150, unique=True)
+    correo = models.EmailField(max_length=150, unique=True, validators=[validar_correo])
     # Dato personal: se guarda cifrado (common/cifrado.py); el serializador limita a 15 caracteres.
     telefono = CampoCifrado(null=True, blank=True)
     # Un operador usa el agente IA en la app solo si un administrador o supervisor se lo
@@ -305,7 +306,7 @@ class SolicitudAcceso(models.Model):
     nombre = models.CharField(max_length=60)
     primer_apellido = models.CharField(max_length=60)
     segundo_apellido = models.CharField(max_length=60, blank=True, default="")
-    correo = models.EmailField(max_length=150)
+    correo = models.EmailField(max_length=150, validators=[validar_correo])
     estado = models.CharField(max_length=10, choices=Estado.choices, default=Estado.PENDIENTE)
     ip = models.GenericIPAddressField(null=True, blank=True)
     fecha_solicitud = models.DateTimeField(db_default=Now(), editable=False)

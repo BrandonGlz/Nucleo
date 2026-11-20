@@ -77,8 +77,14 @@ export function PerfilPage() {
       await auth.cambiarPassword(pass.actual, pass.nueva)
       await logout()
       navegar('/acceso', { replace: true })
-    } catch {
-      setAvisoPass('Revisa tu contraseña actual; la nueva necesita al menos 8 caracteres.')
+    } catch (err) {
+      // El servidor explica qué falló (contraseña actual incorrecta, o por qué la nueva es insegura).
+      const d = err?.datos ?? {}
+      setAvisoPass(
+        [...(d.password_actual ?? []), ...(d.password_nueva ?? [])].join(' ') ||
+          d.detail ||
+          'No se pudo cambiar la contraseña. Intenta de nuevo.',
+      )
     }
   }
   const salir = async () => {

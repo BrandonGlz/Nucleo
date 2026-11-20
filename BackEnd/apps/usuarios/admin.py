@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
-from django.contrib.auth.password_validation import validate_password
+
+from common.validadores import validar_password
 
 from .models import TelefonoPush, Usuario
 
@@ -22,7 +23,7 @@ class UsuarioAdminForm(forms.ModelForm):
         if not self.instance.pk and not valor:
             raise forms.ValidationError("La contraseña es obligatoria.")
         if valor:
-            validate_password(valor)
+            validar_password(valor)
         return valor
 
 

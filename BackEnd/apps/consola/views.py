@@ -8,7 +8,6 @@ from collections import Counter, defaultdict
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.auth.password_validation import validate_password
 from django.db.models import Count, Q
 from django.db.models.functions import ExtractHour, TruncDate
 from django.utils import timezone
@@ -28,6 +27,7 @@ from apps.usuarios.models import SegundoFactor, Sesion, Usuario
 from apps.usuarios.seguridad import enlace_recuperacion
 from common import correo, roles
 from common.autenticacion import cerrar_sesiones
+from common.validadores import validar_password
 
 from .alertas import cuentas_sin_2fa
 from .models import AlertaSeguridad, PoliticaSeguridad
@@ -231,7 +231,7 @@ class UsuarioConsolaSerializer(serializers.ModelSerializer):
         return valor
 
     def validate_password(self, valor):
-        validate_password(valor)
+        validar_password(valor)
         return valor
 
     def validate(self, datos):

@@ -10,7 +10,6 @@
 import logging
 
 from django.conf import settings
-from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
@@ -26,6 +25,7 @@ from apps.usuarios.models import SegundoFactor, Usuario
 from common import correo, totp
 from common.autenticacion import cerrar_sesiones
 from common.red import LimitePorIP
+from common.validadores import validar_password
 
 logger = logging.getLogger(__name__)
 Accion = RegistroAuditoria.Accion
@@ -312,7 +312,7 @@ class RestablecerPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            validate_password(datos["password_nueva"], usuario)
+            validar_password(datos["password_nueva"], usuario)
         except Exception as error:
             mensajes = getattr(error, "messages", [str(error)])
             return Response({"password_nueva": mensajes}, status=status.HTTP_400_BAD_REQUEST)

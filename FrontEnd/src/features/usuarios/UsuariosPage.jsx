@@ -55,12 +55,11 @@ function FormUsuario({ usuario, areas, roles, cerrar, guardado }) {
     try {
       const cuerpo = { ...f, area: f.area ? Number(f.area) : null }
       guardado(await (usuario ? usuariosApi.actualizar(usuario.num, cuerpo) : usuariosApi.crear(cuerpo)))
-    } catch {
-      setError(
-        usuario
-          ? 'No se pudo guardar. Intenta de nuevo.'
-          : 'No se pudo agregar. Revisa que el correo no esté registrado y que la contraseña no sea muy común.',
-      )
+    } catch (err) {
+      // Mensajes del servidor por campo (correo no válido o ya registrado, contraseña insegura…).
+      const d = err?.datos ?? {}
+      const mensajes = Object.values(d).flat().filter((m) => typeof m === 'string')
+      setError(mensajes.join(' ') || (usuario ? 'No se pudo guardar. Intenta de nuevo.' : 'No se pudo agregar. Intenta de nuevo.'))
       setEnviando(false)
     }
   }

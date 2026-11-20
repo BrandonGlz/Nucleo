@@ -1,9 +1,9 @@
-from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from apps.organizaciones.models import Area
 from apps.usuarios.models import TelefonoPush, Usuario
 from common import roles
+from common.validadores import validar_password
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
@@ -38,7 +38,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         }
 
     def validate_password(self, valor):
-        validate_password(valor)
+        validar_password(valor)
         return valor
 
     def validate(self, datos):
@@ -132,7 +132,7 @@ class PrimerAdministradorSerializer(serializers.ModelSerializer):
         extra_kwargs = {"telefono": {"max_length": 15, "allow_null": True, "required": False}}
 
     def validate_password(self, valor):
-        validate_password(valor)
+        validar_password(valor)
         return valor
 
     def create(self, datos):
@@ -148,5 +148,5 @@ class CambiarPasswordSerializer(serializers.Serializer):
     password_nueva = serializers.CharField(style={"input_type": "password"})
 
     def validate_password_nueva(self, valor):
-        validate_password(valor, self.context["request"].user)
+        validar_password(valor, self.context["request"].user)
         return valor

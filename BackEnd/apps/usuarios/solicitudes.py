@@ -11,7 +11,6 @@ import logging
 import secrets
 import string
 
-from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers, status
@@ -27,6 +26,7 @@ from apps.organizaciones.models import Area, Organizacion
 from apps.usuarios.models import SolicitudAcceso, Usuario
 from common import correo, roles
 from common.red import LimitePorIP, ip_cliente
+from common.validadores import validar_correo, validar_password
 
 logger = logging.getLogger(__name__)
 Accion = RegistroAuditoria.Accion
@@ -53,7 +53,7 @@ class SolicitudSerializer(serializers.Serializer):
     nombre = serializers.CharField(max_length=60)
     primer_apellido = serializers.CharField(max_length=60)
     segundo_apellido = serializers.CharField(max_length=60, required=False, allow_blank=True)
-    correo = serializers.EmailField(max_length=150)
+    correo = serializers.EmailField(max_length=150, validators=[validar_correo])
     # Campo trampa: invisible para las personas; si llega con texto, es un bot.
     sitio = serializers.CharField(required=False, allow_blank=True)
 
@@ -279,7 +279,7 @@ class AprobarSolicitudView(APIView):
                 correo=solicitud.correo,
                 debe_cambiar_password=True,
             )
-            validate_password(clave, usuario)
+            validar_password(clave, usuario)
             usuario.set_password(clave)
             usuario.full_clean(exclude=["password", "telefono"])
             usuario.save()

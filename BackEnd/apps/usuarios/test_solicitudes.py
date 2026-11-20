@@ -150,3 +150,49 @@ class SolicitudAccesoTests(PruebaBase):
         self.assertEqual(solicitud.estado, SolicitudAcceso.Estado.RECHAZADA)
         self.assertEqual(mail.outbox[-1].to, ["ana.lopez@ejemplo.com"])
         self.assertFalse(Usuario.objects.filter(correo="ana.lopez@ejemplo.com").exists())
+
+
+class ValidacionesCorreoYPasswordTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+
+    def test_correo_con_caracteres_especiales_se_rechaza(self):
+        admin = cliente_de(self.e.admin)
+        for malo in [
+            "|@ut-tijuana.edu.mx",
+            "ana lopez@ejemplo.com",
+            "josé@ejemplo.com",
+            "a..b@ejemplo.com",
+            "a<b>@ejemplo.com",
+        ]:
+            r = admin.patch(
+                f"/api/v1/usuarios/{self.e.operador.num}/", {"correo": malo}, format="json"
+            )
+            self.assertEqual(r.status_code, 400, malo)
+            self.assertIn("solo puede llevar letras sin acento", r.json()["correo"][0])
+        r = admin.patch(
+            f"/api/v1/usuarios/{self.e.operador.num}/",
+            {"correo": "ana.lopez-2+utt@ejemplo.com.mx"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def test_password_comun_explica_que_es_insegura(self):
+        propio = cliente_de(self.e.operador)
+        self.e.operador.set_password("Actual-Segura-2026")
+        self.e.operador.save()
+        r = propio.post(
+            "/api/v1/auth/cambiar-password/",
+            {"password_actual": "Actual-Segura-2026", "password_nueva": "password123"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn(
+            "La contraseña es insegura: es de las más usadas", r.json()["password_nueva"][0]
+        )
+        r = propio.post(
+            "/api/v1/auth/cambiar-password/",
+            {"password_actual": "Actual-Segura-2026", "password_nueva": "12345678901"},
+            format="json",
+        )
+        self.assertTrue(any("solo números" in m for m in r.json()["password_nueva"]))
