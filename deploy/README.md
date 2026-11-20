@@ -101,6 +101,7 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
   instalan pero quedan **deshabilitados** en el servidor: los respaldos los hace el equipo de
   compilación ([Respaldos desde el equipo de compilación](#respaldos-desde-el-equipo-de-compilación)).
 - Firewall `ufw`: todo lo entrante cerrado salvo Tailscale ([Firewall](#firewall)).
+
 - La laptop no se suspende con la tapa cerrada ni por inactividad. La red la maneja NetworkManager
   con IP fija (Wi-Fi principal y otra red de respaldo con menor prioridad), sin ahorro de energía
   en el Wi-Fi. La batería tiene tope de carga (conservation mode) y, sin corriente y con poca
@@ -190,6 +191,10 @@ Las direcciones del servidor se cambian con la variable `NUCLEO_SERVIDOR` (por d
 ## Seguridad y recuperación
 
 ### Respaldos desde el equipo de compilación
+
+`instalar.sh` deja apagados `nucleo-respaldo.timer` y `nucleo-prueba-restauracion.timer` mientras exista
+`/etc/nucleo-respaldo-remoto` en el servidor (`sudo touch /etc/nucleo-respaldo-remoto`); sin ese archivo los enciende,
+para un servidor de un solo equipo.
 
 `respaldo-nucleo-remoto.timer` (03:45 y 15:45) corre en el equipo de compilación y saca los datos
 del servidor por SSH, sin compilar ni guardar nada allá:

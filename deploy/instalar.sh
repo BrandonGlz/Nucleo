@@ -117,10 +117,18 @@ for unidad in "${temporizados[@]}"; do
 done
 sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 sudo systemctl daemon-reload
+# Con /etc/nucleo-respaldo-remoto los respaldos y la prueba de restauración los hace el equipo
+# de compilación (deploy/README.md, «Respaldos desde el equipo de compilación»): aquí quedan apagados.
+remotos=()
+if [[ -e /etc/nucleo-respaldo-remoto ]]; then
+  remotos=(nucleo-respaldo.timer nucleo-prueba-restauracion.timer)
+  temporizados=(nucleo-reportes nucleo-recursos)
+fi
 timers=("${temporizados[@]/%/.timer}")
 sudo systemctl enable "${servicios[@]}" "${timers[@]}" caddy
 sudo systemctl restart "${servicios[@]}"
 sudo systemctl restart "${timers[@]}"
+(( ${#remotos[@]} )) && sudo systemctl disable --now "${remotos[@]}" 2>/dev/null || true
 sudo systemctl reload-or-restart caddy
 # Página de descarga del APK (app.bynucleo.com): se regenera por si cambió la plantilla deploy/descarga.html
 if compgen -G "$raiz/deploy/descargas/nucleo-*.apk" >/dev/null; then
