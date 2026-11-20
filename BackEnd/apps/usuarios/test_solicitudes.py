@@ -113,6 +113,25 @@ class SolicitudAccesoTests(PruebaBase):
         )
         self.assertEqual(r.status_code, 400)
 
+    def test_se_puede_aprobar_como_administrador(self):
+        self.solicitar()
+        solicitud = SolicitudAcceso.objects.get()
+        admin = cliente_de(self.e.admin)
+        detalle = admin.get(f"/api/v1/solicitudes-acceso/{solicitud.num}/")
+        self.assertIn(roles.ADMIN, [r["codigo"] for r in detalle.json()["roles"]])
+        r = admin.post(
+            f"/api/v1/solicitudes-acceso/{solicitud.num}/aprobar/",
+            {
+                "area": self.e.area.pk,
+                "rol": roles.ADMIN,
+                "nombre": "Ana",
+                "primer_apellido": "López",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(Usuario.objects.get(correo="ana.lopez@ejemplo.com").rol_id, roles.ADMIN)
+
     def test_solo_administradores_de_esa_organizacion(self):
         self.solicitar()
         num = SolicitudAcceso.objects.get().num

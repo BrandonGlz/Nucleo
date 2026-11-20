@@ -33,11 +33,12 @@ Accion = RegistroAuditoria.Accion
 Estado = SolicitudAcceso.Estado
 
 # Roles que se pueden asignar al aprobar una solicitud.
-ROLES_ASIGNABLES = (roles.OPERADOR, roles.ANALISTA, roles.SUPERVISOR)
+ROLES_ASIGNABLES = (roles.OPERADOR, roles.ANALISTA, roles.SUPERVISOR, roles.ADMIN)
 NOMBRE_ROL = {
     roles.OPERADOR: "Operador",
     roles.ANALISTA: "Analista",
     roles.SUPERVISOR: "Supervisor",
+    roles.ADMIN: "Administrador",
 }
 
 
