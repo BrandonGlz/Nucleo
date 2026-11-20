@@ -60,7 +60,11 @@ if REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {"hosts": [REDIS_URL]},
+            # redis-py 8 corta cualquier lectura a los 5 s, lo mismo que espera channels_redis a
+            # que llegue un mensaje (BZPOPMIN de 5 s): sin margen, cada conexión del panel en vivo
+            # se caía con «Timeout reading» y se reconectaba cada ~6 s. Con 15 s la espera termina
+            # antes que el corte.
+            "CONFIG": {"hosts": [{"address": REDIS_URL, "socket_timeout": 15}]},
         }
     }
 else:

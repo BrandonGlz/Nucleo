@@ -58,6 +58,11 @@ Cada componente conserva su propio número porque se publica por separado.
 - La voz de Nico lee por frases completas (sin cortar en comas, que daban entonación de final), dice «Nico» en lugar
   de «Nico ei ai» y no lee los signos de menú (›). App 0.2.9.
 
+### Corregido
+
+- El canal en vivo (panel, alertas y avisos de Nico) ya no se desconecta cada pocos segundos: redis-py 8 cortaba
+  la lectura a los 5 s, justo lo que Channels espera un mensaje, y cada conexión caía con «Timeout reading».
+
 ### Eliminado
 
 - Voz de Nico en la web: el chat ya no tiene micrófono, lectura en voz alta ni botón para callar a Nico; dictar y
