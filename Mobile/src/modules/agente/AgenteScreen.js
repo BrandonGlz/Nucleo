@@ -163,6 +163,7 @@ export function AgenteScreen() {
     if (!p || pensando || !d || !activo) return
     dictado.cancelar()
     voz.callar()
+    if (conVoz || leerRef.current) voz.preparar()
     porVoz.current = false
     const num = d.num
     const agregar = (m) => setMensajes((x) => ({ ...x, [num]: [...(x[num] ?? []), m] }))
@@ -480,6 +481,8 @@ export function AgenteScreen() {
               alTocar={() => {
                 if (dictado.escuchando) return dictado.detener()
                 voz.callar()
+                // Quien dicta casi siempre espera la respuesta en voz: la voz se va cargando.
+                voz.preparar()
                 dictado.iniciar(texto)
               }}
             />

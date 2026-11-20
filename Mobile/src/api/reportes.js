@@ -11,5 +11,5 @@ export const AGENTE = '/agente/'
 export const AGENTE_CALIFICAR = '/agente/calificar/'
 // GET → {puente, activos: [num]}: agentes cuyo ESP32 puente está conectado (sin puente, todos)
 export const AGENTE_ESTADO = '/agente/estado/'
-// POST {texto} (máx. 600 caracteres) → audio/mpeg: la voz de Nico (Piper, masculina) leyendo el texto
+// POST {texto} (máx. 600 caracteres) → audio/mpeg: la voz de Nico (Supertonic, masculina) leyendo el texto
 export const NICO_VOZ = '/nico/voz/'
