@@ -13,6 +13,9 @@ tunnel: __TUNEL__
 credentials-file: /etc/cloudflared/__TUNEL__.json
 metrics: 127.0.0.1:20241
 no-autoupdate: true
+# http2 (TCP) en vez de QUIC: el servidor va por Wi-Fi y QUIC se corta con «no recent network activity»
+# cuando la señal baja; por TCP las conexiones aguantan los baches.
+protocol: http2
 ingress:
   - hostname: bynucleo.com
     service: http://127.0.0.1:8081
