@@ -108,6 +108,8 @@ function TarjetaVariable({ v, op }) {
 }
 
 // Gráfica del periodo: barras horizontales, columnas o línea.
+// En el documento las gráficas son fijas (interactivo={false}): sin tooltip ni cursor de hover
+// que se queden pegados en la vista, la exportación o la impresión.
 // Alto de la gráfica según el alto elegido para la tarjeta (o el de siempre).
 const altoGrafica = (alto) => (alto ? Math.max(90, alto - 70) : 150)
 
@@ -126,9 +128,11 @@ function Serie({ serie, op }) {
         height={altoGrafica(op.alto)}
         decimals={dec}
         activeIndex={resalta ? datos.findIndex((x) => x.value === max) : -1}
+        interactivo={false}
       />
     )
-  if (op.grafica === 'linea') return <TrendChart data={datos} unit={UNIDAD[v]} height={altoGrafica(op.alto)} decimals={dec} />
+  if (op.grafica === 'linea')
+    return <TrendChart data={datos} unit={UNIDAD[v]} height={altoGrafica(op.alto)} decimals={dec} interactivo={false} />
   return (
     <div className="ui-barras">
       {serie.puntos.map(([etiqueta, x]) => (
@@ -248,10 +252,17 @@ export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto }) 
   if (!puntos.length) return <p className="ui-muted">Elige al menos un dato.</p>
   const max = Math.max(...puntos.map((x) => x.value)) || 1
   const f = (x) => Number(x).toFixed(dec)
-  if (grafica === 'columnas') return <BarChart data={puntos} unit={unidad} height={altoGrafica(alto)} decimals={dec} />
+  if (grafica === 'columnas')
+    return <BarChart data={puntos} unit={unidad} height={altoGrafica(alto)} decimals={dec} interactivo={false} />
   if (grafica === 'linea')
     return (
-      <TrendChart data={puntos.map((x) => ({ ...x, time: x.label }))} unit={unidad} height={altoGrafica(alto)} decimals={dec} />
+      <TrendChart
+        data={puntos.map((x) => ({ ...x, time: x.label }))}
+        unit={unidad}
+        height={altoGrafica(alto)}
+        decimals={dec}
+        interactivo={false}
+      />
     )
   if (grafica === 'dona') {
     const total = puntos.reduce((s, x) => s + x.value, 0)

@@ -13,7 +13,10 @@ function TrendChart(p) {
   var ref = wr[0],
     W = wr[1];
   var id = useId().replace(/:/g, '');
-  var hover = useState(p.activeIndex != null ? p.activeIndex : data.length - 1);
+  // `interactivo={false}` (reportes) dibuja la gráfica fija: sin cursor, punto ni tooltip
+  var interactivo = p.interactivo !== false;
+  var inicial = p.activeIndex != null ? p.activeIndex : data.length - 1;
+  var hover = useState(null);
   // Sin puntos no hay línea que dibujar: se muestra un aviso en lugar de la gráfica
   if (!data.length) {
     return h('div', {
@@ -51,8 +54,9 @@ function TrendChart(p) {
   var ticks = [];
   var steps = 4;
   for (var t = 0; t <= steps; t++) ticks.push(mn + (mx - mn) * t / steps);
-  var hi = Math.max(0, Math.min(data.length - 1, hover[0]));
-  var cur = data[hi];
+  // Al salir el mouse vuelve al punto inicial en vez de quedarse en el último que se tocó
+  var hi = Math.max(0, Math.min(data.length - 1, hover[0] != null ? hover[0] : inicial));
+  var cur = interactivo ? data[hi] : null;
   var labelEvery = Math.max(1, Math.ceil(data.length / Math.max(2, Math.floor(iw / 64))));
   function onMove(e) {
     var r = e.currentTarget.getBoundingClientRect();
@@ -77,7 +81,10 @@ function TrendChart(p) {
   }, h('svg', {
     width: W,
     height: H,
-    onMouseMove: onMove,
+    onMouseMove: interactivo ? onMove : undefined,
+    onMouseLeave: interactivo ? function () {
+      hover[1](null);
+    } : undefined,
     role: 'img',
     'aria-label': (p.label || 'Tendencia') + (th.max != null ? ', umbral máximo ' + th.max + ' ' + unit : '')
   }, h('defs', null, h('linearGradient', {

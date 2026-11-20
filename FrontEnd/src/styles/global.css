@@ -2342,7 +2342,11 @@ article.ui-hoja,
   }
   #ui-impresion .ui-editor__etiqueta,
   #ui-impresion .ui-editor__asa-ancho,
-  #ui-impresion .ui-editor__asa-alto {
+  #ui-impresion .ui-editor__asa-alto,
+  #ui-impresion .nc-tooltip,
+  #ui-impresion .nc-trend__cursor,
+  #ui-impresion .nc-trend__halo,
+  #ui-impresion .nc-trend__dot {
     display: none;
   }
 }

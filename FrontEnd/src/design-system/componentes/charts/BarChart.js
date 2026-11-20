@@ -9,7 +9,11 @@ function BarChart(p) {
   var H = p.height || 200;
   var wr = useWidth(480);
   var W = wr[1];
-  var act = useState(p.activeIndex != null ? p.activeIndex : data.length - 1);
+  // `interactivo={false}` (reportes): la barra resaltada es solo la de `activeIndex`, sin hover
+  var interactivo = p.interactivo !== false;
+  var inicial = p.activeIndex != null ? p.activeIndex : data.length - 1;
+  var act = useState(null);
+  var activa = interactivo && act[0] != null ? act[0] : inicial;
   var mx = p.max || Math.max.apply(null, data.map(function (d) {
     return d.value;
   })) * 1.15;
@@ -30,7 +34,11 @@ function BarChart(p) {
     width: W,
     height: H,
     role: 'img',
-    'aria-label': p.label || 'Gráfica de barras'
+    'aria-label': p.label || 'Gráfica de barras',
+    // Al salir el mouse vuelve a la barra inicial en vez de quedarse en la última tocada
+    onMouseLeave: interactivo ? function () {
+      act[1](null);
+    } : undefined
   }, th != null ? h('g', {
     className: 'nc-trend__threshold'
   }, h('line', {
@@ -42,12 +50,12 @@ function BarChart(p) {
     var bh = Math.max(4, d.value / mx * ih);
     var x = i * slot + (slot - bw) / 2;
     var y = padT + ih - bh;
-    var on = i === act[0];
+    var on = i === activa;
     return h('g', {
       key: i,
-      onMouseEnter: function () {
+      onMouseEnter: interactivo ? function () {
         act[1](i);
-      },
+      } : undefined,
       style: {
         cursor: 'default'
       }
