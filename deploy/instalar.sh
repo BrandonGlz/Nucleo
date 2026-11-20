@@ -128,12 +128,12 @@ if compgen -G "$raiz/deploy/descargas/nucleo-*.apk" >/dev/null; then
 fi
 
 if [[ -n "$puente" ]]; then
-  paso "IA local de Nico AI (Ollama, $(sed -n 's/^IA_MODELO_LOCAL=//p' "$raiz/BackEnd/.env" | grep . || echo qwen2.5:1.5b))"
+  paso "IA local de Nico AI (Ollama, $(sed -n 's/^IA_MODELO_LOCAL=//p' "$raiz/BackEnd/.env" | grep . || echo qwen3:4b-instruct))"
   cd "$raiz"
   docker compose --profile ia up -d ollama
   modelo="$(sed -n 's/^IA_MODELO_LOCAL=//p' "$raiz/BackEnd/.env")"
   for _ in 1 2 3 4 5; do docker exec nucleo_ollama ollama list >/dev/null 2>&1 && break; sleep 2; done
-  docker exec nucleo_ollama ollama pull "${modelo:-qwen2.5:1.5b}"
+  docker exec nucleo_ollama ollama pull "${modelo:-qwen3:4b-instruct}"
 else
   # Sin clave el puente está apagado: Ollama no corre ni ocupa memoria.
   (cd "$raiz" && docker compose --profile ia stop ollama >/dev/null 2>&1 || true)

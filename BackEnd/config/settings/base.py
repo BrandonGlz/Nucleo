@@ -310,13 +310,13 @@ IA_MODELO = env("IA_MODELO", default="")
 # Nico AI con IA local (Ollama) a través del ESP32 de cada dispositivo (apps/reportes/puente.py).
 # Sin clave el puente está apagado y el agente responde solo con respuestas predefinidas.
 IA_PUENTE_CLAVE = env("IA_PUENTE_CLAVE", default="")
-IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen2.5:1.5b")
+IA_MODELO_LOCAL = env("IA_MODELO_LOCAL", default="qwen3:4b-instruct")
 # Ollama visto desde el backend (modo ligero del puente: el servidor ejecuta la IA).
 IA_OLLAMA_URL = env("IA_OLLAMA_URL", default="http://127.0.0.1:11434")
 # Dispositivos con ESP32 físico como puente (codigo_mqtt). Los demás son simulados: su agente
 # siempre está disponible y responde con lo predefinido y lo aprendido, sin IA.
 IA_PUENTE_DISPOSITIVOS = env.list("IA_PUENTE_DISPOSITIVOS", default=[])
-IA_ESPERA_SEGUNDOS = env.float("IA_ESPERA_SEGUNDOS", default=20)
+IA_ESPERA_SEGUNDOS = env.float("IA_ESPERA_SEGUNDOS", default=40)
 # 👍 que necesita una misma pregunta (en ocasiones distintas y con la misma respuesta o ruta)
 # para entrar al banco de Nico AI. Con 1 basta un 👍; con 2 se evita aprender de un acierto suelto.
 IA_VOTOS_PARA_APRENDER = env.int("IA_VOTOS_PARA_APRENDER", default=2)

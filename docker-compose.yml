@@ -81,17 +81,17 @@ services:
       start_period: 5s
 
   # IA local de Nico AI (solo en el servidor: docker compose --profile ia up -d ollama). El modelo
-  # (qwen2.5:1.5b) cargado ocupa ~1.3 GB; el tope es 3 GB. Un solo modelo cargado para todo el
+  # (qwen3:4b-instruct) cargado ocupa ~2.9 GB; el tope es 3.5 GB. Un solo modelo cargado para todo el
   # servidor, dos peticiones en paralelo y caché KV en q8_0 para que quepan con menos memoria. Lo usa el ESP32 puente de cada
   # dispositivo a través de Caddy (/puente-ia/, con su clave); ver apps/reportes/puente.py.
   ollama:
     image: ollama/ollama:0.40.16
     container_name: nucleo_ollama
     profiles: ["ia"]
-    # 2g: el modelo de Nico (qwen2.5:1.5b) ocupa ~1.1 GB cargado; deja margen sin quitarle RAM al resto.
+    # 3.5g: el modelo de Nico (qwen3:4b-instruct, num_ctx 2048, dos a la vez) ocupa ~2.9 GB cargado.
     # Durante la build del APK, compilar_apk.sh lo baja a 1.5g y al terminar lo regresa a este valor.
-    mem_limit: ${OLLAMA_MEM_LIMIT:-2g}
-    memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-3g}
+    mem_limit: ${OLLAMA_MEM_LIMIT:-3.5g}
+    memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-3.5g}
     restart: unless-stopped
     environment:
       OLLAMA_NUM_PARALLEL: 2

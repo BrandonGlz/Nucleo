@@ -4,6 +4,7 @@ from io import StringIO
 from pathlib import Path
 from unittest import mock
 
+from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -582,6 +583,12 @@ class NicoAprendeTests(PruebaBase):
         self.assertEqual(cuerpo["via"], "PREDEFINIDA")
         estado = self.cliente.get("/api/v1/agente/estado/").json()
         self.assertEqual(estado["activos"], [self.e.dispositivo.pk])
+
+    def test_peticion_a_ollama_sin_razonamiento(self):
+        # Los modelos que «piensan» gastarían la espera antes de responder.
+        cuerpo = puente._cuerpo(self.e.dispositivo, [{"role": "user", "content": "hola"}], 10)
+        self.assertIs(cuerpo["think"], False)
+        self.assertEqual(cuerpo["model"], settings.IA_MODELO_LOCAL)
 
     def test_ia_solo_dice_lo_que_dicen_los_hechos(self):
         # Respuestas reales del modelo en el servidor: solo pasan las fieles a los hechos.

@@ -393,8 +393,12 @@ def _cuerpo(dispositivo, mensajes, num_predict, formato=None):
         "model": settings.IA_MODELO_LOCAL,
         "stream": False,
         "keep_alive": "30m",
-        # Contexto corto y pocas palabras: en la CPU del servidor, 1.5b responde en 4-6 s (dos
-        # a la vez, ~13 s).
+        # Sin razonamiento previo: en los modelos que «piensan» (qwen3, qwen3.5…) se comería
+        # la espera y los pocos tokens de salida. Los que no piensan lo ignoran.
+        "think": False,
+        # Contexto corto y pocas palabras: en la CPU del servidor, qwen3:4b-instruct responde en
+        # 4-11 s (~10 tokens/s). num_ctx y num_thread iguales en todas las peticiones (y en las de
+        # otras plataformas que compartan el Ollama): si cambian, Ollama recarga el modelo.
         # 3 hilos de 4 para que la API y MQTT sigan atendiendo mientras la IA trabaja.
         "options": {
             "num_predict": num_predict,

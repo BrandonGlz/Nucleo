@@ -25,7 +25,7 @@ flowchart LR
             PG[("PostgreSQL<br/>umbrales · alertas<br/>sensores · reportes")]
             TDB[("TimescaleDB<br/>lecturas")]
         end
-        O["Ollama :11434<br/>qwen2.5:1.5b"]
+        O["Ollama :11434<br/>qwen3:4b-instruct"]
     end
     E["ESP32 · Núcleo A-01<br/>NC-0501 · MicroPython<br/>llave de la IA"]
 
@@ -63,7 +63,7 @@ flowchart LR
 1. La web o la app envía la pregunta al backend, que consulta las cifras.
 2. Si hace falta la IA, el backend manda un reto al ESP32 de **Núcleo A-01 (NC-0501)** por MQTT.
 3. El ESP lo firma con su clave (HMAC-SHA256) y solo con esa firma el backend usa Ollama
-   (`qwen2.5:1.5b`, en el mismo servidor).
+   (`qwen3:4b-instruct`, en el mismo servidor).
 4. El backend responde al chat.
 
 El ESP manda un latido cada 20 s: sin latido en 75 s, o con su último mensaje al desconectarse,

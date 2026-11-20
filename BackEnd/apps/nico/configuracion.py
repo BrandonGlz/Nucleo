@@ -15,7 +15,7 @@ CACHE_DOCUMENTOS = "nico:documentos"
 CACHE_INACTIVAS = "nico:herramientas-inactivas"
 CACHE_SEGUNDOS = 300
 
-# La IA local es pequeña (qwen2.5:1.5b, contexto corto): los documentos activos juntos no deben
+# La IA local es pequeña (qwen3:4b-instruct, contexto corto): los documentos activos juntos no deben
 # pasar de este tamaño o ya no cabe la pregunta. Con documentos, el contexto sube a lo necesario.
 LIMITE_CARACTERES = 2400
 CONTEXTO = 2048

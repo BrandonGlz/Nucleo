@@ -449,8 +449,8 @@ de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
 Nico AI responde primero con respuestas predefinidas y con las que aprendió de los 👍 de los
 usuarios (tabla `respuesta_aprendida`). Solo cuando se le pide explicar, opinar o recomendar
 («¿es grave?», «¿por qué subió?», «¿qué recomiendas?») redacta con un modelo local chico
-(`qwen2.5:1.5b`, ~1.2 GB de RAM cargado, tope 3 GB; ~3 s por respuesta con el modelo cargado,
-~6 s si estaba descargado y ~13 s con dos a la vez o con la firma del ESP incluida) que corre en
+(`qwen3:4b-instruct`, la variante sin modo «thinking»; ~2.9 GB de RAM cargado, tope 3.5 GB;
+4–11 s por respuesta con el modelo cargado, ~4 s más si estaba descargado) que corre en
 el contenedor `nucleo_ollama`.
 
 El ESP32 de cada dispositivo es la **llave** de su agente. Por MQTT dentro de WebSocket
@@ -468,9 +468,12 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 - Usuario MQTT del ESP: `bash Mosquitto/dispositivo.sh <codigo_mqtt>` (imprime la contraseña
   una vez; va solo al `secrets.py` de la placa).
 - La firma tiene 12 s para llegar; si no llega, se responde con lo predefinido.
-- En producción el servidor usa `IA_MODELO_LOCAL=qwen2.5:3b` (~2.2 GB cargado, respuesta típica de
-  5–8 s) con `IA_ESPERA_SEGUNDOS=40`; el valor por defecto del repositorio sigue siendo
-  `qwen2.5:1.5b`, para equipos con menos procesador.
+- En producción el servidor usa `IA_MODELO_LOCAL=qwen3:4b-instruct` con `IA_ESPERA_SEGUNDOS=40`
+  (elegido con el banco del 2026-11-20 frente a qwen2.5:3b, llama3.2:3b, granite4.1:3b, phi4-mini y
+  qwen3.5:4b: el único que no inventó causas ni cifras y clasificó bien todas las preguntas).
+  Las peticiones mandan `think: false` (los modelos que «piensan» gastarían la espera) y
+  siempre `num_ctx` 2048 y 3 hilos: si otra plataforma comparte el Ollama, debe usar los mismos
+  valores o el modelo se recarga en cada cambio. Para equipos con menos memoria, `qwen2.5:1.5b`.
 - Encender: poner `IA_PUENTE_CLAVE` (`openssl rand -hex 24`) en `BackEnd/.env` y correr
   `bash deploy/instalar.sh`; levanta Ollama y descarga el modelo. La misma clave va en el ESP.
 - Apagar: dejar `IA_PUENTE_CLAVE` vacía y volver a instalar; Ollama se detiene y el agente
