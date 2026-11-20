@@ -43,35 +43,42 @@ export function limpiarParaVoz(texto = '') {
     .trim()
 }
 
-// Fragmentos para leer. El primero es corto (la primera frase, o hasta su primera coma si es larga;
-// de 20 a 80 caracteres) para que Nico empiece a hablar casi al instante. Cada fragmento se genera
-// mientras suena el anterior, así que puede crecer hasta ~3 veces el anterior sin que se note la
-// espera, hasta ~300 caracteres: menos cortes = lectura más fluida.
 const PRIMERO_MIN = 20
-const PRIMERO_MAX = 80
+const PRIMERO_MAX = 160
+const TOPE = 300
 
-// Frases; las largas se parten en sus comas (después se vuelven a juntar hasta el tope de cada
-// fragmento, así que solo cambia dónde puede haber un corte).
-function piezas(texto) {
-  return texto
+// Parte una frase demasiado larga en sus comas, en trozos de hasta `tope` caracteres.
+function partirEnComas(frase, tope) {
+  const salida = []
+  for (const p of frase.split(/(?<=,)\s+/)) {
+    const ultimo = salida.at(-1)
+    if (ultimo !== undefined && ultimo.length + p.length < tope) salida[salida.length - 1] = `${ultimo} ${p}`
+    else salida.push(p.length > 580 ? p.slice(0, 580) : p)
+  }
+  return salida
+}
+
+// Fragmentos para leer, siempre de frases completas: cada fragmento se genera aparte y, si se
+// cortara a media frase, la voz lo leería como si terminara ahí (entonación de final). El primero
+// es la primera frase, para que Nico empiece a hablar pronto (solo si pasa de 160 caracteres se
+// corta en una coma). Los demás juntan frases enteras hasta ~3 veces el anterior y 300 caracteres:
+// se generan mientras suena el anterior, así no hay esperas entre ellos.
+function fragmentos(texto) {
+  const frases = texto
     .split(/(?<=[.!?;:])\s+/)
-    .flatMap((f) => (f.length > PRIMERO_MAX ? f.split(/(?<=,)\s+/) : [f]))
     .map((f) => f.trim())
     .filter(Boolean)
-}
-
-function topeDeFragmento(salida) {
-  if (salida.length === 1) return PRIMERO_MAX
-  return Math.min(300, Math.max(80, 3 * salida.at(-2).length))
-}
-
-function fragmentos(texto) {
   const salida = []
-  for (const f of piezas(texto)) {
+  for (const f of frases) {
     const ultimo = salida.at(-1)
-    const cabe = ultimo !== undefined && ultimo.length + f.length <= topeDeFragmento(salida)
-    if (cabe && (salida.length > 1 || ultimo.length < PRIMERO_MIN)) salida[salida.length - 1] = `${ultimo} ${f}`
-    else salida.push(f.length > 580 ? f.slice(0, 580) : f)
+    if (ultimo === undefined) {
+      salida.push(...(f.length > PRIMERO_MAX ? partirEnComas(f, PRIMERO_MAX) : [f]))
+      continue
+    }
+    const tope = salida.length === 1 ? PRIMERO_MAX : Math.min(TOPE, Math.max(120, 3 * (salida.at(-2)?.length ?? 0)))
+    const juntar = salida.length > 1 || ultimo.length < PRIMERO_MIN
+    if (juntar && ultimo.length + f.length < tope) salida[salida.length - 1] = `${ultimo} ${f}`
+    else salida.push(...(f.length > TOPE ? partirEnComas(f, TOPE) : [f]))
   }
   return salida
 }

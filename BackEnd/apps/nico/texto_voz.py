@@ -166,7 +166,8 @@ _TERMINOS = [
     (r"\bWi-?Fi\b", "wifi"),
     (r"\bAPK\b", "a pe ka"),
     (r"\bIA\b", "i a"),
-    (r"\bAI\b", "ei ai"),
+    (r"\bNico\s+AI\b", "Nico"),
+    (r"\bAI\b", "i a"),
     (r"\bAPI\b", "a pe i"),
     (r"\bURL\b", "u erre ele"),
     (r"\bPDF\b", "pe de efe"),
@@ -260,6 +261,7 @@ _PATRON_UNIDAD = "|".join(f"(?:{p})" for p, _, _ in _UNIDADES_MEDIDA)
 def normalizar(texto):
     """Texto listo para el motor de voz: sin símbolos que no se leen bien."""
     t = texto.replace("\u00a0", " ").replace("\u202f", " ")  # espacios duros
+    t = re.sub(r"\s*[›»→]\s*", ", ", t)  # rutas de menú (Histórico › Comparar)
     for patron, palabras in _TERMINOS:
         t = re.sub(patron, palabras, t)
     # Fechas: 2026-11-19 y 19/11/2026 (o 19/11).

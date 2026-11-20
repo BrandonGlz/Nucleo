@@ -55,6 +55,8 @@ Cada componente conserva su propio número porque se publica por separado.
   a hablar antes (primer fragmento corto y modelo precargado). Dictado más rápido y con menos memoria en el
   servidor (Whisper sin MKL, precarga al tocar el micrófono, fin de frase en 1 s) y barra de avance mientras se
   transcribe. App 0.2.8.
+- La voz de Nico lee por frases completas (sin cortar en comas, que daban entonación de final), dice «Nico» en lugar
+  de «Nico ei ai» y no lee los signos de menú (›). App 0.2.9.
 
 ## [0.9.0] - 2026-11-18 · SRS 82 %
 
