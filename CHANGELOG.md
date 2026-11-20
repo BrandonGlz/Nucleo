@@ -58,6 +58,12 @@ Cada componente conserva su propio número porque se publica por separado.
 - La voz de Nico lee por frases completas (sin cortar en comas, que daban entonación de final), dice «Nico» en lugar
   de «Nico ei ai» y no lee los signos de menú (›). App 0.2.9.
 
+### Eliminado
+
+- Voz de Nico en la web: el chat ya no tiene micrófono, lectura en voz alta ni botón para callar a Nico; dictar y
+  oír a Nico queda solo en la app móvil. Se quitan también el dictado de respaldo con Whisper del servidor, el
+  permiso de micrófono y la reproducción de audio de la web; la voz del servidor queda para la app.
+
 ## [0.9.0] - 2026-11-18 · SRS 82 %
 
 ### Agregado

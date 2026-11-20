@@ -93,13 +93,13 @@ http://:8081 {
 	# en línea hacen falta para las gráficas SVG y la impresión de reportes. El canal en vivo va
 	# por wss:// al mismo host. Cloudflare inyecta su script de Web Analytics (static.
 	# cloudflareinsights.com, que reporta a cloudflareinsights.com): se permite solo ese origen.
-	# Probada en Chrome, Firefox y Brave con todas las páginas. El micrófono se permite solo a la propia
-	# web, para el dictado por voz en los chats de Nico.
+	# Probada en Chrome, Firefox y Brave con todas las páginas. La web no usa el micrófono: la voz de
+	# Nico es solo de la app móvil.
 	handle {
 		header {
-			Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' wss://{host} https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+			Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self' data:; connect-src 'self' wss://{host} https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 			X-Frame-Options DENY
-			Permissions-Policy "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), clipboard-write=(self)"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), clipboard-write=(self)"
 		}
 		# index.html siempre se revisa (trae los nombres nuevos de los archivos tras un deploy);
 		# los archivos de /assets llevan hash en el nombre y se pueden guardar.

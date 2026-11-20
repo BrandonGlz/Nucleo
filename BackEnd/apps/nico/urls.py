@@ -1,7 +1,6 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .transcripcion import PrecalentarDictadoView, TranscribirView
 from .views import (
     AjusteSugerenciasView,
     ArbolView,
@@ -29,12 +28,6 @@ router.register("documentos", DocumentoViewSet, basename="nico-documento")
 
 urlpatterns = [
     path("chat/", ConsolaAgenteView.as_view(), name="nico-chat"),
-    path("transcribir/", TranscribirView.as_view(), name="nico-transcribir"),
-    path(
-        "transcribir/precalentar/",
-        PrecalentarDictadoView.as_view(),
-        name="nico-transcribir-precalentar",
-    ),
     path("voz/", VozView.as_view(), name="nico-voz"),
     path("calificar/", ConsolaCalificarView.as_view(), name="nico-calificar"),
     path("estado/", ConsolaEstadoView.as_view(), name="nico-estado"),

@@ -2,15 +2,15 @@
 
 Usa Supertonic 2, un motor de voz local y abierto (ONNX, solo CPU), con la voz masculina ``M3``
 (``NUCLEO_SUPERTONIC_ESTILO``): grave, tranquila y con entonación natural; lee el español con
-seseo, como en México. Como respaldo se puede volver a Piper (``NUCLEO_VOZ_MOTOR=piper``). Suena
-igual en cualquier navegador y no depende de las voces del sistema.
+seseo, como en México. Como respaldo se puede volver a Piper (``NUCLEO_VOZ_MOTOR=piper``). Solo
+la usa la app móvil: suena igual en cualquier teléfono y no depende de las voces del sistema.
 
 Antes de sintetizar, el texto se normaliza (``texto_voz.normalizar``): cifras, unidades, siglas,
 fechas y horas pasan a palabras. Después se recortan los silencios de los bordes y se iguala el
 volumen, así los fragmentos se encadenan sin saltos. El modelo se carga con la primera lectura y
-se libera tras unos minutos sin uso (unos 330 MB con Supertonic); la web y la app lo precalientan
-(GET) en cuanto saben que Nico va a hablar. Piden un fragmento por frase o grupo de frases (el
-primero, corto) y reproducen uno mientras piden el siguiente.
+se libera tras unos minutos sin uso (unos 330 MB con Supertonic); la app lo precalienta (GET) en
+cuanto sabe que Nico va a hablar. Pide un fragmento por frase o grupo de frases (el primero,
+corto) y reproduce uno mientras pide el siguiente.
 """
 
 import io
@@ -21,12 +21,14 @@ from pathlib import Path
 from django.conf import settings
 from django.http import HttpResponse
 from rest_framework import serializers, status
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from common import roles
+
 from .texto_voz import normalizar
-from .transcripcion import PuedeDictar
 
 logger = logging.getLogger(__name__)
 # Supertonic anuncia en INFO cada modelo que carga; basta con sus avisos y errores.
@@ -39,7 +41,7 @@ SUPERTONIC_MODELO = "supertonic-2"
 # Supertonic): la de una lectura tranquila, sin que se sienta cortada.
 PAUSA_ENTRE_ORACIONES_S = 0.28
 # Silencio que se deja al principio y al final de cada fragmento: lo justo para no cortar la primera
-# consonante. Sumado al cambio de fragmento en el navegador da la pausa natural entre oraciones.
+# consonante. Sumado al cambio de fragmento en la app da la pausa natural entre oraciones.
 MARGEN_INICIO_S = 0.05
 MARGEN_FINAL_S = 0.08
 VOLUMEN_RMS = 0.1  # unos -20 dBFS: igual en todos los fragmentos
@@ -70,9 +72,21 @@ def _opciones_onnx():
 
     opciones = ort.SessionOptions()
     # Sin la reserva de memoria de ONNX Runtime: lo que usa cada lectura se devuelve al terminar
-    # (Daphne tiene un tope de memoria y comparte el proceso con Whisper).
+    # (Daphne tiene un tope de memoria).
     opciones.enable_cpu_mem_arena = False
     return opciones
+
+
+class PuedeUsarVoz(BasePermission):
+    """Quien puede usar Nico AI puede oír su voz (la app móvil la pide al servidor)."""
+
+    message = "No tienes acceso a Nico AI."
+
+    def has_permission(self, request, view):
+        u = request.user
+        if not (u and u.is_authenticated):
+            return False
+        return u.is_superuser or (u.rol_id in roles.TODOS and u.puede_usar_agente)
 
 
 class VozSupertonic:
@@ -299,15 +313,15 @@ class LimiteVoz(UserRateThrottle):
 class VozView(APIView):
     """POST {texto}: devuelve ``audio/mpeg`` con el texto leído por Nico.
 
-    GET: precalienta la voz (carga el modelo en segundo plano) y responde 204 al momento. La web y
-    la app lo piden en cuanto saben que Nico va a hablar (al dictar o al enviar la pregunta).
+    GET: precalienta la voz (carga el modelo en segundo plano) y responde 204 al momento. La app lo
+    pide en cuanto sabe que Nico va a hablar (al dictar o al enviar la pregunta).
     """
 
-    permission_classes = [PuedeDictar]
+    permission_classes = [PuedeUsarVoz]
     throttle_classes = [LimiteVoz]
 
     def perform_content_negotiation(self, request, force=False):
-        # La web y la app piden «Accept: audio/mpeg»; la API solo tiene el renderizador JSON (para
+        # La app pide «Accept: audio/mpeg»; la API solo tiene el renderizador JSON (para
         # los errores), así que sin forzar respondería 406 antes de llegar a generar el audio.
         return super().perform_content_negotiation(request, force=True)
 

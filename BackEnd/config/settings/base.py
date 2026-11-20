@@ -245,9 +245,6 @@ NUCLEO_AGENTE_MANTENIMIENTO = env(
     "NUCLEO_AGENTE_MANTENIMIENTO", default=str(BASE_DIR / "var" / "agente-mantenimiento")
 )
 NUCLEO_BATERIA_BAJA_PCT = env.int("NUCLEO_BATERIA_BAJA_PCT", default=20)
-# Dictado por voz de respaldo (apps/nico/transcripcion.py): modelo de Whisper e hilos de CPU.
-NUCLEO_WHISPER_MODELO = env("NUCLEO_WHISPER_MODELO", default="base")
-NUCLEO_WHISPER_HILOS = env.int("NUCLEO_WHISPER_HILOS", default=2)
 # Voz de Nico (apps/nico/voz.py): motor («supertonic» o «piper» de respaldo) y carpeta de los
 # modelos (deploy/instalar.sh los descarga ahí).
 NUCLEO_VOZ_MOTOR = env("NUCLEO_VOZ_MOTOR", default="supertonic")

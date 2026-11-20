@@ -48,8 +48,6 @@ paso "Backend: entorno de Python 3.12 y dependencias"
 cd "$raiz/BackEnd"
 [[ -x .venv/bin/python ]] || uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
-# Modelo de Whisper para el dictado por voz de respaldo: se descarga aquí y no en la primera petición.
-.venv/bin/python -c "from faster_whisper.utils import download_model; download_model('${NUCLEO_WHISPER_MODELO:-base}')" >/dev/null
 # Voz de Nico: Supertonic 2 (voces masculinas M1 a M5; se usa M3) y Piper es_MX-ald-medium de
 # respaldo (NUCLEO_VOZ_MOTOR=piper). Solo se descarga lo que falta: se puede repetir sin costo.
 voces="$HOME/.local/share/nucleo/voces"
