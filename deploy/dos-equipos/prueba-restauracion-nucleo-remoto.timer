@@ -1,0 +1,9 @@
+[Unit]
+Description=Núcleo - prueba de restauración el primer domingo de cada mes a las 04:30 (asus)
+
+[Timer]
+OnCalendar=Sun *-*-01..07 04:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

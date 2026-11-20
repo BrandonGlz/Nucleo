@@ -15,9 +15,16 @@ SSH y la instalación desde cero están en [`deploy/README.md`](../../deploy/REA
 | `dispositivos.bynucleo.com` | Solo para los ESP32: MQTT (dentro de WebSocket) y llave de Nico AI |
 
 Todo llega por un Cloudflare Tunnel, sin abrir puertos en el router. Abrir `dispositivos.` en el
-navegador lleva a `bynucleo.com`. Corre en un servidor propio: una
-laptop ASUS X75A con Debian 13 sin escritorio (procesador Intel Core i5-3230M de 2 núcleos y 4 hilos a
-2.6 GHz, 8 GB de RAM y disco duro mecánico HDD de 750 GB, 698 GB utilizables) que funciona como VPS casero.
+navegador lleva a `bynucleo.com`. Corre en equipos propios que funcionan como VPS casero, dos
+laptops con Debian 13 sin escritorio unidas por Tailscale:
+
+| Equipo | Hardware | Papel |
+| --- | --- | --- |
+| Servidor | Intel Core i5-12450H (8 núcleos, 12 hilos), 8 GB de RAM, NVMe de 512 GB | Atiende todo lo de este diagrama |
+| Equipo de compilación y respaldo | Intel Core i5-3230M (2 núcleos, 4 hilos), 8 GB de RAM, HDD de 750 GB | Compila la web y el APK, despliega, respalda, prueba restauraciones y vigila el servidor |
+
+Entre los dos equipos solo viajan órdenes, volcados, la web compilada y el APK: todo lo que se
+consulta en cada petición (API, bases, Redis, broker, Ollama) vive en el servidor.
 
 ## Cómo llega una visita
 
@@ -88,24 +95,27 @@ flowchart LR
 - **Correo:** Gmail por SMTP con una contraseña de aplicación de la cuenta del proyecto.
 - **Push:** `NUCLEO_PUSH_HABILITADO=true`; el backend envía a Expo, que entrega por Firebase
   (proyecto `nucleo-firebase`) a los teléfonos registrados al iniciar sesión en la app.
-- **App:** `deploy/compilar_apk.sh` compila el APK en el mismo servidor y lo publica en
-  `https://app.bynucleo.com`.
-- **Respaldos:** `nucleo-respaldo.timer` respalda a las 03:45 y 15:45 (RPO de 12 h) las dos
-  bases y la configuración: 7 días en el servidor y 30 en Google Drive, cifrados con rclone
-  `crypt`. `nucleo-prueba-restauracion.timer` comprueba cada mes que el respaldo se restaura y
-  mide el RTO.
-- **Seguridad:** firewall nftables propio, reglas WAF y límite de acceso en Cloudflare, avisos
-  por correo cuando falla un servicio y vigía externo en GitHub Actions
-  ([seguridad](../seguridad/seguridad.md)).
+- **App:** el equipo de compilación compila el APK (`deploy/compilar_apk.sh`) y lo copia al
+  servidor, que lo publica en `https://app.bynucleo.com`.
+- **Respaldos:** el equipo de compilación saca por SSH, a las 03:45 y 15:45 (RPO de 12 h), las
+  dos bases y la configuración del servidor: 7 días en ese equipo y 30 en Google Drive, cifrados
+  con rclone `crypt`. Cada mes restaura el último respaldo en contenedores temporales, compara con
+  producción y mide el RTO.
+- **Seguridad:** firewall ufw que solo deja entrar por Tailscale, reglas WAF y límite de acceso
+  en Cloudflare, avisos por correo cuando falla un servicio, un vigilante externo en el equipo de
+  compilación y el vigía de GitHub Actions ([seguridad](../seguridad/seguridad.md)).
 - **Disponibilidad:** todos los servicios arrancan con el equipo y se reinician solos; los
-  contenedores tienen límite de memoria. El equipo no se suspende con la tapa
-  cerrada ni por inactividad, usa el cable si está conectado y el Wi-Fi como respaldo.
+  contenedores tienen límite de memoria. Los equipos no se suspenden con la tapa cerrada ni por
+  inactividad; van por Wi-Fi con IP fija y una red de respaldo, y el túnel usa `http2` (TCP), que
+  aguanta mejor los baches de señal que QUIC. Sin corriente y con poca batería se apagan en orden.
 
 ## Actualizar
 
 Producción corre la rama `main`. Cuando `dev` está probada en local, se une a `main`
-(avance rápido) y desde el servidor se ejecuta `bash deploy/desplegar.sh` (trae `main`, migra,
-recompila y reinicia).
+(avance rápido) y desde el equipo de compilación se ejecuta `desplegar-nucleo`: compila la web,
+la copia al servidor y ahí corre `NUCLEO_SIN_WEB=1 bash deploy/desplegar.sh` (trae `main`, migra
+y reinicia). Si ese equipo no está, `bash deploy/desplegar.sh` en el servidor hace todo, web
+incluida.
 
 El acceso por SSH desde cualquier red, los comandos de operación y la instalación desde cero
 están en [`deploy/README.md`](../../deploy/README.md).

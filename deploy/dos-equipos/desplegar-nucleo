@@ -1,0 +1,37 @@
+#!/bin/bash
+# «lanza el deploy» de Núcleo en dos equipos: asus compila la web y lenovo instala (NUCLEO_SIN_WEB=1).
+# Uso (en asus): desplegar-nucleo        Log: ~/despliegues/nucleo-<fecha>.log
+# Copia de referencia del repositorio (deploy/dos-equipos/, ver deploy/README.md). Se instala en el equipo de
+# compilación con «sudo install -m 755 … /usr/local/bin/». Sin secretos: la contraseña de sudo del servidor se lee
+# de ~/.config/despliegue-lenovo (600).
+set -euo pipefail
+umask 022
+LENOVO="${NUCLEO_SERVIDOR:-adminlenovo@100.107.247.90}"  # servidor (por Tailscale)
+exec 9>/tmp/despliegue-nucleo.lock
+flock -n 9 || { echo "Ya hay un despliegue de Núcleo en curso (otra sesión)."; exit 1; }
+mkdir -p ~/despliegues
+log=~/despliegues/nucleo-$(date +%Y-%m-%d_%H%M).log
+exec > >(tee -a "$log") 2>&1
+paso() { printf '\n== %s %s\n' "$(date +%T)" "$1"; }
+cd /var/www/html/Nucleo
+paso "asus: trae main"
+git fetch -q origin main && git checkout -q main && git merge -q --ff-only origin/main
+git log --oneline -1
+paso "asus: compila la web"
+origen="$(sed -n 's/^CORS_ALLOWED_ORIGINS=\([^,]*\).*/\1/p' BackEnd/.env)"
+export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"
+cd FrontEnd
+nice -n 10 npm ci --no-audit --no-fund
+VITE_API_BASE_URL="$origen/api/v1" VITE_USE_MOCKS=false VITE_MOCK_ROL=SUPER VITE_DEMO_PASSWORD= \
+  NODE_OPTIONS=--max-old-space-size=1536 nice -n 10 npm run build
+paso "asus → lenovo: copia la web compilada"
+rsync -a --delete --partial dist/ "$LENOVO:/var/www/html/Nucleo/FrontEnd/dist/"
+paso "lenovo: instala (sin compilar la web)"
+clave="$(cat ~/.config/despliegue-lenovo)"
+ssh "$LENOVO" "tmux kill-session -t deploy-nucleo 2>/dev/null; rm -f ~/deploy-nucleo.log; tmux new -d -s deploy-nucleo 'cd /var/www/html/Nucleo && umask 022 && export PATH=\$HOME/.local/bin:\$PATH && echo \"$clave\" | sudo -S -p \"\" -v && NUCLEO_SIN_WEB=1 bash deploy/desplegar.sh > ~/deploy-nucleo.log 2>&1; echo FIN \$? >> ~/deploy-nucleo.log'"
+until ssh "$LENOVO" 'grep -q "^FIN" ~/deploy-nucleo.log 2>/dev/null'; do sleep 5; done
+ssh "$LENOVO" 'cat ~/deploy-nucleo.log' | tail -25
+ssh "$LENOVO" 'tail -1 ~/deploy-nucleo.log' | grep -q "^FIN 0" || { echo "FALLÓ la instalación en lenovo"; exit 1; }
+paso "Comprobación pública"
+for u in https://bynucleo.com/ https://bynucleo.com/api/v1/health/; do echo "$u -> $(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$u")"; done
+paso "Listo"

@@ -1,0 +1,16 @@
+[Unit]
+Description=Núcleo - respaldo desde asus (bases, aplicación, broker y media de lenovo por SSH)
+OnFailure=respaldo-aviso@%n.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=adminasus
+Nice=10
+IOSchedulingClass=idle
+ExecStart=/usr/local/bin/respaldo-nucleo-remoto
+# Igual que el respaldo original: después, en lenovo, borra la auditoría de más de NUCLEO_AUDITORIA_DIAS.
+# El «-» evita que un fallo aquí marque el respaldo como fallido.
+ExecStartPost=-/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=30 adminlenovo@100.107.247.90 "cd /var/www/html/Nucleo/BackEnd && DJANGO_SETTINGS_MODULE=config.settings.production nice -n 10 .venv/bin/python manage.py depurar_auditoria"
+TimeoutStartSec=1h

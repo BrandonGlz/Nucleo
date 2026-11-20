@@ -1,0 +1,20 @@
+#!/bin/bash
+# «lanza la build» de Núcleo: compila el APK en asus y publica deploy/descargas/ en lenovo (app.bynucleo.com).
+# Uso (en asus): compilar-apk-nucleo [--forzar|--limpio]     Log: ~/despliegues/apk-<fecha>.log
+# Copia de referencia del repositorio (deploy/dos-equipos/, ver deploy/README.md). Se instala en el equipo de
+# compilación con «sudo install -m 755 … /usr/local/bin/». Sin secretos: la contraseña de sudo del servidor se lee
+# de ~/.config/despliegue-lenovo (600).
+set -euo pipefail
+umask 022
+LENOVO="${NUCLEO_SERVIDOR:-adminlenovo@100.107.247.90}"  # servidor (por Tailscale)
+exec 9>/tmp/build-apk.lock
+flock -n 9 || { echo "Ya hay una build del APK en curso. Nunca dos a la vez."; exit 1; }
+mkdir -p ~/despliegues
+log=~/despliegues/apk-$(date +%Y-%m-%d_%H%M).log
+exec > >(tee -a "$log") 2>&1
+cd /var/www/html/Nucleo
+git fetch -q origin main && git checkout -q main && git merge -q --ff-only origin/main
+git log --oneline -1
+nice -n 10 ionice -c3 bash deploy/compilar_apk.sh "$@"
+rsync -a --partial deploy/descargas/ "$LENOVO:/var/www/html/Nucleo/deploy/descargas/"
+curl -s -o /dev/null -w "app.bynucleo.com -> %{http_code}\n" --max-time 15 https://app.bynucleo.com/

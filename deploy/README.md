@@ -1,9 +1,16 @@
 # Servidor de Núcleo
 
-Núcleo corre en una laptop ASUS X75A con Debian 13 (`homelab`: Intel Core i5-3230M, 8 GB de RAM y disco duro HDD de 750 GB). Se publica
-en internet con un Cloudflare Tunnel en el dominio `bynucleo.com`, sin puertos abiertos en el
-router, así que se llega desde cualquier red. Núcleo no usa Tailscale; el Tailscale del host solo
-sirve para entrar por SSH.
+Núcleo corre en dos laptops con Debian 13, unidas por Tailscale:
+
+| Equipo | Hardware | Papel |
+| --- | --- | --- |
+| **Servidor** (`lenovo`) | Intel Core i5-12450H, 8 GB de RAM, NVMe de 512 GB | Atiende todo: web, API, bases, broker, Ollama y el túnel |
+| **Equipo de compilación y respaldo** (`asus`) | Intel Core i5-3230M, 8 GB de RAM, HDD de 750 GB | Compila la web y el APK, despliega, respalda, prueba las restauraciones y vigila |
+
+Se publica en internet con un Cloudflare Tunnel en el dominio `bynucleo.com`, sin puertos abiertos
+en el router, así que se llega desde cualquier red. Núcleo no usa Tailscale para las visitas; el
+Tailscale de los equipos solo sirve para entrar por SSH y para que el equipo de compilación hable
+con el servidor.
 
 | Qué | Dirección |
 | --- | --- |
@@ -31,19 +38,46 @@ Abre la URL desde cualquier navegador; no hace falta instalar nada.
    ```
 
    En Windows y macOS: https://tailscale.com/download. En Android e iOS: app **Tailscale**.
-2. Entra a la laptop:
+2. Entra al equipo que necesites:
 
    ```bash
-   ssh userhomelab@100.65.53.53
+   ssh adminlenovo@100.107.247.90   # servidor (producción)
+   ssh adminasus@100.65.53.53       # equipo de compilación y respaldo
    ```
 
-En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en la laptop con
-`ip -br a`).
+SSH entra con llave o contraseña y **solo por Tailscale**: el firewall de los dos equipos cierra
+todo lo que llega de la red de la casa ([Firewall](#firewall)). `root` no puede entrar por SSH.
+El equipo de compilación tiene su llave autorizada en el servidor, así que sus scripts entran sin
+contraseña (`BatchMode`).
 
 ## Cómo está armado
 
+### Reparto entre los dos equipos
+
+Regla de diseño: los equipos se hablan por Wi-Fi (Tailscale), con latencias que van de unos
+milisegundos a casi un segundo. Por eso **todo lo que se consulta muchas veces por petición vive
+en el servidor** (API, bases, Redis, broker, Ollama) y entre los equipos solo viajan órdenes,
+volcados, la web compilada y el APK.
+
+| Pieza | Servidor | Equipo de compilación |
+| --- | :---: | :---: |
+| Túnel `cloudflared`, Caddy, web compilada y APK publicado | ✅ | |
+| Daphne, `nucleo-mqtt`, `nucleo-sin-conexion`, reportes, `vigilar_recursos.sh` | ✅ | |
+| PostgreSQL, TimescaleDB, Redis, Mosquitto y Ollama (Docker) | ✅ | |
+| Compilación de la web y del APK, llave de firma de la app (`~/nucleo-app`) | | ✅ |
+| Despliegue (`desplegar-nucleo`) y build (`compilar-apk-nucleo`) | | ✅ |
+| Respaldos a Drive y prueba de restauración mensual | | ✅ |
+| Vigilante externo (`vigia`) | | ✅ |
+
+Si el equipo de compilación se apaga, los usuarios no lo notan: solo se pausan los despliegues,
+las builds, los respaldos y el vigilante (el vigía de GitHub sigue avisando). Si el servidor se
+cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automática.
+
+### Servidor
+
 - Todo llega por el Cloudflare Tunnel `nucleo` (servicio `cloudflared`, configuración
-  `deploy/cloudflared.yml` → `/etc/cloudflared/config.yml`):
+  `deploy/cloudflared.yml` → `/etc/cloudflared/config.yml`). Usa `protocol: http2` (TCP) en lugar
+  de QUIC porque el servidor va por Wi-Fi y QUIC se corta cuando baja la señal:
   - `bynucleo.com` y `www.` → Caddy (`127.0.0.1:8081`), que manda `http://` a `https://` y `www`
     al dominio principal.
   - `app.bynucleo.com` → Caddy, que entrega `deploy/descargas/` (la raíz lleva a `nucleo-<versión>.apk`).
@@ -61,50 +95,127 @@ En la misma red de la casa también sirve `ssh userhomelab@<IP local>` (se ve en
   nombre (`bynucleo.com`, `www`, `app`, `info`, `nicoai`, `admin`, `dispositivos`).
 - Caddy sirve la web compilada y pasa `/api`, `/admin` y `/ws` a Daphne (`127.0.0.1:8001`).
 - systemd: `nucleo-daphne` (API y WebSocket), `nucleo-mqtt` (lecturas del broker),
-  `nucleo-sin-conexion`, `nucleo-reportes.timer` (cada 15 min), `nucleo-respaldo.timer` (03:45 y
-  15:45) y `nucleo-prueba-restauracion.timer` (primer domingo del mes, 04:30). Si cualquiera
-  falla, `nucleo-aviso@.service` manda un correo con sus últimas líneas de bitácora.
-- La laptop no se suspende con la tapa cerrada ni por inactividad, y NetworkManager usa el cable
-  si está conectado y el Wi-Fi como respaldo.
+  `nucleo-sin-conexion`, `nucleo-reportes.timer` (cada 15 min) y `nucleo-recursos.timer` (cada
+  10 min, `vigilar_recursos.sh`). Si cualquiera falla, `nucleo-aviso@.service` manda un correo con
+  sus últimas líneas de bitácora. `nucleo-respaldo.timer` y `nucleo-prueba-restauracion.timer` se
+  instalan pero quedan **deshabilitados** en el servidor: los respaldos los hace el equipo de
+  compilación ([Respaldos desde el equipo de compilación](#respaldos-desde-el-equipo-de-compilación)).
+- Firewall `ufw`: todo lo entrante cerrado salvo Tailscale ([Firewall](#firewall)).
+- La laptop no se suspende con la tapa cerrada ni por inactividad. La red la maneja NetworkManager
+  con IP fija (Wi-Fi principal y otra red de respaldo con menor prioridad), sin ahorro de energía
+  en el Wi-Fi. La batería tiene tope de carga (conservation mode) y, sin corriente y con poca
+  batería, un timer detiene servicios y bases en orden y apaga el equipo.
+
+### Equipo de compilación
+
+- Tiene una copia del repositorio en `/var/www/html/Nucleo` (rama `main`), Node (nvm), el SDK de
+  Android, ccache y la llave de firma de la app en `~/nucleo-app`.
+- Sus scripts viven en `/usr/local/bin`, fuera del repositorio. Hay copia en el equipo de
+  administración y, sin secretos, copia de referencia en [`deploy/dos-equipos/`](dos-equipos/)
+  (salvo `vigia`, que también vigila otros servicios del servidor). Hablan con el servidor por SSH
+  con llave:
+
+  | Script | Qué hace |
+  | --- | --- |
+  | `desplegar-nucleo` | «Lanza el deploy»: compila la web y hace que el servidor instale |
+  | `compilar-apk-nucleo` | «Lanza la build»: compila el APK y lo publica en el servidor |
+  | `respaldo-nucleo-remoto` (timer 03:45 y 15:45) | Respaldo de las bases y la aplicación a Drive |
+  | `prueba-restauracion-nucleo` (timer, 1er domingo 04:30) | Prueba de restauración con contenedores temporales |
+  | `respaldo-aviso` (`respaldo-aviso@.service`) | Correo si un respaldo o una prueba falla |
+  | `vigia` (timer cada 60 s) | Vigilante externo del servidor (sitios, servicios, equipo, accesos) |
+
+- Los despliegues y las builds usan candado (`flock`): si otra sesión ya está desplegando o
+  compilando, el script se niega y lo dice. Nunca corren dos builds del APK a la vez.
+- Los registros quedan en `~/despliegues/` (`nucleo-<fecha>.log`, `apk-<fecha>.log`).
+- Mismas medidas que el servidor: ufw solo Tailscale, sin suspensión y apagado ordenado por batería.
 
 ## Operación
 
-Todos desde la laptop, en `/var/www/html/Nucleo`:
+Producción solo corre `main`; `dev` es para probar en local y se une a `main` (avance rápido)
+cuando está lista.
 
-- `bash deploy/desplegar.sh` — trae `main` y reinstala; se puede repetir. Producción solo corre
-  `main`; `dev` es para probar en local y se une a `main` cuando está lista.
+En el **equipo de compilación** (`ssh adminasus@100.65.53.53`), mejor dentro de `tmux`:
+
+- `desplegar-nucleo` — despliegue completo en unos 2 minutos ([Despliegue en dos equipos](#despliegue-en-dos-equipos)).
+- `compilar-apk-nucleo [--forzar|--limpio]` — compila el APK y lo publica en `app.bynucleo.com`
+  ([App móvil](#app-móvil-apk)).
+- `sudo systemctl start respaldo-nucleo-remoto` — respaldo inmediato (o `respaldo-nucleo-remoto`
+  directo); `journalctl -u respaldo-nucleo-remoto -n 50 --no-pager` para ver el último.
+- `prueba-restauracion-nucleo` — prueba de restauración inmediata; el registro queda en
+  `~/respaldos/nucleo-pruebas`.
+- `vigia --prueba` — corre todas las revisiones del vigilante e imprime el resultado sin mandar correos.
+- `systemctl list-timers --no-pager | grep -E 'respaldo|prueba|vigia'` — próximas ejecuciones.
+
+En el **servidor** (`ssh adminlenovo@100.107.247.90`), en `/var/www/html/Nucleo`:
+
+- `bash deploy/desplegar.sh` — trae `main`, compila la web en el propio servidor y reinstala; se
+  puede repetir. Sirve si el equipo de compilación no está disponible.
 - `systemctl status nucleo-daphne nucleo-mqtt caddy --no-pager` — estado de los servicios.
 - `journalctl -u nucleo-daphne -n 50 --no-pager` — últimos mensajes de la API.
 - `docker ps` — contenedores: postgres, timescaledb, redis, mosquitto y ollama.
 - `systemctl status cloudflared --no-pager` — estado del túnel de Cloudflare.
-- `bash deploy/respaldar.sh` — respaldo inmediato en `~/respaldos/nucleo` y en Drive (cifrado en
-  `gdrive-nucleo-cifrado:`; sin ese remoto, en claro en `gdrive-nucleo:servidor/nucleo`).
-  Guarda las dos bases (`.dump`), la aplicación completa (`nucleo_aplicacion_*.tar.gz`: código
-  desplegado con sus `.env` y la configuración, y `VERSION_DESPLEGADA` con el commit), el broker y
-  los archivos subidos, y la llave de firma de la app.
-- `bash deploy/probar_restauracion.sh` — prueba de restauración inmediata (contenedores
-  temporales, no toca producción); el registro queda en `~/respaldos/nucleo-pruebas`.
-- `bash deploy/firewall.sh estado` — reglas del firewall y conexiones rechazadas.
+- `sudo ufw status verbose` — reglas del firewall.
+- `bash deploy/respaldar.sh` y `bash deploy/probar_restauracion.sh` siguen funcionando en el
+  servidor (respaldo y prueba locales); se usan solo si el equipo de compilación no está. Guardan
+  lo mismo que el respaldo remoto.
 
 ### Despliegue en dos equipos
 
-Cuando hay un equipo aparte para compilar, la web se compila ahí y el servidor solo instala:
+La web se compila en el equipo de compilación y el servidor solo instala. `desplegar-nucleo` hace
+estos pasos (con candado y registro en `~/despliegues/`):
 
 1. En el equipo de compilación: trae `main`, compila `FrontEnd/` con las mismas variables que usa
-   `deploy/instalar.sh` y copia `FrontEnd/dist/` al servidor (`rsync -a --delete`).
-2. En el servidor: `NUCLEO_SIN_WEB=1 bash deploy/desplegar.sh`. Hace todo lo demás (dependencias,
+   `deploy/instalar.sh` (la URL de la API sale de `CORS_ALLOWED_ORIGINS` de su `BackEnd/.env`) y
+   copia `FrontEnd/dist/` al servidor (`rsync -a --delete --partial`).
+2. En el servidor, dentro de una sesión `tmux` con `umask 022` (con un umask más cerrado la web
+   queda en 403): `NUCLEO_SIN_WEB=1 bash deploy/desplegar.sh`. Hace todo lo demás (dependencias,
    migraciones, servicios, Caddy y túnel) y usa la web que ya está en `FrontEnd/dist/` en lugar de
-   compilarla.
+   compilarla. La contraseña de `sudo` del servidor la lee de `~/.config/despliegue-lenovo`
+   (permiso 600, fuera del repo).
+3. Espera a que termine, muestra el final del registro del servidor y comprueba
+   `https://bynucleo.com/` y `/api/v1/health/`.
 
-El APK también se compila en el equipo de compilación (`bash deploy/compilar_apk.sh`) y se copia
-`deploy/descargas/` completo al servidor.
+`compilar-apk-nucleo` trae `main`, corre `deploy/compilar_apk.sh` con prioridad baja y copia
+`deploy/descargas/` completo al servidor (`rsync`); el enlace de `app.bynucleo.com` no cambia.
+
+Para instalar o actualizar los scripts en el equipo de compilación:
+
+```bash
+sudo install -m 755 deploy/dos-equipos/desplegar-nucleo deploy/dos-equipos/compilar-apk-nucleo /usr/local/bin/
+```
+
+Las direcciones del servidor se cambian con la variable `NUCLEO_SERVIDOR` (por defecto
+`adminlenovo@100.107.247.90`).
 
 ## Seguridad y recuperación
+
+### Respaldos desde el equipo de compilación
+
+`respaldo-nucleo-remoto.timer` (03:45 y 15:45) corre en el equipo de compilación y saca los datos
+del servidor por SSH, sin compilar ni guardar nada allá:
+
+- `pg_dump -Fc` de `nucleo_db` y `nucleo_iot` (con `nice` del lado del servidor) y comprueba que
+  `pg_restore` pueda leer cada volcado.
+- La aplicación completa (`nucleo_aplicacion_*.tar.gz`: código desplegado con sus `.env`, la
+  configuración y `VERSION_DESPLEGADA` con el commit), los certificados y usuarios del broker y
+  los archivos subidos (`nucleo_broker_media_*.tar.gz`).
+- La llave de firma de la app (`nucleo_firma_app_*.tar.gz`), que vive en el equipo de compilación.
+
+Usa los mismos nombres que `respaldar.sh`, así que `restaurar.sh` sirve igual. Guarda 7 días en
+`~/respaldos/nucleo` y sube a `gdrive-nucleo-cifrado:` (30 días). Cada descarga se reintenta
+5 veces y la subida 10, porque el Wi-Fi entre equipos varía. Al terminar, en el servidor corre
+`manage.py depurar_auditoria`.
+
+`prueba-restauracion-nucleo-remoto.timer` (primer domingo del mes, 04:30) restaura el último
+respaldo en dos contenedores temporales sin red, compara los conteos con producción (solo
+lectura, por SSH) y manda el resultado por correo. Si un respaldo o una prueba falla,
+`respaldo-aviso@.service` manda las últimas líneas de su bitácora (como mucho uno por hora).
+El SMTP y los destinatarios están en `~/.config/respaldo-remoto/nucleo.env` (600, fuera del repo).
 
 ### Respaldos cifrados
 
 Drive solo recibe archivos cifrados (nombres incluidos) con un remoto `crypt` de rclone sobre el
-remoto normal. Una sola vez, en la laptop:
+remoto normal. Una sola vez, en el equipo que hace los respaldos (el de compilación):
 
 ```bash
 rclone config create gdrive-nucleo-cifrado crypt \
@@ -124,7 +235,7 @@ con las mismas contraseñas y `rclone copy gdrive-nucleo-cifrado: ~/traspaso --m
 | --- | --- |
 | RPO (datos que se pueden perder) | 12 h: respaldo a las 03:45 y 15:45 |
 | RTO (tiempo para volver) | El que mide la prueba mensual (≈ 1 min para restaurar las bases; más la instalación si es otra máquina) |
-| Prueba | `nucleo-prueba-restauracion.timer` restaura, compara conteos y avisa por correo |
+| Prueba | `prueba-restauracion-nucleo-remoto.timer` (equipo de compilación) restaura, compara conteos y avisa por correo |
 
 ### Llave de cifrado de datos
 
@@ -135,26 +246,38 @@ respaldos de la base los traen cifrados).
 
 ### Firewall
 
-El servidor usa **ufw**: niega todo lo entrante salvo Tailscale (`tailscale0`, por donde entran
-SSH y TMO) y SSH desde la red local (`192.168.0.0/16` y `fe80::/10`). Las visitas de Núcleo no
-necesitan puertos abiertos porque llegan por el túnel de Cloudflare, que sale desde el servidor.
+Los dos equipos usan **ufw** con la misma política: niega todo lo entrante (también desde la red
+de la casa) salvo la interfaz de Tailscale y el puerto UDP de sus conexiones directas. SSH, las
+bases y lo que el equipo de compilación consulta del servidor solo pasan por Tailscale. Las
+visitas de Núcleo no necesitan puertos abiertos porque llegan por el túnel de Cloudflare, que sale
+desde el servidor.
 
 ```bash
-sudo ufw status numbered
+sudo ufw default deny incoming && sudo ufw default allow outgoing
+sudo ufw allow in on tailscale0 comment tailscale
+sudo ufw allow 41641/udp comment tailscale-directo
+sudo ufw enable
+sudo ufw status verbose
 ```
 
-Antes de quitar una regla de SSH, programa una vuelta atrás y cancélala cuando una sesión SSH
-nueva funcione:
+Antes de activar ufw o quitar una regla de SSH, comprueba que entras por Tailscale, programa una
+vuelta atrás y cancélala cuando una sesión SSH nueva funcione:
 
 ```bash
-sudo systemd-run --unit=ufw-vuelta-atras --on-active=180 /usr/sbin/ufw allow OpenSSH
+sudo systemd-run --unit=ufw-vuelta-atras --on-active=180 /usr/sbin/ufw disable
 # ...cambios y prueba desde otra sesión...
 sudo systemctl stop ufw-vuelta-atras.timer
 ```
 
-En un servidor sin ufw, `deploy/firewall.nft` hace lo mismo con nftables:
-`bash deploy/firewall.sh aplicar` y, desde **otra** sesión SSH, `bash deploy/firewall.sh confirmar`
-(sin confirmar se quita solo a los 3 minutos). El script se niega a cargarse si ufw está activo.
+Además, en los dos equipos: `sshd` con un drop-in (`/etc/ssh/sshd_config.d/`) que deja llave y
+contraseña pero no `root` (`PermitRootLogin no`, `MaxAuthTries 4`), `fail2ban` para SSH,
+`unattended-upgrades` solo de seguridad y de madrugada (sin reinicio automático) y `auditd` con
+reglas sobre `/etc`, `/usr/local/bin`, systemd y `sudo`.
+
+`deploy/firewall.sh` y `deploy/firewall.nft` quedan para un servidor de un solo equipo sin ufw:
+hacen lo mismo con nftables (más SSH desde la red local). `bash deploy/firewall.sh aplicar` y,
+desde **otra** sesión SSH, `bash deploy/firewall.sh confirmar` (sin confirmar se quita solo a los
+3 minutos). El script se niega a cargarse si ufw está activo; en los dos equipos actuales no se usa.
 
 ### Reglas de Cloudflare (panel)
 
@@ -191,8 +314,21 @@ Tras un deploy que cambie encabezados, vacía la caché en **Caching → Configu
   (`NUCLEO_AVISO_MINUTOS`).
 - En producción `NUCLEO_CORREOS_AVISOS` apunta a la cuenta de avisos del proyecto (la misma del
   SMTP), así que estos correos y los de `vigilar_recursos.sh` llegan a su bandeja.
-- El vigilante del servidor (`/usr/local/bin/hostpanel-avisos`, fuera del repo) corre tras cada
-  actualización del panel del host y solo actúa cuando algo cambia de estado: manda «Caído»,
+- **Vigilante externo** (`vigia`, en el equipo de compilación, fuera del repo; timer cada 60 s):
+  vigila el servidor desde otro equipo, así que avisa aunque el servidor esté caído o sin red.
+  Revisa por HTTPS los sitios públicos y, con una sola conexión SSH por vuelta, los servicios,
+  contenedores, Ollama, disco, memoria, temperatura, batería, la edad de los respaldos, los
+  certificados de Mosquitto, el espacio en Drive y las entradas por SSH. Un fallo cuenta tras 2
+  revisiones seguidas («el servidor no responde», tras 3). Manda «Falla», «Sigue fallando» cada
+  hora mientras dure y «Resuelto»; a las 08:00, un resumen del día anterior (caídas, accesos,
+  `sudo`, auditd). Una entrada por SSH desde una IP que no está en su lista de conocidas avisa al
+  momento. Usa su propia copia del SMTP del proyecto (`~/.config/vigia-smtp-nucleo.env`, 600) y
+  los destinatarios de `~/.config/vigia.conf` (los mismos de `NUCLEO_CORREOS_AVISOS`); si el
+  correo no sale, lo deja en cola y lo reintenta hasta 3 días. `vigia --prueba` muestra lo que
+  mandaría sin enviar nada. Vigila también otros servicios del servidor, con sus propios
+  destinatarios.
+- El vigilante del panel del host (`/usr/local/bin/hostpanel-avisos`, en el servidor, fuera del
+  repo) corre tras cada actualización del panel y solo actúa cuando algo cambia de estado: manda «Caído»,
   «Aviso» o «Resuelto» con la explicación y las últimas líneas del registro a la cuenta de avisos
   de la plataforma afectada (túnel, dominios, Daphne o MQTT detenidos, ESP32 sin conexión,
   Nico AI, seguridad, respaldos, Caddy, Ollama, red). Usa el SMTP del `.env` y no repite lo que ya
@@ -224,17 +360,30 @@ cable, además de `PUENTE_HOST` y `PUENTE_CLAVE` en `secrets.py`.
 
 ### Servidor de reserva
 
-Si la laptop se pierde, cualquier equipo con Debian y 8 GB sirve:
+Si el servidor se pierde, cualquier equipo con Debian y 8 GB sirve (también el equipo de
+compilación, que ya tiene los respaldos en `~/respaldos/nucleo`, Docker y el repositorio):
 
 1. Instala Docker, git, Caddy, rclone y cloudflared; clona el repositorio en `/var/www/html/Nucleo`
    (rama `main`).
-2. Crea los remotos `gdrive-nucleo` y `gdrive-nucleo-cifrado` (mismas contraseñas), baja el último
-   respaldo (si no hay acceso a GitHub, `nucleo_aplicacion_*.tar.gz` trae el código y los `.env`:
-   `tar -xzf … -C /var/www/html/Nucleo`) y sigue [Instalación desde cero](#instalación-desde-cero). Pon en `BackEnd/.env` la
-   misma `NUCLEO_CLAVE_CIFRADO`.
-3. Copia `/etc/cloudflared/` y `~/.cloudflared/` (o crea el túnel de nuevo): los dominios apuntan
-   al túnel, no a una IP, así que el cambio es inmediato.
-4. Revisa con el vigía o `curl https://bynucleo.com/api/v1/health/`.
+2. Usa los respaldos locales del equipo de compilación o crea los remotos `gdrive-nucleo` y
+   `gdrive-nucleo-cifrado` (mismas contraseñas) y baja el último respaldo (si no hay acceso a
+   GitHub, `nucleo_aplicacion_*.tar.gz` trae el código y los `.env`:
+   `tar -xzf … -C /var/www/html/Nucleo`); sigue [Instalación desde cero](#instalación-desde-cero).
+   Pon en `BackEnd/.env` la misma `NUCLEO_CLAVE_CIFRADO`.
+3. Copia `/etc/cloudflared/` y `~/.cloudflared/` (o crea el túnel de nuevo) y **apaga el
+   `cloudflared` del servidor viejo** si sigue encendido: con dos conectores del mismo túnel,
+   Cloudflare reparte las visitas entre ambos. Los dominios apuntan al túnel, no a una IP, así que
+   el cambio es inmediato.
+4. Si el servidor nuevo tiene otra dirección de Tailscale, cámbiala en los scripts del equipo de
+   compilación (`NUCLEO_SERVIDOR`, `LENOVO` en `/usr/local/lib/respaldo-remoto/comun.sh` y en
+   `~/.config/vigia.conf`).
+5. Revisa con el vigía o `curl https://bynucleo.com/api/v1/health/`.
+
+Si el que se pierde es el equipo de compilación, Núcleo sigue funcionando: instala otro según
+[Instalación desde cero](#instalación-desde-cero) (paso del equipo de compilación) y recupera la
+llave de firma de la app del respaldo (`nucleo_firma_app_*.tar.gz`). Mientras tanto se puede
+desplegar con `bash deploy/desplegar.sh` en el servidor y respaldar con `bash deploy/respaldar.sh`
+(habilitando `nucleo-respaldo.timer`).
 
 ### App móvil (APK)
 
@@ -244,8 +393,9 @@ El APK se descarga en `https://app.bynucleo.com`. Caddy entrega la carpeta
 nombre; el enlace anterior `/nucleo.apk` lleva a la raíz. El login de la web tiene un botón a este enlace.
 `bash deploy/compilar_apk.sh --indice` solo regenera esa página con el APK ya compilado de la versión de `Mobile/app.json` (o el más reciente, si esa aún no se compila).
 
-Para publicar una versión nueva, en la laptop: subir `version` en `Mobile/app.json` y correr
-`bash deploy/compilar_apk.sh` (mejor en tmux). Compila en la laptop con la API del perfil `piloto` de
+Para publicar una versión nueva: subir `version` en `Mobile/app.json`, unir a `main` y correr
+`compilar-apk-nucleo` en el equipo de compilación (mejor en tmux; por dentro corre
+`bash deploy/compilar_apk.sh` y copia `deploy/descargas/` al servidor). Compila con la API del perfil `piloto` de
 `Mobile/eas.json`, con prioridad baja y solo para arm64-v8a (todos los celulares actuales; otra arquitectura con
 `NUCLEO_ABIS=arm64-v8a,armeabi-v7a`). El enlace no cambia y no hace falta reiniciar nada.
 
@@ -259,7 +409,7 @@ una tarea a la vez para cuidar la memoria y tarda más (`NUCLEO_HILOS=2` fuerza 
 solo mientras corre. Opciones: `--forzar` (compila aunque no haya cambios) y `--limpio` (borra `node_modules` y
 `android/` y compila todo, por si algo sale raro).
 
-Para que tarde menos en la laptop (CPU de 2 núcleos):
+Para que tarde menos en el equipo de compilación (CPU de 2 núcleos):
 
 - El APK piloto va sin R8: el script pone `android.enableMinifyInReleaseBuilds=false` y
   `android.enableShrinkResourcesInReleaseBuilds=false` en `android/gradle.properties`. R8 era el paso más largo
@@ -281,7 +431,7 @@ Ya está configurado y probado en un teléfono:
 | --- | --- |
 | Proyecto de Expo | cuenta `nucleo-expo`, proyecto `-nucleo-mobile` (así quedó el nombre); su ID va en `Mobile/app.json` (`extra.eas.projectId`) y en `EXPO_PUBLIC_EAS_PROJECT_ID` de `Mobile/eas.json` |
 | Firebase | proyecto `nucleo-firebase`, app Android `com.nucleo.mobile` |
-| `google-services.json` | `Mobile/` de la laptop, fuera de git; sin él el APK no recibe push |
+| `google-services.json` | `Mobile/` del equipo de compilación, fuera de git; sin él el APK no recibe push |
 | Clave FCM V1 | subida a Expo y asignada a `com.nucleo.mobile` (`npx eas-cli credentials -p android` con la sesión de `nucleo-expo`) |
 | Backend | `NUCLEO_PUSH_HABILITADO=true` en `BackEnd/.env` |
 
@@ -289,10 +439,10 @@ Si se pierde `google-services.json`, se vuelve a descargar en Firebase → Confi
 proyecto → General → Tus apps, se copia a `Mobile/` y se recompila el APK. Para probar un push,
 la app debe estar cerrada.
 
-Requisitos (una vez): `sudo apt install openjdk-21-jdk-headless unzip ccache` y las herramientas de línea de comandos
+Requisitos (una vez, en el equipo de compilación): `sudo apt install openjdk-21-jdk-headless unzip ccache` y las herramientas de línea de comandos
 de Android en `~/android-sdk/cmdline-tools/latest` con las licencias aceptadas
 (`yes | sdkmanager --licenses`); Gradle descarga el resto. La llave de firma vive en `~/nucleo-app`
-(fuera de git) y entra en el respaldo diario: sin ella no se puede actualizar la app ya instalada.
+(fuera de git, en el equipo de compilación) y entra en cada respaldo: sin ella no se puede actualizar la app ya instalada.
 
 ## Nico AI con IA local (Ollama) y el ESP32 puente
 
@@ -318,14 +468,17 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 - Usuario MQTT del ESP: `bash Mosquitto/dispositivo.sh <codigo_mqtt>` (imprime la contraseña
   una vez; va solo al `secrets.py` de la placa).
 - La firma tiene 12 s para llegar; si no llega, se responde con lo predefinido.
-- Con todo encendido el servidor usa ~2.7 GB de los 8 GB (Ollama ~1.2 GB) y la carga ronda 0.5.
+- En producción el servidor usa `IA_MODELO_LOCAL=qwen2.5:3b` (~2.2 GB cargado, respuesta típica de
+  5–8 s) con `IA_ESPERA_SEGUNDOS=40`; el valor por defecto del repositorio sigue siendo
+  `qwen2.5:1.5b`, para equipos con menos procesador.
 - Encender: poner `IA_PUENTE_CLAVE` (`openssl rand -hex 24`) en `BackEnd/.env` y correr
   `bash deploy/instalar.sh`; levanta Ollama y descarga el modelo. La misma clave va en el ESP.
 - Apagar: dejar `IA_PUENTE_CLAVE` vacía y volver a instalar; Ollama se detiene y el agente
   responde solo con lo predefinido, sin depender de ningún ESP.
 - Si la IA tarda más de `IA_ESPERA_SEGUNDOS` (20 s), hay 2 peticiones en cola o pone una cifra
   que no viene de los datos, se responde con la predefinida.
-- `deploy/compilar_apk.sh` apaga Ollama mientras compila la app y lo vuelve a encender al final.
+- `deploy/compilar_apk.sh` apaga el Ollama del equipo donde compila y lo vuelve a encender al final;
+  con la build en el equipo de compilación, el Ollama del servidor no se toca.
 - Protección por carga: con menos de 1200 MB libres el agente deja de usar la IA (responde con
   reglas y herramientas) y limita las preguntas por usuario (30 por minuto normal, 10 con carga
   alta, 4 por debajo de 500 MB). Si TimescaleDB no responde, avisa que está en mantenimiento.
@@ -341,7 +494,48 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 
 ## Instalación desde cero
 
-1. Copia los respaldos a `~/traspaso` y corre `bash deploy/restaurar.sh ~/traspaso`.
+Son dos equipos con Debian 13 sin escritorio en la misma tailnet. Primero se prepara el sistema de
+los dos, luego el servidor y al final el equipo de compilación.
+
+### Sistema (los dos equipos)
+
+1. Usuario administrador con `sudo` (en producción `adminlenovo` en el servidor y `adminasus` en el
+   equipo de compilación), en los grupos `docker` y `systemd-journal`. Zona horaria
+   `America/Tijuana` (`sudo timedatectl set-timezone America/Tijuana`): los timers usan hora local.
+2. Red con **NetworkManager** e IP fija. Si el instalador de Debian dejó el Wi-Fi en
+   `/etc/network/interfaces` con su propio cliente DHCP, quita ahí la interfaz Wi-Fi y enmascara ese
+   cliente (`sudo systemctl mask dhcpcd`, o el que haya): si sigue corriendo añade una segunda IP
+   y, al detenerlo, la tarjeta se queda sin configurar. Luego, por cada red:
+
+   ```bash
+   sudo nmcli con add type wifi ifname <interfaz> con-name casa ssid '<red>' \
+     wifi-sec.key-mgmt wpa-psk wifi-sec.psk '<clave>' \
+     ipv4.method manual ipv4.addresses <IP>/24 ipv4.gateway <router> ipv4.dns '1.1.1.1 8.8.8.8' \
+     802-11-wireless.powersave 2 connection.autoconnect-priority 20
+   ```
+
+   La red de respaldo, igual con `autoconnect-priority 10`. Reserva también la IP en el router.
+   Si un rfkill deja el Wi-Fi bloqueado: `sudo rfkill unblock wifi`.
+3. Sin suspensión:
+   `sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target` y
+   `HandleLidSwitch=ignore` (y `HandleLidSwitchExternalPower=ignore`) en
+   `/etc/systemd/logind.conf`. Si la pantalla queda negra al arrancar, agrega `nomodeset` a
+   `GRUB_CMDLINE_LINUX_DEFAULT` y `GRUB_TERMINAL=console` en `/etc/default/grub` (`sudo update-grub`).
+4. Batería: tope de carga si el equipo lo permite. En Lenovo IdeaPad, un archivo en
+   `/etc/tmpfiles.d/` con
+   `w /sys/bus/platform/devices/VPC2004:00/conservation_mode - - - - 1` lo deja fijo en cada arranque.
+5. Paquetes: `openssh-server git curl tmux rsync jq lm-sensors rclone docker.io docker-compose ufw
+   fail2ban auditd unattended-upgrades` (o Docker desde su repositorio), `uv` (Python 3.12) y Node 22
+   con nvm.
+6. Tailscale (`curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`), llaves SSH
+   de los equipos de administración en `~/.ssh/authorized_keys` y la llave del equipo de
+   compilación en el servidor. Prueba el SSH por Tailscale **antes** del siguiente paso.
+7. Seguridad: [ufw solo Tailscale, sshd, fail2ban, unattended-upgrades y auditd](#firewall).
+
+### Servidor
+
+1. Clona el repositorio en `/var/www/html/Nucleo` (rama `main`). Copia los respaldos a
+   `~/traspaso` y corre `bash deploy/restaurar.sh ~/traspaso`.
 2. `bash deploy/configurar_env.sh` — crea `BackEnd/.env`; pide la contraseña de aplicación de Gmail.
 3. Cloudflare Tunnel: `sudo apt install cloudflared` (repositorio `pkg.cloudflare.com`),
    `cloudflared tunnel login` (se autoriza `bynucleo.com` en el navegador), luego
@@ -349,11 +543,42 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
    `bynucleo.com`, `www.bynucleo.com`, `app.bynucleo.com`, `info.bynucleo.com`, `nicoai.bynucleo.com`, `admin.bynucleo.com` y `dispositivos.bynucleo.com`. Copia `~/.cloudflared/<ID>.json` a `/etc/cloudflared/` (permiso 600)
    y pon `CLOUDFLARE_TUNEL=<ID>` en el `.env` raíz. Si `tunnel create` falla con 524, activa
    Zero Trust (plan Free) en la cuenta del dominio. Para mudar de servidor basta con copiar
-   `/etc/cloudflared/` y `~/.cloudflared/`.
-4. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios y túnel.
-5. Para respaldar en Drive: `rclone config create gdrive-nucleo drive scope=drive.file` y después
-   el remoto cifrado ([Respaldos cifrados](#respaldos-cifrados)).
-6. Firewall: [ufw con SSH solo por Tailscale y la red local](#firewall).
+   `/etc/cloudflared/` y `~/.cloudflared/` (y apagar el `cloudflared` del equipo anterior).
+4. `bash deploy/instalar.sh` — dependencias, migraciones, build de la web, Caddy, servicios y
+   túnel. Corre con `umask 022` (dentro de `tmux` si es largo).
+5. Deshabilita los respaldos locales, que hará el equipo de compilación:
+   `sudo systemctl disable --now nucleo-respaldo.timer nucleo-prueba-restauracion.timer`.
+
+### Equipo de compilación
+
+1. Clona el repositorio en `/var/www/html/Nucleo` (rama `main`) y copia el `BackEnd/.env` del
+   servidor (de ahí sale la URL de la API para compilar la web). Instala los requisitos del APK
+   ([App móvil](#app-móvil-apk)), copia `Mobile/google-services.json` y la llave de firma a
+   `~/nucleo-app` (o recupérala de `nucleo_firma_app_*.tar.gz`).
+2. Guarda la contraseña de `sudo` del servidor en `~/.config/despliegue-lenovo` (`chmod 600`) e
+   instala los scripts:
+
+   ```bash
+   cd deploy/dos-equipos
+   sudo install -m 755 desplegar-nucleo compilar-apk-nucleo respaldo-nucleo-remoto \
+     prueba-restauracion-nucleo respaldo-aviso /usr/local/bin/
+   sudo install -D -m 644 respaldo-comun.sh /usr/local/lib/respaldo-remoto/comun.sh
+   sudo install -m 644 *.service *.timer /etc/systemd/system/
+   ```
+
+   Si el usuario no es `adminasus` o el servidor tiene otra dirección, ajusta `User=` y las
+   direcciones de las unidades antes de instalarlas.
+3. Remotos de Drive: `rclone config create gdrive-nucleo drive scope=drive.file` y después el
+   remoto cifrado ([Respaldos cifrados](#respaldos-cifrados)). Crea
+   `~/.config/respaldo-remoto/nucleo.env` (600) con `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`,
+   `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` y `AVISOS_A`.
+4. `sudo systemctl daemon-reload && sudo systemctl enable --now respaldo-nucleo-remoto.timer
+   prueba-restauracion-nucleo-remoto.timer`. Prueba con `respaldo-nucleo-remoto` y
+   `prueba-restauracion-nucleo`.
+5. Vigilante (`vigia`): se instala desde la copia del equipo de administración en
+   `/usr/local/bin/vigia` con `vigia.service`/`vigia.timer`, su `~/.config/vigia.conf` y la copia del
+   SMTP en `~/.config/vigia-smtp-nucleo.env`. Prueba con `vigia --prueba` antes de habilitar el timer.
+6. Prueba un despliegue con `desplegar-nucleo`.
 
 | Archivo | Para qué |
 | --- | --- |
@@ -361,7 +586,8 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
 | `restaurar.sh`, `respaldar.sh` | Restaurar desde respaldos y respaldar |
 | `probar_restauracion.sh` | Prueba mensual de restauración (RTO) |
 | `aviso_fallo.sh`, `nucleo-aviso@.service` | Correo cuando falla un servicio |
-| `firewall.sh`, `firewall.nft`, `nucleo-firewall.service` | Firewall del host |
+| `firewall.sh`, `firewall.nft`, `nucleo-firewall.service` | Firewall nftables para un servidor de un solo equipo (sin ufw) |
 | `configurar_env.sh`, `backend.env.ejemplo` | Generar `BackEnd/.env` de producción |
 | `nucleo.caddy`, `cloudflared.yml` | Caddy y Cloudflare Tunnel |
 | `*.service`, `*.timer` | Servicios y tareas de systemd |
+| `dos-equipos/` | Copias de referencia de los scripts y unidades del equipo de compilación |

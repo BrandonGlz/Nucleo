@@ -1,0 +1,7 @@
+[Unit]
+Description=Respaldos de asus - aviso por correo de la falla de %i
+
+[Service]
+Type=oneshot
+User=adminasus
+ExecStart=/usr/local/bin/respaldo-aviso --unidad %i

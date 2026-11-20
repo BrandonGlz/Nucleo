@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Manda un correo de los respaldos de asus con el SMTP de cada proyecto.
+
+Uso:  respaldo-aviso <proyecto> "<asunto>"  < cuerpo        (p. ej. nucleo)
+      respaldo-aviso --unidad <unidad.service>   (OnFailure: manda las últimas líneas de su journal,
+                                                  como mucho uno por unidad cada 60 min)
+Configuración (fuera de los repos, modo 600): ~/.config/respaldo-remoto/<proyecto>.env con EMAIL_HOST,
+EMAIL_PORT, EMAIL_USE_TLS, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL y AVISOS_A
+(destinatarios separados por coma).
+"""
+import os, smtplib, socket, subprocess, sys, time
+from email.message import EmailMessage
+
+CONF = os.path.expanduser('~/.config/respaldo-remoto')
+MARCAS = os.path.expanduser('~/.cache/respaldo-remoto-avisos')
+MINUTOS = 60
+
+
+def leer_env(proyecto):
+    datos = {}
+    with open(os.path.join(CONF, f'{proyecto}.env')) as f:
+        for linea in f:
+            linea = linea.strip()
+            if linea and not linea.startswith('#') and '=' in linea:
+                k, v = linea.split('=', 1)
+                datos[k.strip()] = v.strip().strip('"\'')
+    return datos
+
+
+def enviar(proyecto, asunto, cuerpo):
+    c = leer_env(proyecto)
+    msg = EmailMessage()
+    msg['Subject'] = f'[{socket.gethostname()}] {asunto}'
+    msg['From'] = c.get('DEFAULT_FROM_EMAIL') or c['EMAIL_HOST_USER']
+    msg['To'] = c['AVISOS_A']
+    msg.set_content(cuerpo)
+    with smtplib.SMTP(c.get('EMAIL_HOST', 'smtp.gmail.com'), int(c.get('EMAIL_PORT', 587)), timeout=60) as s:
+        if c.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes'):
+            s.starttls()
+        s.login(c['EMAIL_HOST_USER'], c['EMAIL_HOST_PASSWORD'])
+        s.send_message(msg)
+
+
+def aviso_unidad(unidad):
+    # El proyecto es el del .env de CONF cuyo nombre aparece en la unidad (nucleo por defecto).
+    proyectos = sorted(f[:-4] for f in os.listdir(CONF) if f.endswith('.env'))
+    proyecto = next((p for p in proyectos if p in unidad), 'nucleo')
+    os.makedirs(MARCAS, exist_ok=True)
+    marca = os.path.join(MARCAS, unidad)
+    if os.path.exists(marca) and time.time() - os.path.getmtime(marca) < MINUTOS * 60:
+        print(f'Aviso de {unidad} omitido: ya se mandó uno en los últimos {MINUTOS} minutos.')
+        return
+    open(marca, 'w').close()
+    journal = subprocess.run(['journalctl', '-u', unidad, '-n', '80', '--no-pager'],
+                             capture_output=True, text=True).stdout
+    cuerpo = (f'La unidad {unidad} falló en {socket.gethostname()} el {time.strftime("%Y-%m-%d %H:%M:%S %Z")}.\n'
+              f'Siguiente aviso de esta unidad, como pronto, en {MINUTOS} minutos.\n\n'
+              f'Últimas líneas del journal:\n{journal}')
+    enviar(proyecto, f'Falló {unidad}', cuerpo)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 3 and sys.argv[1] == '--unidad':
+        aviso_unidad(sys.argv[2])
+    elif len(sys.argv) == 3 and os.path.exists(os.path.join(CONF, f'{sys.argv[1]}.env')):
+        enviar(sys.argv[1], sys.argv[2], sys.stdin.read())
+    else:
+        sys.exit(__doc__)

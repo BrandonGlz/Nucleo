@@ -1,0 +1,13 @@
+[Unit]
+Description=Núcleo - prueba de restauración del último respaldo en contenedores temporales (asus)
+OnFailure=respaldo-aviso@%n.service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=adminasus
+Nice=10
+IOSchedulingClass=idle
+ExecStart=/usr/local/bin/prueba-restauracion-nucleo
+TimeoutStartSec=2h

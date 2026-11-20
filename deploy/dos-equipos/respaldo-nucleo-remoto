@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Respaldo de Núcleo hecho desde asus: saca de lenovo (por SSH) los pg_dump de nucleo_db y nucleo_iot,
+# la aplicación completa (código + .env + configuración), el broker y media; añade la llave de firma
+# de la app, que vive en asus (~/nucleo-app). Mismos nombres que deploy/respaldar.sh, para que
+# deploy/restaurar.sh y la prueba de restauración sigan sirviendo. Guarda 7 días en ~/respaldos/nucleo
+# y sube a gdrive-nucleo-cifrado (30 días). Lo corre respaldo-nucleo-remoto.timer (03:45 y 15:45).
+set -euo pipefail
+umask 077
+source /usr/local/lib/respaldo-remoto/comun.sh
+
+raiz_lenovo=/var/www/html/Nucleo
+destino="$HOME/respaldos/nucleo"
+fecha="$(date +%F_%H%M)"
+mkdir -p "$destino"
+echo "Respaldo de Núcleo desde lenovo ($fecha)"
+
+volcado nucleo_postgres "$destino/nucleo_db_$fecha.dump"
+volcado nucleo_timescaledb "$destino/nucleo_iot_$fecha.dump"
+
+traer "$destino/nucleo_broker_media_$fecha.tar.gz" \
+  "cd $raiz_lenovo && nice -n 10 tar -czf - Mosquitto/certs Mosquitto/config/passwd BackEnd/media"
+revisar_tar "$destino/nucleo_broker_media_$fecha.tar.gz"
+
+# Aplicación completa (igual que respaldar.sh): incluye VERSION_DESPLEGADA con el commit desplegado.
+traer "$destino/nucleo_aplicacion_$fecha.tar.gz" "cd $raiz_lenovo && \
+  { git log -1 --format='%H %cI %s' > VERSION_DESPLEGADA 2>/dev/null || true; } && \
+  nice -n 10 tar -czf - --exclude-vcs --exclude=node_modules --exclude=.venv --exclude=__pycache__ \
+    --exclude=./FrontEnd/dist --exclude=./BackEnd/staticfiles --exclude=./deploy/descargas --exclude=./Docs \
+    --exclude=./BackEnd/media --exclude=./Mobile/android --exclude=./Mobile/.expo --exclude=./BackEnd/firmware . ; \
+  e=\$?; rm -f VERSION_DESPLEGADA; exit \$e"
+revisar_tar "$destino/nucleo_aplicacion_$fecha.tar.gz"
+
+# La llave de firma de la app está en asus (aquí se compila el APK).
+if [[ -d "$HOME/nucleo-app" ]]; then
+  tar -czf "$destino/nucleo_firma_app_$fecha.tar.gz" -C "$HOME" nucleo-app
+  revisar_tar "$destino/nucleo_firma_app_$fecha.tar.gz"
+fi
+chmod 600 "$destino"/*"$fecha"*
+find "$destino" -type f -mtime +7 -delete
+echo "Respaldo local: $destino ($fecha)"
+
+subir "$destino" "gdrive-nucleo-cifrado:"
+# Los respaldos en claro de antes del cifrado se van borrando solos al cumplir 30 días.
+rclone delete "gdrive-nucleo:servidor/nucleo" --min-age 30d 2>/dev/null || true

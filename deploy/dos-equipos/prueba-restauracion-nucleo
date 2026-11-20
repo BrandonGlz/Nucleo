@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# Prueba de restauración de Núcleo en asus: restaura el respaldo más reciente de ~/respaldos/nucleo en
+# dos contenedores temporales (sin red ni puertos, sin tocar nada de lenovo), comprueba que los datos
+# estén, compara con producción (lenovo, por SSH, solo lectura) y mide cuánto tarda (RTO de las bases).
+# Al terminar borra los contenedores y manda el resultado por correo (NUCLEO_CORREOS_AVISOS). Si falla,
+# el correo lo manda respaldo-aviso@ (OnFailure= de la unidad).
+# La corre prueba-restauracion-nucleo-remoto.timer el primer domingo de cada mes a las 04:30; a mano:
+#   prueba-restauracion-nucleo [carpeta con respaldos]
+set -euo pipefail
+source /usr/local/lib/respaldo-remoto/comun.sh
+
+origen="${1:-$HOME/respaldos/nucleo}"
+pg_prueba=nucleo_prueba_pg
+ts_prueba=nucleo_prueba_ts
+inicio="$(date +%s)"
+bitacora_dir="$HOME/respaldos/nucleo-pruebas"
+mkdir -p "$bitacora_dir"
+bitacora="$bitacora_dir/prueba_$(date +%F_%H%M).log"
+exec > >(tee "$bitacora") 2>&1
+
+limpiar() { docker rm -f "$pg_prueba" "$ts_prueba" >/dev/null 2>&1 || true; }
+trap limpiar EXIT
+
+echo "== Prueba de restauración de Núcleo en $(hostname) ($(date '+%Y-%m-%d %H:%M %Z')) desde $origen"
+reciente() { ls -t "$origen"/$1 2>/dev/null | head -1 || true; }
+dump_db="$(reciente 'nucleo_db*.dump')"
+dump_iot="$(reciente 'nucleo_iot*.dump')"
+[[ -n "$dump_db" && -n "$dump_iot" ]] || { echo "No hay respaldos en $origen"; exit 1; }
+echo "Respaldos: $(basename "$dump_db") ($(du -h "$dump_db" | cut -f1)), $(basename "$dump_iot") ($(du -h "$dump_iot" | cut -f1))"
+edad_h=$(( ( $(date +%s) - $(stat -c %Y "$dump_db") ) / 3600 ))
+echo "Antigüedad del respaldo: ${edad_h} h"
+(( edad_h <= 26 )) || { echo "El respaldo más reciente tiene más de 26 h: el respaldo no está corriendo."; exit 1; }
+
+# Mismas imágenes, usuarios y nombres de base que producción.
+read -r img_pg usr_pg db_pg <<<"$(datos_contenedor nucleo_postgres)"
+read -r img_ts usr_ts db_ts <<<"$(datos_contenedor nucleo_timescaledb)"
+[[ -n "$db_pg" && -n "$db_ts" ]] || { echo "No se pudieron leer imagen/usuario de los contenedores (ni de lenovo ni de asus)"; exit 1; }
+for img in "$img_pg" "$img_ts"; do docker image inspect "$img" >/dev/null 2>&1 || docker pull -q "$img"; done
+clave="$(openssl rand -hex 16)"
+limpiar
+docker run -d --name "$pg_prueba" --network none --memory 512m \
+  -e POSTGRES_USER="$usr_pg" -e POSTGRES_DB="$db_pg" -e POSTGRES_PASSWORD="$clave" "$img_pg" >/dev/null
+docker run -d --name "$ts_prueba" --network none --memory 1g \
+  -e POSTGRES_USER="$usr_ts" -e POSTGRES_DB="$db_ts" -e POSTGRES_PASSWORD="$clave" "$img_ts" >/dev/null
+
+listo() {
+  local i
+  for i in $(seq 90); do
+    docker logs "$1" 2>&1 | grep -qE 'init process complete; ready for start up|Skipping initialization' \
+      && docker exec "$1" pg_isready -q && return 0
+    sleep 2
+  done
+  echo "$1 no terminó de arrancar"; exit 1
+}
+sql() { docker exec "$1" sh -c 'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "$1"' _ "$2"; }
+sql_prod_lote() { en_lenovo "docker exec -i $1 sh -c 'psql -X -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -At'" || true; }
+sql_prod() { local r; r="$(sql_prod_lote "$1" <<<"$2")"; echo "${r:-?}"; }
+tablas() { sql "$1" "select count(*) from information_schema.tables where table_schema = 'public'"; }
+listo "$pg_prueba"; listo "$ts_prueba"
+
+echo "Restaurando $(basename "$dump_db") en $pg_prueba…"
+nice -n 10 docker exec -i "$pg_prueba" sh -c \
+  'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error' < "$dump_db"
+echo "Restaurando $(basename "$dump_iot") en $ts_prueba (TimescaleDB)…"
+sql "$ts_prueba" "CREATE EXTENSION IF NOT EXISTS timescaledb" >/dev/null
+sql "$ts_prueba" "SELECT timescaledb_pre_restore()" >/dev/null
+nice -n 10 docker exec -i "$ts_prueba" sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' \
+  < "$dump_iot" || echo "(pg_restore terminó con avisos; se verifica abajo)"
+sql "$ts_prueba" "SELECT timescaledb_post_restore()" >/dev/null
+echo "nucleo_db: $(tablas "$pg_prueba") tablas"
+echo "nucleo_iot: $(tablas "$ts_prueba") tablas, hypertables: $(sql "$ts_prueba" "select string_agg(hypertable_name, ', ') from timescaledb_information.hypertables")"
+restaurado_en="$(date +%s)"
+
+conteo_sql() {  # tabla -> consulta que da filas o «—» si la tabla no existe
+  echo "select case when to_regclass('public.$1') is null then '—' else (xpath('/row/c/text()', query_to_xml('select count(*) as c from public.$1', false, true, '')))[1]::text end"
+}
+tablas_pg=(organizacion area usuario dispositivo sensor umbral alerta notificacion reporte registro_auditoria)
+# Producción en una sola consulta por base (una línea por tabla, en el mismo orden).
+mapfile -t prod_pg < <(for t in "${tablas_pg[@]}"; do echo "$(conteo_sql "$t");"; done | sql_prod_lote nucleo_postgres)
+prod_lect="$(sql_prod nucleo_timescaledb "$(conteo_sql lectura)")"
+echo
+echo "== Verificación"
+fallos=0
+printf '%-22s %12s %12s\n' "Tabla" "Restaurado" "Producción"
+for i in "${!tablas_pg[@]}"; do
+  printf '%-22s %12s %12s\n' "${tablas_pg[$i]}" "$(sql "$pg_prueba" "$(conteo_sql "${tablas_pg[$i]}")")" "${prod_pg[$i]:-?}"
+done
+lect_r="$(sql "$ts_prueba" "$(conteo_sql lectura)")"
+printf '%-22s %12s %12s\n' "lectura (TimescaleDB)" "$lect_r" "$prod_lect"
+for tabla in organizacion usuario dispositivo; do
+  [[ "$(sql "$pg_prueba" "$(conteo_sql "$tabla")")" =~ ^[1-9] ]] || { echo "FALLA: $tabla quedó vacía"; fallos=$((fallos + 1)); }
+done
+[[ "$lect_r" =~ ^[1-9] ]] || { echo "FALLA: lectura quedó vacía"; fallos=$((fallos + 1)); }
+mig_r="$(sql "$pg_prueba" "select count(*) from django_migrations")"
+echo "Migraciones: restaurado $mig_r, producción $(sql_prod nucleo_postgres "select count(*) from django_migrations")"
+(( mig_r > 0 )) || { echo "FALLA: el respaldo no trae migraciones"; fallos=$((fallos + 1)); }
+echo "Lectura más reciente del respaldo: $(sql "$ts_prueba" "select max(fecha_hora) from lectura")"
+for f in "$(reciente 'nucleo_aplicacion*.tar.gz')" "$(reciente 'nucleo_broker_media*.tar.gz')"; do
+  [[ -n "$f" ]] && { revisar_tar "$f" || fallos=$((fallos + 1)); } || { echo "FALLA: falta un tar de aplicación o broker"; fallos=$((fallos + 1)); }
+done
+f="$(reciente 'nucleo_aplicacion*.tar.gz')"
+[[ -z "$f" ]] || tar_trae "$f" './.env' || { echo "FALLA: el tar de la aplicación no trae .env"; fallos=$((fallos + 1)); }
+
+fin="$(date +%s)"
+minutos=$(( (restaurado_en - inicio + 59) / 60 ))
+echo
+echo "Tiempo de restauración de las bases (RTO medido): ${minutos} min; prueba completa: $(( (fin - inicio + 59) / 60 )) min"
+echo "Bitácora: $bitacora"
+(( fallos == 0 )) || { echo "Prueba FALLIDA ($fallos fallas)"; exit 1; }
+echo "Prueba CORRECTA"
+
+find "$bitacora_dir" -type f -mtime +400 -delete
+respaldo-aviso nucleo "Prueba de restauración de Núcleo correcta (${minutos} min)" < "$bitacora" || true
