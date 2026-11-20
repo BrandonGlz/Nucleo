@@ -86,6 +86,19 @@ Todos desde la laptop, en `/var/www/html/Nucleo`:
   temporales, no toca producción); el registro queda en `~/respaldos/nucleo-pruebas`.
 - `bash deploy/firewall.sh estado` — reglas del firewall y conexiones rechazadas.
 
+### Despliegue en dos equipos
+
+Cuando hay un equipo aparte para compilar, la web se compila ahí y el servidor solo instala:
+
+1. En el equipo de compilación: trae `main`, compila `FrontEnd/` con las mismas variables que usa
+   `deploy/instalar.sh` y copia `FrontEnd/dist/` al servidor (`rsync -a --delete`).
+2. En el servidor: `NUCLEO_SIN_WEB=1 bash deploy/desplegar.sh`. Hace todo lo demás (dependencias,
+   migraciones, servicios, Caddy y túnel) y usa la web que ya está en `FrontEnd/dist/` en lugar de
+   compilarla.
+
+El APK también se compila en el equipo de compilación (`bash deploy/compilar_apk.sh`) y se copia
+`deploy/descargas/` completo al servidor.
+
 ## Seguridad y recuperación
 
 ### Respaldos cifrados

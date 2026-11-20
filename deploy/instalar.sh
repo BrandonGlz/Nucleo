@@ -76,6 +76,12 @@ bajar "$base_voz.onnx" "$voces/es_MX-ald-medium.onnx"
 .venv/bin/python manage.py collectstatic --noinput
 mkdir -p media
 
+# NUCLEO_SIN_WEB=1: la web ya llegó compilada a FrontEnd/dist desde el equipo de compilación
+# (deploy/README.md, «Despliegue en dos equipos»); aquí no se vuelve a compilar.
+if [[ -n "${NUCLEO_SIN_WEB:-}" ]]; then
+  [[ -f "$raiz/FrontEnd/dist/index.html" ]] || { echo "NUCLEO_SIN_WEB=1 pero falta FrontEnd/dist/index.html"; exit 1; }
+  paso "Web: se usa la compilada que ya está en FrontEnd/dist"
+else
 paso "Web: build de producción (mocks: ${WEB_USE_MOCKS:-false}, API: $origen/api/v1)"
 export NVM_DIR="$HOME/.nvm"
 # shellcheck disable=SC1091
@@ -87,6 +93,7 @@ npm ci --no-audit --no-fund
 VITE_API_BASE_URL="$origen/api/v1" VITE_USE_MOCKS="${WEB_USE_MOCKS:-false}" \
   VITE_MOCK_ROL="${WEB_MOCK_ROL:-SUPER}" VITE_DEMO_PASSWORD= \
   NODE_OPTIONS=--max-old-space-size=1536 npm run build
+fi
 
 paso "Caddy y servicios de systemd (pide sudo)"
 # Clave del puente de Nico AI: con ella corre Ollama (la IA la llama el backend).
