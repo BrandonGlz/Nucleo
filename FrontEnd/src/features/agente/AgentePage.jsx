@@ -516,7 +516,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
   }, [enfocar])
   return (
     <form
-      className={`ui-ia-compositor${deshabilitado ? ' is-deshabilitado' : ''}${escuchando ? ' is-escuchando' : ''}`}
+      className={`ui-ia-compositor${deshabilitado ? ' is-deshabilitado' : ''}${escuchando ? ' is-escuchando' : ''}${dictado.procesando ? ' is-transcribiendo' : ''}`}
       onSubmit={(e) => {
         e.preventDefault()
         dictado.cancelar()
@@ -597,7 +597,11 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
           dictado={dictado}
           valor={valor}
           deshabilitado={deshabilitado || pensando}
-          alEmpezar={voz.callar}
+          alEmpezar={() => {
+            voz.callar()
+            // Quien dicta casi siempre espera la respuesta en voz: la voz se va cargando.
+            voz.preparar()
+          }}
         />
         {pensando ? (
           <button type="button" className="ui-ia-enviar is-detener" aria-label="Detener" onClick={detener}>
@@ -635,6 +639,10 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   // micrófono; si se envía así, Nico lee su respuesta en voz alta (`esperaVoz`).
   const voz = useVozNico()
   const [leerSiempre, setLeerSiempre] = useLeerRespuestas()
+  const prepararVoz = voz.preparar
+  useEffect(() => {
+    if (leerSiempre) prepararVoz()
+  }, [leerSiempre, prepararVoz])
   const porVoz = useRef(false)
   const esperaVoz = useRef(false)
   // Al terminar de hablar, el mensaje se envía solo (y Nico contesta con voz).
@@ -747,6 +755,7 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     if (!pregunta.trim() || pensando) return
     setTexto('')
     esperaVoz.current = conVoz
+    if (conVoz || leerSiempre) voz.preparar()
     porVoz.current = false
     voz.callar()
     const r = base ? null : local(pregunta)

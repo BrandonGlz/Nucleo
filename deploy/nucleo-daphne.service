@@ -14,8 +14,9 @@ ExecStart=__RAIZ__/BackEnd/.venv/bin/daphne -b 127.0.0.1 -p 8001 --proxy-headers
 UMask=0022
 Restart=on-failure
 RestartSec=5
-# 900M: deja lugar al modelo de Whisper del dictado por voz (~300 MB, se libera sin uso).
-MemoryMax=900M
+# 1100M: deja lugar a Whisper del dictado (~340 MB de pico) y a la voz de Nico (~330 MB); los dos se
+# cargan al usarse y se liberan tras 10 min sin uso.
+MemoryMax=1100M
 
 [Install]
 WantedBy=multi-user.target

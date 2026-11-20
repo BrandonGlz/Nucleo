@@ -18,10 +18,15 @@ export const DICTADO_SOPORTADO = Boolean(Reconocedor) || PUEDE_GRABAR
 // El modo elegido se recuerda mientras dure la página.
 let modoGlobal = Reconocedor && !ES_BRAVE ? 'navegador' : 'servidor'
 
-const SILENCIO_MS = 1600 // tras hablar, este silencio termina la grabación
+// Tras hablar, este silencio termina la grabación. Las pausas entre palabras y al respirar suelen
+// durar 200–700 ms; con 1 s no se corta a quien hace pausas cortas y se envía 0.6 s antes que con 1.6 s.
+const SILENCIO_MS = 1000
 const ESPERA_VOZ_MS = 8000 // sin voz en este tiempo, se deja de grabar
 const MAXIMO_MS = 45000
 const UMBRAL_VOZ = 0.02
+// Mono a 32 kbps: la voz se entiende igual (Whisper la pasa a 16 kHz mono) y el audio pesa ~4 veces
+// menos que el estéreo por defecto (unos 4 KB por segundo), así sube antes con conexiones lentas.
+const BITS_POR_SEGUNDO = 32000
 
 // Mensajes entendibles para cada error.
 const ERRORES = {
@@ -76,13 +81,21 @@ export function useDictado({ alTexto, alTerminar, idioma = 'es-MX' }) {
     setError(null)
     let flujo
     try {
-      flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+      flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: { ideal: 1 } } })
     } catch (e) {
       setError(ERRORES[e?.name === 'NotFoundError' ? 'audio-capture' : 'not-allowed'])
       return
     }
+    // Mientras la persona habla, el servidor ya va cargando Whisper (si no lo tenía listo).
+    agenteApi.precalentarDictado().catch(() => {})
     const tipo = formato()
-    const grabadora = new MediaRecorder(flujo, tipo ? { mimeType: tipo } : undefined)
+    const opciones = { audioBitsPerSecond: BITS_POR_SEGUNDO, ...(tipo ? { mimeType: tipo } : {}) }
+    let grabadora
+    try {
+      grabadora = new MediaRecorder(flujo, opciones)
+    } catch {
+      grabadora = new MediaRecorder(flujo)
+    }
     const trozos = []
     const g = { grabadora, flujo, cancelado: false, reloj: null, contexto: null }
     grab.current = g

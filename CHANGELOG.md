@@ -51,6 +51,10 @@ Cada componente conserva su propio número porque se publica por separado.
   fragmentos para que suene continua y, si el servidor no responde, se usa la voz del navegador o del teléfono.
 - Opción «Leer respuestas» (bocina junto al micrófono) para que Nico lea en voz alta también las respuestas a
   mensajes escritos; la preferencia se recuerda.
+- Voz de Nico más natural (Supertonic 2, masculina, local): lee bien cifras, unidades, siglas y fechas, y empieza
+  a hablar antes (primer fragmento corto y modelo precargado). Dictado más rápido y con menos memoria en el
+  servidor (Whisper sin MKL, precarga al tocar el micrófono, fin de frase en 1 s) y barra de avance mientras se
+  transcribe. App 0.2.8.
 
 ## [0.9.0] - 2026-11-18 · SRS 82 %
 

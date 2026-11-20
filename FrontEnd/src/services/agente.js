@@ -1,4 +1,4 @@
-import { AGENTE, AGENTE_CALIFICAR, AGENTE_ESTADO, AGENTE_SUGERENCIAS, NICO_CALIFICAR, NICO_CHAT, NICO_CHAT_SUGERENCIAS, NICO_ESTADO, NICO_TRANSCRIBIR } from '../api'
+import { AGENTE, AGENTE_CALIFICAR, AGENTE_ESTADO, AGENTE_SUGERENCIAS, NICO_CALIFICAR, NICO_CHAT, NICO_CHAT_SUGERENCIAS, NICO_ESTADO, NICO_TRANSCRIBIR, NICO_TRANSCRIBIR_PRECALENTAR } from '../api'
 import { USAR_MOCKS, pedir } from './config'
 import { apiRequest } from './api/client'
 import * as mock from './mock/handlers'
@@ -41,4 +41,10 @@ export async function transcribir(audio) {
   const datos = new FormData()
   datos.append('audio', audio, audio.type.includes('ogg') ? 'dictado.ogg' : audio.type.includes('mp4') ? 'dictado.mp4' : 'dictado.webm')
   return apiRequest(NICO_TRANSCRIBIR, { method: 'POST', body: datos })
+}
+
+// Pide al servidor que cargue Whisper en cuanto empieza el dictado (sin esperar respuesta útil).
+export async function precalentarDictado() {
+  if (USAR_MOCKS) return { listo: true }
+  return pedir(NICO_TRANSCRIBIR_PRECALENTAR, { metodo: 'POST' })
 }

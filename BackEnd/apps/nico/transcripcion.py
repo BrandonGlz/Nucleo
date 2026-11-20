@@ -3,11 +3,19 @@
 La web usa primero el dictado del navegador (Chrome, Edge, Safari). En los que no lo
 traen o lo tienen sin servicio (Brave, Firefox, Chromium), graba el audio y lo manda
 aquí; Whisper (``faster-whisper``) lo transcribe en el propio servidor, sin servicios
-externos. El modelo se carga al primer dictado y se libera tras unos minutos sin uso
-(ocupa unos 300 MB).
+externos. El modelo se carga en cuanto la persona toca el micrófono (``precalentar``) y
+se libera tras unos minutos sin uso.
+
+Medido en el servidor (i5-3230M, 2 núcleos): con el backend Intel MKL de CTranslate2 el
+modelo «base» ocupaba ~590 MB y llevaba al servicio a su límite de memoria; con oneDNN
+(``CT2_USE_MKL=0``) ocupa ~340 MB en el pico y transcribe igual o más rápido. El costo lo
+pone el codificador, que siempre procesa 30 s de audio: recortar el audio o cambiar su
+formato apenas cambia el tiempo; los hilos y el backend sí.
 """
 
+import ctypes
 import logging
+import os
 import threading
 
 from django.conf import settings
@@ -21,6 +29,9 @@ from rest_framework.views import APIView
 from common import roles
 
 logger = logging.getLogger(__name__)
+
+# Debe fijarse antes de importar ctranslate2 (lo lee al cargarse); ver la nota de arriba.
+os.environ.setdefault("CT2_USE_MKL", "0")
 
 MAX_BYTES = 6 * 1024 * 1024  # unos 3 minutos de opus; el dictado dura segundos
 # Pista con el vocabulario de Núcleo: mejora nombres propios y términos del dominio.
@@ -40,6 +51,11 @@ def _liberar():
     global _modelo
     with _candado:
         _modelo = None
+    # Devuelve al sistema la memoria que glibc se queda tras soltar el modelo (~80 MB).
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError):
+        pass
 
 
 def _programar_liberacion():
@@ -67,13 +83,25 @@ def modelo():
         return _modelo
 
 
+def precalentar():
+    """Carga el modelo en segundo plano si no está listo. Devuelve si ya lo estaba."""
+    with _candado:
+        if _modelo is not None:
+            _programar_liberacion()
+            return True
+    threading.Thread(target=modelo, name="whisper-precalentar", daemon=True).start()
+    return False
+
+
 def transcribir(archivo):
     """Texto del audio (cualquier formato que lea FFmpeg: webm, ogg, mp4, wav)."""
     segmentos, _ = modelo().transcribe(
         archivo,
         language="es",
         beam_size=1,
+        # El VAD casi no cuesta (~10 ms) y evita que Whisper invente frases con el ruido.
         vad_filter=True,
+        without_timestamps=True,
         initial_prompt=PISTA,
         condition_on_previous_text=False,
     )
@@ -91,6 +119,11 @@ class PuedeDictar(BasePermission):
 
 
 class LimiteDictado(UserRateThrottle):
+    rate = "30/min"
+
+
+class LimitePrecalentar(UserRateThrottle):
+    scope = "nico_precalentar"
     rate = "30/min"
 
 
@@ -119,3 +152,16 @@ class TranscribirView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         return Response({"texto": texto})
+
+
+class PrecalentarDictadoView(APIView):
+    """POST sin cuerpo: empieza a cargar Whisper mientras la persona habla. ``{listo}``."""
+
+    permission_classes = [PuedeDictar]
+    throttle_classes = [LimitePrecalentar]
+
+    def post(self, request):
+        listo = precalentar()
+        return Response(
+            {"listo": listo}, status=status.HTTP_200_OK if listo else status.HTTP_202_ACCEPTED
+        )

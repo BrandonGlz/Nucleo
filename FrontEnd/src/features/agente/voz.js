@@ -4,7 +4,7 @@ import { API_BASE_URL, OPCIONES_SESION } from '../../services/api/client'
 import { USAR_MOCKS } from '../../services/config'
 
 // Nico lee su respuesta en voz alta con su propia voz: masculina, amigable y igual en todos los
-// navegadores, generada en el servidor (Piper). El texto se divide en fragmentos y se reproduce uno
+// navegadores, generada en el servidor (Supertonic). El texto se divide en fragmentos y se reproduce uno
 // mientras se pide el siguiente, así la lectura sale continua. Si el servidor no responde, se usa la
 // voz del navegador (de preferencia masculina y en español de México).
 const sintesis = typeof window !== 'undefined' ? window.speechSynthesis : undefined
@@ -43,21 +43,53 @@ export function limpiarParaVoz(texto = '') {
     .trim()
 }
 
-// Fragmentos para leer: el primero es una sola frase (para empezar a hablar pronto) y los demás
-// juntan frases hasta ~260 caracteres (menos cortes entre ellas = lectura más fluida).
+// Fragmentos para leer. El primero es corto (la primera frase, o hasta su primera coma si es larga;
+// de 20 a 80 caracteres) para que Nico empiece a hablar casi al instante. Cada fragmento se genera
+// mientras suena el anterior, así que puede crecer hasta ~3 veces el anterior sin que se note la
+// espera, hasta ~300 caracteres: menos cortes = lectura más fluida.
+const PRIMERO_MIN = 20
+const PRIMERO_MAX = 80
+
+// Frases; las largas se parten en sus comas (después se vuelven a juntar hasta el tope de cada
+// fragmento, así que solo cambia dónde puede haber un corte).
+function piezas(texto) {
+  return texto
+    .split(/(?<=[.!?;:])\s+/)
+    .flatMap((f) => (f.length > PRIMERO_MAX ? f.split(/(?<=,)\s+/) : [f]))
+    .map((f) => f.trim())
+    .filter(Boolean)
+}
+
+function topeDeFragmento(salida) {
+  if (salida.length === 1) return PRIMERO_MAX
+  return Math.min(300, Math.max(80, 3 * salida.at(-2).length))
+}
+
 function fragmentos(texto) {
-  const frases = texto.split(/(?<=[.!?;:])\s+/).map((f) => f.trim()).filter(Boolean)
   const salida = []
-  for (const f of frases) {
+  for (const f of piezas(texto)) {
     const ultimo = salida.at(-1)
-    if (salida.length > 1 && ultimo && ultimo.length + f.length < 260) salida[salida.length - 1] = `${ultimo} ${f}`
-    else if (salida.length === 1 && ultimo.length < 60 && ultimo.length + f.length < 260) salida[0] = `${ultimo} ${f}`
+    const cabe = ultimo !== undefined && ultimo.length + f.length <= topeDeFragmento(salida)
+    if (cabe && (salida.length > 1 || ultimo.length < PRIMERO_MIN)) salida[salida.length - 1] = `${ultimo} ${f}`
     else salida.push(f.length > 580 ? f.slice(0, 580) : f)
   }
   return salida
 }
 
+// Precalienta la voz: el servidor carga el modelo en segundo plano (GET, sin audio) para que la
+// primera lectura no espere esa carga. Se pide como mucho cada 4 minutos: el servidor libera el
+// modelo tras 10 sin uso y cada lectura reinicia esa cuenta.
+let ultimoUso = 0
+export function precalentarVoz() {
+  if (USAR_MOCKS || Date.now() - ultimoUso < 240000) return
+  ultimoUso = Date.now()
+  fetch(`${API_BASE_URL}${NICO_VOZ}`, { credentials: OPCIONES_SESION.credentials, headers: OPCIONES_SESION.headers }).catch(() => {
+    ultimoUso = 0
+  })
+}
+
 async function pedirAudio(texto, senal) {
+  ultimoUso = Date.now()
   const r = await fetch(`${API_BASE_URL}${NICO_VOZ}`, {
     method: 'POST',
     credentials: OPCIONES_SESION.credentials,
@@ -183,7 +215,7 @@ export function useVozNico() {
     [limpiar, conNavegador],
   )
 
-  return { soportada: VOZ_SOPORTADA, hablando, hablar, callar }
+  return { soportada: VOZ_SOPORTADA, hablando, hablar, callar, preparar: precalentarVoz }
 }
 
 // Preferencia de esta persona: que Nico lea en voz alta también las respuestas a lo escrito.

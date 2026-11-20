@@ -29,5 +29,7 @@ export const NICO_NOTIFICACIONES_LEER = '/nico/notificaciones/leer/' // POST {nu
 export const NICO_NOTIFICACIONES_PREFERENCIAS = '/nico/notificaciones/preferencias/'
 // Dictado por voz de respaldo (Brave, Firefox…): POST multipart {audio} → {texto}. Para todo rol con Nico AI.
 export const NICO_TRANSCRIBIR = '/nico/transcribir/'
-// Voz de Nico (Piper en el servidor): POST {texto ≤ 600} → audio/mpeg. Para todo rol con Nico AI.
+// POST sin cuerpo al tocar el micrófono: carga Whisper mientras se habla → {listo} (202 si apenas empieza).
+export const NICO_TRANSCRIBIR_PRECALENTAR = '/nico/transcribir/precalentar/'
+// Voz de Nico (Supertonic en el servidor): POST {texto ≤ 600} → audio/mpeg. Para todo rol con Nico AI.
 export const NICO_VOZ = '/nico/voz/'

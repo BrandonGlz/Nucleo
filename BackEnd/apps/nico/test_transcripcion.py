@@ -1,3 +1,4 @@
+import threading
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -38,6 +39,30 @@ class TranscribirTests(PruebaBase):
         self.assertEqual(cliente.post(URL, {}, format="multipart").status_code, 400)
         with mock.patch("apps.nico.transcripcion.transcribir", side_effect=RuntimeError):
             self.assertEqual(cliente.post(URL, self.audio(), format="multipart").status_code, 503)
+
+    def test_precalentar(self):
+        url = URL + "precalentar/"
+        self.assertEqual(APIClient().post(url).status_code, 401)
+        self.assertEqual(cliente_de(self.e.operador).post(url).status_code, 403)
+        cliente = cliente_de(self.e.analista)
+        with mock.patch("apps.nico.transcripcion.precalentar", return_value=False) as p:
+            r = cliente.post(url)
+        self.assertEqual(r.status_code, 202)
+        self.assertEqual(r.json(), {"listo": False})
+        p.assert_called_once()
+        with mock.patch("apps.nico.transcripcion.precalentar", return_value=True):
+            self.assertEqual(cliente.post(url).json(), {"listo": True})
+
+    def test_precalentar_carga_en_segundo_plano(self):
+        from apps.nico import transcripcion
+
+        cargado = threading.Event()
+        with (
+            mock.patch.object(transcripcion, "_modelo", None),
+            mock.patch.object(transcripcion, "modelo", side_effect=cargado.set),
+        ):
+            self.assertFalse(transcripcion.precalentar())
+            self.assertTrue(cargado.wait(2))
 
 
 class VozTests(PruebaBase):

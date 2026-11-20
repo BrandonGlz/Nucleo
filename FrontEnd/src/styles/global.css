@@ -3092,6 +3092,35 @@ article.ui-hoja,
   border-color: var(--accent);
   box-shadow: var(--shadow-md), 0 0 0 4px var(--accent-soft);
 }
+/* Mientras el servidor convierte la voz a texto: barra de avance estimado (~3 s, se frena al final) */
+.ui-ia-compositor.is-transcribiendo::after {
+  content: '';
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 5px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+  transform-origin: left;
+  animation: ui-ia-transcribe 4s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  pointer-events: none;
+}
+@keyframes ui-ia-transcribe {
+  from {
+    transform: scaleX(0.04);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ia-compositor.is-transcribiendo::after {
+    animation: none;
+    transform: scaleX(0.5);
+    opacity: 0.6;
+  }
+}
 .ui-ia-microfono {
   position: relative;
   display: grid;

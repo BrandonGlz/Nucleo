@@ -50,16 +50,27 @@ cd "$raiz/BackEnd"
 uv pip install --python .venv/bin/python -r requirements.txt
 # Modelo de Whisper para el dictado por voz de respaldo: se descarga aquí y no en la primera petición.
 .venv/bin/python -c "from faster_whisper.utils import download_model; download_model('${NUCLEO_WHISPER_MODELO:-base}')" >/dev/null
-# Voz de Nico (Piper, es_MX-ald-medium, masculina). Su .json trae "PhonemeType.ESPEAK" y Piper 1.8
-# espera "espeak": se corrige al descargarla.
+# Voz de Nico: Supertonic 2 (voces masculinas M1 a M5; se usa M3) y Piper es_MX-ald-medium de
+# respaldo (NUCLEO_VOZ_MOTOR=piper). Solo se descarga lo que falta: se puede repetir sin costo.
 voces="$HOME/.local/share/nucleo/voces"
-if [[ ! -s "$voces/es_MX-ald-medium.onnx" ]]; then
-  mkdir -p "$voces"
-  base_voz="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/es/es_MX/ald/medium/es_MX-ald-medium"
-  curl -fsSL -o "$voces/es_MX-ald-medium.onnx.json" "$base_voz.onnx.json"
-  curl -fsSL -o "$voces/es_MX-ald-medium.onnx" "$base_voz.onnx"
+bajar() {  # bajar URL DESTINO: descarga a un temporal y lo mueve al terminar (sin archivos a medias)
+  [[ -s "$2" ]] && return 0
+  mkdir -p "$(dirname "$2")"
+  curl -fsSL --retry 3 -o "$2.parcial" "$1" && mv "$2.parcial" "$2"
+}
+# Revisión fija de Hugging Face (la misma que fija supertonic==1.3.1).
+base_st="https://huggingface.co/Supertone/supertonic-2/resolve/75e6727618a02f323c720cba9478152d4bc16ca4"
+for archivo in onnx/duration_predictor.onnx onnx/text_encoder.onnx onnx/vector_estimator.onnx \
+  onnx/vocoder.onnx onnx/tts.json onnx/unicode_indexer.json voice_styles/M{1,2,3,4,5}.json LICENSE; do
+  bajar "$base_st/$archivo" "$voces/supertonic-2/$archivo"
+done
+# El .json de Piper trae "PhonemeType.ESPEAK" y Piper 1.8 espera "espeak": se corrige al descargarlo.
+base_voz="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/es/es_MX/ald/medium/es_MX-ald-medium"
+if [[ ! -s "$voces/es_MX-ald-medium.onnx.json" ]]; then
+  bajar "$base_voz.onnx.json" "$voces/es_MX-ald-medium.onnx.json"
   sed -i 's/"PhonemeType.ESPEAK"/"espeak"/' "$voces/es_MX-ald-medium.onnx.json"
 fi
+bajar "$base_voz.onnx" "$voces/es_MX-ald-medium.onnx"
 .venv/bin/python manage.py check
 .venv/bin/python manage.py migrate --noinput
 .venv/bin/python manage.py migrate --database=iot --noinput
