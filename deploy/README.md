@@ -115,6 +115,12 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
   compilación, `despertar-lenovo` (*magic packet* por el Wi-Fi de la casa; Wake-on-WLAN activado en
   las dos redes con `802-11-wireless.wake-on-wlan magic`). Registro: `/var/log/descanso-lenovo.log`.
   Con el procesador en reposo gasta unos 2.2 W y suspendido 0.06 W.
+- Temperatura: `termica-servidor.service` (fuera del repo, `/usr/local/sbin/termica-servidor`) deja
+  el perfil de energía en bajo consumo, EPP `balance_performance` y `max_perf_pct` 65 (tope de
+  2.9 GHz). Evita los arranques bruscos del ventilador con poca carga (de 97 °C a ~52 °C de
+  máximo; Ollama pierde ~4 %). Se quita con `sudo systemctl disable --now termica-servidor`.
+- `pantalla-apagada.service` apaga la retroiluminación de la pantalla interna (~3 W);
+  `sudo systemctl stop pantalla-apagada` la vuelve a encender.
 - Fuera del descanso la laptop no se suspende con la tapa cerrada ni por inactividad
   (`sleep.target` y `suspend.target` siguen enmascarados; `rtcwake` suspende directo por el kernel). La red la maneja NetworkManager
   con IP fija (Wi-Fi principal y otra red de respaldo con menor prioridad), sin ahorro de energía
@@ -407,10 +413,13 @@ compilación, que ya tiene los respaldos en `~/respaldos/nucleo`, Docker y el re
    `cloudflared` del servidor viejo** si sigue encendido: con dos conectores del mismo túnel,
    Cloudflare reparte las visitas entre ambos. Los dominios apuntan al túnel, no a una IP, así que
    el cambio es inmediato.
-4. Si el servidor nuevo tiene otra dirección de Tailscale, cámbiala en los scripts del equipo de
+4. Un servidor de reserva no debe descansar: no instales `deploy/descanso-servidor/` en él y, si
+   cambia la dirección, ajusta `DESCANSO_LENOVO` y la IP del ping en `vigia` (o quita la ventana
+   de 06:00-12:10 de `vigia` y de `.github/workflows/vigia.yml`).
+5. Si el servidor nuevo tiene otra dirección de Tailscale, cámbiala en los scripts del equipo de
    compilación (`NUCLEO_SERVIDOR`, `LENOVO` en `/usr/local/lib/respaldo-remoto/comun.sh` y en
    `~/.config/vigia.conf`).
-5. Revisa con el vigía o `curl https://bynucleo.com/api/v1/health/`.
+6. Revisa con el vigía o `curl https://bynucleo.com/api/v1/health/`.
 
 Si el que se pierde es el equipo de compilación, Núcleo sigue funcionando: instala otro según
 [Instalación desde cero](#instalación-desde-cero) (paso del equipo de compilación) y recupera la

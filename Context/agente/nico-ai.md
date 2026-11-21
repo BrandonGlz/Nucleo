@@ -152,10 +152,11 @@ cambiar código. Es la misma web compilada: `main.jsx` abre `src/consola/` cuand
 Los ajustes se guardan en caché 5 minutos y se limpian al editar.
 
 **Tiempo de respuesta.** La firma del ESP tarda menos de 1 s; lo que cuesta es que Ollama procese
-el texto. En la CPU del servidor (i5-3230M, sin AVX2) va a ~18-22 tokens/s. La caché de Ollama
+el texto. En la CPU del servidor (i5-12450H con `qwen3:4b-instruct`, 3 hilos y tope de 2.9 GHz por
+temperatura) lee la petición a ~30 tokens/s y genera a ~10 tokens/s (medido el 2026-11-21). La caché de Ollama
 solo ahorra el inicio idéntico de la petición: las instrucciones sí, pero el texto base, las cifras
 y la pregunta cambian cada vez y se procesan siempre, y cada token cuesta más cuanto más largo es
-lo que va antes. Medido en producción: sin documento, una respuesta de la IA tarda 4-11 s; con el
+lo que va antes. Medido en producción con el equipo y el modelo anteriores: sin documento, una respuesta de la IA tarda 4-11 s; con el
 documento completo en las instrucciones (~1 000 tokens), 15-20 s y a veces pasa el límite de 20 s
 del chat. Por eso el documento no va en cada respuesta: se convierte en respuestas del banco.
 `puente.calentar` deja en caché los prefijos (redactor y clasificador) al abrir el chat y cada

@@ -118,12 +118,13 @@ misma guía.
 
 ### Host
 
-Un solo servidor propio con Debian 13 publica todo por un túnel de Cloudflare, sin puertos
-abiertos. Caddy sirve la web y reparte las peticiones; Daphne atiende la API y el canal en
+Un servidor propio con Debian 13 publica todo por un túnel de Cloudflare, sin puertos
+abiertos, y un segundo equipo compila, despliega, respalda y lo vigila desde fuera. El servidor
+descansa de 06:00 a 12:00 (se actualiza, se suspende y despierta solo). Caddy sirve la web y reparte las peticiones; Daphne atiende la API y el canal en
 vivo; PostgreSQL, TimescaleDB, Redis y Mosquitto corren en Docker; servicios de systemd
 escuchan el broker, marcan los equipos sin conexión y generan los reportes programados. Hay dos
-respaldos cifrados al día, una prueba mensual de restauración y un vigía externo en GitHub Actions
-que revisa los sitios cada 15 minutos. Detalles en [servidor/produccion.md](Context/servidor/produccion.md)
+respaldos cifrados al día, una prueba mensual de restauración, un vigilante en el segundo equipo y
+un vigía externo en GitHub Actions que revisa los sitios cada 15 minutos. Detalles en [servidor/produccion.md](Context/servidor/produccion.md)
 y [deploy/README.md](deploy/README.md).
 
 ## Dispositivo ESP32

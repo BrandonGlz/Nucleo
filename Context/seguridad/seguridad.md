@@ -27,7 +27,9 @@ documento de su componente, enlazado en cada sección.
   respaldo HTTPS de Nico, la actualización del firmware y la hora; lo demás lo manda a la web.
 - Firewall ufw en el servidor y en el equipo de compilación: niega todo lo entrante, también
   desde la red de la casa, salvo Tailscale (SSH solo entra por ahí, con llave o contraseña y sin
-  `root`). Además `fail2ban` para SSH, actualizaciones de seguridad automáticas y `auditd`. En un
+  `root`). Además `fail2ban` para SSH, actualizaciones de seguridad automáticas (el servidor instala
+  todas las actualizaciones cada día en su descanso de las 06:00; el equipo de compilación, a mano)
+  y `auditd`. En un
   servidor de un solo equipo sin ufw, `deploy/firewall.nft` hace algo parecido con nftables, con
   vuelta atrás automática si no se confirma desde otra sesión SSH.
 - Cloudflare (panel, sin API): reglas WAF que bloquean rutas de escáneres (`/wp-`, `/.env`,
@@ -122,16 +124,19 @@ documento de su componente, enlazado en cada sección.
 
 ## Respaldos y recuperación (DRP)
 
-- `nucleo-respaldo.timer` respalda dos veces al día (03:45 y 15:45, RPO de 12 h) las dos bases y
-  la configuración: 7 días en el servidor y 30 en Google Drive, cifrados con un remoto `crypt` de
+- El equipo de compilación (`respaldo-nucleo-remoto.timer`) respalda por SSH dos veces al día
+  (03:45 y 15:45, RPO de 12 h) las dos bases y la configuración del servidor: 7 días en ese equipo
+  y 30 en Google Drive, cifrados con un remoto `crypt` de
   rclone (`gdrive-nucleo-cifrado:`).
-- `nucleo-prueba-restauracion.timer` (primer domingo de cada mes) restaura el último respaldo en
+- `prueba-restauracion-nucleo-remoto.timer` (en el equipo de compilación, primer domingo de cada
+  mes) restaura el último respaldo en
   contenedores temporales, compara los conteos con producción, mide el tiempo (RTO) y manda el
   resultado por correo.
 - Si un servicio falla, `nucleo-aviso@.service` manda por correo las últimas líneas de su
   bitácora (como mucho una vez por hora por servicio). El vigía de GitHub Actions
   (`.github/workflows/vigia.yml`) revisa cada 15 minutos la web, la API, la app y el subdominio
-  de los ESP32 desde fuera.
+  de los ESP32 desde fuera, y el vigilante del equipo de compilación revisa sitios, servicios,
+  equipo y accesos cada minuto. Ninguno revisa de 06:00 a 12:10, el descanso diario del servidor.
 - Guía del servidor de reserva en [deploy/README.md](../../deploy/README.md).
 
 ## Dependencias y código

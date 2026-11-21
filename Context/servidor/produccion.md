@@ -105,8 +105,12 @@ flowchart LR
   en Cloudflare, avisos por correo cuando falla un servicio, un vigilante externo en el equipo de
   compilación y el vigía de GitHub Actions ([seguridad](../seguridad/seguridad.md)).
 - **Disponibilidad:** todos los servicios arrancan con el equipo y se reinician solos; los
-  contenedores tienen límite de memoria. Los equipos no se suspenden con la tapa cerrada ni por
-  inactividad; van por Wi-Fi con IP fija y una red de respaldo, y el túnel usa `http2` (TCP), que
+  contenedores tienen límite de memoria. El servidor **descansa de 06:00 a 12:00**: a las 06:00
+  se actualiza (`apt upgrade`), reinicia si instaló algo, se suspende y el reloj lo despierta a las
+  12:00; en ese horario Núcleo no responde ni guarda lecturas, y el vigilante y el vigía de GitHub
+  no lo revisan. Desde el equipo de compilación, `despertar-lenovo` lo despierta antes. Fuera de
+  ese horario los equipos no se suspenden con la tapa cerrada ni por inactividad; el equipo de
+  compilación nunca se suspende y se actualiza a mano (`mantenimiento-asus`). Van por Wi-Fi con IP fija y una red de respaldo, y el túnel usa `http2` (TCP), que
   aguanta mejor los baches de señal que QUIC. Sin corriente y con poca batería se apagan en orden.
 
 ## Actualizar
