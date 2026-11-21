@@ -317,6 +317,25 @@ class AlertasSeguridadTests(PruebaBase):
         alerta = AlertaSeguridad.objects.get(tipo="ip_nueva")
         self.assertEqual(alerta.ip, "192.0.2.99")
 
+    def test_ipv6_de_la_misma_red_no_es_ip_nueva(self):
+        # Las direcciones temporales de IPv6 cambian la parte final sin cambiar de red (/64).
+        RegistroAuditoria.objects.create(
+            accion=Accion.LOGIN,
+            usuario=self.e.analista,
+            ip="2001:db8:6402:a07c:79d2:95ec:a994:157c",
+        )
+        RegistroAuditoria.objects.create(
+            accion=Accion.LOGIN,
+            usuario=self.e.analista,
+            ip="2001:db8:6402:a07c:2a6e:f099:2f28:1020",
+        )
+        self.assertFalse(AlertaSeguridad.objects.exists())
+        RegistroAuditoria.objects.create(
+            accion=Accion.LOGIN, usuario=self.e.analista, ip="2001:db8:290:881e:70c0:3436:fd72:3a67"
+        )
+        alerta = AlertaSeguridad.objects.get(tipo="ip_nueva")
+        self.assertIn("2001:db8:290:881e::/64", alerta.detalle)
+
     def test_primer_acceso_no_es_ip_nueva(self):
         RegistroAuditoria.objects.create(
             accion=Accion.LOGIN, usuario=self.e.analista, ip="192.0.2.5"

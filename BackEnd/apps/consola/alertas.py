@@ -5,7 +5,9 @@ Se generan al ocurrir el evento, no al abrir la consola:
 * ``post_save`` de ``RegistroAuditoria``: cada ``LOGIN_FALLIDO`` revisa los intentos de las
   últimas 24 horas desde esa IP (5 o más; crítico desde 10) y en esa cuenta (3 o más; crítico
   desde 10); cada ``LOGIN`` revisa si la persona entró desde una IP que no había usado en los
-  30 días anteriores (si ya tenía accesos).
+  30 días anteriores (si ya tenía accesos). En IPv6 se compara la red (prefijo /64), no la
+  dirección: los equipos cambian solos la parte final cada día o dos (direcciones temporales de
+  privacidad) sin cambiar de red, y cada cambio sería una falsa «IP nueva».
 * ``pre_save``/``post_save`` de ``Usuario``: pasar a ``BLQ`` abre «cuenta bloqueada»; al
   desbloquearla, esa alerta queda revisada sola.
 
@@ -16,6 +18,7 @@ la app móvil no es para el superusuario). ``sin_2fa`` no se guarda: se calcula 
 (``cuentas_sin_2fa``) porque no es un evento sino un estado.
 """
 
+import ipaddress
 import logging
 from datetime import timedelta
 
@@ -237,6 +240,14 @@ def _fallido(registro, ahora):
             )
 
 
+def _red(ip):
+    """La IPv4 tal cual; de una IPv6, su red /64 (la de la casa o la oficina)."""
+    direccion = ipaddress.ip_address(str(ip))
+    if direccion.version == 6:
+        return ipaddress.ip_network(f"{direccion}/64", strict=False)
+    return ipaddress.ip_network(direccion)
+
+
 def _acceso(registro, ahora):
     u = registro.usuario
     if u is None or not registro.ip:
@@ -246,16 +257,23 @@ def _acceso(registro, ahora):
     )
     if not previos.exists():
         return  # primer acceso de la cuenta: no hay con qué comparar
-    if previos.filter(
-        ip=registro.ip, fecha_hora__gte=ahora - timedelta(days=DIAS_IP_CONOCIDA)
-    ).exists():
+    red = _red(registro.ip)
+    recientes = (
+        previos.filter(fecha_hora__gte=ahora - timedelta(days=DIAS_IP_CONOCIDA))
+        .exclude(ip__isnull=True)
+        .values_list("ip", flat=True)
+        .distinct()
+    )
+    if any(_red(ip) == red for ip in recientes):
         return
+    ipv6 = red.version == 6
     abrir(
         Tipo.IP_NUEVA,
-        f"ip_nueva:{u.pk}:{registro.ip}",
+        f"ip_nueva:{u.pk}:{red if ipv6 else registro.ip}",
         Nivel.ADVERTENCIA,
         f"{u.get_full_name()} entró desde una IP nueva",
-        f"No había usado esa dirección en los {DIAS_IP_CONOCIDA} días anteriores.",
+        f"No había usado esa {'red (' + str(red) + ')' if ipv6 else 'dirección'} en los "
+        f"{DIAS_IP_CONOCIDA} días anteriores.",
         usuario=u,
         ip=registro.ip,
         fecha=ahora,
