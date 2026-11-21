@@ -1,6 +1,7 @@
 # Vigía externo: cada 15 minutos revisa desde fuera del servidor que la web, la API, la descarga
 # de la app y el subdominio de los ESP32 respondan. Si algo no responde, el flujo falla y GitHub
 # manda un correo (Settings → Notifications → Actions: avisos de flujos fallidos).
+# De 06:00 a 12:10 (hora de Tijuana) el servidor descansa suspendido a propósito y no se revisa.
 # Los flujos programados solo corren desde la rama por defecto (main); GitHub los pausa si el
 # repositorio pasa 60 días sin actividad.
 name: Vigía
@@ -20,6 +21,10 @@ jobs:
     steps:
       - name: Revisar las direcciones públicas
         run: |
+          ahora=$(TZ=America/Tijuana date +%H%M)
+          if (( 10#$ahora >= 600 && 10#$ahora < 1210 )); then
+            echo "Descanso del servidor (06:00-12:10, hora de Tijuana): no se revisa."; exit 0
+          fi
           fallas=0
           revisar() {  # nombre url [texto esperado]
             if salida="$(curl -fsSL --retry 3 --retry-delay 20 --retry-all-errors --max-time 20 \
