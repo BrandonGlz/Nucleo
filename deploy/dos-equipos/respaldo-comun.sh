@@ -50,14 +50,27 @@ revisar_tar() {
 }
 
 # subir <carpeta local> <remoto:carpeta>: copia lo de los últimos 2 días y borra allá lo de más de 30.
+# asus sale a internet por un Wi-Fi débil y rclone usa el cliente compartido de Google (límite de
+# peticiones por minuto entre todos sus usuarios): se limitan las peticiones (--tpslimit), una subida
+# atorada se corta a los 2 min sin avance (--timeout) y se reintenta, con un tope de 40 min en total para
+# terminar antes del límite de 1 h del servicio. Lo que no suba hoy lo sube la siguiente corrida (--max-age 2d).
+RCLONE_OPC=(--max-age 2d --tpslimit 4 --tpslimit-burst 4 --timeout 2m --contimeout 30s
+            --low-level-retries 20 --retries 3 --retries-sleep 30s --stats 2m --stats-one-line -v)
 subir() {
-  local intento
+  local intento ok salida fin=$(( SECONDS + 2400 ))
+  salida="$(mktemp)"
   for intento in $(seq 10); do
-    rclone copy "$1" "$2" --max-age 2d && break
-    (( intento < 10 )) || { echo "No se pudo subir a Google Drive"; return 1; }
+    ok=0; rclone copy "$1" "$2" "${RCLONE_OPC[@]}" > "$salida" 2>&1 || ok=$?
+    # los errores de Google traen un JSON largo: solo se dejan las líneas útiles
+    grep -vE '^\s*$|^\s*[][{}]|"@type"|"(reason|domain|metadata|quota_|consumer|service)|^Details:' "$salida" || true
+    (( ok == 0 )) && break
+    if (( intento == 10 || SECONDS + 60 >= fin )); then
+      rm -f "$salida"; echo "No se pudo subir a Google Drive (queda en el equipo; la siguiente corrida lo vuelve a intentar)"; return 1
+    fi
     echo "Sin acceso a Google Drive; reintento en 60 s ($intento/10)"; sleep 60
   done
-  rclone delete "$2" --min-age 30d || true
+  rm -f "$salida"
+  rclone delete "$2" --min-age 30d --tpslimit 4 || true
   echo "Copiado a Google Drive: $2"
 }
 
