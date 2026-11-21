@@ -1,0 +1,13 @@
+[Unit]
+Description=Descanso de lenovo: tras el reinicio de mantenimiento, espera a que todo levante y se suspende hasta las 12:00
+After=network-online.target docker.service cloudflared.service tmo-gunicorn.service nucleo-daphne.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/descanso-lenovo --arranque
+TimeoutStartSec=infinity
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

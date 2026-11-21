@@ -1,0 +1,10 @@
+[Unit]
+Description=Descanso diario de lenovo a las 06:00
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=false
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

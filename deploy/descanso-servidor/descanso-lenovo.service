@@ -1,0 +1,8 @@
+[Unit]
+Description=Descanso diario de lenovo (06:00: actualiza, reinicia si hace falta y se suspende hasta las 12:00)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/descanso-lenovo
+KillMode=process
+TimeoutStartSec=infinity

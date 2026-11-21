@@ -1,0 +1,85 @@
+#!/bin/bash
+# Descanso diario de lenovo (06:00-12:00):
+#   06:00  descanso-lenovo.timer → actualiza (apt update + upgrade); si instaló algo o el sistema lo pide, reinicia.
+#   arranque  descanso-lenovo-arranque.service → si el reinicio fue del descanso, espera a que todo levante y se suspende.
+#   12:00  el reloj (rtcwake) la despierta sola.
+# Saltarse el descanso: sudo touch /etc/descanso-lenovo.desactivado (borrarlo para reactivarlo).
+# Despertarla antes: botón de encendido, o desde asus `despertar-lenovo` (magic packet por Wi-Fi).
+# Registro: /var/log/descanso-lenovo.log y journalctl -t descanso-lenovo.
+set -u
+HORA_DESPERTAR="${HORA_DESPERTAR:-12:00}"
+ESTADO=/var/lib/descanso-lenovo
+LOG=/var/log/descanso-lenovo.log
+mkdir -p "$ESTADO"
+exec >>"$LOG" 2>&1
+log() { echo "$(date '+%F %T') $*"; logger -t descanso-lenovo "$*"; }
+
+[[ -e /etc/descanso-lenovo.desactivado ]] && { log "Descanso desactivado (/etc/descanso-lenovo.desactivado)."; exit 0; }
+despertar=$(date -d "today $HORA_DESPERTAR" +%s)
+faltan() { echo $(( despertar - $(date +%s) )); }
+
+ocupada() {
+  for c in /tmp/despliegue-nucleo.lock /tmp/build-apk.lock; do
+    [[ -e $c ]] && ! flock -n "$c" true 2>/dev/null && { echo "$c"; return 0; }
+  done
+  pgrep -af 'deploy/instalar.sh|deploy/desplegar.sh' | grep -v pgrep | head -1 | grep . && return 0
+  return 1
+}
+
+dormir() {
+  (( $(faltan) < 600 )) && { log "Faltan menos de 10 min para las $HORA_DESPERTAR; no se suspende."; return; }
+  if t=$(ocupada); then log "Tarea en curso ($t); hoy no se suspende."; return; fi
+  /usr/sbin/iw phy0 wowlan enable magic-packet 2>/dev/null   # para poder despertarla desde asus
+  # Núcleo no debe marcar «sin conexión» a los ESP32 por las horas dormidas: se pausa y se reanuda con margen.
+  systemctl stop nucleo-sin-conexion.service 2>/dev/null
+  log "Se suspende hasta las $(date -d @"$despertar" +%H:%M)."
+  rtcwake -m freeze -t "$despertar" >/dev/null 2>&1
+  log "Despertó."
+  for i in $(seq 1 60); do ping -c1 -W2 1.1.1.1 >/dev/null 2>&1 && break; sleep 2; done
+  systemd-run --on-active=300 --unit=descanso-reanuda-sin-conexion --collect systemctl start nucleo-sin-conexion.service >/dev/null 2>&1 \
+    || systemctl start nucleo-sin-conexion.service
+}
+
+esperar_servicios() {   # tras el reinicio: hasta 10 min a que todo esté arriba
+  local u
+  for i in $(seq 1 60); do
+    u=$(for s in docker cloudflared caddy tailscaled tmo-gunicorn tmo-recordatorios nucleo-daphne nucleo-mqtt; do
+          systemctl is-active -q "$s" || echo "$s"; done)
+    malos=$(docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -E 'starting|unhealthy' | cut -d' ' -f1)
+    [[ -z "$u$malos" ]] && curl -fs -m 10 -o /dev/null http://127.0.0.1:8001/api/v1/health/ && { log "Todo arriba tras el reinicio."; return 0; }
+    sleep 10
+  done
+  log "Tras 10 min sigue sin levantar: ${u} ${malos}"; return 1
+}
+
+case "${1:-}" in
+  --arranque)
+    [[ -e $ESTADO/reinicio ]] || exit 0
+    rm -f "$ESTADO/reinicio"
+    log "Arranque tras el reinicio del descanso (kernel $(uname -r))."
+    esperar_servicios || { log "No se suspende para que el vigilante vea la falla."; exit 0; }
+    dormir ;;
+  *)
+    if [[ $(cat "$ESTADO/ultimo" 2>/dev/null) == "$(date +%F)" ]]; then
+      log "El mantenimiento de hoy ya se hizo."; dormir; exit 0
+    fi
+    date +%F > "$ESTADO/ultimo"
+    if t=$(ocupada); then log "Tarea en curso ($t); hoy no hay mantenimiento ni descanso."; exit 0; fi
+    log "Mantenimiento: apt update + upgrade."
+    export DEBIAN_FRONTEND=noninteractive
+    O=(-o DPkg::Lock::Timeout=900 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
+    apt-get "${O[@]}" update -q || log "apt update falló."
+    antes=$(stat -c %Y /var/lib/dpkg/status)
+    apt-get "${O[@]}" -y -q --with-new-pkgs upgrade || log "apt upgrade falló."
+    apt-get "${O[@]}" -y -q autoremove --purge >/dev/null 2>&1
+    despues=$(stat -c %Y /var/lib/dpkg/status)
+    if [[ $antes != "$despues" || -e /var/run/reboot-required ]] && (( $(faltan) > 1800 )); then
+      log "Se instalaron actualizaciones; reinicia y al volver se suspende."
+      touch "$ESTADO/reinicio"
+      systemctl reboot
+      exit 0
+    fi
+    log "Sin actualizaciones nuevas; no hace falta reiniciar."
+    dormir ;;
+esac
+exit 0

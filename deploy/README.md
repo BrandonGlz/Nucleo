@@ -102,7 +102,21 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
   compilación ([Respaldos desde el equipo de compilación](#respaldos-desde-el-equipo-de-compilación)).
 - Firewall `ufw`: todo lo entrante cerrado salvo Tailscale ([Firewall](#firewall)).
 
-- La laptop no se suspende con la tapa cerrada ni por inactividad. La red la maneja NetworkManager
+- **Descanso diario de 06:00 a 12:00** (archivos en [`deploy/descanso-servidor/`](descanso-servidor/),
+  instalados en `/usr/local/sbin` y `/etc/systemd/system`): a las 06:00 `descanso-lenovo.timer`
+  corre `apt update` y `apt upgrade` (incluye Docker, Tailscale y cloudflared); si instaló algo,
+  reinicia y `descanso-lenovo-arranque.service` espera a que todo levante antes de seguir. Luego
+  pausa `nucleo-sin-conexion` (para no marcar sin conexión a los ESP32 por las horas dormidas),
+  suspende el equipo (s2idle, con `rtcwake`) y el reloj lo despierta a las 12:00; cinco minutos
+  después reanuda `nucleo-sin-conexion`. Durante el descanso Núcleo no responde ni guarda lecturas.
+  No se suspende si hay un despliegue o una build en curso, ni si tras el reinicio algo no levantó
+  (para que el vigilante lo vea). Para saltárselo: `sudo touch /etc/descanso-lenovo.desactivado`
+  (se borra para reactivarlo). Para despertarlo antes: el botón de encendido o, desde el equipo de
+  compilación, `despertar-lenovo` (*magic packet* por el Wi-Fi de la casa; Wake-on-WLAN activado en
+  las dos redes con `802-11-wireless.wake-on-wlan magic`). Registro: `/var/log/descanso-lenovo.log`.
+  Con el procesador en reposo gasta unos 2.2 W y suspendido 0.06 W.
+- Fuera del descanso la laptop no se suspende con la tapa cerrada ni por inactividad
+  (`sleep.target` y `suspend.target` siguen enmascarados; `rtcwake` suspende directo por el kernel). La red la maneja NetworkManager
   con IP fija (Wi-Fi principal y otra red de respaldo con menor prioridad), sin ahorro de energía
   en el Wi-Fi. La batería tiene tope de carga (conservation mode) y, sin corriente y con poca
   batería, un timer detiene servicios y bases en orden y apaga el equipo.
@@ -124,11 +138,21 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
   | `prueba-restauracion-nucleo` (timer, 1er domingo 04:30) | Prueba de restauración con contenedores temporales |
   | `respaldo-aviso` (`respaldo-aviso@.service`) | Correo si un respaldo o una prueba falla |
   | `vigia` (timer cada 60 s) | Vigilante externo del servidor (sitios, servicios, equipo, accesos) |
+  | `despertar-lenovo` | Despierta al servidor durante su descanso (*magic packet*) |
+  | `mantenimiento-asus` (a mano) | `apt update` y `apt upgrade` del propio equipo, reinicio si hace falta y correo con el resultado |
 
 - Los despliegues y las builds usan candado (`flock`): si otra sesión ya está desplegando o
   compilando, el script se niega y lo dice. Nunca corren dos builds del APK a la vez.
 - Los registros quedan en `~/despliegues/` (`nucleo-<fecha>.log`, `apk-<fecha>.log`).
-- Mismas medidas que el servidor: ufw solo Tailscale, sin suspensión y apagado ordenado por batería.
+- Mismas medidas que el servidor: ufw solo Tailscale y apagado ordenado por batería, pero **nunca
+  se suspende** (es el vigilante y el que despierta al servidor).
+- Sus actualizaciones son **a mano**: `sudo systemctl start --no-block mantenimiento-asus`
+  (más o menos una vez al mes, lejos de los respaldos de las 03:30, 03:45 y 15:45). Espera hasta
+  2 h a que terminen respaldos, pruebas de restauración, builds o deploys; actualiza; reinicia solo
+  si instaló algo o el sistema lo pide; y manda a la cuenta de avisos un correo «listo», «sin
+  cambios», «no se actualizó» o «revisar» (`mantenimiento-asus-arranque.service` lo manda tras el
+  reinicio). Registro: `/var/log/mantenimiento-asus.log`. Entre tanto, `unattended-upgrades`
+  instala solo los parches de seguridad de Debian.
 
 ## Operación
 
@@ -276,7 +300,7 @@ sudo systemctl stop ufw-vuelta-atras.timer
 
 Además, en los dos equipos: `sshd` con un drop-in (`/etc/ssh/sshd_config.d/`) que deja llave y
 contraseña pero no `root` (`PermitRootLogin no`, `MaxAuthTries 4`), `fail2ban` para SSH,
-`unattended-upgrades` solo de seguridad y de madrugada (sin reinicio automático) y `auditd` con
+`unattended-upgrades` solo de seguridad y de madrugada (sin reinicio automático; en el servidor, además, el [descanso diario](#servidor) actualiza todo y reinicia si hace falta) y `auditd` con
 reglas sobre `/etc`, `/usr/local/bin`, systemd y `sudo`.
 
 `deploy/firewall.sh` y `deploy/firewall.nft` quedan para un servidor de un solo equipo sin ufw:
@@ -331,7 +355,9 @@ Tras un deploy que cambie encabezados, vacía la caché en **Caching → Configu
   los destinatarios de `~/.config/vigia.conf` (los mismos de `NUCLEO_CORREOS_AVISOS`); si el
   correo no sale, lo deja en cola y lo reintenta hasta 3 días. `vigia --prueba` muestra lo que
   mandaría sin enviar nada. Vigila también otros servicios del servidor, con sus propios
-  destinatarios.
+  destinatarios. De 06:00 a 12:10, si el servidor no contesta al ping, da la vuelta por buena sin
+  revisar ni avisar (es su descanso); a partir de las 12:10 avisa si no despertó. El resumen de
+  las 08:00 sale en la primera vuelta tras el descanso.
 - El vigilante del panel del host (`/usr/local/bin/hostpanel-avisos`, en el servidor, fuera del
   repo) corre tras cada actualización del panel y solo actúa cuando algo cambia de estado: manda «Caído»,
   «Aviso» o «Resuelto» con la explicación y las últimas líneas del registro a la cuenta de avisos
@@ -340,7 +366,9 @@ Tras un deploy que cambie encabezados, vacía la caché en **Caching → Configu
   avisan `aviso_fallo.sh` y `vigilar_recursos.sh`.
 - `.github/workflows/vigia.yml`: cada 15 min revisa desde fuera la web, la API, la app y el
   subdominio de los ESP32. GitHub solo ejecuta los flujos programados de la rama principal, así
-  que vigila desde `main`; las fallas llegan por correo de GitHub.
+  que vigila desde `main`; las fallas llegan por correo de GitHub. De 06:00 a 12:10 (hora de
+  Tijuana) termina sin revisar, por el descanso del servidor. Cambiar este archivo requiere un
+  token con permiso `workflow`.
 - Las *Dependabot alerts* están activas: avisan de dependencias vulnerables sin crear ramas ni
   pull requests. Las actualizaciones se aplican a mano en `dev` (con las pruebas) y pasan a
   `main` con el deploy. `seguridad.yml` corre CodeQL, ruff y `npm audit` en cada push.
@@ -556,6 +584,11 @@ los dos, luego el servidor y al final el equipo de compilación.
    túnel. Corre con `umask 022` (dentro de `tmux` si es largo).
 5. Deshabilita los respaldos locales, que hará el equipo de compilación:
    `sudo systemctl disable --now nucleo-respaldo.timer nucleo-prueba-restauracion.timer`.
+6. Descanso diario (opcional): `sudo apt install util-linux-extra` (trae `rtcwake`),
+   `sudo install -m 755 deploy/descanso-servidor/descanso-lenovo /usr/local/sbin/`,
+   `sudo install -m 644 deploy/descanso-servidor/*.service deploy/descanso-servidor/*.timer /etc/systemd/system/`,
+   `sudo systemctl enable --now descanso-lenovo.timer && sudo systemctl enable descanso-lenovo-arranque.service`
+   y Wake-on-WLAN en cada red: `sudo nmcli con modify <red> 802-11-wireless.wake-on-wlan magic`.
 
 ### Equipo de compilación
 
@@ -569,7 +602,8 @@ los dos, luego el servidor y al final el equipo de compilación.
    ```bash
    cd deploy/dos-equipos
    sudo install -m 755 desplegar-nucleo compilar-apk-nucleo respaldo-nucleo-remoto \
-     prueba-restauracion-nucleo respaldo-aviso /usr/local/bin/
+     prueba-restauracion-nucleo respaldo-aviso despertar-lenovo mantenimiento-asus-correo /usr/local/bin/
+   sudo install -m 755 mantenimiento-asus /usr/local/sbin/
    sudo install -D -m 644 respaldo-comun.sh /usr/local/lib/respaldo-remoto/comun.sh
    sudo install -m 644 *.service *.timer /etc/systemd/system/
    ```

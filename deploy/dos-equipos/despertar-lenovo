@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""Despierta a lenovo si está suspendida (descanso de 06:00 a 12:00) con un «magic packet» por la red de la casa.
+Uso: despertar-lenovo   (espera hasta 90 s a que responda por Tailscale)."""
+import socket, subprocess, sys, time
+MAC = "10:91:d1:9a:25:18"          # Wi-Fi de lenovo (wlp0s20f3)
+DESTINOS = ["192.168.1.255", "255.255.255.255", "192.168.1.80"]
+paquete = b"\xff" * 6 + bytes.fromhex(MAC.replace(":", "")) * 16
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+for _ in range(3):
+    for d in DESTINOS:
+        for puerto in (9, 7):
+            try: s.sendto(paquete, (d, puerto))
+            except OSError: pass
+    time.sleep(1)
+print("Paquete enviado; esperando a lenovo…")
+for i in range(45):
+    if subprocess.run(["ping", "-c1", "-W2", "100.107.247.90"], capture_output=True).returncode == 0:
+        print(f"lenovo responde ({(i + 1) * 2} s aprox.)."); sys.exit(0)
+    time.sleep(2)
+print("lenovo no respondió en 90 s: puede que no esté suspendida sino apagada; usa el botón de encendido."); sys.exit(1)

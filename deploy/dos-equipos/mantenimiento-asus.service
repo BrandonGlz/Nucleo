@@ -1,0 +1,8 @@
+[Unit]
+Description=Mantenimiento de asus a mano (apt update + upgrade; reinicia si hace falta)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mantenimiento-asus
+TimeoutStartSec=infinity
+KillMode=process

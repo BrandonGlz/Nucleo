@@ -1,0 +1,91 @@
+#!/bin/bash
+# Mantenimiento de asus A MANO (no hay timer): sudo systemctl start --no-block mantenimiento-asus
+# Conviene correrlo más o menos una vez al mes, lejos de los respaldos (03:30, 03:45 y 15:45).
+#   apt update + upgrade (incluye Docker, Tailscale, cloudflared); reinicia solo si instaló algo o el sistema lo pide.
+#   Al terminar (o tras el reinicio, con mantenimiento-asus-arranque.service) manda un correo a la cuenta de avisos.
+# Correr a mano:   sudo systemctl start --no-block mantenimiento-asus
+# Desactivarlo:    sudo touch /etc/mantenimiento-asus.desactivado   (borrarlo para reactivarlo)
+# Registro:        /var/log/mantenimiento-asus.log  ·  journalctl -t mantenimiento-asus
+set -u
+ESTADO=/var/lib/mantenimiento-asus
+LOG=/var/log/mantenimiento-asus.log
+mkdir -p "$ESTADO"
+exec >>"$LOG" 2>&1
+log() { echo "$(date '+%F %T') $*"; logger -t mantenimiento-asus "$*"; }
+correo() { /usr/local/bin/mantenimiento-asus-correo "$1" "$2" || log "No se pudo mandar el correo."; }
+
+ocupada() {
+  for c in /tmp/despliegue-nucleo.lock /tmp/build-apk.lock; do
+    [[ -e $c ]] && ! flock -n "$c" true 2>/dev/null && { echo "${c##*/}"; return 0; }
+  done
+  for u in respaldo-tmo-remoto respaldo-nucleo-remoto prueba-restauracion-nucleo-remoto prueba-restauracion-tmo-remoto; do
+    systemctl is-active -q "$u.service" && { echo "$u"; return 0; }
+  done
+  return 1
+}
+
+if [[ ${1:-} == --arranque ]]; then
+  [[ -e $ESTADO/reinicio ]] || exit 0
+  for i in $(seq 1 60); do
+    malos=$(for s in tailscaled docker vigia.timer hostpanel-enviar.timer respaldo-tmo-remoto.timer respaldo-nucleo-remoto.timer; do
+              systemctl is-active -q "$s" || echo -n "$s "; done)
+    [[ -z $malos ]] && ping -c1 -W3 1.1.1.1 >/dev/null 2>&1 && break
+    sleep 10
+  done
+  paquetes=$(cat "$ESTADO/reinicio"); rm -f "$ESTADO/reinicio"
+  if [[ -z $malos ]]; then
+    log "Volvió del reinicio; todo arriba (kernel $(uname -r))."
+    correo "[asus] Mantenimiento: listo" "asus se actualizó, se reinició y volvió bien.
+
+Kernel: $(uname -r)
+Paquetes actualizados:
+$paquetes
+
+Registro: /var/log/mantenimiento-asus.log"
+  else
+    log "Volvió del reinicio, pero no levantó: $malos"
+    correo "[asus] Mantenimiento: revisar" "asus se reinició tras actualizarse, pero tras 10 min siguen abajo: $malos
+
+Paquetes actualizados:
+$paquetes
+
+Registro: /var/log/mantenimiento-asus.log"
+  fi
+  exit 0
+fi
+
+[[ -e /etc/mantenimiento-asus.desactivado ]] && { log "Desactivado (/etc/mantenimiento-asus.desactivado)."; exit 0; }
+
+# Espera hasta 2 h a que terminen respaldos, pruebas de restauración, builds o deploys.
+for i in $(seq 1 120); do t=$(ocupada) || break; (( i == 1 )) && log "Esperando a que termine $t…"; sleep 60; done
+if t=$(ocupada); then
+  log "Sigue ocupada ($t) tras 2 h; no se actualizó."
+  correo "[asus] Mantenimiento: pospuesto" "No se actualizó porque tras 2 horas seguía en curso: $t.
+Vuelve a correrlo cuando termine: sudo systemctl start --no-block mantenimiento-asus"
+  exit 0
+fi
+
+log "Mantenimiento: apt update + upgrade."
+export DEBIAN_FRONTEND=noninteractive
+O=(-o DPkg::Lock::Timeout=900 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
+apt-get "${O[@]}" update -q || log "apt update falló."
+pendientes=$(apt list --upgradable 2>/dev/null | tail -n +2 | awk -F'[/ ]' '{print "  " $1 " → " $3}')
+apt-get "${O[@]}" -y -q --with-new-pkgs upgrade; r=$?
+(( r )) && log "apt upgrade terminó con error ($r)."
+apt-get "${O[@]}" -y -q autoremove --purge >/dev/null 2>&1
+quedan=$(apt list --upgradable 2>/dev/null | tail -n +2 | wc -l)
+
+if [[ -n $pendientes || -e /var/run/reboot-required ]] && (( r == 0 )); then
+  log "Se instalaron actualizaciones; reinicia."
+  printf '%s\n' "${pendientes:-  (solo lo pedía el sistema: /var/run/reboot-required)}" > "$ESTADO/reinicio"
+  systemctl reboot
+  exit 0
+fi
+if (( r )); then
+  correo "[asus] Mantenimiento: revisar" "apt upgrade falló (código $r); no se reinició. Quedan $quedan paquetes por actualizar.
+Registro: /var/log/mantenimiento-asus.log"
+else
+  log "Sin actualizaciones; no hace falta reiniciar."
+  correo "[asus] Mantenimiento: sin cambios" "asus ya estaba al día; no se reinició."
+fi
+exit 0
