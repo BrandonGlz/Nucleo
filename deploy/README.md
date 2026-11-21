@@ -10,7 +10,11 @@ Núcleo corre en dos laptops con Debian 13, unidas por Tailscale:
 Se publica en internet con un Cloudflare Tunnel en el dominio `bynucleo.com`, sin puertos abiertos
 en el router, así que se llega desde cualquier red. Núcleo no usa Tailscale para las visitas; el
 Tailscale de los equipos solo sirve para entrar por SSH y para que el equipo de compilación hable
-con el servidor.
+con el servidor. Los dos equipos están unidos además por un cable Ethernet directo (en el servidor, un
+adaptador USB de 10/100; `10.77.77.1/30` y `10.77.77.2/30`, sin ruta por defecto ni DNS, perfiles de
+NetworkManager `enlace-asus` y `enlace-lenovo`): Tailscale lo descubre solo y su tráfico entre ellos
+va por ahí (~2 ms y ~84 Mbit/s, contra ~13 ms y ~30 Mbit/s por el Wi-Fi). Cada uno sigue saliendo a
+internet por su Wi-Fi, y el firewall solo deja entrar por Tailscale, también por el cable.
 
 | Qué | Dirección |
 | --- | --- |
@@ -238,7 +242,11 @@ del servidor por SSH, sin compilar ni guardar nada allá:
 
 Usa los mismos nombres que `respaldar.sh`, así que `restaurar.sh` sirve igual. Guarda 7 días en
 `~/respaldos/nucleo` y sube a `gdrive-nucleo-cifrado:` (30 días). Cada descarga se reintenta
-5 veces y la subida 10, porque el Wi-Fi entre equipos varía. Al terminar, en el servidor corre
+5 veces y la subida hasta 10, con un tope de 40 min. La subida limita las peticiones a Google
+(`--tpslimit 4`: rclone usa por defecto un cliente compartido con un límite de peticiones por
+minuto) y corta a los 2 min una transferencia atorada (`--timeout 2m`), porque el equipo de
+compilación sale a internet por un Wi-Fi débil. Lo que no suba se sube en la siguiente corrida
+(`--max-age 2d`). Al terminar, en el servidor corre
 `manage.py depurar_auditoria`.
 
 `prueba-restauracion-nucleo-remoto.timer` (primer domingo del mes, 04:30) restaura el último
