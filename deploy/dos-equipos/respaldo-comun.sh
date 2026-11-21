@@ -49,29 +49,42 @@ revisar_tar() {
   echo "$(basename "$1"): $(du -h "$1" | cut -f1), $n entradas"
 }
 
-# subir <carpeta local> <remoto:carpeta>: copia lo de los últimos 2 días y borra allá lo de más de 30.
-# asus sale a internet por un Wi-Fi débil y rclone usa el cliente compartido de Google (límite de
+# subir <archivo> <remoto:carpeta>: sube un archivo (el zip semanal) a Google Drive y comprueba que llegó
+# completo. asus sale a internet por un Wi-Fi débil y rclone usa el cliente compartido de Google (límite de
 # peticiones por minuto entre todos sus usuarios): se limitan las peticiones (--tpslimit), una subida
-# atorada se corta a los 2 min sin avance (--timeout) y se reintenta, con un tope de 40 min en total para
-# terminar antes del límite de 1 h del servicio. Lo que no suba hoy lo sube la siguiente corrida (--max-age 2d).
-RCLONE_OPC=(--max-age 2d --tpslimit 4 --tpslimit-burst 4 --timeout 2m --contimeout 30s
-            --low-level-retries 20 --retries 3 --retries-sleep 30s --stats 2m --stats-one-line -v)
+# atorada se corta a los 2 min sin avance (--timeout) y se reintenta, con un tope de 40 min en total.
+# La comprobación compara el hash del archivo local con el de Drive (en un remoto cifrado, «cryptcheck»
+# cifra el local con la misma llave y lo compara con lo que hay allá).
+RCLONE_RED=(--tpslimit 4 --tpslimit-burst 4 --timeout 2m --contimeout 30s --low-level-retries 20)
+RCLONE_OPC=("${RCLONE_RED[@]}" --retries 3 --retries-sleep 30s --stats 2m --stats-one-line -v)
+# los errores de Google traen un JSON largo: solo se dejan las líneas útiles
+filtrar_rclone() { grep -vE '^\s*$|^\s*[][{}]|"@type"|"(reason|domain|metadata|quota_|consumer|service)|^Details:' "$1" || true; }
 subir() {
-  local intento ok salida fin=$(( SECONDS + 2400 ))
+  local archivo="$1" destino="$2" intento ok salida fin=$(( SECONDS + 2400 )) revisar=check
   salida="$(mktemp)"
+  [[ "$(rclone listremotes --long | awk -v r="${destino%%:*}:" '$1 == r {print $2}')" == crypt ]] && revisar=cryptcheck
   for intento in $(seq 10); do
-    ok=0; rclone copy "$1" "$2" "${RCLONE_OPC[@]}" > "$salida" 2>&1 || ok=$?
-    # los errores de Google traen un JSON largo: solo se dejan las líneas útiles
-    grep -vE '^\s*$|^\s*[][{}]|"@type"|"(reason|domain|metadata|quota_|consumer|service)|^Details:' "$salida" || true
-    (( ok == 0 )) && break
+    ok=0; rclone copy "$archivo" "$destino" "${RCLONE_OPC[@]}" > "$salida" 2>&1 || ok=$?
+    filtrar_rclone "$salida"
+    if (( ok == 0 )); then
+      rclone "$revisar" "$(dirname "$archivo")" "$destino" --one-way --include "/$(basename "$archivo")" \
+        "${RCLONE_RED[@]}" > "$salida" 2>&1 || ok=$?
+      (( ok == 0 )) && break
+      filtrar_rclone "$salida"; echo "La copia en Drive no coincide con la local ($revisar)"
+    fi
     if (( intento == 10 || SECONDS + 60 >= fin )); then
-      rm -f "$salida"; echo "No se pudo subir a Google Drive (queda en el equipo; la siguiente corrida lo vuelve a intentar)"; return 1
+      rm -f "$salida"; echo "No se pudo subir a Google Drive (queda en el equipo; se puede volver a correr a mano)"; return 1
     fi
     echo "Sin acceso a Google Drive; reintento en 60 s ($intento/10)"; sleep 60
   done
   rm -f "$salida"
-  rclone delete "$2" --min-age 30d --tpslimit 4 || true
-  echo "Copiado a Google Drive: $2"
+  echo "Copiado a Google Drive: $destino/$(basename "$archivo") (verificado con $revisar)"
+}
+
+# limpiar_drive <remoto:carpeta> <edad> [opciones de rclone]: borra allá lo más viejo que <edad> (p. ej. 33d).
+limpiar_drive() {
+  local destino="$1" edad="$2"; shift 2
+  rclone delete "$destino" --min-age "$edad" "${RCLONE_RED[@]}" "$@" 2>&1 | grep -v '^\s*$' || true
 }
 
 # datos_contenedor <nombre>: "imagen usuario base" del contenedor de producción en lenovo; si lenovo no

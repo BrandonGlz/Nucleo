@@ -1,6 +1,6 @@
 #!/bin/bash
 # Mantenimiento de asus A MANO (no hay timer): sudo systemctl start --no-block mantenimiento-asus
-# Conviene correrlo más o menos una vez al mes, lejos de los respaldos (03:30, 03:45 y 15:45).
+# Conviene correrlo más o menos una vez al mes, lejos de los respaldos (23:00-23:30 diarios; zip semanal el lunes 00:30-00:45).
 #   apt update + upgrade (incluye Docker, Tailscale, cloudflared); reinicia solo si instaló algo o el sistema lo pide.
 #   Al terminar (o tras el reinicio, con mantenimiento-asus-arranque.service) manda un correo a la cuenta de avisos.
 # Correr a mano:   sudo systemctl start --no-block mantenimiento-asus
@@ -18,7 +18,7 @@ ocupada() {
   for c in /tmp/despliegue-nucleo.lock /tmp/build-apk.lock; do
     [[ -e $c ]] && ! flock -n "$c" true 2>/dev/null && { echo "${c##*/}"; return 0; }
   done
-  for u in respaldo-tmo-remoto respaldo-nucleo-remoto prueba-restauracion-nucleo-remoto prueba-restauracion-tmo-remoto; do
+  for u in respaldo-tmo-remoto respaldo-nucleo-remoto respaldo-nucleo-semanal prueba-restauracion-nucleo-remoto prueba-restauracion-tmo-remoto; do
     systemctl is-active -q "$u.service" && { echo "$u"; return 0; }
   done
   return 1

@@ -1,0 +1,14 @@
+[Unit]
+Description=Núcleo - zip semanal de los respaldos diarios a Google Drive (asus)
+OnFailure=respaldo-aviso@%n.service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=adminasus
+Nice=10
+IOSchedulingClass=idle
+ExecStart=/usr/local/bin/respaldo-semanal nucleo gdrive-nucleo-cifrado:
+# Hasta 2 h esperando a que terminen respaldos o pruebas, más el armado y la subida (tope de 40 min).
+TimeoutStartSec=3h

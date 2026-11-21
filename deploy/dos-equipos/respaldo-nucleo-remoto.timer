@@ -1,8 +1,8 @@
 [Unit]
-Description=Núcleo - respaldo desde asus dos veces al día (03:45 y 15:45)
+Description=Núcleo - respaldo desde asus diario a las 23:30 (lo que se hizo en el día)
 
 [Timer]
-OnCalendar=*-*-* 03,15:45:00
+OnCalendar=*-*-* 23:30:00
 Persistent=true
 
 [Install]

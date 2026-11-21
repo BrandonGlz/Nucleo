@@ -124,14 +124,17 @@ documento de su componente, enlazado en cada sección.
 
 ## Respaldos y recuperación (DRP)
 
-- El equipo de compilación (`respaldo-nucleo-remoto.timer`) respalda por SSH dos veces al día
-  (03:45 y 15:45, RPO de 12 h) las dos bases y la configuración del servidor: 7 días en ese equipo
-  y 30 en Google Drive, cifrados con un remoto `crypt` de
-  rclone (`gdrive-nucleo-cifrado:`).
+- El equipo de compilación (`respaldo-nucleo-remoto.timer`) respalda por SSH todos los días a las
+  23:30 (RPO de 24 h) las dos bases y la configuración del servidor, y los guarda 10 días.
+- Cada lunes a las 00:30 (`respaldo-nucleo-semanal.timer`) junta la semana en
+  `nucleo_semana_<lunes>_al_<domingo>.zip` (una carpeta por día), lo comprueba y lo sube a Google
+  Drive por el remoto `crypt` de rclone (`gdrive-nucleo-cifrado:semanal`: nombre y contenido cifrados),
+  verificado con `rclone cryptcheck`; se guardan unas 5 semanas. Fuera del equipo de compilación,
+  el atraso puede ser de hasta una semana (RPO de 8 días si se pierden los dos equipos).
 - `prueba-restauracion-nucleo-remoto.timer` (en el equipo de compilación, primer domingo de cada
   mes) restaura el último respaldo en
-  contenedores temporales, compara los conteos con producción, mide el tiempo (RTO) y manda el
-  resultado por correo.
+  contenedores temporales, compara los conteos con producción, mide el tiempo (RTO), revisa que el
+  último zip semanal pase la comprobación y esté en Drive, y manda el resultado por correo.
 - Si un servicio falla, `nucleo-aviso@.service` manda por correo las últimas líneas de su
   bitácora (como mucho una vez por hora por servicio). El vigía de GitHub Actions
   (`.github/workflows/vigia.yml`) revisa cada 15 minutos la web, la API, la app y el subdominio

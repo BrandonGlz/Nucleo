@@ -2,8 +2,10 @@
 # Respaldo de Núcleo hecho desde asus: saca de lenovo (por SSH) los pg_dump de nucleo_db y nucleo_iot,
 # la aplicación completa (código + .env + configuración), el broker y media; añade la llave de firma
 # de la app, que vive en asus (~/nucleo-app). Mismos nombres que deploy/respaldar.sh, para que
-# deploy/restaurar.sh y la prueba de restauración sigan sirviendo. Guarda 7 días en ~/respaldos/nucleo
-# y sube a gdrive-nucleo-cifrado (30 días). Lo corre respaldo-nucleo-remoto.timer (03:45 y 15:45).
+# deploy/restaurar.sh y la prueba de restauración sigan sirviendo. Guarda 10 días en ~/respaldos/nucleo
+# (lo justo para armar la semana); a Drive no sube nada: lo sube cifrado el zip semanal (respaldo-semanal,
+# lunes 00:30, a gdrive-nucleo-cifrado:semanal). Lo corre respaldo-nucleo-remoto.timer todos los días a
+# las 23:30 (respalda lo que se hizo en el día).
 set -euo pipefail
 umask 077
 source /usr/local/lib/respaldo-remoto/comun.sh
@@ -36,9 +38,6 @@ if [[ -d "$HOME/nucleo-app" ]]; then
   revisar_tar "$destino/nucleo_firma_app_$fecha.tar.gz"
 fi
 chmod 600 "$destino"/*"$fecha"*
-find "$destino" -type f -mtime +7 -delete
+find "$destino" -type f -mtime +9 -delete
 echo "Respaldo local: $destino ($fecha)"
 
-subir "$destino" "gdrive-nucleo-cifrado:"
-# Los respaldos en claro de antes del cifrado se van borrando solos al cumplir 30 días.
-rclone delete "gdrive-nucleo:servidor/nucleo" --min-age 30d 2>/dev/null || true

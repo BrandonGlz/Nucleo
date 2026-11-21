@@ -144,7 +144,8 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
   | --- | --- |
   | `desplegar-nucleo` | «Lanza el deploy»: compila la web y hace que el servidor instale |
   | `compilar-apk-nucleo` | «Lanza la build»: compila el APK y lo publica en el servidor |
-  | `respaldo-nucleo-remoto` (timer 03:45 y 15:45) | Respaldo de las bases y la aplicación a Drive |
+  | `respaldo-nucleo-remoto` (timer diario 23:30) | Respaldo diario de las bases y la aplicación (se queda en el equipo) |
+  | `respaldo-semanal` (`respaldo-nucleo-semanal.timer`, lunes 00:30) | Zip semanal de los respaldos diarios, cifrado a Drive |
   | `prueba-restauracion-nucleo` (timer, 1er domingo 04:30) | Prueba de restauración con contenedores temporales |
   | `respaldo-aviso` (`respaldo-aviso@.service`) | Correo si un respaldo o una prueba falla |
   | `vigia` (timer cada 60 s) | Vigilante externo del servidor (sitios, servicios, equipo, accesos) |
@@ -157,8 +158,8 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
 - Mismas medidas que el servidor: ufw solo Tailscale y apagado ordenado por batería, pero **nunca
   se suspende** (es el vigilante y el que despierta al servidor).
 - Sus actualizaciones son **a mano**: `sudo systemctl start --no-block mantenimiento-asus`
-  (más o menos una vez al mes, lejos de los respaldos de las 03:30, 03:45 y 15:45). Espera hasta
-  2 h a que terminen respaldos, pruebas de restauración, builds o deploys; actualiza; reinicia solo
+  (más o menos una vez al mes, lejos de los respaldos de las 23:00-00:45). Espera hasta
+  2 h a que terminen respaldos, zips semanales, pruebas de restauración, builds o deploys; actualiza; reinicia solo
   si instaló algo o el sistema lo pide; y manda a la cuenta de avisos un correo «listo», «sin
   cambios», «no se actualizó» o «revisar» (`mantenimiento-asus-arranque.service` lo manda tras el
   reinicio). Registro: `/var/log/mantenimiento-asus.log`. Entre tanto, `unattended-upgrades`
@@ -176,6 +177,8 @@ En el **equipo de compilación** (`ssh adminasus@100.65.53.53`), mejor dentro de
   ([App móvil](#app-móvil-apk)).
 - `sudo systemctl start respaldo-nucleo-remoto` — respaldo inmediato (o `respaldo-nucleo-remoto`
   directo); `journalctl -u respaldo-nucleo-remoto -n 50 --no-pager` para ver el último.
+- `respaldo-semanal nucleo gdrive-nucleo-cifrado: [fecha]` — arma y sube el zip de la semana que
+  contiene esa fecha (sin fecha, la que terminó el domingo pasado); bitácora en `~/respaldos/nucleo-semanal`.
 - `prueba-restauracion-nucleo` — prueba de restauración inmediata; el registro queda en
   `~/respaldos/nucleo-pruebas`.
 - `vigia --prueba` — corre todas las revisiones del vigilante e imprime el resultado sin mandar correos.
@@ -230,8 +233,9 @@ Las direcciones del servidor se cambian con la variable `NUCLEO_SERVIDOR` (por d
 `/etc/nucleo-respaldo-remoto` en el servidor (`sudo touch /etc/nucleo-respaldo-remoto`); sin ese archivo los enciende,
 para un servidor de un solo equipo.
 
-`respaldo-nucleo-remoto.timer` (03:45 y 15:45) corre en el equipo de compilación y saca los datos
-del servidor por SSH, sin compilar ni guardar nada allá:
+`respaldo-nucleo-remoto.timer` (todos los días a las 23:30, para guardar lo que se hizo en el día)
+corre en el equipo de compilación y saca los datos del servidor por SSH, sin compilar ni guardar
+nada allá:
 
 - `pg_dump -Fc` de `nucleo_db` y `nucleo_iot` (con `nice` del lado del servidor) y comprueba que
   `pg_restore` pueda leer cada volcado.
@@ -240,18 +244,30 @@ del servidor por SSH, sin compilar ni guardar nada allá:
   los archivos subidos (`nucleo_broker_media_*.tar.gz`).
 - La llave de firma de la app (`nucleo_firma_app_*.tar.gz`), que vive en el equipo de compilación.
 
-Usa los mismos nombres que `respaldar.sh`, así que `restaurar.sh` sirve igual. Guarda 7 días en
-`~/respaldos/nucleo` y sube a `gdrive-nucleo-cifrado:` (30 días). Cada descarga se reintenta
-5 veces y la subida hasta 10, con un tope de 40 min. La subida limita las peticiones a Google
-(`--tpslimit 4`: rclone usa por defecto un cliente compartido con un límite de peticiones por
-minuto) y corta a los 2 min una transferencia atorada (`--timeout 2m`), porque el equipo de
-compilación sale a internet por un Wi-Fi débil. Lo que no suba se sube en la siguiente corrida
-(`--max-age 2d`). Al terminar, en el servidor corre
+Usa los mismos nombres que `respaldar.sh`, así que `restaurar.sh` sirve igual. El respaldo diario
+se queda solo en el equipo de compilación (`~/respaldos/nucleo`, 10 días, lo justo para armar la
+semana); cada descarga se reintenta 5 veces. Al terminar, en el servidor corre
 `manage.py depurar_auditoria`.
 
+**Zip semanal a Drive.** `respaldo-nucleo-semanal.timer` (lunes 00:30, después del respaldo del
+domingo por la noche) corre `respaldo-semanal nucleo gdrive-nucleo-cifrado:`: junta los respaldos
+diarios de la semana que acaba de terminar en `nucleo_semana_<lunes>_al_<domingo>.zip`, con una
+carpeta por día (`lunes/`, `martes/`, …, `domingo/`) y un `CONTENIDO.txt`. Si falta algún día el
+zip se arma igual y la bitácora y el correo lo dicen. Antes de subirlo comprueba el zip (CRC de
+cada archivo); lo sube por el remoto cifrado (`gdrive-nucleo-cifrado:semanal`, nombre y contenido
+cifrados) y comprueba la copia con `rclone cryptcheck`. Guarda unas 5 semanas en Drive y en
+`~/respaldos/nucleo-semanal`. Los archivos sueltos que subían los respaldos diarios de antes se
+borran solos al cumplir 30 días. La subida limita las peticiones a Google (`--tpslimit 4`: rclone
+usa por defecto un cliente compartido con un límite de peticiones por minuto), corta a los 2 min una
+transferencia atorada (`--timeout 2m`) y se reintenta hasta 10 veces con un tope de 40 min, porque
+el equipo de compilación sale a internet por un Wi-Fi débil. Si el armado o la subida fallan,
+avisa por correo; se puede repetir a mano (ver [Operación](#operación)). Si hay un respaldo o una
+prueba de restauración en curso, espera a que termine (hasta 2 h).
+
 `prueba-restauracion-nucleo-remoto.timer` (primer domingo del mes, 04:30) restaura el último
-respaldo en dos contenedores temporales sin red, compara los conteos con producción (solo
-lectura, por SSH) y manda el resultado por correo. Si un respaldo o una prueba falla,
+respaldo diario (el del sábado por la noche) en dos contenedores temporales sin red, compara los
+conteos con producción (solo lectura, por SSH), revisa que el último zip semanal pase la comprobación
+y esté en Drive con el mismo tamaño, y manda el resultado por correo. Si un respaldo o una prueba falla,
 `respaldo-aviso@.service` manda las últimas líneas de su bitácora (como mucho uno por hora).
 El SMTP y los destinatarios están en `~/.config/respaldo-remoto/nucleo.env` (600, fuera del repo).
 
@@ -270,13 +286,14 @@ rclone config create gdrive-nucleo-cifrado crypt \
 Guarda las dos contraseñas fuera del servidor (gestor de contraseñas): sin ellas los respaldos
 no se pueden leer. Desde ese momento `respaldar.sh` usa el remoto cifrado y los respaldos en claro
 anteriores se borran solos a los 30 días. Para restaurar en otra máquina se crea el mismo remoto
-con las mismas contraseñas y `rclone copy gdrive-nucleo-cifrado: ~/traspaso --max-age 2d`.
+con las mismas contraseñas y `rclone copy gdrive-nucleo-cifrado:semanal ~/traspaso --max-age 8d`
+(el zip de la última semana; `unzip` y se usa la carpeta del día que se quiera).
 
 ### Objetivos de recuperación
 
 | Medida | Valor |
 | --- | --- |
-| RPO (datos que se pueden perder) | 12 h: respaldo a las 03:45 y 15:45 |
+| RPO (datos que se pueden perder) | 24 h con el equipo de compilación (respaldo diario a las 23:30); hasta 8 días si se pierden el servidor y el equipo de compilación a la vez (Drive recibe el zip semanal el lunes) |
 | RTO (tiempo para volver) | El que mide la prueba mensual (≈ 1 min para restaurar las bases; más la instalación si es otra máquina) |
 | Prueba | `prueba-restauracion-nucleo-remoto.timer` (equipo de compilación) restaura, compara conteos y avisa por correo |
 
@@ -618,7 +635,7 @@ los dos, luego el servidor y al final el equipo de compilación.
 
    ```bash
    cd deploy/dos-equipos
-   sudo install -m 755 desplegar-nucleo compilar-apk-nucleo respaldo-nucleo-remoto \
+   sudo install -m 755 desplegar-nucleo compilar-apk-nucleo respaldo-nucleo-remoto respaldo-semanal \
      prueba-restauracion-nucleo respaldo-aviso despertar-lenovo mantenimiento-asus-correo /usr/local/bin/
    sudo install -m 755 mantenimiento-asus /usr/local/sbin/
    sudo install -D -m 644 respaldo-comun.sh /usr/local/lib/respaldo-remoto/comun.sh
@@ -632,7 +649,8 @@ los dos, luego el servidor y al final el equipo de compilación.
    `~/.config/respaldo-remoto/nucleo.env` (600) con `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`,
    `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` y `AVISOS_A`.
 4. `sudo systemctl daemon-reload && sudo systemctl enable --now respaldo-nucleo-remoto.timer
-   prueba-restauracion-nucleo-remoto.timer`. Prueba con `respaldo-nucleo-remoto` y
+   respaldo-nucleo-semanal.timer prueba-restauracion-nucleo-remoto.timer`. Prueba con
+   `respaldo-nucleo-remoto`, `respaldo-semanal nucleo gdrive-nucleo-cifrado: $(date +%F)` y
    `prueba-restauracion-nucleo`.
 5. Vigilante (`vigia`): se instala desde la copia del equipo de administración en
    `/usr/local/bin/vigia` con `vigia.service`/`vigia.timer`, su `~/.config/vigia.conf` y la copia del

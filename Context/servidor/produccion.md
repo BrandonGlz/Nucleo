@@ -97,10 +97,12 @@ flowchart LR
   (proyecto `nucleo-firebase`) a los teléfonos registrados al iniciar sesión en la app.
 - **App:** el equipo de compilación compila el APK (`deploy/compilar_apk.sh`) y lo copia al
   servidor, que lo publica en `https://app.bynucleo.com`.
-- **Respaldos:** el equipo de compilación saca por SSH, a las 03:45 y 15:45 (RPO de 12 h), las
-  dos bases y la configuración del servidor: 7 días en ese equipo y 30 en Google Drive, cifrados
-  con rclone `crypt`. Cada mes restaura el último respaldo en contenedores temporales, compara con
-  producción y mide el RTO.
+- **Respaldos:** el equipo de compilación saca por SSH, todos los días a las 23:30 (RPO de 24 h),
+  las dos bases y la configuración del servidor y los guarda 10 días. Cada lunes a las 00:30 arma
+  un zip de la semana con una carpeta por día (`lunes/` … `domingo/`) y lo sube a Google Drive
+  cifrado con rclone `crypt` (unas 5 semanas); lo que aún no está en Drive puede ser hasta una
+  semana. Cada mes restaura el último respaldo en contenedores temporales, compara con
+  producción, mide el RTO y revisa que el último zip esté en Drive.
 - **Seguridad:** firewall ufw que solo deja entrar por Tailscale, reglas WAF y límite de acceso
   en Cloudflare, avisos por correo cuando falla un servicio, un vigilante externo en el equipo de
   compilación y el vigía de GitHub Actions ([seguridad](../seguridad/seguridad.md)).

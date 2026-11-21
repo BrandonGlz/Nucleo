@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Prueba de restauración de Núcleo en asus: restaura el respaldo más reciente de ~/respaldos/nucleo en
 # dos contenedores temporales (sin red ni puertos, sin tocar nada de lenovo), comprueba que los datos
-# estén, compara con producción (lenovo, por SSH, solo lectura) y mide cuánto tarda (RTO de las bases).
+# estén, compara con producción (lenovo, por SSH, solo lectura), mide cuánto tarda (RTO de las bases) y
+# revisa el zip semanal más reciente (que pase la comprobación y que esté en Drive).
 # Al terminar borra los contenedores y manda el resultado por correo (NUCLEO_CORREOS_AVISOS). Si falla,
 # el correo lo manda respaldo-aviso@ (OnFailure= de la unidad).
 # La corre prueba-restauracion-nucleo-remoto.timer el primer domingo de cada mes a las 04:30; a mano:
@@ -100,6 +101,21 @@ for f in "$(reciente 'nucleo_aplicacion*.tar.gz')" "$(reciente 'nucleo_broker_me
 done
 f="$(reciente 'nucleo_aplicacion*.tar.gz')"
 [[ -z "$f" ]] || tar_trae "$f" './.env' || { echo "FALLA: el tar de la aplicación no trae .env"; fallos=$((fallos + 1)); }
+
+# Zip semanal (lo que hay en Drive): el más reciente de ~/respaldos/nucleo-semanal debe tener menos de 8 días, pasar
+# la comprobación del zip y estar en Drive con el mismo tamaño (gdrive-nucleo-cifrado:semanal).
+semanal="$(ls -t "$HOME/respaldos/nucleo-semanal"/nucleo_semana_*.zip 2>/dev/null | head -1 || true)"
+if [[ -z $semanal ]]; then
+  echo "FALLA: no hay zip semanal en ~/respaldos/nucleo-semanal"; fallos=$((fallos + 1))
+else
+  s_dias=$(( ( $(date +%s) - $(stat -c %Y "$semanal") ) / 86400 ))
+  echo "Zip semanal: $(basename "$semanal") ($(du -h "$semanal" | cut -f1), hace $s_dias días)"
+  (( s_dias < 8 )) || { echo "FALLA: el zip semanal tiene $s_dias días (respaldo-nucleo-semanal no está corriendo)"; fallos=$((fallos + 1)); }
+  python3 -I -m zipfile -t "$semanal" >/dev/null || { echo "FALLA: el zip semanal está dañado"; fallos=$((fallos + 1)); }
+  s_drive="$(rclone lsf "gdrive-nucleo-cifrado:semanal" --files-only --format s --include "/$(basename "$semanal")" "${RCLONE_RED[@]}" 2>/dev/null || true)"
+  if [[ $s_drive == "$(stat -c %s "$semanal")" ]]; then echo "En Drive (gdrive-nucleo-cifrado:semanal): mismo tamaño"
+  else echo "FALLA: el zip semanal no está en Drive o no coincide (${s_drive:-no está})"; fallos=$((fallos + 1)); fi
+fi
 
 fin="$(date +%s)"
 minutos=$(( (restaurado_en - inicio + 59) / 60 ))

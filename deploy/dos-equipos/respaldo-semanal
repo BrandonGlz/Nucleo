@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Zip semanal de los respaldos diarios de asus, para Google Drive.
+#   respaldo-semanal <proyecto> <remoto:carpeta> [fecha]
+# Junta los respaldos diarios de ~/respaldos/<proyecto> de una semana (lunes a domingo) en un solo zip con una
+# carpeta por día (lunes/, martes/, …, domingo/), lo comprueba, lo deja en ~/respaldos/<proyecto>-semanal
+# (5 semanas) y lo sube a <remoto:carpeta>/semanal, donde se guardan unas 5 semanas. El destino lleva las reglas
+# de cada plataforma: si el remoto es cifrado (rclone crypt), el zip viaja y queda cifrado.
+# Los archivos sueltos de antes (cuando cada respaldo diario subía a Drive) se borran solos al cumplir 30 días.
+# [fecha]: cualquier día de la semana que se quiere armar; sin ella, la semana que terminó el domingo pasado
+# (el timer corre el lunes poco después de medianoche, tras el respaldo del domingo por la noche).
+# Si falta algún día, el zip se arma igual y la bitácora y el correo lo dicen. Lo corre respaldo-<proyecto>-semanal.timer.
+set -euo pipefail
+umask 077
+source /usr/local/lib/respaldo-remoto/comun.sh
+
+proy="${1:?uso: respaldo-semanal <proyecto> <remoto:carpeta> [fecha]}"
+remoto="${2:?uso: respaldo-semanal <proyecto> <remoto:carpeta> [fecha]}"
+[[ $remoto == *: ]] && destino="${remoto}semanal" || destino="${remoto%/}/semanal"
+origen="$HOME/respaldos/$proy"
+salida_dir="$HOME/respaldos/$proy-semanal"
+mkdir -p "$salida_dir"
+bitacora="$salida_dir/registro_$(date +%F_%H%M).log"
+exec > >(tee "$bitacora") 2>&1
+
+# Semana: lunes..domingo. Sin fecha, la que terminó el domingo más reciente antes de hoy.
+if [[ -n ${3:-} ]]; then
+  ref="$(date -d "$3" +%F)"; u="$(date -d "$ref" +%u)"
+  domingo="$(date -d "$ref +$(( 7 - u )) days" +%F)"
+else
+  domingo="$(date -d "-$(date +%u) days" +%F)"
+fi
+lunes="$(date -d "$domingo -6 days" +%F)"
+zip="$salida_dir/${proy}_semana_${lunes}_al_${domingo}.zip"
+echo "Respaldo semanal de $proy: semana del $lunes al $domingo"
+
+# No arma mientras corre un respaldo diario o una prueba de restauración (espera hasta 2 h).
+for i in $(seq 120); do
+  ocupado="$(systemctl list-units --state=activating,active --no-legend --plain \
+    'respaldo-*-remoto.service' 'prueba-restauracion-*.service' 2>/dev/null | awk '{print $1}' | paste -sd' ')"
+  [[ -z $ocupado ]] && break
+  (( i == 1 )) && echo "Esperando a que termine: $ocupado"
+  (( i == 120 )) && { echo "Sigue ocupado tras 2 h ($ocupado); se arma de todos modos"; break; }
+  sleep 60
+done
+
+# Arma el zip con Python (asus no tiene «zip»). Sin compresión: los .dump y .tar.gz ya vienen comprimidos.
+estado=0
+python3 -I - "$origen" "$proy" "$lunes" "$zip.parcial" > "$salida_dir/.resumen" <<'PY' || estado=$?
+import datetime, os, re, sys, zipfile
+origen, proy, lunes, destino = sys.argv[1:]
+dias = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+inicio = datetime.date.fromisoformat(lunes)
+fechas = {(inicio + datetime.timedelta(i)).isoformat(): d for i, d in enumerate(dias)}
+patron = re.compile(re.escape(proy) + r'_(?:.*_)?(\d{4}-\d{2}-\d{2})_\d{4}\.(dump|tar\.gz)$')
+por_dia = {d: [] for d in dias}
+for n in sorted(os.listdir(origen)):
+    m = patron.match(n)
+    if m and m.group(1) in fechas and os.path.isfile(os.path.join(origen, n)):
+        por_dia[fechas[m.group(1)]].append(n)
+lineas = []
+with zipfile.ZipFile(destino, 'w', zipfile.ZIP_STORED, allowZip64=True) as z:
+    for i, d in enumerate(dias):
+        fecha = (inicio + datetime.timedelta(i)).isoformat()
+        if not por_dia[d]:
+            lineas.append(f'{d} ({fecha}): FALTA, no hay respaldo de ese día')
+            continue
+        for n in por_dia[d]:
+            z.write(os.path.join(origen, n), f'{d}/{n}')
+        lineas.append(f'{d} ({fecha}): {len(por_dia[d])} archivos')
+    z.writestr('CONTENIDO.txt', f'Respaldos de {proy}, semana del {lunes} al {(inicio + datetime.timedelta(6)).isoformat()}\n'
+               + '\n'.join(lineas) + '\n')
+print('\n'.join(lineas))
+faltan = [d for d in dias if not por_dia[d]]
+print(f'FALTAN:{",".join(faltan)}')
+if len(faltan) == 7:
+    sys.exit(3)
+PY
+grep -v '^FALTAN:' "$salida_dir/.resumen"
+faltan="$(sed -n 's/^FALTAN://p' "$salida_dir/.resumen")"
+rm -f "$salida_dir/.resumen"
+if (( estado == 3 )); then rm -f "$zip.parcial"; echo "FALLA: no hay ningún respaldo de esa semana en $origen"; exit 1; fi
+
+# Comprueba el zip (CRC de cada archivo) antes de subirlo.
+python3 -I -m zipfile -t "$zip.parcial" >/dev/null || { echo "FALLA: el zip no pasó la comprobación"; exit 1; }
+mv -f "$zip.parcial" "$zip"
+echo "Zip comprobado: $(basename "$zip") ($(du -h "$zip" | cut -f1), $(python3 -I -m zipfile -l "$zip" | tail -n +2 | wc -l) entradas)"
+[[ -n $faltan ]] && echo "Aviso: faltan días en el zip: ${faltan//,/, }"
+find "$salida_dir" -maxdepth 1 \( -name '*.zip' -o -name 'registro_*.log' \) -mtime +34 -delete
+
+subir "$zip" "$destino"
+# Drive: zips de unas 5 semanas; lo suelto de antes (respaldos diarios que subían) a los 30 días, sin entrar a semanal/.
+limpiar_drive "$destino" 33d --include '*.zip'
+limpiar_drive "$remoto" 30d --max-depth 1
+# Marca para el vigilante y el panel: «zip destino» (su fecha de modificación es la de la subida).
+echo "$(basename "$zip") $destino" > "$salida_dir/ultimo-subido"
+
+asunto="Respaldo semanal de $proy en Drive ($lunes al $domingo)"
+[[ -n $faltan ]] && asunto+=" - faltan: ${faltan//,/, }"
+echo "Bitácora: $bitacora"
+filtrar_rclone "$bitacora" | grep -v 'INFO  :' | respaldo-aviso "$proy" "$asunto" || true
