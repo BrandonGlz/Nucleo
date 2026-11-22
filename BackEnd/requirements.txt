@@ -9,6 +9,8 @@ redis==8.1.0
 daphne==4.2.3
 paho-mqtt==2.2.0
 reportlab==5.1.0
+# Fotos de perfil (validar, recortar y pasar a WebP)
+Pillow==13.0.0
 drf-spectacular==0.30.0
 drf-spectacular-sidecar==2026.10.1
 # Codificación MP3 de la voz de Nico

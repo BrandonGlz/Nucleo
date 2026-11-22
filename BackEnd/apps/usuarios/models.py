@@ -84,6 +84,9 @@ class Usuario(AbstractBaseUser):
     acceso_agente = models.BooleanField(db_default=False, default=False)
     # Cuenta creada con contraseña temporal: la web pide cambiarla al entrar.
     debe_cambiar_password = models.BooleanField(db_default=False, default=False)
+    # Foto de perfil: ruta relativa a MEDIA_ROOT («fotos/<aleatorio>.webp», 256×256). La sube y la
+    # quita solo la propia persona (apps/usuarios/fotos.py).
+    foto = models.CharField(max_length=100, null=True, blank=True)
     last_login = models.DateTimeField(db_column="ultimo_acceso", null=True, blank=True)
     fecha_registro = models.DateTimeField(db_default=Now(), editable=False)
 

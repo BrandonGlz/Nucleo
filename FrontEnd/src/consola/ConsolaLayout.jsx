@@ -5,6 +5,7 @@ import { useSesion } from '../context/SesionContext'
 import { nombreCompleto, ROL } from '../utils/convertir'
 import { AvisosNicoProvider } from './AvisosNico'
 import { GRUPOS, SECCIONES } from './secciones'
+import { fotoDe } from '../utils/foto'
 
 // Mismo marco que la web (menú lateral oscuro contraíble con el logo) con las secciones de la consola.
 const CLAVE_COMPACTO = 'nucleo.consola.menu-compacto'
@@ -63,7 +64,7 @@ function MenuConsola() {
       ))}
       <div className="nc-sidebar__foot">
         <div className="nc-sidebar__user" title={compacto ? nombreCompleto(usuario) : undefined}>
-          <Avatar name={nombreCompleto(usuario)} size={36} />
+          <Avatar name={nombreCompleto(usuario)} src={fotoDe(usuario)} size={36} />
           <div>
             <strong>{nombreCompleto(usuario)}</strong>
             <span>{ROL[rol]}</span>

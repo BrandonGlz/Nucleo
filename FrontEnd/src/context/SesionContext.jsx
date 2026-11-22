@@ -124,9 +124,17 @@ export function SesionProvider({ children }) {
       .catch(() => {}) // un 401 ya lanza EVENTO_SESION_CADUCADA
   }, [])
 
+  // Datos nuevos del propio usuario (p. ej. tras cambiar la foto de perfil): se ven al instante.
+  const actualizarUsuario = useCallback((u) => {
+    if (!u) return
+    escribir(CLAVE_USUARIO, u)
+    setUsuario(u)
+  }, [])
+
   const valor = useMemo(
     () => ({
       usuario,
+      actualizarUsuario,
       rol: usuario?.rol,
       organizacion,
       login,
@@ -137,7 +145,7 @@ export function SesionProvider({ children }) {
       segundoFactorPendiente,
       marcarSegundoFactor,
     }),
-    [usuario, organizacion, login, logout, tema, temaAplicado, setTema, segundoFactorPendiente, marcarSegundoFactor],
+    [usuario, actualizarUsuario, organizacion, login, logout, tema, temaAplicado, setTema, segundoFactorPendiente, marcarSegundoFactor],
   )
   return <SesionContext.Provider value={valor}>{children}</SesionContext.Provider>
 }

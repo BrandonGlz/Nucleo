@@ -19,6 +19,7 @@ import {
   enLinea, nivelLectura, statusDispositivo, nombreCompleto, pagina, puedeEditar, rangoUmbral, UNIDAD, VARIABLE,
 } from '../../utils/convertir'
 import { avisoUltima, fechaLarga, haceCuanto, num, puntoSerie } from '../../utils/formato'
+import { fotoDe } from '../../utils/foto'
 
 // Estado de cada sensor: primero lo que se registró de él (falla o calibración pendiente) y luego si
 // está respondiendo, según su última lectura. Sin conexión no hay forma de saberlo: «Sin datos recientes».
@@ -310,7 +311,7 @@ export function DetalleDispositivo() {
               <span className="ui-eyebrow">Asignado a</span>
               {operador ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Avatar name={nombreCompleto(operador)} size={24} />
+                  <Avatar name={nombreCompleto(operador)} src={fotoDe(operador)} size={24} />
                   <strong style={{ fontSize: 14 }}>{nombreCompleto(operador)}</strong>
                   <span className="ui-muted" style={{ fontSize: 13 }}>
                     · Operador

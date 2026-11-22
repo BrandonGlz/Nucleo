@@ -58,6 +58,55 @@ export async function logout() {
   await esperar()
   return null
 }
+// Foto de perfil: valida tipo y tamaño como la API, recorta al centro a 256×256 en WebP (data URL)
+// y la guarda en la cuenta de la sesión (la que SesionContext tiene en localStorage).
+const FOTO_TIPOS = ['image/jpeg', 'image/png', 'image/webp']
+const FOTO_MAXIMO = 5 * 1024 * 1024
+function cuentaDeSesion() {
+  let num = null
+  try {
+    num = JSON.parse(localStorage.getItem('nucleo.usuario'))?.num ?? null
+  } catch {
+    // Sin almacenamiento: la cuenta del rol de VITE_MOCK_ROL.
+  }
+  num ??= USUARIO_POR_ROL[rolMock()] ?? 2
+  if (num === PLATAFORMA.num) return PLATAFORMA
+  return db.usuarios.find((u) => u.num === num) ?? noEncontrado()
+}
+const errorFoto = (mensaje) => {
+  throw new ApiError('La API respondió con el estado 400.', 400, { foto: [mensaje] })
+}
+async function recortarFoto(archivo) {
+  let imagen
+  try {
+    imagen = await createImageBitmap(archivo)
+  } catch {
+    errorFoto('El archivo no es una imagen válida (JPEG, PNG o WebP).')
+  }
+  const lado = Math.min(imagen.width, imagen.height)
+  const lienzo = document.createElement('canvas')
+  lienzo.width = lienzo.height = 256
+  lienzo
+    .getContext('2d')
+    .drawImage(imagen, (imagen.width - lado) / 2, (imagen.height - lado) / 2, lado, lado, 0, 0, 256, 256)
+  imagen.close?.()
+  return lienzo.toDataURL('image/webp', 0.85)
+}
+export async function subirFoto(archivo) {
+  await esperar()
+  if (!archivo) errorFoto('Adjunta la foto en el campo «foto».')
+  if (archivo.size > FOTO_MAXIMO) errorFoto('La foto no puede pasar de 5 MB.')
+  if (!FOTO_TIPOS.includes(archivo.type)) errorFoto('Sube una imagen JPEG, PNG o WebP.')
+  const cuenta = cuentaDeSesion()
+  cuenta.foto_url = await recortarFoto(archivo)
+  return copia(cuenta)
+}
+export async function quitarFoto() {
+  await esperar()
+  const cuenta = cuentaDeSesion()
+  cuenta.foto_url = null
+  return copia(cuenta)
+}
 export async function cambiarPassword({ password_actual, password_nueva }) {
   await esperar()
   if (!password_actual) throw new ApiError('La API respondió con el estado 400.', 400)

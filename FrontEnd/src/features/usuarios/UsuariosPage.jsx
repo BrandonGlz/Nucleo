@@ -15,6 +15,7 @@ import * as organizacionesApi from '../../services/organizaciones'
 import * as usuariosApi from '../../services/usuarios'
 import { nombreCompleto, pagina, ROL, ROL_TONO } from '../../utils/convertir'
 import { haceCuanto } from '../../utils/formato'
+import { fotoDe } from '../../utils/foto'
 
 const FILTROS = [
   ['todos', 'Todos'],
@@ -239,7 +240,7 @@ export function UsuariosPage() {
                     <tr key={u.num}>
                       <td style={{ paddingTop: 12, paddingBottom: 12 }}>
                         <div className="nc-table__device">
-                          <Avatar name={nombreCompleto(u)} size={36} />
+                          <Avatar name={nombreCompleto(u)} src={fotoDe(u)} size={36} />
                           <div>
                             <strong>{nombreCompleto(u)}</strong>
                             <span>{u.correo}</span>

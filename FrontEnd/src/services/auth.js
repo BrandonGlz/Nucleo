@@ -5,12 +5,14 @@ import {
   AUTH_2FA_CONFIGURAR,
   AUTH_2FA_DESACTIVAR,
   AUTH_CAMBIAR_PASSWORD,
+  AUTH_FOTO,
   AUTH_LOGIN,
   AUTH_LOGOUT,
   AUTH_RECUPERAR,
   AUTH_RESTABLECER,
   AUTH_YO,
 } from '../api'
+import { apiRequest } from './api/client'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
 
@@ -26,6 +28,18 @@ export async function logout() {
 export async function yo() {
   if (USAR_MOCKS) return (await mock.login({ correo: '' })).usuario
   return pedir(AUTH_YO)
+}
+// Foto de perfil propia; ambas devuelven el usuario actualizado (con `foto_url`).
+export async function subirFoto(archivo) {
+  if (USAR_MOCKS) return mock.subirFoto(archivo)
+  const cuerpo = new FormData()
+  cuerpo.append('foto', archivo)
+  // Sin Content-Type: el navegador pone multipart con su boundary.
+  return apiRequest(AUTH_FOTO, { method: 'POST', body: cuerpo })
+}
+export async function quitarFoto() {
+  if (USAR_MOCKS) return mock.quitarFoto()
+  return pedir(AUTH_FOTO, { metodo: 'DELETE' })
 }
 export async function cambiarPassword(password_actual, password_nueva) {
   if (USAR_MOCKS) return mock.cambiarPassword({ password_actual, password_nueva })

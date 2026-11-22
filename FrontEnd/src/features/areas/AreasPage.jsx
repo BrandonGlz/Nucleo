@@ -13,6 +13,7 @@ import * as dispositivosApi from '../../services/dispositivos'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as usuariosApi from '../../services/usuarios'
 import { ESTADO_DISPOSITIVO, nombreCompleto, nombreCorto, pagina } from '../../utils/convertir'
+import { fotoDe } from '../../utils/foto'
 
 async function cargar() {
   const [o, a, d, u] = await Promise.all([
@@ -179,7 +180,7 @@ function TablaAreas({ datos, editar, eliminar, editable }) {
                 <td>
                   {sup ? (
                     <div className="nc-table__device">
-                      <Avatar name={nombreCompleto(sup)} size={28} />
+                      <Avatar name={nombreCompleto(sup)} src={fotoDe(sup)} size={28} />
                       <span>{nombreCompleto(sup)}</span>
                     </div>
                   ) : (

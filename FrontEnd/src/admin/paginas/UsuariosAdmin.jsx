@@ -14,6 +14,7 @@ import { useAviso } from '../../consola/utilidades'
 import { ESTADO_USUARIO, opcionesRol, ROLES } from '../catalogos'
 import { Confirmar, ErrorCarga, FiltroOrganizacion, Recorte } from '../comunes'
 import { erroresDeCampo, mensajeError, useDiferido, useOrganizaciones } from '../utilidades'
+import { fotoDe } from '../../utils/foto'
 
 const ESTADOS = [
   { value: '', label: 'Todos los estados' },
@@ -411,7 +412,7 @@ export default function UsuariosAdmin() {
                     <tr key={u.num}>
                       <td style={{ paddingTop: 12, paddingBottom: 12 }}>
                         <div className="nc-table__device">
-                          <Avatar name={u.nombre_completo} size={36} />
+                          <Avatar name={u.nombre_completo} src={fotoDe(u)} size={36} />
                           <div>
                             <strong>
                               {u.nombre_completo}

@@ -7,6 +7,7 @@ import { useSesion } from '../context/SesionContext'
 import { useMenuMovil } from '../hooks/useMenuMovil'
 import { esHoy, hora } from '../utils/formato'
 import { nombreCompleto } from '../utils/convertir'
+import { fotoDe } from '../utils/foto'
 
 const TEMAS = [
   { id: 'light', label: 'Claro' },
@@ -91,7 +92,7 @@ export function Encabezado({ eyebrow, titulo, acciones, volver }) {
             aria-expanded={menu === 'usuario'}
             onClick={() => setMenu(menu === 'usuario' ? null : 'usuario')}
           >
-            <Avatar name={nombre} size={44} />
+            <Avatar name={nombre} src={fotoDe(usuario)} size={44} />
           </button>
         </div>
       </header>
@@ -151,7 +152,7 @@ export function Encabezado({ eyebrow, titulo, acciones, volver }) {
       {cuenta.montado && (
         <div className={`ui-popover ui-popover--usuario${cuenta.saliendo ? ' is-saliendo' : ''}`} role="menu" aria-label="Tu cuenta">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 12px 14px' }}>
-            <Avatar name={nombre} size={44} />
+            <Avatar name={nombre} src={fotoDe(usuario)} size={44} />
             <div className="ui-titulo-fila">
               <strong>{nombre}</strong>
               <span className="ui-popover__correo">{usuario?.correo}</span>

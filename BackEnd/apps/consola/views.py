@@ -23,6 +23,7 @@ from apps.auditoria.servicios import registrar
 from apps.dispositivos import firmware
 from apps.dispositivos.models import Dispositivo
 from apps.organizaciones.models import Area, Organizacion
+from apps.usuarios.fotos import url_foto
 from apps.usuarios.models import SegundoFactor, Sesion, Usuario
 from apps.usuarios.seguridad import enlace_recuperacion
 from common import correo, roles
@@ -180,6 +181,7 @@ class UsuarioConsolaSerializer(serializers.ModelSerializer):
     estado_usuario = serializers.CharField(source="estado_usuario_id", required=False)
     password = serializers.CharField(write_only=True, required=False)
     nombre_completo = serializers.SerializerMethodField()
+    foto_url = serializers.SerializerMethodField()
     segundo_factor = serializers.SerializerMethodField()
     sesiones = serializers.SerializerMethodField()
     ultimo_acceso = serializers.DateTimeField(source="last_login", read_only=True)
@@ -192,6 +194,7 @@ class UsuarioConsolaSerializer(serializers.ModelSerializer):
             "primer_apellido",
             "segundo_apellido",
             "nombre_completo",
+            "foto_url",
             "correo",
             "organizacion",
             "area",
@@ -207,6 +210,9 @@ class UsuarioConsolaSerializer(serializers.ModelSerializer):
 
     def get_nombre_completo(self, u):
         return u.get_full_name()
+
+    def get_foto_url(self, u):
+        return url_foto(u)
 
     def get_segundo_factor(self, u):
         return bool(getattr(u, "factor_activo", None))
@@ -391,6 +397,7 @@ class SesionSerializer(serializers.ModelSerializer):
         return {
             "num": u.num,
             "nombre_completo": u.get_full_name(),
+            "foto_url": url_foto(u),
             "correo": u.correo,
             "rol": u.rol_id,
             "organizacion": _org(u.organizacion),

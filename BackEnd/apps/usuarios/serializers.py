@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.organizaciones.models import Area
+from apps.usuarios.fotos import url_foto
 from apps.usuarios.models import TelefonoPush, Usuario
 from common import roles
 from common.validadores import validar_password
@@ -11,6 +12,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
         write_only=True, required=False, style={"input_type": "password"}
     )
     ultimo_acceso = serializers.DateTimeField(source="last_login", read_only=True)
+    # Ruta de la foto de perfil (``/api/v1/fotos/…``) o null; se cambia en /auth/foto/.
+    foto_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
@@ -30,12 +33,16 @@ class UsuarioSerializer(serializers.ModelSerializer):
             "password",
             "ultimo_acceso",
             "fecha_registro",
+            "foto_url",
         ]
         read_only_fields = ["num", "organizacion", "debe_cambiar_password", "fecha_registro"]
         extra_kwargs = {
             "acceso_agente": {"required": False},
             "telefono": {"max_length": 15, "allow_null": True, "required": False},
         }
+
+    def get_foto_url(self, u):
+        return url_foto(u)
 
     def validate_password(self, valor):
         validar_password(valor)

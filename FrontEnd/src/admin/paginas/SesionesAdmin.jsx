@@ -11,6 +11,7 @@ import { fecha, useAviso } from '../../consola/utilidades'
 import { CLIENTE } from '../catalogos'
 import { Confirmar, ErrorCarga, FiltroOrganizacion, Recorte } from '../comunes'
 import { useDiferido, useOrganizaciones } from '../utilidades'
+import { fotoDe } from '../../utils/foto'
 
 const CLIENTES = [
   { value: '', label: 'Web y app' },
@@ -89,7 +90,7 @@ export default function SesionesAdmin() {
                   <tr key={s.id} className={s.actual ? 'ui-admin-actual' : undefined}>
                     <td style={{ paddingTop: 12, paddingBottom: 12 }}>
                       <div className="nc-table__device">
-                        <Avatar name={s.usuario.nombre_completo} size={36} />
+                        <Avatar name={s.usuario.nombre_completo} src={fotoDe(s.usuario)} size={36} />
                         <div>
                           <strong>{s.usuario.nombre_completo}</strong>
                           <span>{s.usuario.correo}</span>

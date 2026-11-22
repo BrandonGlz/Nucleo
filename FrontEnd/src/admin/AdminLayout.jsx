@@ -8,6 +8,7 @@ import { nombreCompleto, ROL } from '../utils/convertir'
 import { etiquetarTablas } from '../utils/tablasMovil'
 import { AvisosSeguridadProvider } from './AvisosSeguridad'
 import { GRUPOS, SECCIONES } from './secciones'
+import { fotoDe } from '../utils/foto'
 
 // Mismo marco que la web (menú lateral oscuro contraíble con el logo) con las secciones de la
 // consola. En pantallas chicas el menú es un cajón que se abre con ☰ (del encabezado).
@@ -85,7 +86,7 @@ function MenuAdmin() {
       ))}
       <div className="nc-sidebar__foot">
         <div className="nc-sidebar__user" title={compacto ? nombreCompleto(usuario) : undefined}>
-          <Avatar name={nombreCompleto(usuario)} size={36} />
+          <Avatar name={nombreCompleto(usuario)} src={fotoDe(usuario)} size={36} />
           <div>
             <strong>{nombreCompleto(usuario)}</strong>
             <span>{ROL[rol]}</span>

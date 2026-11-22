@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .fotos import FotoView, MiFotoView
 from .seguridad import (
     ActivarSegundoFactorView,
     CodigosRecuperacionView,
@@ -34,6 +35,8 @@ urlpatterns = [
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("auth/yo/", MeView.as_view(), name="auth-yo"),
     path("auth/telefono/", TelefonoView.as_view(), name="auth-telefono"),
+    path("auth/foto/", MiFotoView.as_view(), name="auth-foto"),
+    path("fotos/<str:nombre>", FotoView.as_view(), name="foto-perfil"),
     path("auth/sesiones/", MisSesionesView.as_view(), name="auth-sesiones"),
     path("auth/sesiones/<int:num>/", MiSesionView.as_view(), name="auth-sesion"),
     path("auth/cambiar-password/", CambiarPasswordView.as_view(), name="auth-cambiar-password"),

@@ -10,6 +10,7 @@ import { modulos, puedeVer } from '../features'
 import { limiteAlerta, nombreCompleto, ROL, tituloAlerta, valorAlerta } from '../utils/convertir'
 import { haceCuanto, hora } from '../utils/formato'
 import { etiquetarTablas } from '../utils/tablasMovil'
+import { fotoDe } from '../utils/foto'
 
 const SECCIONES = ['Plataforma', 'Monitoreo', 'Análisis', 'Áreas', 'Configuración']
 
@@ -134,7 +135,7 @@ function MenuLateral() {
       <div className="nc-sidebar__foot">
         <AlertaCritica compacto={compacto} />
         <div className="nc-sidebar__user" title={compacto ? `${nombreCompleto(usuario)} · ${ROL[rol]}` : undefined}>
-          <Avatar name={nombreCompleto(usuario)} size={36} />
+          <Avatar name={nombreCompleto(usuario)} src={fotoDe(usuario)} size={36} />
           <div>
             <strong>{nombreCompleto(usuario)}</strong>
             <span>{ROL[rol]}</span>
