@@ -2670,10 +2670,16 @@ article.ui-hoja,
   font-weight: 600;
   color: var(--text-secondary);
 }
+/* Gris (sin conexión) por defecto; verde solo cuando el agente está activo */
 .ui-ia-estado__punto {
+  flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  background: var(--offline);
+  box-shadow: 0 0 0 3px var(--offline-soft);
+}
+.ui-ia-estado__punto.is-activo {
   background: var(--accent-secondary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-secondary) 25%, transparent);
 }

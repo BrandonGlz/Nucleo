@@ -791,7 +791,12 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
             <span className="ui-ia-barra__titulo">{conv?.titulo ?? 'Nueva conversación'}</span>
             <Archivos reportes={reportes} visualizar={setVisor} descargar={descargarReporte} />
             <div className="ui-ia-agente">
-              <span className="ui-ia-estado__punto" aria-hidden />
+              <span
+                className={`ui-ia-estado__punto${ag.agenteActivo ? ' is-activo' : ''}`}
+                role="img"
+                aria-label={ag.agenteActivo ? 'Nico AI en línea' : 'Nico AI sin conexión'}
+                title={ag.agenteActivo ? 'Nico AI en línea' : 'Nico AI sin conexión'}
+              />
               <Desplegable
                 icon="cpu"
                 value={ag.agente ?? ''}
