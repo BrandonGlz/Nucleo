@@ -206,64 +206,6 @@
   background: var(--danger);
 }
 
-.ui-admin-alertas {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 360px;
-  overflow: auto;
-}
-.ui-admin-alerta {
-  --nivel: var(--warning);
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--nivel);
-  border-radius: var(--radius-md);
-}
-.ui-admin-alerta.is-critico {
-  --nivel: var(--danger);
-}
-.ui-admin-alerta__icono {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  color: var(--nivel);
-  background: color-mix(in srgb, var(--nivel) 14%, transparent);
-}
-.ui-admin-alerta__cuerpo {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.ui-admin-alerta__cabeza {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  align-items: center;
-  justify-content: space-between;
-}
-.ui-admin-alerta__cabeza strong {
-  font-size: 14px;
-  line-height: 20px;
-}
-.ui-admin-alerta p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 19px;
-  color: var(--text-secondary);
-}
-
 /* Panel: barras de intentos fallidos en rojo */
 .ui-admin-barras-fallidos .nc-bars__bar {
   fill: color-mix(in srgb, var(--danger) 55%, transparent);
@@ -272,34 +214,30 @@
   fill: var(--danger);
 }
 
-/* Alertas */
-.ui-admin-alertas--pagina {
-  max-height: none;
-  flex: 1;
-  min-height: 0;
+/* Alertas: mismo diseño que la página Alertas de la web (ui-alerta, ui-panel, ui-dato) */
+.ui-admin-datos-alerta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
-.ui-admin-alerta.is-cerrada {
-  --nivel: var(--border-strong, var(--text-muted));
-  opacity: 0.85;
+.ui-admin-datos-alerta .ui-titulo-fila > strong {
+  font-size: 14px;
+  line-height: 20px;
 }
-.ui-admin-alerta__insignias {
-  display: inline-flex;
-  gap: 6px;
-}
-.ui-admin-alerta__acciones {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: none;
-}
-.ui-admin-alerta__revision {
-  font-style: italic;
+.ui-admin-recorte-linea {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ui-admin-aviso-2fa {
+  flex: none;
   margin-bottom: 16px;
-  background: var(--surface);
 }
-.ui-admin-aviso-2fa p a {
+.ui-admin-aviso-2fa .ui-item {
+  padding: 0;
+}
+.ui-admin-aviso-2fa a {
   color: var(--accent);
   font-weight: 600;
 }
@@ -345,22 +283,12 @@
   .ui-admin-campos {
     grid-template-columns: minmax(0, 1fr);
   }
-  .ui-admin-alertas {
-    max-height: none;
-  }
   .ui-admin-firmware small {
     display: none;
   }
 }
 
 @media (max-width: 560px) {
-  .ui-admin-alerta {
-    flex-wrap: wrap;
-  }
-  .ui-admin-alerta__acciones {
-    flex-direction: row;
-    width: 100%;
-  }
   .ui-admin-filtros .ui-desplegable {
     min-width: 0;
   }
