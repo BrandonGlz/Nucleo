@@ -578,23 +578,62 @@
   flex: 1;
 }
 
-/* Sugerencias del chat */
+/* Sugerencias del chat: la página cabe en la ventana (sin scroll del contenido). La columna izquierda
+   reparte el alto (ajuste arriba, destacadas/prueba con lo que queda) y la lista larga se desplaza
+   dentro de su tarjeta. Si la ventana es muy baja, solo la columna izquierda se desplaza. */
 .ui-consola-sugerencias {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(320px, 420px) 1fr;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
 }
 .ui-consola-sugerencias__col {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ui-consola-sugerencias__col > .nc-card {
+  flex: none;
+}
+.ui-consola-sugerencias__col > .ui-consola-sugerencias__extra {
+  flex: 1 0 auto;
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ui-consola-sugerencias__extra > .nc-tabs {
+  align-self: flex-start;
+}
+.ui-consola-sugerencias__lista {
+  min-height: 0;
+  overflow: hidden;
+}
+.ui-consola-sugerencias__desliza {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ui-consola-sugerencias__ayuda {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+.ui-consola-sugerencias .nc-card__head {
+  margin-bottom: 12px;
 }
 .ui-consola-ajuste {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.ui-consola-ajuste .ui-desplegable {
+  width: 170px;
 }
 .ui-consola-fuentes,
 .ui-consola-fijadas,
@@ -609,7 +648,7 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
 .ui-consola-fuentes li:last-child {
@@ -621,15 +660,19 @@
 }
 .ui-consola-fuentes li > span {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
   font-size: 14px;
 }
 .ui-consola-fuentes small {
+  overflow: hidden;
   font-size: 12px;
   line-height: 17px;
   color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ui-consola-fijadas {
   gap: 6px;
@@ -638,7 +681,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 6px 6px 6px 14px;
+  padding: 4px 6px 4px 14px;
   border-radius: var(--radius-md);
   background: var(--accent-soft);
   font-size: 14px;
@@ -646,10 +689,7 @@
 .ui-consola-fijadas li > span {
   flex: 1;
 }
-.ui-consola-candidatas {
-  max-height: 64vh;
-  overflow: auto;
-}
+
 .ui-consola-candidatas li {
   display: flex;
   gap: 10px;
@@ -672,9 +712,57 @@
   box-shadow: none;
   animation: none;
 }
+/* Ventanas bajas de escritorio: las fuentes quedan en una línea (la descripción, en el título
+   emergente) para que la columna quepa sin desplazarse. */
+@media (max-height: 820px) and (min-width: 901px) {
+  .ui-consola-sugerencias__col .nc-card__sub,
+  .ui-consola-sugerencias__ayuda,
+  .ui-consola-fuentes small {
+    display: none;
+  }
+  .ui-consola-sugerencias__col {
+    gap: 12px;
+  }
+  .ui-consola-sugerencias__col .nc-card__head {
+    margin-bottom: 8px;
+  }
+  .ui-consola-fuentes {
+    margin-top: 4px;
+  }
+  .ui-consola-fuentes li {
+    padding: 3px 0;
+  }
+  .ui-consola-ajuste {
+    margin-bottom: 6px;
+  }
+  .ui-consola-sugerencias__col > .ui-consola-sugerencias__extra {
+    min-height: 0;
+    gap: 8px;
+  }
+  .ui-consola-sugerencias__extra .ui-consola-sugerencias__desliza {
+    min-height: 68px;
+  }
+}
 @media (max-width: 900px) {
+  /* Celular: las tarjetas se apilan y la página se desplaza; la lista larga conserva su scroll. */
   .ui-consola-sugerencias {
-    grid-template-columns: 1fr;
+    flex: none;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ui-consola-sugerencias__col {
+    overflow: visible;
+  }
+  .ui-consola-sugerencias__col > .ui-consola-sugerencias__extra {
+    min-height: 0;
+  }
+  .ui-consola-sugerencias__desliza {
+    flex: none;
+  }
+  .ui-consola-candidatas.ui-consola-sugerencias__desliza {
+    max-height: 64vh;
+  }
+  .ui-consola-fuentes small {
+    white-space: normal;
   }
 }
 .ui-consola-sugerencias form.ui-consola-barra > :first-child {
@@ -685,7 +773,33 @@
   flex: none;
 }
 
-/* Notificaciones: preferencias por tipo (campana y correo) */
+/* Notificaciones: la bandeja domina la página (todo el alto, scroll interno) y las preferencias por
+   tipo (campana y correo) van en una columna estrecha a la derecha. */
+.ui-consola-notif {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+}
+/* Si los filtros no caben en una fila, pasan a dos sin partir las etiquetas. */
+.ui-consola-notif__lista .nc-tabs {
+  flex-wrap: wrap;
+  border-radius: var(--radius-lg);
+}
+.ui-consola-notif__lista .nc-tab {
+  white-space: nowrap;
+}
+.ui-consola-notif > .nc-card {
+  min-height: 0;
+}
+.ui-consola-notif__prefs {
+  align-self: start;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
 .ui-consola-preferencias {
   margin: 0;
   padding: 0;
@@ -694,7 +808,9 @@
   flex-direction: column;
 }
 .ui-consola-preferencias li {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px 48px;
+  gap: 8px;
   align-items: center;
   gap: 16px;
   padding: 12px 4px;

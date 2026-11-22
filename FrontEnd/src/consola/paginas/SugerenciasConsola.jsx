@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Badge, Button, Card, Chip, EmptyState, Icon, IconButton, Input, Skeleton, Toggle } from '../../design-system/componentes/index.js'
+import { Badge, Button, Card, Chip, EmptyState, Icon, IconButton, Input, Skeleton, Tabs, Toggle } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
@@ -38,30 +38,33 @@ function Prueba({ candidatas, ajuste }) {
   const lista = useMemo(() => candidatas.filter((c) => !c.oculta).map((c) => ({ ...c, normal: normalizar(c.texto) })), [candidatas])
   const encontradas = ajuste.activas ? filtrar(lista, q, ajuste.maximo) : []
   return (
-    <Card title="Pruébalas" subtitle="Escribe como lo haría un usuario en el chat del ESP.">
+    <>
+      <p className="ui-muted ui-consola-sugerencias__ayuda">Escribe como lo haría un usuario en el chat del ESP.</p>
       <Input icon="message-square-text" placeholder="Por ejemplo: humedad, niveles, reporte…" value={q} onChange={(e) => setQ(e.target.value)} />
-      {!ajuste.activas ? (
-        <p className="ui-muted">Las sugerencias están apagadas: el chat no muestra ninguna.</p>
-      ) : q.trim().length < 2 ? (
-        <p className="ui-muted">Aparecen desde la segunda letra.</p>
-      ) : encontradas.length ? (
-        <ul className="ui-ia-sugiere ui-consola-sugiere-prueba">
-          {encontradas.map((s) => (
-            <li key={s.texto}>
-              <button type="button" tabIndex={-1}>
-                <Icon name={s.tipo === 'consulta' ? 'activity' : s.tipo === 'frecuente' ? 'history' : 'message-square-text'} size={15} />
-                <span className="ui-ia-sugiere__texto">
-                  {resaltar(s.texto, q).map((p, j) => (p.marca ? <strong key={j}>{p.texto}</strong> : <span key={j}>{p.texto}</span>))}
-                </span>
-                <span className={`ui-ia-sugiere__tipo is-${s.tipo}`}>{s.etiqueta}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="ui-muted">Ninguna sugerencia coincide.</p>
-      )}
-    </Card>
+      <div className="ui-consola-sugerencias__desliza">
+        {!ajuste.activas ? (
+          <p className="ui-muted">Las sugerencias están apagadas: el chat no muestra ninguna.</p>
+        ) : q.trim().length < 2 ? (
+          <p className="ui-muted">Aparecen desde la segunda letra.</p>
+        ) : encontradas.length ? (
+          <ul className="ui-ia-sugiere ui-consola-sugiere-prueba">
+            {encontradas.map((s) => (
+              <li key={s.texto}>
+                <button type="button" tabIndex={-1}>
+                  <Icon name={s.tipo === 'consulta' ? 'activity' : s.tipo === 'frecuente' ? 'history' : 'message-square-text'} size={15} />
+                  <span className="ui-ia-sugiere__texto">
+                    {resaltar(s.texto, q).map((p, j) => (p.marca ? <strong key={j}>{p.texto}</strong> : <span key={j}>{p.texto}</span>))}
+                  </span>
+                  <span className={`ui-ia-sugiere__tipo is-${s.tipo}`}>{s.etiqueta}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="ui-muted">Ninguna sugerencia coincide.</p>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -72,6 +75,7 @@ export default function SugerenciasConsola() {
   const [nueva, setNueva] = useState('')
   const [tipo, setTipo] = useState('todas')
   const [q, setQ] = useState('')
+  const [pestana, setPestana] = useState('destacadas')
   const ajuste = datos?.ajuste
   const candidatas = datos?.candidatas ?? []
 
@@ -114,16 +118,16 @@ export default function SugerenciasConsola() {
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && ajuste && (
         <div className="ui-consola-sugerencias">
+          {/* La página cabe en la ventana: la columna reparte el alto y la lista se desplaza dentro de su tarjeta. */}
           <div className="ui-consola-sugerencias__col">
-            <Card title="Al escribir en el chat" subtitle="Aparecen arriba de la caja de texto en la web y en la consola.">
+            <Card title="Al escribir en el chat" subtitle="Arriba de la caja de texto, en la web y en la consola.">
               <div className="ui-consola-ajuste">
                 <Toggle label="Mostrar sugerencias" checked={ajuste.activas} onChange={(v) => guardar({ activas: v }, v ? 'Sugerencias activas.' : 'Sugerencias apagadas.')} />
                 <Campo
-                  label="Cuántas a la vez"
                   icon="list"
                   value={String(ajuste.maximo)}
                   onChange={(v) => guardar({ maximo: Number(v) })}
-                  options={[3, 4, 5, 6, 7, 8, 10].map((n) => ({ value: String(n), label: `${n} sugerencias` }))}
+                  options={[3, 4, 5, 6, 7, 8, 10].map((n) => ({ value: String(n), label: `${n} a la vez` }))}
                 />
               </div>
               <span className="ui-eyebrow">De dónde salen</span>
@@ -131,7 +135,7 @@ export default function SugerenciasConsola() {
                 {FUENTES.map((f) => (
                   <li key={f.campo}>
                     <Icon name={f.icono} size={18} />
-                    <span>
+                    <span title={f.texto}>
                       <strong>{f.titulo}</strong>
                       <small>{f.texto}</small>
                     </span>
@@ -141,35 +145,51 @@ export default function SugerenciasConsola() {
               </ul>
               {aviso}
             </Card>
-            <Card title="Destacadas" subtitle="Salen antes que las demás cuando coinciden con lo escrito.">
-              <form
-                className="ui-consola-barra"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  fijar()
-                }}
-              >
-                <Input placeholder="Escribe la pregunta a destacar" value={nueva} onChange={(e) => setNueva(e.target.value)} />
-                <Button type="submit" icon="plus" variant="secondary" disabled={!nueva.trim()}>
-                  Destacar
-                </Button>
-              </form>
-              {ajuste.fijadas.length ? (
-                <ul className="ui-consola-fijadas">
-                  {ajuste.fijadas.map((f) => (
-                    <li key={f}>
-                      <span>{f}</span>
-                      <IconButton icon="x" label={`Quitar ${f}`} onClick={() => guardar({ fijadas: ajuste.fijadas.filter((x) => x !== f) }, 'Ya no está destacada.')} />
-                    </li>
-                  ))}
-                </ul>
+            <Card className="ui-consola-sugerencias__extra">
+              <Tabs
+                items={[
+                  { id: 'destacadas', label: 'Destacadas', count: ajuste.fijadas.length },
+                  { id: 'prueba', label: 'Pruébalas' },
+                ]}
+                value={pestana}
+                onChange={setPestana}
+              />
+              {pestana === 'prueba' ? (
+                <Prueba candidatas={candidatas} ajuste={ajuste} />
               ) : (
-                <p className="ui-muted">Ninguna. Sin destacadas, el orden es: banco, consultas, lo que Nico sabe y frecuentes.</p>
+                <>
+                  <p className="ui-muted ui-consola-sugerencias__ayuda">Salen antes que las demás cuando coinciden con lo escrito.</p>
+                  <form
+                    className="ui-consola-barra"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      fijar()
+                    }}
+                  >
+                    <Input placeholder="Escribe la pregunta a destacar" value={nueva} onChange={(e) => setNueva(e.target.value)} />
+                    <Button type="submit" icon="plus" variant="secondary" disabled={!nueva.trim()}>
+                      Destacar
+                    </Button>
+                  </form>
+                  <div className="ui-consola-sugerencias__desliza">
+                    {ajuste.fijadas.length ? (
+                      <ul className="ui-consola-fijadas">
+                        {ajuste.fijadas.map((f) => (
+                          <li key={f}>
+                            <span>{f}</span>
+                            <IconButton icon="x" size="sm" variant="ghost" label={`Quitar ${f}`} onClick={() => guardar({ fijadas: ajuste.fijadas.filter((x) => x !== f) }, 'Ya no está destacada.')} />
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="ui-muted">Ninguna. Sin destacadas, el orden es: banco, consultas, lo que Nico sabe y frecuentes.</p>
+                    )}
+                  </div>
+                </>
               )}
             </Card>
-            <Prueba candidatas={candidatas} ajuste={ajuste} />
           </div>
-          <Card className="nc-grow ui-consola-lista" title="Todas las sugerencias" subtitle="Con las de la empresa del ESP. Apaga las que no quieras que aparezcan; ocultarlas aplica a todas las empresas.">
+          <Card className="ui-consola-lista ui-consola-sugerencias__lista" title="Todas las sugerencias" subtitle="Con las de la empresa del ESP. Apaga las que no quieras que aparezcan; ocultarlas aplica a todas las empresas.">
             <div className="ui-consola-barra">
               <Buscador valor={q} cambiar={setQ} placeholder="Buscar sugerencia…" />
             </div>
@@ -181,7 +201,7 @@ export default function SugerenciasConsola() {
               ))}
             </div>
             {visibles.length ? (
-              <ul className="ui-consola-candidatas">
+              <ul className="ui-consola-candidatas ui-consola-sugerencias__desliza">
                 {visibles.map((c) => (
                   <li key={c.clave} className={c.oculta ? 'is-oculta' : undefined}>
                     <span>{c.texto}</span>
