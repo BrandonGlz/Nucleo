@@ -96,6 +96,9 @@ class ConsolaEstadoView(APIView):
                 "puente": puente.habilitado(),
                 "activos": [d.num for d in activos],
                 "fisicos": [d.num for d in todos if puente.con_puente(d)],
+                # El superusuario no necesita el ESP: usa cualquier agente en modo de pruebas.
+                "exige_puente": False,
+                "disponibles": [d.num for d in todos],
             }
         )
 

@@ -9,7 +9,9 @@ export const PROGRAMACION_REPORTE = (num) => `/programaciones-reporte/${num}/` /
 export const AGENTE = '/agente/'
 // POST {registro, voto: 'si'|'no'|null}: 👍 a una respuesta de la IA la guarda en el banco → {aprendida}
 export const AGENTE_CALIFICAR = '/agente/calificar/'
-// GET → {puente, activos: [num]}: agentes cuyo ESP32 puente está conectado (sin puente, todos)
+// GET → {puente, activos: [num], fisicos, exige_puente, disponibles: [num]}: agentes cuyo ESP32 puente
+// está conectado (sin puente, todos) y los que este usuario puede usar (el administrador, aunque
+// el ESP32 esté sin conexión: modo de pruebas)
 export const AGENTE_ESTADO = '/agente/estado/'
 // GET ?dispositivo= → {activas, maximo, sugerencias: [{texto, tipo, etiqueta}]}: la web las filtra mientras se escribe
 export const AGENTE_SUGERENCIAS = '/agente/sugerencias/'

@@ -133,6 +133,10 @@ class AgenteView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    def dispatch(self, request, *args, **kwargs):
+        with puente.peticion():
+            return super().dispatch(request, *args, **kwargs)
+
     def post(self, request):
         if request.user.rol_id not in roles.TODOS or not request.user.puede_usar_agente:
             raise PermissionDenied("No tienes acceso a Nico AI.")
@@ -159,15 +163,20 @@ class AgenteView(APIView):
                 {"texto": errores[codigo], "codigo": codigo, "via": "PREDEFINIDA", "pasos": []}
             )
         pregunta = agente.con_contexto(original, entrada.validated_data.get("anterior", ""))
-        # El ESP32 del dispositivo es el puente de su agente: sin él, el agente no responde.
+        # El ESP32 del dispositivo es el puente de su agente: sin él, el agente no responde a
+        # supervisores, analistas ni operadores. El administrador lo usa en modo de pruebas.
         if not puente.activo(dispositivo):
-            return Response(
-                {
-                    "detail": f"Nico AI no está disponible: {dispositivo.nombre} no está activo.",
-                    "inactivo": True,
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+            if puente.exige_puente(request.user):
+                return Response(
+                    {
+                        "detail": (
+                            f"Nico AI no está disponible: {dispositivo.nombre} no está activo."
+                        ),
+                        "inactivo": True,
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            puente.activar_pruebas()
         inicio = time.monotonic()
         precarga = entrada.validated_data.get("precarga", False)
         conversacion = (
@@ -328,6 +337,8 @@ class AgenteView(APIView):
             pasos = [p for p in pasos if p != "Lo relacioné con tu mensaje anterior"]
         if "accion" in r:
             r = {**r, "accion": {"id": r["accion"]["id"], "vence": r["accion"]["vence"]}}
+        if puente.en_pruebas():
+            r = {**r, "modo_pruebas": True}
         return Response({**r, "registro": registro.num, "via": via, "pasos": pasos})
 
     def _pasos(self, dispositivo, original, anterior, via, extra, fuera, aviso, repetida):
@@ -410,7 +421,7 @@ class AgenteView(APIView):
             or "comparativa" in r
             or "reporte" in r
             or not puente.con_puente(dispositivo)
-            or not puente.activo(dispositivo)
+            or not (puente.activo(dispositivo) or puente.en_pruebas())
         ):
             return r, via, extra
         historial = [
@@ -707,13 +718,17 @@ class CalificarAgenteView(APIView):
 
 
 class EstadoAgenteView(APIView):
-    """Qué agentes están activos (su ESP32 está consultando). Sin puente, todos lo están."""
+    """Qué agentes están activos (su ESP32 está consultando). Sin puente, todos lo están.
+
+    ``disponibles`` son los que este usuario puede usar ahora: los activos o, si su rol no
+    exige el ESP (``exige_puente`` falso: el administrador), todos (modo de pruebas)."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         visibles = list(dispositivos_visibles(request.user).select_related("area"))
         activos = [d for d in visibles if puente.activo(d)]
+        exige = puente.exige_puente(request.user)
         # Al abrir el chat se calienta el modelo para que la primera pregunta no espere la carga.
         for d in activos:
             if puente.con_puente(d):
@@ -724,6 +739,8 @@ class EstadoAgenteView(APIView):
                 "puente": puente.habilitado(),
                 "activos": [d.num for d in activos],
                 "fisicos": [d.num for d in visibles if puente.con_puente(d)],
+                "exige_puente": exige,
+                "disponibles": [d.num for d in (activos if exige else visibles)],
             }
         )
 

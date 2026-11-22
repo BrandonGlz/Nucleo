@@ -521,7 +521,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
       />
       <div className="ui-ia-compositor__barra">
         <span className="ui-ia-alcance">
-          <Icon name="cpu" size={14} /> <span className="ui-ia-alcance__texto">{alcance}</span>
+          <Icon name="cpu" size={14} /> <span className="ui-ia-alcance__texto" title={alcance}>{alcance}</span>
         </span>
         <span className="ui-ia-compositor__botones">
         {pensando ? (
@@ -716,6 +716,13 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     return () => clearTimeout(t)
   }, [textosSugeridos, precargar, conAccion])
 
+  // El punto es el estado del ESP32: gris si está sin conexión, aunque el administrador pueda
+  // seguir usando a Nico en modo de pruebas.
+  const estadoPunto = ag.agenteActivo
+    ? 'Nico AI en línea'
+    : ag.modoPruebas
+      ? 'ESP32 sin conexión: Nico AI en modo de pruebas del administrador'
+      : 'Nico AI sin conexión'
   const compositor = (
     <Compositor
       valor={texto}
@@ -725,9 +732,9 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
       sugerencias={escritura?.num === numAgente ? escritura : null}
       pensando={pensando}
       enfocar={actual}
-      alcance={`Sensores de ${nombreAgente}`}
-      deshabilitado={!dispositivoAgente || !ag.agenteActivo}
-      aviso={dispositivoAgente && !ag.agenteActivo ? `Nico AI no disponible: ${nombreAgente} no está activo (su ESP32 no está conectado)` : undefined}
+      alcance={ag.modoPruebas ? 'ESP32 sin conexión · modo de pruebas del administrador' : `Sensores de ${nombreAgente}`}
+      deshabilitado={!dispositivoAgente || !ag.agenteDisponible}
+      aviso={dispositivoAgente && !ag.agenteDisponible ? `Nico AI no disponible: ${nombreAgente} no está activo (su ESP32 no está conectado)` : undefined}
     />
   )
 
@@ -794,8 +801,8 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
               <span
                 className={`ui-ia-estado__punto${ag.agenteActivo ? ' is-activo' : ''}`}
                 role="img"
-                aria-label={ag.agenteActivo ? 'Nico AI en línea' : 'Nico AI sin conexión'}
-                title={ag.agenteActivo ? 'Nico AI en línea' : 'Nico AI sin conexión'}
+                aria-label={estadoPunto}
+                title={estadoPunto}
               />
               <Desplegable
                 icon="cpu"

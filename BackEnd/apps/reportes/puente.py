@@ -25,6 +25,7 @@ La cola vive en Redis (``REDIS_URL``) para que la compartan los procesos de daph
 (pruebas y desarrollo) se usa una cola en memoria del proceso.
 """
 
+import contextvars
 import hashlib
 import hmac
 import json
@@ -35,6 +36,7 @@ import time
 import unicodedata
 import uuid
 from collections import defaultdict, deque
+from contextlib import contextmanager
 
 from django.conf import settings
 
@@ -276,6 +278,45 @@ def activo(dispositivo):
     return not con_puente(dispositivo) or cola().activo(dispositivo.codigo_mqtt)
 
 
+# ── Quién necesita el ESP encendido ──────────────────────────────────────────────────────
+# Supervisores, analistas y operadores solo usan a Nico con el ESP de su dispositivo activo.
+# El administrador de la organización (y el de plataforma, en la consola de Nico AI) lo usa
+# aunque el ESP esté sin conexión, para probar el agente sin tener el dispositivo conectado:
+# es el «modo de pruebas», en el que la IA del servidor responde sin la firma del ESP.
+ROLES_SIN_PUENTE = (roles.ADMIN, roles.ADMIN_PLATAFORMA)
+
+_pruebas = contextvars.ContextVar("nico_modo_pruebas", default=False)
+
+
+def exige_puente(usuario):
+    """El usuario necesita el ESP del dispositivo activo para usar a su agente."""
+    return not (usuario.is_superuser or usuario.rol_id in ROLES_SIN_PUENTE)
+
+
+def disponible(dispositivo, usuario):
+    """El usuario puede usar ahora al agente del dispositivo (ESP activo o rol exento)."""
+    return activo(dispositivo) or not exige_puente(usuario)
+
+
+@contextmanager
+def peticion():
+    """Delimita una petición al agente: el modo de pruebas que active dura solo en ella."""
+    token = _pruebas.set(False)
+    try:
+        yield
+    finally:
+        _pruebas.reset(token)
+
+
+def activar_pruebas():
+    """El ESP está sin conexión y el usuario está exento: la IA responde sin su firma."""
+    _pruebas.set(True)
+
+
+def en_pruebas():
+    return _pruebas.get()
+
+
 # ── Lo que llega del ESP ─────────────────────────────────────────────────────────────────
 DIAG_SEGUNDOS = 7 * 24 * 3600
 
@@ -442,7 +483,8 @@ def _ejecutar(codigo, trabajo, espera):
         return {**guardada, "tokens_entrada": 0, "tokens_salida": 0, "en_cache": True}
     cola().empezar(codigo)
     try:
-        if not _autorizar(codigo, trabajo):
+        # En el modo de pruebas del administrador no hay ESP que firme: no se espera la firma.
+        if not en_pruebas() and not _autorizar(codigo, trabajo):
             return {"texto": None, "error": "El ESP no autorizó la petición a tiempo."}
         r = _llamar_ia(trabajo, espera)
     finally:

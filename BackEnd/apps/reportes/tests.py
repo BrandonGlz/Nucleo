@@ -574,8 +574,76 @@ class NicoAprendeTests(PruebaBase):
         self.assertTrue(cuerpo["inactivo"])
         estado = self.cliente.get("/api/v1/agente/estado/").json()
         self.assertEqual(
-            estado, {"puente": True, "activos": [], "fisicos": [self.e.dispositivo.pk]}
+            estado,
+            {
+                "puente": True,
+                "activos": [],
+                "fisicos": [self.e.dispositivo.pk],
+                "exige_puente": True,
+                "disponibles": [],
+            },
         )
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
+    def test_esp_inactivo_solo_bloquea_a_supervisor_analista_y_operador(self):
+        self.e.operador.acceso_agente = True
+        self.e.operador.save(update_fields=["acceso_agente"])
+        for usuario in (self.e.supervisor, self.e.analista, self.e.operador):
+            cliente = cliente_de(usuario)
+            r = cliente.post("/api/v1/agente/", self.pregunta, format="json")
+            self.assertEqual(r.status_code, 503, usuario.rol_id)
+            self.assertTrue(r.json()["inactivo"])
+            self.assertIn("no está activo", r.json()["detail"])
+            estado = cliente.get("/api/v1/agente/estado/").json()
+            self.assertEqual((estado["exige_puente"], estado["disponibles"]), (True, []))
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
+    def test_admin_usa_a_nico_con_el_esp_apagado(self):
+        # Modo de pruebas: responde, y la IA del servidor no espera la firma del ESP.
+        cliente = cliente_de(self.e.admin)
+        estado = cliente.get("/api/v1/agente/estado/").json()
+        self.assertEqual(estado["activos"], [])
+        self.assertEqual(
+            (estado["exige_puente"], estado["disponibles"]), (False, [self.e.dispositivo.pk])
+        )
+        with (
+            mock.patch.object(
+                puente,
+                "_llamar_ia",
+                return_value={"texto": "", "error": None, "tokens_entrada": 1, "tokens_salida": 1},
+            ) as ia,
+            mock.patch.object(puente, "_autorizar") as autorizar,
+        ):
+            r = cliente.post(
+                "/api/v1/agente/",
+                {**self.pregunta, "pregunta": "explícame la temperatura"},
+                format="json",
+            )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(r.json()["modo_pruebas"])
+        ia.assert_called()
+        autorizar.assert_not_called()
+        # El superusuario de la consola tampoco necesita el ESP.
+        consola = cliente_de(self.e.plataforma)
+        r = consola.post("/api/v1/nico/chat/", self.pregunta, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(r.json()["modo_pruebas"])
+        self.assertFalse(consola.get("/api/v1/nico/estado/").json()["exige_puente"])
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
+    def test_esp_activo_responde_a_todos_los_roles(self):
+        self.e.operador.acceso_agente = True
+        self.e.operador.save(update_fields=["acceso_agente"])
+        puente.cola().visto(self.e.dispositivo.codigo_mqtt)
+        for usuario in (self.e.admin, self.e.supervisor, self.e.analista, self.e.operador):
+            cliente = cliente_de(usuario)
+            r = cliente.post(
+                "/api/v1/agente/", {**self.pregunta, "pregunta": "hola"}, format="json"
+            )
+            self.assertEqual(r.status_code, 200, (usuario.rol_id, r.content))
+            self.assertNotIn("modo_pruebas", r.json())
+            estado = cliente.get("/api/v1/agente/estado/").json()
+            self.assertEqual(estado["disponibles"], [self.e.dispositivo.pk])
 
     @override_settings(IA_PUENTE_DISPOSITIVOS=["OTRO"], IA_PUENTE_CLAVE="k")
     def test_dispositivo_simulado_siempre_activo_y_sin_ia(self):
