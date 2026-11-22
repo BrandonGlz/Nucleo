@@ -1,100 +1,61 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  ActivityFeed, Battery, Card, DeviceTable, IconCircle, PeriodFilter, Skeleton,
-  StatusBadge,
-} from '../../design-system/componentes/index.js'
+import { useState } from 'react'
+import { Card, EmptyState, PeriodFilter, Skeleton } from '../../design-system/componentes/index.js'
+import { Select } from '../../components/Desplegable'
 import { GraficaAjustable } from '../../components/GraficaAjustable'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { useSesion } from '../../context/SesionContext'
 import { useDatos } from '../../hooks/useDatos'
-import { useMonitoreo } from '../../hooks/useMonitoreo'
+import * as dispositivosApi from '../../services/dispositivos'
 import * as lecturasApi from '../../services/lecturas'
-import {
-  enLinea, limiteAlerta, NIVEL_ALERTA, nivelLectura, statusDispositivo, tituloAlerta, valorAlerta, VARIABLE,
-} from '../../utils/convertir'
-import { avisoUltima, haceCuanto, hora, hoyTexto, num, puntoSerie } from '../../utils/formato'
+import * as organizacionesApi from '../../services/organizaciones'
+import * as umbralesApi from '../../services/umbrales'
+import { enLinea, pagina, rangoUmbral, UNIDAD, VARIABLE } from '../../utils/convertir'
+import { avisoUltima, hoyTexto, puntoSerie } from '../../utils/formato'
 
-const lectura = (d, v) => d.lecturas.find((l) => l.variable === v)
-// La lectura que saca al dispositivo de rango (o la temperatura si todo está bien).
-function lecturaFuera(d, umbrales) {
-  const fuera = d.lecturas.find((l) => nivelLectura(l.valor, umbrales.find((u) => u.dispositivo === d.num && u.variable === l.variable)) !== 'normal')
-  const l = fuera ?? lectura(d, 'TEMP') ?? d.lecturas[0]
-  if (!l) return '—'
-  return `${VARIABLE[l.variable].corta} ${num(l.valor, VARIABLE[l.variable].decimales)} ${l.unidad}`
-}
-const promedio = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
+// Panel principal: solo las gráficas del historial de mediciones (temperatura, humedad y
+// calidad del aire) de un dispositivo, con un único filtro de periodo para las tres.
+const VARIABLES = ['TEMP', 'HUM', 'AIRE']
+const PERIODO = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }
 
-const valores = (ds, v) => ds.map((d) => lectura(d, v)).filter(Boolean).map((l) => Number(l.valor))
-
-// Cifras de la tarjeta oscura: temperatura del área con más dispositivos y promedios generales.
-// Si ninguno está en línea se usan las últimas lecturas guardadas y se indica de cuándo son.
-function cifrasPanel({ dispositivos, umbrales, areas, alertas }) {
-  const activos = dispositivos.filter(enLinea)
-  const conLecturas = dispositivos.filter((d) => d.lecturas.length)
-  const enVivo = activos.some((d) => d.lecturas.length)
-  const base = enVivo ? activos : conLecturas
-  const area = areas.find((a) => base.some((d) => d.area === a.num)) ?? areas[0]
-  const delArea = base.filter((d) => d.area === area?.num)
-  const temp = promedio(valores(delArea, 'TEMP'))
-  const hum = promedio(valores(delArea, 'HUM'))
-  const aire = promedio(valores(base, 'AIRE'))
-  const ultima = conLecturas.flatMap((d) => d.lecturas.map((l) => l.fecha_hora)).sort().at(-1)
-  const u = umbrales.find((x) => x.dispositivo === delArea[0]?.num && x.variable === 'TEMP')
-  const [min, max] = u ? [Number(u.advertencia_min), Number(u.advertencia_max)] : [0, 0]
-  const escala = [min - (max - min) / 2, max + (max - min) / 2]
-  const pct = (v) => Math.max(0, Math.min(100, ((v - escala[0]) / (escala[1] - escala[0])) * 100))
-  const pend = alertas.filter((a) => a.estado === 'PENDIENTE')
-  const enRango = temp != null && temp >= min && temp <= max
-  return {
-    principal: {
-      etiqueta: `Temperatura · ${area?.nombre ?? ''}${enVivo || !ultima ? '' : ` · última lectura ${haceCuanto(ultima).toLowerCase()}`}`,
-      valor: num(temp),
-      unidad: '°C',
-      sub: temp == null
-        ? 'Sin lecturas guardadas'
-        : `${enRango ? 'En rango' : 'Fuera de rango'} · ${min} – ${max} °C${enVivo ? '' : ` · última lectura ${haceCuanto(ultima).toLowerCase()}`}`,
-      tonoSub: enRango ? 'verde' : 'peligro',
-    },
-    barra: u ? { desde: pct(min), ancho: pct(max) - pct(min), marca: pct(temp) } : null,
-    cifras: [
-      { etiqueta: 'Humedad', valor: num(hum), unidad: '%HR', sub: area?.nombre, tono: 'verde' },
-      { etiqueta: 'En línea', valor: activos.length, unidad: `/ ${dispositivos.length}`, sub: `${dispositivos.length - activos.length} sin conexión` },
-      { etiqueta: 'Aire', valor: num(aire, 0), unidad: 'ppm', sub: enVivo ? 'Promedio general' : 'Última lectura' },
-      {
-        etiqueta: 'Pendientes', valor: pend.length, tono: pend.length ? 'peligro' : undefined,
-        sub: `${pend.filter((a) => a.nivel === 'PELIGRO').length} crítica`,
-      },
-    ],
-  }
+async function cargarCatalogo() {
+  const [d, a] = await Promise.all([dispositivosApi.lista(), organizacionesApi.areas()])
+  return { dispositivos: pagina(d), areas: pagina(a) }
 }
 
-const CIFRAS_CARGANDO = {
-  principal: { etiqueta: 'Temperatura', valor: '--.-', tonoValor: 'apagado', sub: 'Cargando lecturas…' },
-  cifras: ['Humedad', 'En línea', 'Aire'].map((etiqueta) => ({ etiqueta, valor: '—', tono: 'tenue' })),
+async function cargarHistorial(disp, periodo) {
+  const [umb, ...series] = await Promise.all([
+    umbralesApi.lista(disp),
+    ...VARIABLES.map((v) => lecturasApi.serieConDatos(disp, v, periodo)),
+  ])
+  return Object.fromEntries(
+    VARIABLES.map((v, i) => [v, { ...series[i], umbral: pagina(umb).find((u) => u.variable === v) }]),
+  )
 }
 
-function Tendencia({ dispositivo, umbral }) {
-  const [periodo, setPeriodo] = useState('Hoy')
-  const clave = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }[periodo]
-  const { datos } = useDatos(() => lecturasApi.serieConDatos(dispositivo.num, 'TEMP', clave), [dispositivo.num, clave])
-  const data = (datos?.puntos ?? []).map((p) => puntoSerie(p, clave))
+function GraficaVariable({ variable, datos, dispositivo, periodo, className = '' }) {
+  const info = VARIABLE[variable]
+  const unidad = UNIDAD[variable]
+  const u = datos?.umbral
   return (
-    <Card className="nc-grow ui-tendencia">
+    <Card className={`nc-grow ui-panel-grafica ${className}`.trim()}>
       <div className="nc-card__head" style={{ marginBottom: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 className="nc-card__title">Tendencia de temperatura</h3>
+          <h3 className="nc-card__title">{info.etiqueta}</h3>
           <p className="nc-card__sub">
-            {dispositivo.nombre} · máx {Number(umbral?.peligro_max)} °C
+            {dispositivo?.nombre} · umbral {rangoUmbral(u, unidad)}
             {datos?.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(datos.ultima)}</span>}
           </p>
         </div>
-        <PeriodFilter value={periodo} onChange={setPeriodo} />
       </div>
       {datos ? (
-        <GraficaAjustable data={data} unit="°C" threshold={{ max: Number(umbral?.peligro_max) }} minimo={60}
-          vacio={`Sin lecturas de ${dispositivo.nombre} en este periodo`} />
+        <GraficaAjustable
+          data={datos.puntos.map((p) => puntoSerie(p, periodo))}
+          unit={unidad}
+          threshold={u ? { min: Number(u.peligro_min), max: Number(u.peligro_max) } : undefined}
+          minimo={60}
+          vacio={`Sin lecturas de ${dispositivo?.nombre ?? 'este dispositivo'} en este periodo`}
+        />
       ) : (
         <Skeleton height={120} />
       )}
@@ -104,124 +65,73 @@ function Tendencia({ dispositivo, umbral }) {
 
 export function PanelPage() {
   const { usuario, organizacion } = useSesion()
-  const navegar = useNavigate()
-  const { estado, datos, reintentar } = useMonitoreo()
-  const encabezado = { eyebrow: `${organizacion} · ${hoyTexto()}`, titulo: `Hola, ${usuario?.nombre ?? ''}` }
+  const cat = useDatos(cargarCatalogo, [])
+  const [elegido, setElegido] = useState('')
+  const [periodo, setPeriodo] = useState('Hoy')
+  const clave = PERIODO[periodo]
 
-  const vista = useMemo(() => {
-    if (!datos) return null
-    const conEstado = datos.dispositivos.map((d) => ({ ...d, ...statusDispositivo(d, d.lecturas, datos.umbrales) }))
-    const atencion = conEstado.filter((d) => d.status !== 'normal')
-    const destacado = conEstado.find((d) => d.status === 'warning' && lectura(d, 'TEMP')) ?? conEstado[0]
-    const feed = [...datos.alertas]
-      .sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1))
-      .slice(0, 6)
-      .map((a) => ({
-        level: NIVEL_ALERTA[a.nivel].level,
-        title: tituloAlerta(a),
-        meta: `${a.dispositivo_nombre} · ${valorAlerta(a)} (${limiteAlerta(a)})`,
-        time: hora(a.fecha_hora),
-        unread: a.estado === 'PENDIENTE',
-      }))
-    return { atencion, destacado, feed }
-  }, [datos])
+  const dispositivos = cat.datos?.dispositivos ?? []
+  // Mientras no se elige uno, se muestra el primero en línea (o el primero del alcance).
+  const disp = elegido || String((dispositivos.find(enLinea) ?? dispositivos[0])?.num ?? '')
+  const actual = dispositivos.find((d) => d.num === Number(disp))
+  const area = cat.datos?.areas.find((a) => a.num === actual?.area)
+  const hist = useDatos(() => (disp ? cargarHistorial(disp, clave) : new Promise(() => {})), [disp, clave])
 
-  if (estado === 'cargando') {
-    return (
-      <Pantalla {...encabezado} cifras={CIFRAS_CARGANDO}>
-        <div className="ui-fila" style={{ gridTemplateColumns: '2fr 1fr' }}>
-          <Card className="nc-grow">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <Skeleton width="30%" height={20} />
-              <Skeleton width="100%" height={220} />
-              <DeviceTable loading />
-            </div>
-          </Card>
-          <Skeleton variant="card" />
-        </div>
-      </Pantalla>
-    )
+  const encabezado = {
+    eyebrow: `${organizacion} · ${hoyTexto()}${area ? ` · ${area.nombre}` : ''}`,
+    titulo: `Hola, ${usuario?.nombre ?? ''}`,
   }
-  if (estado === 'error') {
+  const filtros = (
+    <div className="ui-panel-filtros">
+      {dispositivos.length > 1 && (
+        <Select
+          icon="cpu"
+          value={disp}
+          onChange={(e) => setElegido(e.target.value)}
+          options={dispositivos.map((d) => ({ value: String(d.num), label: `${d.nombre} · ${d.codigo_mqtt}` }))}
+        />
+      )}
+      <PeriodFilter value={periodo} onChange={setPeriodo} />
+    </div>
+  )
+
+  if (cat.estado === 'error' || hist.estado === 'error') {
     return (
       <Pantalla {...encabezado}>
-        <EstadoError reintentar={reintentar} />
+        <EstadoError reintentar={cat.estado === 'error' ? cat.reintentar : hist.reintentar} />
+      </Pantalla>
+    )
+  }
+  if (cat.datos && !dispositivos.length) {
+    return (
+      <Pantalla {...encabezado}>
+        <Card className="nc-grow">
+          <div className="ui-centro">
+            <EmptyState icon="cpu" title="Sin dispositivos" message="Aún no hay dispositivos con mediciones a tu alcance." />
+          </div>
+        </Card>
       </Pantalla>
     )
   }
 
-  const { atencion, destacado, feed } = vista
-  const pendientes = datos.alertas.filter((a) => a.estado === 'PENDIENTE').length
+  const datos = hist.estado === 'cargando' ? null : hist.datos
+  const grafica = (variable, className) => (
+    <GraficaVariable
+      variable={variable}
+      datos={datos?.[variable]}
+      dispositivo={actual}
+      periodo={clave}
+      className={className}
+    />
+  )
   return (
-    <Pantalla {...encabezado} cifras={cifrasPanel(datos)}>
-      <div className="ui-fila" style={{ gridTemplateColumns: '2fr 1fr' }}>
+    <Pantalla {...encabezado} acciones={filtros}>
+      <div className="ui-fila ui-panel-graficas">
+        {grafica('TEMP', 'ui-panel-grafica--principal')}
         <div className="ui-col">
-          <Tendencia
-            dispositivo={destacado}
-            umbral={datos.umbrales.find((u) => u.dispositivo === destacado.num && u.variable === 'TEMP')}
-          />
-          <Card className="nc-grow">
-            <div className="nc-card__head" style={{ marginBottom: 8 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 className="nc-card__title">Dispositivos que requieren atención</h3>
-                <p className="nc-card__sub">Fuera de rango o sin conexión</p>
-              </div>
-            </div>
-            <div className="nc-table-wrap nc-scroll">
-              <table className="nc-table ui-tabla-tarjetas">
-                <thead>
-                  <tr>
-                    <th>Dispositivo</th>
-                    <th>Lectura</th>
-                    <th>Última lectura</th>
-                    <th>Batería</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {atencion.map((d) => (
-                    <tr key={d.num} style={{ cursor: 'pointer' }} onClick={() => navegar(`/dispositivos/${d.num}`)}>
-                      <td>
-                        <div className="nc-table__device">
-                          <IconCircle name="cpu" size="sm" />
-                          <div>
-                            <strong>{d.nombre}</strong>
-                            <span>
-                              {d.codigo_mqtt} · {datos.areas.find((a) => a.num === d.area)?.nombre}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="ui-num">
-                        {lecturaFuera(d, datos.umbrales)}
-                      </td>
-                      <td>{haceCuanto(d.ultima_conexion)}</td>
-                      <td>
-                        <Battery level={d.nivel_bateria} />
-                      </td>
-                      <td>
-                        <StatusBadge status={d.status} label={d.label} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          {grafica('HUM')}
+          {grafica('AIRE')}
         </div>
-        <Card className="nc-grow">
-          <div className="nc-card__head">
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h3 className="nc-card__title">Alertas recientes</h3>
-              <p className="nc-card__sub">
-                {pendientes ? `${pendientes} pendientes de atender` : 'Todo atendido'}
-              </p>
-            </div>
-          </div>
-          <div className="nc-scroll">
-            <ActivityFeed items={feed} />
-          </div>
-        </Card>
       </div>
     </Pantalla>
   )

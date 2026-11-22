@@ -1179,27 +1179,21 @@ button.ui-menuitem:hover {
   opacity: 0.9;
 }
 
-/* Panel: la tendencia y la tabla se reparten la columna */
-.ui-col > .ui-tendencia {
+/* Panel: temperatura grande a la izquierda; humedad y calidad del aire se reparten la columna */
+.ui-panel-graficas {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+.ui-panel-graficas > .ui-col > .ui-panel-grafica {
   flex: 1 1 0;
-  min-height: 200px;
 }
-.ui-col > .ui-tendencia + .nc-grow {
-  flex: 0 1 auto;
+/* Filtros del panel en el encabezado: dispositivo y periodo */
+.ui-panel-filtros {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-/* La tabla mide lo de sus filas, con tope de 4 visibles; la tendencia toma el resto */
-.ui-col > .ui-tendencia + .nc-grow .nc-scroll {
-  max-height: 274px;
-}
-@media (max-height: 1100px) {
-  .ui-col > .ui-tendencia + .nc-grow .nc-scroll {
-    max-height: 248px;
-  }
-}
-@media (max-height: 820px) {
-  .ui-col > .ui-tendencia {
-    min-height: 240px;
-  }
+.ui-panel-filtros > .ui-desplegable {
+  min-width: 240px;
 }
 
 /* Menú lateral en ventanas bajas: sin scroll propio */

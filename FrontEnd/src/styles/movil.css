@@ -181,8 +181,7 @@
   .nc-grow.nc-grow,
   .ui-panel,
   .ui-cede,
-  .ui-col > .ui-tendencia,
-  .ui-col > .ui-tendencia + .nc-grow {
+  .ui-panel-graficas > .ui-col > .ui-panel-grafica {
     flex: none;
     min-height: 0;
   }
@@ -190,9 +189,6 @@
   .ui-panel {
     flex: none;
     overflow: visible;
-  }
-  .ui-col > .ui-tendencia + .nc-grow .nc-scroll {
-    max-height: none;
   }
   .nc-scroll thead th {
     position: static;
@@ -367,6 +363,13 @@
   }
   .ui-encabezado--acciones .nc-header__extra > * {
     flex: 1 1 auto;
+  }
+  .ui-panel-filtros {
+    flex-wrap: wrap;
+  }
+  .ui-panel-filtros > .ui-desplegable {
+    flex: 1 1 100%;
+    min-width: 0;
   }
 
   .nc-ink.nc-ink {
