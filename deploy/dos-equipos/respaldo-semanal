@@ -2,7 +2,9 @@
 # Zip semanal de los respaldos diarios de asus, para Google Drive.
 #   respaldo-semanal <proyecto> <remoto:carpeta> [fecha]
 # Junta los respaldos diarios de ~/respaldos/<proyecto> de una semana (lunes a domingo) en un solo zip con una
-# carpeta por día (lunes/, martes/, …, domingo/), lo comprueba, lo deja en ~/respaldos/<proyecto>-semanal
+# carpeta por día (lunes/, martes/, …, domingo/) y una tabla en CONTENIDO.txt, sin repetir lo que no cambió (de cada
+# día solo el último respaldo; bases completas a diario; cada tar solo cuando cambió, ver abajo), lo comprueba
+# (CRC y que cada nota «igual que» apunte a un archivo del zip), lo deja en ~/respaldos/<proyecto>-semanal
 # (5 semanas) y lo sube a <remoto:carpeta>/semanal, donde se guardan unas 5 semanas. El destino lleva las reglas
 # de cada plataforma: si el remoto es cifrado (rclone crypt), el zip viaja y queda cifrado.
 # Los archivos sueltos de antes (cuando cada respaldo diario subía a Drive) se borran solos al cumplir 30 días.
@@ -44,33 +46,144 @@ for i in $(seq 120); do
 done
 
 # Arma el zip con Python (asus no tiene «zip»). Sin compresión: los .dump y .tar.gz ya vienen comprimidos.
+# Deduplicado: de cada día entra solo el último respaldo (el último completo, si el último quedó a medias). Los
+# .dump de las bases entran todos los días. Cada tipo de tar (según el proyecto: media, aplicacion, broker_media,
+# firma_app…) entra completo el primer día de la semana en que aparece; los días siguientes se compara con el último
+# que sí entró y, si es igual, no se mete: queda la nota «<tipo> - igual que <día>.txt» con el archivo y la carpeta.
+# Igual = mismo sha256 del .tar.gz o, si los bytes difieren, misma huella del contenido: lista ordenada de
+# (ruta, tipo, permisos, destino del enlace, tamaño, sha256 de los datos) de cada entrada del tar, sin fechas,
+# dueños ni orden. Así un tar que se rehízo con los mismos archivos (p. ej. VERSION_DESPLEGADA recreado con otra
+# fecha) cuenta como igual, y cualquier cambio real de un archivo lo hace entrar completo.
 estado=0
-python3 -I - "$origen" "$proy" "$lunes" "$zip.parcial" > "$salida_dir/.resumen" <<'PY' || estado=$?
-import datetime, os, re, sys, zipfile
-origen, proy, lunes, destino = sys.argv[1:]
+cifrado=no
+[[ "$(rclone listremotes --long 2>/dev/null | awk -v r="${destino%%:*}:" '$1 == r {print $2}')" == crypt ]] && cifrado=si
+python3 -I - "$origen" "$proy" "$lunes" "$zip.parcial" "$destino" "$cifrado" > "$salida_dir/.resumen" <<'PY' || estado=$?
+import datetime, hashlib, os, re, sys, tarfile, zipfile
+origen, proy, lunes, destino, remoto, cifrado = sys.argv[1:]
 dias = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
 inicio = datetime.date.fromisoformat(lunes)
-fechas = {(inicio + datetime.timedelta(i)).isoformat(): d for i, d in enumerate(dias)}
-patron = re.compile(re.escape(proy) + r'_(?:.*_)?(\d{4}-\d{2}-\d{2})_\d{4}\.(dump|tar\.gz)$')
-por_dia = {d: [] for d in dias}
+fechas = [(inicio + datetime.timedelta(i)).isoformat() for i in range(7)]
+patron = re.compile(re.escape(proy) + r'_(?:(.+?)_)?(\d{4}-\d{2}-\d{2})_(\d{4})\.(dump|tar\.gz)$')
+
+# respaldos[fecha][hhmm] = {tipo: (archivo, es_tar)}; un «respaldo» es la tanda de archivos con la misma fecha_hora.
+respaldos = {f: {} for f in fechas}
+tipos_base, tipos_tar = set(), set()
 for n in sorted(os.listdir(origen)):
     m = patron.match(n)
-    if m and m.group(1) in fechas and os.path.isfile(os.path.join(origen, n)):
-        por_dia[fechas[m.group(1)]].append(n)
-lineas = []
+    if not (m and m.group(2) in respaldos and os.path.isfile(os.path.join(origen, n))):
+        continue
+    es_tar = m.group(4) == 'tar.gz'
+    tipo = m.group(1) or 'base'
+    (tipos_tar if es_tar else tipos_base).add(tipo)
+    respaldos[m.group(2)].setdefault(m.group(3), {})[tipo] = (n, es_tar)
+tipos_base, tipos_tar = sorted(tipos_base), sorted(tipos_tar)
+todos = set(tipos_base) | set(tipos_tar)
+
+def sha256(ruta):
+    d = hashlib.sha256()
+    with open(ruta, 'rb') as f:
+        for b in iter(lambda: f.read(1 << 20), b''):
+            d.update(b)
+    return d.hexdigest()
+
+_huellas = {}
+def huella(ruta):
+    if ruta not in _huellas:
+        filas = []
+        with tarfile.open(ruta, 'r:*') as t:
+            for e in t:
+                h = ''
+                if e.isfile():
+                    f, d = t.extractfile(e), hashlib.sha256()
+                    for b in iter(lambda: f.read(1 << 20), b''):
+                        d.update(b)
+                    h = d.hexdigest()
+                filas.append('\0'.join((e.name.removeprefix('./'), repr(e.type), f'{e.mode:o}', e.linkname, str(e.size), h)))
+        _huellas[ruta] = hashlib.sha256('\n'.join(sorted(filas)).encode()).hexdigest()
+    return _huellas[ruta]
+
+hora = lambda hhmm: f'{hhmm[:2]}:{hhmm[2:]}'
+ultimo = {}          # tipo de tar -> (día, archivo, sha256) del último que entró completo
+filas, lineas, faltan, notas = [], [], [], 0
 with zipfile.ZipFile(destino, 'w', zipfile.ZIP_STORED, allowZip64=True) as z:
-    for i, d in enumerate(dias):
-        fecha = (inicio + datetime.timedelta(i)).isoformat()
-        if not por_dia[d]:
+    for d, fecha in zip(dias, fechas):
+        tandas = respaldos[fecha]
+        if not tandas:
+            faltan.append(d)
+            filas.append([d, fecha, 'FALTA'] + ['—'] * (1 + len(tipos_tar)))
             lineas.append(f'{d} ({fecha}): FALTA, no hay respaldo de ese día')
             continue
-        for n in por_dia[d]:
-            z.write(os.path.join(origen, n), f'{d}/{n}')
-        lineas.append(f'{d} ({fecha}): {len(por_dia[d])} archivos')
-    z.writestr('CONTENIDO.txt', f'Respaldos de {proy}, semana del {lunes} al {(inicio + datetime.timedelta(6)).isoformat()}\n'
-               + '\n'.join(lineas) + '\n')
+        completas = [h for h in tandas if set(tandas[h]) >= todos]
+        usada = max(completas or tandas)
+        tanda = tandas[usada]
+        extra = ''
+        if len(tandas) > 1:
+            extra = f'; había {len(tandas)} ({", ".join(hora(h) for h in sorted(tandas))}), se usó el último'
+            if usada != max(tandas):
+                extra += f' completo (el de las {hora(max(tandas))} quedó a medias)'
+        celdas, resumen = [], []
+        bases = [t for t in tipos_base if t in tanda]
+        for t in bases:
+            z.write(os.path.join(origen, tanda[t][0]), f'{d}/{tanda[t][0]}')
+        sin_base = [t for t in tipos_base if t not in tanda]
+        celda_base = 'incluida' + (f' ({", ".join(bases)})' if len(tipos_base) > 1 else '')
+        if sin_base:
+            celda_base = 'FALTA ' + ', '.join(sin_base) + (f'; incluida {", ".join(bases)}' if bases else '')
+        celdas.append(celda_base)
+        for t in tipos_tar:
+            if t not in tanda:
+                celdas.append('falta'); resumen.append(f'{t} falta'); continue
+            nombre = tanda[t][0]
+            ruta = os.path.join(origen, nombre)
+            suma = sha256(ruta)
+            previo = ultimo.get(t)
+            igual = previo is not None and (previo[2] == suma or huella(ruta) == huella(os.path.join(origen, previo[1])))
+            if igual:
+                d_ref, n_ref, s_ref = previo
+                como = 'mismos bytes (sha256)' if s_ref == suma else 'mismo contenido (huella de los archivos del tar; el .tar.gz cambió solo en fechas u orden)'
+                z.writestr(f'{d}/{t} - igual que {d_ref}.txt',
+                    f'{t} de {d} ({fecha}, respaldo de las {hora(usada)}): igual que el de {d_ref}; no se metió otra vez.\n'
+                    f'Archivo en el zip: {d_ref}/{n_ref}\n'
+                    f'Respaldo de este día que no entró: {nombre} (sha256 {suma})\n'
+                    f'Comparación: {como}\n'
+                    f'Para restaurar {d}: usa los .dump de esta carpeta y ese archivo de la carpeta {d_ref}/ (ver CONTENIDO.txt).\n')
+                notas += 1
+                celdas.append(f'en {d_ref}'); resumen.append(f'{t} en {d_ref}')
+            else:
+                z.write(ruta, f'{d}/{nombre}')
+                ultimo[t] = (d, nombre, suma)
+                celdas.append('incluido'); resumen.append(f'{t} incluido')
+        filas.append([d, fecha, hora(usada) + (' (incompleto)' if usada not in completas else '')] + celdas)
+        lineas.append(f'{d} ({fecha}): respaldo de las {hora(usada)}{extra}; base {celda_base}; ' + ', '.join(resumen))
+
+    cab = ['Día', 'Fecha', 'Respaldo usado', 'Base'] + tipos_tar
+    anchos = [max(len(str(x[i])) for x in [cab] + filas) for i in range(len(cab))]
+    tabla = '\n'.join(' | '.join(str(x[i]).ljust(anchos[i]) for i in range(len(cab))).rstrip() for x in [cab, ['-' * a for a in anchos]] + filas)
+    bajar = f'El zip está en {remoto}: rclone copy {remoto}/<este zip> ~/' + (' (remoto cifrado: rclone lo descifra al bajarlo).' if cifrado == 'si' else '')
+    if proy == 'nucleo':
+        pasos = ('4. Desde cero: extrae primero el tar «aplicacion» en la carpeta del proyecto (código, .env y configuración;\n'
+                 '   VERSION_DESPLEGADA dice qué commit estaba desplegado), luego corre desde ahí\n'
+                 '   bash deploy/restaurar.sh ~/traspaso   (restaura nucleo_db, nucleo_iot y el tar «broker_media»: certificados,\n'
+                 '   usuarios de Mosquitto y archivos subidos). El tar «firma_app» es la llave de firma del APK: va en ~/nucleo-app\n'
+                 '   del equipo que compila (tar -xzf <archivo> -C ~).\n')
+    else:
+        pasos = ('4. Con Backend/.env ya configurado, desde la carpeta del proyecto: bash deploy/restaurar.sh ~/traspaso\n'
+                 '   (restaura la base desde el .dump en una base vacía y el tar «media» en Backend/).\n')
+    texto = (f'Respaldos de {proy}, semana del {lunes} al {fechas[-1]}\n\n'
+             'De cada día está solo el último respaldo. Las bases (.dump) están completas todos los días. Cada tar está completo\n'
+             'el primer día de la semana y cada vez que cambió; «en <día>» quiere decir que ese día era idéntico al de <día> y no\n'
+             'se volvió a meter (en la carpeta del día queda la nota «<tipo> - igual que <día>.txt» con el nombre exacto).\n\n'
+             + tabla + '\n\n' + '\n'.join(lineas) + '\n\n'
+             'Cómo restaurar un día:\n'
+             f'1. {bajar}\n'
+             '   Extrae el zip (python3 -m zipfile -e <zip> <carpeta>, o cualquier descompresor).\n'
+             '2. Busca el día en la tabla. De su carpeta toma los .dump (la base de ese día).\n'
+             '3. Por cada tar: «incluido» = está en la carpeta del día; «en <día>» = tómalo de la carpeta de ese otro día (la nota lo\n'
+             '   nombra). Copia los .dump y esos tar a una carpeta vacía, p. ej. ~/traspaso (un archivo de cada tipo).\n'
+             + pasos)
+    z.writestr('CONTENIDO.txt', texto)
 print('\n'.join(lineas))
-faltan = [d for d in dias if not por_dia[d]]
+print(f'Notas «igual que»: {notas}')
 print(f'FALTAN:{",".join(faltan)}')
 if len(faltan) == 7:
     sys.exit(3)
@@ -80,8 +193,8 @@ faltan="$(sed -n 's/^FALTAN://p' "$salida_dir/.resumen")"
 rm -f "$salida_dir/.resumen"
 if (( estado == 3 )); then rm -f "$zip.parcial"; echo "FALLA: no hay ningún respaldo de esa semana en $origen"; exit 1; fi
 
-# Comprueba el zip (CRC de cada archivo) antes de subirlo.
-python3 -I -m zipfile -t "$zip.parcial" >/dev/null || { echo "FALLA: el zip no pasó la comprobación"; exit 1; }
+# Comprueba el zip antes de subirlo: CRC de cada archivo y que cada nota «igual que» apunte a un archivo del zip.
+revisar_zip_semanal "$zip.parcial" || { echo "FALLA: el zip no pasó la comprobación"; exit 1; }
 mv -f "$zip.parcial" "$zip"
 echo "Zip comprobado: $(basename "$zip") ($(du -h "$zip" | cut -f1), $(python3 -I -m zipfile -l "$zip" | tail -n +2 | wc -l) entradas)"
 [[ -n $faltan ]] && echo "Aviso: faltan días en el zip: ${faltan//,/, }"

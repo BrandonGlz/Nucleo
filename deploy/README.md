@@ -252,9 +252,28 @@ semana); cada descarga se reintenta 5 veces. Al terminar, en el servidor corre
 **Zip semanal a Drive.** `respaldo-nucleo-semanal.timer` (lunes 00:30, después del respaldo del
 domingo por la noche) corre `respaldo-semanal nucleo gdrive-nucleo-cifrado:`: junta los respaldos
 diarios de la semana que acaba de terminar en `nucleo_semana_<lunes>_al_<domingo>.zip`, con una
-carpeta por día (`lunes/`, `martes/`, …, `domingo/`) y un `CONTENIDO.txt`. Si falta algún día el
-zip se arma igual y la bitácora y el correo lo dicen. Antes de subirlo comprueba el zip (CRC de
-cada archivo); lo sube por el remoto cifrado (`gdrive-nucleo-cifrado:semanal`, nombre y contenido
+carpeta por día (`lunes/`, `martes/`, …, `domingo/`) y un `CONTENIDO.txt`, sin repetir lo que no cambió:
+
+- De cada día entra solo el **último** respaldo (si ese día hubo varios por pruebas o reintentos; si el
+  último quedó a medias, el último completo).
+- Los volcados de las bases (`nucleo_db`, `nucleo_iot`) entran completos todos los días.
+- Cada tipo de tar (`aplicacion`, `broker_media`, `firma_app`, por separado) entra completo el primer
+  día de la semana; los días siguientes se compara con el último que sí entró y, si es igual, no se
+  mete: en la carpeta del día queda la nota `<tipo> - igual que <día>.txt` con el nombre del archivo y
+  la carpeta donde está (sin «:» en el nombre, para que se pueda extraer en Windows). Si cambió, entra
+  completo. «Igual» es el mismo sha256 del `.tar.gz` o, si los bytes difieren, la misma huella del
+  contenido: la lista ordenada de ruta, tipo, permisos, destino de enlace, tamaño y sha256 de los datos
+  de cada entrada, sin fechas, dueños ni orden. Los tar de `broker_media` y `firma_app` salen idénticos
+  byte a byte si nada cambió (el gzip de una tubería no guarda fecha), pero el de `aplicacion` cambia
+  siempre porque `VERSION_DESPLEGADA` se recrea en cada respaldo; la huella del contenido lo resuelve
+  sin dar por igual un cambio real de cualquier archivo.
+- `CONTENIDO.txt` trae una tabla (día | respaldo usado (hora) | base | cada tar: «incluido» o
+  «en <día>»), los días que faltan y cómo restaurar un día.
+
+Con esto la semana de prueba (16 al 22 de noviembre de 2026, seis días) bajó de 77 MB a 36 MB.
+Si falta algún día el zip se arma igual y la bitácora y el correo lo dicen. Antes de subirlo comprueba
+el zip (`revisar_zip_semanal` de `comun.sh`: CRC de cada archivo y que cada nota apunte a un archivo
+que sí está en el zip); lo sube por el remoto cifrado (`gdrive-nucleo-cifrado:semanal`, nombre y contenido
 cifrados) y comprueba la copia con `rclone cryptcheck`. Guarda unas 5 semanas en Drive y en
 `~/respaldos/nucleo-semanal`. Los archivos sueltos que subían los respaldos diarios de antes se
 borran solos al cumplir 30 días. La subida limita las peticiones a Google (`--tpslimit 4`: rclone
@@ -267,7 +286,7 @@ prueba de restauración en curso, espera a que termine (hasta 2 h).
 `prueba-restauracion-nucleo-remoto.timer` (primer domingo del mes, 04:30) restaura el último
 respaldo diario (el del sábado por la noche) en dos contenedores temporales sin red, compara los
 conteos con producción (solo lectura, por SSH), revisa que el último zip semanal pase la comprobación
-y esté en Drive con el mismo tamaño, y manda el resultado por correo. Si un respaldo o una prueba falla,
+(CRC y notas) y esté en Drive con el mismo tamaño, y manda el resultado por correo. Si un respaldo o una prueba falla,
 `respaldo-aviso@.service` manda las últimas líneas de su bitácora (como mucho uno por hora).
 El SMTP y los destinatarios están en `~/.config/respaldo-remoto/nucleo.env` (600, fuera del repo).
 
@@ -287,7 +306,18 @@ Guarda las dos contraseñas fuera del servidor (gestor de contraseñas): sin ell
 no se pueden leer. Desde ese momento `respaldar.sh` usa el remoto cifrado y los respaldos en claro
 anteriores se borran solos a los 30 días. Para restaurar en otra máquina se crea el mismo remoto
 con las mismas contraseñas y `rclone copy gdrive-nucleo-cifrado:semanal ~/traspaso --max-age 8d`
-(el zip de la última semana; `unzip` y se usa la carpeta del día que se quiera).
+(el zip de la última semana). Para restaurar un día: de su carpeta los `.dump` y, por cada tar, el de
+la carpeta que diga la tabla de `CONTENIDO.txt` («incluido» = la del día; «en <día>» = la de ese otro
+día, que la nota nombra), todo en una carpeta vacía; desde cero, primero se extrae el tar `aplicacion`
+en la carpeta del proyecto (trae el `.env`) y luego `bash deploy/restaurar.sh <carpeta>`.
+
+**Únicos respaldos.** Los únicos respaldos son `respaldo-nucleo-remoto.timer` (diario 23:30, local en el
+equipo de compilación) y `respaldo-nucleo-semanal.timer` (zip de los lunes a Drive). En el servidor,
+`nucleo-respaldo.timer` queda deshabilitado (marca `/etc/nucleo-respaldo-remoto`), no hay crons con
+`pg_dump` ni `rclone` en ninguno de los dos equipos y ya nada sube archivos sueltos a Drive (los
+viejos de la raíz del remoto caducan a los 30 días). La prueba de restauración mensual no es un
+respaldo y sigue activa; `dpkg-db-backup.timer` es de Debian (copia de la base de paquetes en
+`/var/backups`) y no tiene que ver con estos.
 
 ### Objetivos de recuperación
 

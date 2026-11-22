@@ -49,6 +49,29 @@ revisar_tar() {
   echo "$(basename "$1"): $(du -h "$1" | cut -f1), $n entradas"
 }
 
+# revisar_zip_semanal <zip>: comprueba el CRC de cada entrada (python -m zipfile -t), que traiga CONTENIDO.txt y que
+# cada nota «<tipo> - igual que <día>.txt» (tar que no cambió y no se volvió a meter) apunte con su línea
+# «Archivo en el zip: <día>/<archivo>» a un archivo que sí está en el zip. Lo usan respaldo-semanal y las pruebas
+# de restauración.
+revisar_zip_semanal() {
+  python3 -I -m zipfile -t "$1" >/dev/null || { echo "FALLA: $(basename "$1") no pasó la comprobación de CRC"; return 1; }
+  python3 -I - "$1" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as z:
+    nombres = set(z.namelist())
+    notas = sorted(n for n in nombres if ' - igual que ' in n and n.endswith('.txt'))
+    malas = [] if 'CONTENIDO.txt' in nombres else ['CONTENIDO.txt (falta)']
+    for n in notas:
+        ref = [l.split(':', 1)[1].strip() for l in z.read(n).decode().splitlines() if l.startswith('Archivo en el zip:')]
+        if not ref or ref[0] not in nombres:
+            malas.append(f'{n} -> {ref[0] if ref else "?"}')
+if malas:
+    print('FALLA: notas que apuntan a un archivo que no está en el zip: ' + '; '.join(malas))
+    sys.exit(1)
+print(f'{len(notas)} notas «igual que», todas apuntan a un archivo del zip')
+PY
+}
+
 # subir <archivo> <remoto:carpeta>: sube un archivo (el zip semanal) a Google Drive y comprueba que llegó
 # completo. asus sale a internet por un Wi-Fi débil y rclone usa el cliente compartido de Google (límite de
 # peticiones por minuto entre todos sus usuarios): se limitan las peticiones (--tpslimit), una subida

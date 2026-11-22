@@ -127,10 +127,16 @@ documento de su componente, enlazado en cada sección.
 - El equipo de compilación (`respaldo-nucleo-remoto.timer`) respalda por SSH todos los días a las
   23:30 (RPO de 24 h) las dos bases y la configuración del servidor, y los guarda 10 días.
 - Cada lunes a las 00:30 (`respaldo-nucleo-semanal.timer`) junta la semana en
-  `nucleo_semana_<lunes>_al_<domingo>.zip` (una carpeta por día), lo comprueba y lo sube a Google
+  `nucleo_semana_<lunes>_al_<domingo>.zip` (una carpeta por día, solo el último respaldo de cada día;
+  las bases completas a diario y cada tar —aplicación, broker y archivos subidos, llave de firma— solo
+  el primer día y cuando cambió, con una nota `<tipo> - igual que <día>.txt` y una tabla en
+  `CONTENIDO.txt` que dice de qué carpeta sale cada archivo), lo comprueba (CRC y que cada nota apunte
+  a un archivo del zip) y lo sube a Google
   Drive por el remoto `crypt` de rclone (`gdrive-nucleo-cifrado:semanal`: nombre y contenido cifrados),
   verificado con `rclone cryptcheck`; se guardan unas 5 semanas. Fuera del equipo de compilación,
   el atraso puede ser de hasta una semana (RPO de 8 días si se pierden los dos equipos).
+- Esos dos timers son los únicos respaldos: el del servidor (`nucleo-respaldo.timer`) está
+  deshabilitado, no hay crons de respaldo y nada más sube a Drive.
 - `prueba-restauracion-nucleo-remoto.timer` (en el equipo de compilación, primer domingo de cada
   mes) restaura el último respaldo en
   contenedores temporales, compara los conteos con producción, mide el tiempo (RTO), revisa que el

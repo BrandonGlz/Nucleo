@@ -103,7 +103,7 @@ f="$(reciente 'nucleo_aplicacion*.tar.gz')"
 [[ -z "$f" ]] || tar_trae "$f" './.env' || { echo "FALLA: el tar de la aplicación no trae .env"; fallos=$((fallos + 1)); }
 
 # Zip semanal (lo que hay en Drive): el más reciente de ~/respaldos/nucleo-semanal debe tener menos de 8 días, pasar
-# la comprobación del zip y estar en Drive con el mismo tamaño (gdrive-nucleo-cifrado:semanal).
+# la comprobación del zip (CRC y notas «igual que») y estar en Drive con el mismo tamaño (gdrive-nucleo-cifrado:semanal).
 semanal="$(ls -t "$HOME/respaldos/nucleo-semanal"/nucleo_semana_*.zip 2>/dev/null | head -1 || true)"
 if [[ -z $semanal ]]; then
   echo "FALLA: no hay zip semanal en ~/respaldos/nucleo-semanal"; fallos=$((fallos + 1))
@@ -111,7 +111,8 @@ else
   s_dias=$(( ( $(date +%s) - $(stat -c %Y "$semanal") ) / 86400 ))
   echo "Zip semanal: $(basename "$semanal") ($(du -h "$semanal" | cut -f1), hace $s_dias días)"
   (( s_dias < 8 )) || { echo "FALLA: el zip semanal tiene $s_dias días (respaldo-nucleo-semanal no está corriendo)"; fallos=$((fallos + 1)); }
-  python3 -I -m zipfile -t "$semanal" >/dev/null || { echo "FALLA: el zip semanal está dañado"; fallos=$((fallos + 1)); }
+  # CRC de cada entrada y que cada nota «<tipo> - igual que <día>.txt» (tar que no cambió) apunte a un archivo del zip.
+  revisar_zip_semanal "$semanal" || { echo "FALLA: el zip semanal está dañado o incompleto"; fallos=$((fallos + 1)); }
   s_drive="$(rclone lsf "gdrive-nucleo-cifrado:semanal" --files-only --format s --include "/$(basename "$semanal")" "${RCLONE_RED[@]}" 2>/dev/null || true)"
   if [[ $s_drive == "$(stat -c %s "$semanal")" ]]; then echo "En Drive (gdrive-nucleo-cifrado:semanal): mismo tamaño"
   else echo "FALLA: el zip semanal no está en Drive o no coincide (${s_drive:-no está})"; fallos=$((fallos + 1)); fi
