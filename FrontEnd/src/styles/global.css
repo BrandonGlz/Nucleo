@@ -3662,6 +3662,17 @@ button.ui-menuitem:not(:disabled):hover svg {
 }
 
 /* Aviso de que la gráfica muestra las últimas lecturas guardadas y no las del periodo actual */
+/* Histórico: pie de la tabla de lecturas con el conteo y «Cargar más» */
+.ui-lecturas-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
 .ui-aviso-ultima {
   color: var(--warning);
   font-weight: 600;
