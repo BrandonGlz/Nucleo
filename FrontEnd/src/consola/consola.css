@@ -812,16 +812,61 @@
   grid-template-columns: minmax(0, 1fr) 48px 48px;
   gap: 8px;
   align-items: center;
-  gap: 16px;
-  padding: 12px 4px;
+  padding: 10px 0;
   border-top: 1px solid var(--border);
 }
-.ui-consola-preferencias li:first-child {
-  border-top: 0;
+.ui-consola-preferencias li > .nc-toggle {
+  justify-self: center;
 }
-@media (max-width: 560px) {
-  .ui-consola-preferencias li {
-    flex-wrap: wrap;
+.ui-consola-preferencias li.ui-consola-preferencias__cabeza {
+  padding: 0 0 6px;
+  border-top: 0;
+  color: var(--text-muted);
+}
+.ui-consola-preferencias__cabeza > span {
+  display: flex;
+  justify-content: center;
+}
+.ui-consola-preferencias__tipo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+.ui-consola-preferencias__tipo > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+/* En la columna estrecha la descripción queda en el título emergente; en celular se muestra. */
+.ui-consola-preferencias__tipo small {
+  display: none;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+@media (max-width: 1100px) {
+  .ui-consola-notif {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+@media (max-width: 900px) {
+  .ui-consola-notif {
+    flex: none;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ui-consola-notif__prefs {
+    overflow: visible;
+  }
+  /* La bandeja conserva su scroll para que las preferencias no queden al final de una página larga. */
+  .ui-consola-notif__lista .nc-scroll {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .ui-consola-preferencias__tipo small {
+    display: block;
   }
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ActivityFeed, Button, Card, IconCircle, Skeleton, Tabs, Toggle } from '../../design-system/componentes/index.js'
+import { ActivityFeed, Button, Card, Icon, IconCircle, Skeleton, Tabs, Toggle } from '../../design-system/componentes/index.js'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { useAvisos } from '../../context/AvisosContext'
@@ -12,7 +12,8 @@ import { mensajeError, useAviso } from '../utilidades'
 
 const grupo = (iso) => (esHoy(iso) ? 'Hoy' : esAyer(iso) ? 'Ayer' : fechaCorta(iso))
 
-// Qué avisos llegan a la campana y cuáles por correo, por tipo de evento.
+// Qué avisos llegan a la campana y cuáles por correo, por tipo de evento. Columna lateral compacta:
+// lo importante de la página es la bandeja.
 function Preferencias() {
   const { estado, datos, reintentar, actualizar } = useDatos(nicoApi.preferenciasAvisos, [])
   const [aviso, avisar] = useAviso()
@@ -27,21 +28,32 @@ function Preferencias() {
     }
   }
   return (
-    <Card title="Preferencias" subtitle={datos ? `Los correos llegan a ${datos.correo}.` : undefined}>
+    <Card className="ui-consola-notif__prefs" title="Preferencias" subtitle={datos ? `Los correos llegan a ${datos.correo}.` : undefined}>
       {aviso}
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
       {estado === 'cargando' && !datos && <Skeleton variant="card" />}
       {datos && (
         <ul className="ui-consola-preferencias">
+          <li className="ui-consola-preferencias__cabeza" aria-hidden="true">
+            <span />
+            <span title="Campana">
+              <Icon name="bell" size={16} />
+            </span>
+            <span title="Correo">
+              <Icon name="mail" size={16} />
+            </span>
+          </li>
           {datos.tipos.map((t) => (
             <li key={t.tipo}>
-              <IconCircle name={TIPOS_AVISO[t.tipo]?.icon ?? 'bell'} tone="neutral" size="sm" />
-              <div className="ui-titulo-fila" style={{ flex: 1 }}>
-                <strong>{t.etiqueta}</strong>
-                <span>{t.descripcion}</span>
+              <div className="ui-consola-preferencias__tipo" title={t.descripcion}>
+                <IconCircle name={TIPOS_AVISO[t.tipo]?.icon ?? 'bell'} tone="neutral" size="sm" />
+                <span>
+                  <strong>{t.etiqueta}</strong>
+                  <small>{t.descripcion}</small>
+                </span>
               </div>
-              <Toggle label="Campana" checked={t.consola} onChange={(v) => cambiar(t.tipo, 'consola', v)} />
-              <Toggle label="Correo" checked={t.correo} onChange={(v) => cambiar(t.tipo, 'correo', v)} />
+              <Toggle ariaLabel={`${t.etiqueta}: campana`} checked={t.consola} onChange={(v) => cambiar(t.tipo, 'consola', v)} />
+              <Toggle ariaLabel={`${t.etiqueta}: correo`} checked={t.correo} onChange={(v) => cambiar(t.tipo, 'correo', v)} />
             </li>
           ))}
         </ul>
@@ -86,7 +98,9 @@ export default function NotificacionesConsola() {
         ],
       }}
     >
-      <Card className="nc-grow">
+      {/* La bandeja ocupa todo el alto libre (scroll interno); las preferencias, una columna estrecha. */}
+      <div className="ui-consola-notif">
+      <Card className="nc-grow ui-consola-notif__lista">
         <div className="ui-consola-barra">
           <Tabs
             items={[
@@ -133,6 +147,7 @@ export default function NotificacionesConsola() {
         </div>
       </Card>
       <Preferencias />
+      </div>
     </Pantalla>
   )
 }
