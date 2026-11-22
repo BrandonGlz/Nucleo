@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Avatar, Icon, IconButton, Logo, LogoApp } from '../design-system/componentes/index.js'
+import { Avatar, Icon, IconButton, Logo, LogoMark } from '../design-system/componentes/index.js'
 import { AgenteProvider } from '../context/AgenteContext'
 import { AvisosProvider, useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
@@ -98,8 +98,9 @@ function MenuLateral() {
           onClick={alternar}
           aria-expanded={!compacto}
           title={compacto ? 'Expandir menú' : 'Contraer menú'}
+          aria-label={compacto ? 'Núcleo: expandir menú' : undefined}
         >
-          {compacto ? <LogoApp size={48} label="Núcleo" /> : <Logo size={32} inverse />}
+          {compacto ? <LogoMark size={36} tone="verde" /> : <Logo size={32} inverse />}
         </button>
       )}
       {SECCIONES.map((seccion) => {

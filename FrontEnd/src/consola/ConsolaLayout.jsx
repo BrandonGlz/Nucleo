@@ -1,6 +1,6 @@
 import { Suspense, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { Avatar, Icon, Logo, LogoApp } from '../design-system/componentes/index.js'
+import { Avatar, Icon, Logo, LogoMark } from '../design-system/componentes/index.js'
 import { useSesion } from '../context/SesionContext'
 import { nombreCompleto, ROL } from '../utils/convertir'
 import { AvisosNicoProvider } from './AvisosNico'
@@ -35,8 +35,9 @@ function MenuConsola() {
         onClick={alternar}
         aria-expanded={!compacto}
         title={compacto ? 'Expandir menú' : 'Contraer menú'}
+        aria-label={compacto ? 'Núcleo: expandir menú' : undefined}
       >
-        {compacto ? <LogoApp size={48} label="Núcleo" /> : <Logo size={32} inverse />}
+        {compacto ? <LogoMark size={36} tone="verde" /> : <Logo size={32} inverse />}
       </button>
       {!compacto && <span className="ui-consola-marca">Consola de Nico AI</span>}
       {GRUPOS.map((grupo) => (

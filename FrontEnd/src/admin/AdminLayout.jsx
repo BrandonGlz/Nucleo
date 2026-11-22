@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { Avatar, Icon, IconButton, Logo, LogoApp } from '../design-system/componentes/index.js'
+import { Avatar, Icon, IconButton, Logo, LogoMark } from '../design-system/componentes/index.js'
 import { useAvisos } from '../context/AvisosContext'
 import { useSesion } from '../context/SesionContext'
 import { MenuMovilContext, useEsMovil, useMenuMovil } from '../hooks/useMenuMovil'
@@ -54,8 +54,9 @@ function MenuAdmin() {
           onClick={alternar}
           aria-expanded={!compacto}
           title={compacto ? 'Expandir menú' : 'Contraer menú'}
+          aria-label={compacto ? 'Núcleo: expandir menú' : undefined}
         >
-          {compacto ? <LogoApp size={48} label="Núcleo" /> : <Logo size={32} inverse />}
+          {compacto ? <LogoMark size={36} tone="verde" /> : <Logo size={32} inverse />}
         </button>
       )}
       {!compacto && <span className="ui-consola-marca">Consola de administración</span>}

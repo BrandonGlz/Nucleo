@@ -73,14 +73,20 @@ button.ui-link {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+/* Compacto: 92px de ancho, 64px útiles; cada ícono queda en un área de 64×48 (táctil cómoda) */
 .nc-sidebar.is-compacto {
-  width: 124px;
-  padding-left: 18px;
-  padding-right: 18px;
+  width: 92px;
+  padding-left: 14px;
+  padding-right: 14px;
 }
+/* Solo el ícono verde de Núcleo, sin círculo de fondo: el botón se ciñe a él (48×48) */
 .nc-sidebar.is-compacto .nc-sidebar__brand {
-  padding-left: 0;
-  padding-right: 0;
+  align-self: center;
+  width: 48px;
+  min-height: 48px;
+  height: 48px;
+  margin-bottom: var(--space-6);
+  padding: 0;
 }
 .nc-sidebar.is-compacto .ui-menu-logo > svg {
   animation: ui-activa var(--duration-slow) var(--ease-emphasized);
@@ -97,7 +103,7 @@ button.ui-link {
 /* Sin títulos de sección: una línea fina separa los grupos */
 .nc-sidebar.is-compacto .nc-sidebar__section {
   height: 1px;
-  margin: 2px 14px 6px;
+  margin: 2px 10px 6px;
   padding: 0;
   background: rgba(243, 245, 242, 0.1);
 }
@@ -115,7 +121,7 @@ button.ui-link {
 .nc-sidebar.is-compacto .nc-navitem__count {
   position: absolute;
   top: 2px;
-  right: 14px;
+  right: 6px;
   min-width: 18px;
   height: 18px;
   line-height: 18px;
