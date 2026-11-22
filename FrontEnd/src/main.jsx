@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { SesionProvider } from './context/SesionContext'
 import './design-system/estilos/index.css'
+import './styles/fluido.css'
 import './styles/global.css'
 import './styles/movil.css'
 

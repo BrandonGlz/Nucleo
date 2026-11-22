@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Alert, Avatar, Badge, Button, Card, IconCircle, Input, Tabs, Toggle } from '../../design-system/componentes/index.js'
+import { Alert, Badge, Button, Card, IconCircle, Input, Tabs, Toggle } from '../../design-system/componentes/index.js'
 import { Pantalla } from '../../components/Pantalla'
 import { useAvisos } from '../../context/AvisosContext'
 import { useSesion } from '../../context/SesionContext'
@@ -11,6 +11,7 @@ import * as organizacionesApi from '../../services/organizaciones'
 import * as reportesApi from '../../services/reportes'
 import { nombreCompleto, pagina, ROL, ROL_TONO } from '../../utils/convertir'
 import { accesoCorto } from '../../utils/formato'
+import { FotoPerfil } from './FotoPerfil'
 import { SegundoFactor } from './SegundoFactor'
 
 const TEMAS = [
@@ -106,7 +107,9 @@ export function PerfilPage() {
         ],
       }}
     >
-      <div className="ui-fila" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)' }}>
+      {/* Datos a la izquierda; preferencias y verificación apiladas a la derecha. Sin scroll dentro de
+          las tarjetas: si no cabe, se desplaza la página (en tableta y celular, una columna). */}
+      <div className="ui-perfil">
         <Card className="nc-grow">
           <div className="ui-panel">
             <div className="nc-card__head" style={{ margin: 0 }}>
@@ -116,9 +119,7 @@ export function PerfilPage() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ padding: 4, borderRadius: 999, boxShadow: '0 0 0 3px var(--accent)' }}>
-                <Avatar name={nombre} size={64} />
-              </div>
+              <FotoPerfil nombre={nombre} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <strong style={{ fontSize: 18, lineHeight: '24px' }}>{nombre}</strong>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -172,48 +173,50 @@ export function PerfilPage() {
             </div>
           </div>
         </Card>
-        <Card className="nc-grow">
-          <div className="ui-panel">
-            <div className="nc-card__head" style={{ margin: 0 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 className="nc-card__title">Preferencias</h3>
-                <p className="nc-card__sub">Se guardan en este navegador</p>
-              </div>
-            </div>
-            <div className="ui-fila-tema" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <strong style={{ fontSize: 14 }}>Tema</strong>
-                <span className="ui-muted" style={{ fontSize: 13 }}>
-                  Por defecto sigue al sistema
-                </span>
-              </div>
-              <Tabs items={TEMAS} value={tema} onChange={setTema} />
-            </div>
-            <div className="ui-separado" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <span className="ui-eyebrow">Notificaciones</span>
-              {PREFS.map(([k, label]) => (
-                <Toggle key={k} label={label} checked={prefs[k]} onChange={(v) => cambiarPref(k, v)} />
-              ))}
-            </div>
-            <div className="ui-separado" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <span className="ui-eyebrow">Sesión</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 16, background: 'var(--surface-muted)' }}>
-                <IconCircle name="smartphone" size="sm" />
-                <div className="ui-titulo-fila" style={{ flex: 1 }}>
-                  <strong style={{ fontSize: 14 }}>Este navegador</strong>
-                  <span style={{ fontSize: 12 }}>La sesión caduca tras 7 días sin uso</span>
+        <div className="ui-perfil__lado">
+          <Card className="nc-grow">
+            <div className="ui-panel">
+              <div className="nc-card__head" style={{ margin: 0 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 className="nc-card__title">Preferencias</h3>
+                  <p className="nc-card__sub">Se guardan en este navegador</p>
                 </div>
               </div>
-              <div>
-                <Button variant="secondary" icon="log-out" onClick={salir}>
-                  Cerrar sesión
-                </Button>
+              <div className="ui-fila-tema" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <strong style={{ fontSize: 14 }}>Tema</strong>
+                  <span className="ui-muted" style={{ fontSize: 13 }}>
+                    Por defecto sigue al sistema
+                  </span>
+                </div>
+                <Tabs items={TEMAS} value={tema} onChange={setTema} />
+              </div>
+              <div className="ui-separado ui-perfil__avisos">
+                <span className="ui-eyebrow">Notificaciones</span>
+                {PREFS.map(([k, label]) => (
+                  <Toggle key={k} label={label} checked={prefs[k]} onChange={(v) => cambiarPref(k, v)} />
+                ))}
+              </div>
+              <div className="ui-separado ui-perfil__sesion">
+                <span className="ui-eyebrow">Sesión</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 16, background: 'var(--surface-muted)' }}>
+                  <IconCircle name="smartphone" size="sm" />
+                  <div className="ui-titulo-fila" style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 14 }}>Este navegador</strong>
+                    <span style={{ fontSize: 12 }}>La sesión caduca tras 7 días sin uso</span>
+                  </div>
+                </div>
+                <div>
+                  <Button variant="secondary" icon="log-out" onClick={salir}>
+                    Cerrar sesión
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+          <SegundoFactor />
+        </div>
       </div>
-      <SegundoFactor />
     </Pantalla>
   )
 }

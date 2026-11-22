@@ -1,0 +1,82 @@
+/* Sistema fluido: tamaños que se interpolan con la ventana en lugar de saltar por resolución.
+
+   Fórmula (interpolación lineal acotada) para un valor que va de A en la ventana chica Vmin a B en
+   la grande Vmax:
+       pendiente = (B − A) / (Vmax − Vmin)          → se escribe en vw (o vh) multiplicada por 100
+       base      = A − pendiente · Vmin
+       valor     = clamp(A, base + pendiente · 100vw, B)
+   Ancho: Vmin = 360 px (celular) y Vmax = 1920 px (PC). Ejemplo, el título de 22 a 32 px:
+       pendiente = 10 / 1560 = 0.641vw · base = 22 − 0.00641 · 360 = 19.69px
+       → clamp(22px, 19.69px + 0.641vw, 32px)
+   Alto (densidad de escritorio, la pantalla llena sin scroll): Vmin = 700 px y Vmax = 1100 px, en vh.
+   Lo que depende de ambos ejes toma el menor: min(fluido por ancho, fluido por alto).
+
+   Redefine los tokens del design system (mismos nombres) para que todo lo que ya los usa escale
+   solo; los valores grandes son exactamente los originales, así que en una PC no cambia nada.
+
+   Puntos de quiebre que quedan (no se pueden usar variables en @media, por eso se nombran aquí):
+   - movil: (max-width: 900px) — el menú lateral pasa a cajón y la página hace scroll completo.
+     Debe coincidir con CONSULTA_MOVIL de hooks/useMenuMovil.js.
+   - baja:  (min-width: 901px) and (max-height: 820px) — escritorio bajo: se ocultan textos
+     secundarios para que la pantalla quepa sin scroll.
+   El resto responde al ancho de su contenedor, no al de la pantalla:
+   - rejillas intrínsecas repeat(auto-fit, minmax(min(100%, X), 1fr));
+   - @container cifras (la franja negra): 720 px → la cifra principal en su renglón; 520 px → de dos en dos;
+   - @container contenido (la columna .app__main): 720 px → las acciones del encabezado bajan de renglón;
+     528 px (≈ celular) → tablas como tarjetas, filtros y formularios en una columna. */
+:root {
+  /* Tipografía (tokens de typography.css) */
+  --display-xl-size: clamp(44px, 37.54px + 1.795vw, 72px);
+  --display-xl-line: var(--display-xl-size);
+  --display-lg-size: clamp(32px, 28.31px + 1.026vw, 48px);
+  --display-lg-line: calc(var(--display-lg-size) + 4px);
+  --display-md-size: clamp(24px, 22.15px + 0.513vw, 32px);
+  --display-md-line: calc(var(--display-md-size) + 4px);
+  --display-sm-size: clamp(18px, 17.54px + 0.128vw, 20px);
+  --h1-size: clamp(22px, 19.69px + 0.641vw, 32px);
+  --h1-line: clamp(28px, 25.23px + 0.769vw, 40px);
+  --h2-size: clamp(20px, 19.08px + 0.256vw, 24px);
+  --h2-line: clamp(28px, 27.08px + 0.256vw, 32px);
+  --h3-size: clamp(16px, 15.54px + 0.128vw, 18px);
+  --h3-line: clamp(24px, 23.54px + 0.128vw, 26px);
+
+  /* Espacios (tokens de spacing.css; los de 2 a 12 px se quedan fijos) */
+  --space-4: clamp(12px, 11.08px + 0.256vw, 16px);
+  --space-5: clamp(14px, 12.62px + 0.385vw, 20px);
+  --space-6: clamp(16px, 14.15px + 0.513vw, 24px);
+  --space-8: clamp(20px, 17.23px + 0.769vw, 32px);
+  --space-10: clamp(24px, 20.31px + 1.026vw, 40px);
+  --space-12: clamp(28px, 23.38px + 1.282vw, 48px);
+  --space-16: clamp(32px, 24.62px + 2.051vw, 64px);
+
+  /* Radios */
+  --radius-lg: clamp(18px, 16.62px + 0.385vw, 24px);
+  --radius-xl: clamp(20px, 18.15px + 0.513vw, 28px);
+
+  /* Menú lateral: 208 px a 900 de ancho → 248 px a 1920 */
+  --sidebar-width: clamp(208px, 172.71px + 3.922vw, 248px);
+
+  /* Marco de la página */
+  --pagina-margen: min(clamp(12px, 11.08px + 0.256vw, 16px), clamp(12px, -32px + 4vh, 16px));
+  --pagina-separacion: min(clamp(16px, 14.15px + 0.513vw, 24px), clamp(20px, -24px + 4vh, 24px));
+  --contenido-separacion: min(clamp(14px, 12.62px + 0.385vw, 24px), clamp(12px, -16px + 3vh, 24px));
+
+  /* Densidad por alto (escritorio): tarjetas, controles, filas de tabla y menú */
+  --tarjeta-relleno: min(var(--space-6), clamp(16px, 6px + 1.43vh, 24px));
+  --control-alto: clamp(40px, 13.33px + 2.667vh, 44px);
+  --celda-relleno: clamp(8px, -22px + 3vh, 12px);
+  --menu-item-alto: clamp(36px, 8px + 3.2vh, 48px);
+  --titulo-pagina: min(clamp(22px, 19.69px + 0.641vw, 32px), clamp(26px, 12px + 1.5vh, 32px));
+  --titulo-pagina-linea: calc(var(--titulo-pagina) + 6px);
+
+  /* Franja negra de cifras */
+  --cifra-principal: min(clamp(40px, 30.77px + 2.564vw, 80px), clamp(48px, 20px + 4vh, 80px));
+  --cifra-relleno-v: clamp(14px, 3.14px + 1.43vh, 26px);
+  --cifra-secundaria: min(clamp(24px, 19.38px + 1.282vw, 44px), clamp(28px, 14px + 2vh, 44px));
+
+  /* Margen lateral en el celular y la tableta: 12 px a 360 → 16 px desde 500 */
+  --movil-margen: clamp(12px, 1px + 3vw, 16px);
+
+  /* Gráficas con alto propio (celular y tableta): 200 px a 360 → 280 px a 900 */
+  --grafica-alto: clamp(200px, 146.67px + 14.815vw, 280px);
+}

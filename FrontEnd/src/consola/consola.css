@@ -168,7 +168,7 @@
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
   gap: 12px;
 }
 .ui-consola-respuesta {
@@ -712,9 +712,9 @@
   box-shadow: none;
   animation: none;
 }
-/* Ventanas bajas de escritorio: las fuentes quedan en una línea (la descripción, en el título
+/* Punto de quiebre «baja» (escritorio de poco alto; ver styles/fluido.css): las fuentes quedan en una línea (la descripción, en el título
    emergente) para que la columna quepa sin desplazarse. */
-@media (max-height: 820px) and (min-width: 901px) {
+@media (min-width: 901px) and (max-height: 820px) {
   .ui-consola-sugerencias__col .nc-card__sub,
   .ui-consola-sugerencias__ayuda,
   .ui-consola-fuentes small {
@@ -779,7 +779,8 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  /* La columna de preferencias va de 280 a 320 px con la ventana (25vw), sin punto de quiebre */
+  grid-template-columns: minmax(0, 1fr) clamp(280px, 25vw, 320px);
   gap: 16px;
 }
 /* Si los filtros no caben en una fila, pasan a dos sin partir las etiquetas. */
@@ -847,11 +848,6 @@
   line-height: 16px;
   color: var(--text-secondary);
 }
-@media (max-width: 1100px) {
-  .ui-consola-notif {
-    grid-template-columns: minmax(0, 1fr) 280px;
-  }
-}
 @media (max-width: 900px) {
   .ui-consola-notif {
     flex: none;
@@ -881,6 +877,7 @@
 .ui-consola-dash--llena .ui-consola-barras { flex: 1; justify-content: space-evenly; }
 .ui-grafica--barras { min-height: 120px; }
 @media (max-width: 900px) {
+  .ui-consola-dash { flex: none; grid-template-columns: minmax(0, 1fr); }
   .ui-consola-dash--llena { grid-template-rows: none; overflow: visible; }
   .ui-grafica--barras { flex: none; height: 200px; }
 }

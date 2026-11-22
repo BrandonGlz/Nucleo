@@ -150,7 +150,7 @@ export function UmbralesPage() {
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
         <>
-          <div className="ui-rejilla-umbrales" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 24, flex: 'none' }}>
+          <div className="ui-rejilla-umbrales" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 18rem), 1fr))', gap: 24, flex: 'none' }}>
             {['TEMP', 'HUM', 'AIRE'].map((v) => {
               const u = borrador[v]
               if (!u) return null

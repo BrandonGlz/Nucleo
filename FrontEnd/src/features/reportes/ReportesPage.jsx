@@ -195,7 +195,7 @@ export function ReportesPage() {
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
-        <div className="ui-fila" style={{ gridTemplateColumns: '400px minmax(0,1fr)' }}>
+        <div className="ui-fila" style={{ gridTemplateColumns: 'clamp(300px, 34%, 400px) minmax(0,1fr)' }}>
           <div className="ui-col">
             {actual && (
               <Card>

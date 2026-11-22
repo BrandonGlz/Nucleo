@@ -285,7 +285,7 @@ export function AlertasPage() {
       {estado === 'error' ? (
         <EstadoError reintentar={reintentar} />
       ) : (
-        <div className="ui-fila" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px' }}>
+        <div className="ui-fila" style={{ gridTemplateColumns: 'minmax(0,1fr) clamp(300px, 34%, 400px)' }}>
           <Card className="nc-grow">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
               <Tabs

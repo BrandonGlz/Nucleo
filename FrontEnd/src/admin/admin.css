@@ -259,7 +259,7 @@
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
   gap: 12px 24px;
 }
 .ui-admin-guardar {
@@ -288,7 +288,7 @@
   }
 }
 
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .ui-admin-filtros .ui-desplegable {
     min-width: 0;
   }

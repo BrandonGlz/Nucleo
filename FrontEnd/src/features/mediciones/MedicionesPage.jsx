@@ -159,7 +159,7 @@ export function MedicionesPage() {
   return (
     <Pantalla eyebrow={`${organizacion} · lecturas cada ${actual?.intervalo_muestreo_seg ?? 60} s`} titulo="Histórico" cifras={cifras}>
       <Card>
-        <div className="ui-rejilla-filtros" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 16 }}>
+        <div className="ui-rejilla-filtros" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 13rem), 1fr))', gap: 16 }}>
           <Select
             label="Área"
             icon="map-pin"

@@ -1,8 +1,9 @@
 /* Pantallas chicas. Se carga después de global.css y solo cambia la composición:
-   - hasta 900 px (tableta vertical y celular): el menú lateral es un cajón con ☰, la página hace
-     scroll completo (sin alturas fijas ni scroll interno) y las filas de tarjetas se apilan;
-   - hasta 560 px (celular): formularios y filtros en una columna, tablas como tarjetas y modales
-     casi a pantalla completa. */
+   - movil, hasta 900 px (tableta vertical y celular; el único punto de quiebre por ancho, ver
+     styles/fluido.css): el menú lateral es un cajón con ☰, la página hace scroll completo (sin
+     alturas fijas ni scroll interno) y las filas de tarjetas se apilan;
+   - el celular no tiene punto de quiebre propio: los tamaños son fluidos y lo que depende del ancho
+     (tablas como tarjetas, filtros, encabezado) consulta su contenedor con @container contenido. */
 
 /* Piezas que solo existen en pantallas chicas */
 .ui-menu-movil__boton,
@@ -21,8 +22,7 @@
     display: block;
     height: auto;
     min-height: 100dvh;
-    min-width: 0;
-    padding: 0 16px 24px;
+    padding: 0 var(--movil-margen) 24px;
   }
   .app__main {
     overflow: visible;
@@ -101,8 +101,8 @@
     position: sticky;
     z-index: 8;
     top: 0;
-    margin: 0 -16px;
-    padding: 8px 16px;
+    margin: 0 calc(-1 * var(--movil-margen));
+    padding: clamp(6px, 3.33px + 0.741vw, 8px) var(--movil-margen);
     background: var(--background);
   }
   /* Con acciones propias de la pantalla ocupa dos renglones: mejor que se vaya con el scroll */
@@ -123,8 +123,8 @@
     min-width: 0;
   }
   .ui-encabezado .nc-header__title {
-    font-size: 22px;
-    line-height: 28px;
+    font-size: clamp(20px, 17.33px + 0.741vw, 22px);
+    line-height: 1.28;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -154,12 +154,12 @@
     overscroll-behavior: contain;
   }
   .ui-encabezado .ui-popover--notif {
-    right: 16px;
-    width: min(420px, calc(100vw - 32px));
+    right: var(--movil-margen);
+    width: min(420px, calc(100vw - 2 * var(--movil-margen)));
   }
   .ui-encabezado .ui-popover--usuario {
-    right: 16px;
-    width: min(320px, calc(100vw - 32px));
+    right: var(--movil-margen);
+    width: min(320px, calc(100vw - 2 * var(--movil-margen)));
   }
 
   /* Contenido: sin alturas fijas, las filas se apilan y cada tarjeta mide lo que su contenido */
@@ -204,57 +204,13 @@
     padding: 24px 0;
   }
 
-  /* Gráficas: alto fijo cómodo; el ancho lo mide la propia gráfica */
+  /* Gráficas: alto fluido cómodo (fluido.css); el ancho lo mide la propia gráfica */
   .ui-grafica {
     flex: none;
-    height: 240px;
+    height: var(--grafica-alto);
   }
 
-  /* Tarjeta de cifras clave: la cifra principal arriba y las demás en rejilla */
-  .nc-ink.nc-ink {
-    flex-wrap: wrap;
-    align-items: stretch;
-    gap: 16px 0;
-    padding: 20px;
-    border-radius: 24px;
-  }
-  .nc-ink > div[style*='flex: 1'] {
-    display: none;
-  }
-  .nc-ink__principal {
-    flex: 1 1 100%;
-  }
-  .nc-ink__valor {
-    font-size: 48px;
-    line-height: 52px;
-  }
-  .nc-ink__unidad {
-    font-size: 20px;
-  }
-  .nc-ink__titulo {
-    font-size: 24px;
-    line-height: 30px;
-  }
-  .nc-ink__barra {
-    width: min(320px, 100%);
-  }
-  .nc-ink__cifra {
-    flex: 1 1 25%;
-    min-width: 0;
-    padding: 0 12px 0 12px;
-  }
-  .nc-ink__cifra-valor {
-    font-size: 28px;
-    line-height: 32px;
-  }
-  .nc-ink__cifra-unidad {
-    font-size: 14px;
-  }
-
-  /* Tarjetas más compactas */
-  .nc-card {
-    padding: 16px;
-  }
+  /* El relleno de las tarjetas ya es fluido (--tarjeta-relleno); la cabecera puede partirse */
   .nc-card__head {
     flex-wrap: wrap;
   }
@@ -291,36 +247,25 @@
     font-size: 16px;
   }
 
-  /* Pestañas y filtros de periodo que no caben: scroll horizontal dentro de su barra */
-  .nc-tabs,
-  .nc-period {
-    max-width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .nc-tab,
-  .nc-period .nc-chip {
-    flex: none;
-  }
 
-  /* Modales: casi a pantalla completa, con scroll propio */
+  /* Modales: hoja inferior con scroll propio. Mientras la ventana sea más ancha que la hoja
+     (560 px) flota con margen y esquinas redondas; más angosta, llega a los bordes. El «interruptor»
+     es clamp(0px, (100vw − 560px) · 100, X): 0 bajo 560 px y X en cuanto la ventana la rebasa. */
   .ui-modal {
+    --hoja-margen: clamp(0px, (100vw - 560px) * 100, 12px);
     align-items: flex-end;
-    padding: 12px;
+    padding: clamp(8px, (100vw - 560px) * 100, 12px) var(--hoja-margen) var(--hoja-margen);
   }
   .ui-modal__caja {
     width: 100%;
     max-width: 560px;
-    max-height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 8px - var(--hoja-margen));
     margin: 0 auto;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 24px 20px;
+    padding: var(--space-6) var(--space-5) calc(var(--space-5) + env(safe-area-inset-bottom));
     gap: 16px;
-  }
-  .ui-modal__caja h2 {
-    font-size: 20px;
-    line-height: 28px;
+    border-radius: 24px 24px clamp(0px, (100vw - 560px) * 100, 24px) clamp(0px, (100vw - 560px) * 100, 24px);
   }
 
   /* Avisos flotantes dentro de la pantalla */
@@ -330,25 +275,50 @@
   }
 }
 
-@media (max-width: 560px) {
-  .app {
-    padding: 0 12px 20px;
+/* Pestañas y filtros de periodo que no caben en su tarjeta (a cualquier ancho): scroll horizontal
+   dentro de su barra en lugar de salirse */
+.nc-tabs,
+.nc-period {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nc-tab,
+.nc-period .nc-chip {
+  flex: none;
+}
+
+/* Alertas: con la lista angosta (celular, tableta o la columna de una laptop chica) sin cabecera
+   de columnas y la hora bajo el título; lo decide el ancho de su tarjeta, no la pantalla. */
+.nc-card:has(.ui-alerta) {
+  container: alertas / inline-size;
+}
+@container alertas (max-width: 560px) {
+  .ui-alerta--cabecera {
+    display: none;
   }
-  .ui-encabezado {
-    margin: 0 -12px;
-    padding: 6px 12px;
+  .ui-alerta,
+  button.ui-alerta {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    padding: 12px 8px;
   }
-  .ui-encabezado .nc-header__title {
-    font-size: 20px;
-    line-height: 26px;
+  .ui-alerta > :nth-child(4) {
+    grid-column: 2 / -1;
+    flex-direction: row !important;
+    gap: 8px;
+    align-items: baseline;
   }
-  .ui-encabezado .ui-popover--notif,
-  .ui-encabezado .ui-popover--usuario {
-    right: 12px;
-    left: 12px;
-    width: auto;
+  .ui-alerta .ui-valor {
+    font-size: 17px;
+    line-height: 22px;
+    text-align: right;
   }
-  /* Las acciones de la pantalla pasan a su propio renglón, a todo lo ancho */
+}
+
+/* Encabezado con acciones propias cuando la columna de contenido es angosta: las acciones pasan a
+   su propio renglón, a todo lo ancho (los filtros del panel incluidos). */
+@container contenido (max-width: 720px) {
   .ui-encabezado--acciones .nc-header {
     flex-wrap: wrap;
   }
@@ -364,61 +334,12 @@
   .ui-encabezado--acciones .nc-header__extra > * {
     flex: 1 1 auto;
   }
-  .ui-panel-filtros {
-    flex-wrap: wrap;
-  }
   .ui-panel-filtros > .ui-desplegable {
-    flex: 1 1 100%;
-    min-width: 0;
+    flex: 1 1 240px;
   }
-
-  .nc-ink.nc-ink {
-    padding: 18px 16px;
-  }
-  .nc-ink__valor {
-    font-size: 40px;
-    line-height: 44px;
-  }
-  .nc-ink__cifra {
-    flex: 1 1 calc(50% - 1px);
-    padding: 8px 12px 0;
-    border-left: 0;
-    border-top: 1px solid rgba(243, 245, 242, 0.1);
-  }
-  .nc-ink__cifra-valor {
-    font-size: 24px;
-    line-height: 28px;
-  }
-  .nc-ink__sub {
-    font-size: 12px;
-    line-height: 18px;
-  }
-
-  .nc-card {
-    padding: 14px;
-    border-radius: 20px;
-  }
-  .ui-grafica {
-    height: 200px;
-  }
-
-  /* Formularios en una columna */
-  .ui-grid-2 {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .ui-acciones {
-    flex-wrap: wrap;
-  }
-
-  /* Modales: hoja inferior a todo lo ancho */
-  .ui-modal {
-    padding: 8px 0 0;
-  }
-  .ui-modal__caja {
-    max-height: calc(100dvh - 8px);
-    border-radius: 24px 24px 0 0;
-    padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
-  }
+}
+/* Botones del pie de un modal angosto: a todo lo ancho */
+@container modal (max-width: 520px) {
   .ui-modal__caja .ui-acciones > .nc-btn {
     flex: 1 1 auto;
   }
@@ -462,14 +383,6 @@
   .ui-filtros > .ui-buscador {
     order: 4;
   }
-  .ui-rejilla-filtros {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 12px !important;
-  }
-  .ui-rejilla-umbrales {
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 16px !important;
-  }
 
   /* Ficha del dispositivo: nombre arriba y sus datos en rejilla */
   .ui-ficha {
@@ -494,30 +407,9 @@
     flex-wrap: wrap;
   }
 
-  /* Alertas: sin cabecera de columnas; la hora va bajo el título */
-  .ui-alerta--cabecera {
-    display: none;
-  }
-  .ui-alerta,
-  button.ui-alerta {
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-    gap: 6px 12px;
-    padding: 12px 8px;
-  }
-  .ui-alerta > :nth-child(4) {
-    grid-column: 2 / -1;
-    flex-direction: row !important;
-    gap: 8px;
-    align-items: baseline;
-  }
-  .ui-alerta .ui-valor {
-    font-size: 17px;
-    line-height: 22px;
-    text-align: right;
-  }
 }
 
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .ui-filtros > *,
   .ui-filtros > [style*='width'] {
     flex: 1 1 100% !important;
@@ -528,9 +420,6 @@
   }
   .ui-filtros .ui-buscador {
     width: 100% !important;
-  }
-  .ui-rejilla-filtros {
-    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   /* Tablas como tarjetas apiladas: la primera celda es el título y cada dato lleva su columna */
@@ -678,7 +567,7 @@
     justify-content: safe center;
   }
 }
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .ui-ia {
     height: calc(100dvh - 68px);
     border-radius: 20px;
@@ -712,7 +601,7 @@
 }
 
 /* Celular: las pestañas que no caben bajan de renglón (sin cortarse) y ocupan el ancho */
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .nc-tabs:not(.nc-tabs--underline) {
     display: flex;
     flex-wrap: wrap;
@@ -751,7 +640,7 @@
 .ui-solo-movil {
   display: none;
 }
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .ui-solo-movil {
     display: block;
   }

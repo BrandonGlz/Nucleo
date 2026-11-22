@@ -29,17 +29,18 @@ button.ui-link {
   text-decoration: underline;
 }
 
-/* Marco: menú lateral + columna de contenido que llena la ventana */
+/* Marco: menú lateral + columna de contenido que llena la ventana. Márgenes, separación y ancho del
+   menú son fluidos (styles/fluido.css), así que cabe sin scroll horizontal desde 901 px. */
 .app {
   display: flex;
-  gap: 24px;
+  gap: var(--pagina-separacion);
   height: 100vh;
-  padding: 16px;
+  padding: var(--pagina-margen);
   box-sizing: border-box;
-  min-width: 1100px;
 }
 .app > .nc-sidebar {
   flex: none;
+  width: var(--sidebar-width);
   height: 100%;
   box-sizing: border-box;
   overflow-y: auto;
@@ -154,9 +155,12 @@ button.ui-link {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 16px 16px 16px 8px;
+  gap: var(--contenido-separacion);
+  padding: clamp(6px, -14px + 2vh, 16px) clamp(6px, -14px + 2vh, 16px) clamp(6px, -14px + 2vh, 16px) clamp(2px, -10px + 1.2vh, 8px);
   overflow: hidden;
+  /* Las piezas que dependen del ancho disponible (encabezado, tablas como tarjetas) lo consultan
+     con @container contenido en lugar de mirar la pantalla. */
+  container: contenido / inline-size;
 }
 
 /* Llenar la altura: las tarjetas nc-grow ocupan lo que queda y solo nc-scroll hace scroll */
@@ -179,7 +183,7 @@ button.ui-link {
 }
 .ui-fila {
   display: grid;
-  gap: 24px;
+  gap: var(--contenido-separacion);
   flex: 1;
   min-height: 0;
   grid-template-rows: minmax(0, 1fr);
@@ -187,7 +191,7 @@ button.ui-link {
 .ui-col {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--contenido-separacion);
   min-width: 0;
   min-height: 0;
 }
@@ -240,6 +244,7 @@ button.ui-link {
   font-size: 13px;
   line-height: 20px;
   color: var(--text-muted);
+  overflow-wrap: anywhere; /* correos y códigos largos no se salen en 360px */
 }
 /* Título y detalle en una sola línea con «…» (p. ej. la campana de la consola de administración) */
 .ui-titulo-fila--recorte > strong,
@@ -262,16 +267,65 @@ button.ui-link {
   border-top: 1px solid var(--border);
 }
 
+/* Mi perfil: datos a la izquierda y preferencias + verificación a la derecha. La rejilla usa el alto
+   libre (flex 1 0 auto) pero nunca menos que su contenido: si no cabe, desplaza la página y no las
+   tarjetas. Con menos de dos columnas de 26rem se apila (tableta y celular). */
+.ui-perfil {
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--contenido-separacion);
+}
+.ui-perfil__lado {
+  display: flex;
+  flex-direction: column;
+  gap: var(--contenido-separacion);
+  min-width: 0;
+}
+.ui-perfil .nc-grow.nc-grow {
+  flex: 1 0 auto;
+  min-height: auto;
+}
+.ui-perfil .ui-panel {
+  flex: 1 0 auto;
+  overflow: visible;
+}
+/* Avisos por correo en dos columnas cuando caben; la sesión y su botón en un renglón */
+.ui-perfil__avisos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 14px 20px;
+  align-items: start;
+}
+.ui-perfil__avisos > .ui-eyebrow,
+.ui-perfil__sesion > .ui-eyebrow {
+  grid-column: 1 / -1;
+  flex-basis: 100%;
+}
+.ui-perfil__sesion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.ui-perfil__sesion > div:not(:last-child) {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
 /* Tarjeta oscura de cifras clave */
 .nc-ink.nc-ink {
   position: relative;
   overflow: hidden;
   flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
-  gap: 32px;
-  padding: 26px 32px 28px;
-  border-radius: 32px;
+  gap: 16px var(--space-8);
+  padding: var(--cifra-relleno-v) var(--space-8) calc(var(--cifra-relleno-v) + 2px);
+  border-radius: clamp(24px, 21.23px + 0.769vw, 32px);
+  /* Lo que cabe en la franja depende de su ancho, no del de la pantalla (@container cifras) */
+  container: cifras / inline-size;
   background: #121413;
   color: var(--text-primary);
 }
@@ -295,8 +349,8 @@ button.ui-link {
   min-width: 0;
 }
 .nc-ink__valor {
-  font-size: 80px;
-  line-height: 80px;
+  font-size: var(--cifra-principal);
+  line-height: 1;
   font-weight: 800;
   letter-spacing: -0.055em;
   font-variant-numeric: tabular-nums;
@@ -304,14 +358,14 @@ button.ui-link {
 }
 .nc-ink__unidad {
   margin-left: 0.3em;
-  font-size: 30px;
+  font-size: max(18px, calc(var(--cifra-principal) * 0.4));
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #2bc47a;
 }
 .nc-ink__titulo {
-  font-size: 40px;
-  line-height: 48px;
+  font-size: calc(var(--cifra-principal) * 0.5);
+  line-height: 1.25;
   font-weight: 700;
   letter-spacing: -0.03em;
   max-width: 720px;
@@ -324,7 +378,7 @@ button.ui-link {
 }
 .nc-ink__barra {
   position: relative;
-  width: 320px;
+  width: min(320px, 100%);
   height: 10px;
   margin: 6px 0 2px;
   border-radius: 99px;
@@ -350,14 +404,14 @@ button.ui-link {
 .nc-ink__cifra {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 120px;
-  padding: 0 0 4px 24px;
+  padding: 0 0 4px var(--space-6);
   border-left: 1px solid rgba(243, 245, 242, 0.1);
 }
 .nc-ink__cifra-valor {
-  font-size: 44px;
-  line-height: 48px;
+  font-size: var(--cifra-secundaria);
+  line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.045em;
   font-variant-numeric: tabular-nums;
@@ -373,6 +427,36 @@ button.ui-link {
   font-size: 12px;
   line-height: 16px;
   color: var(--text-muted);
+}
+/* Franja angosta (tableta, celular o una columna estrecha): la cifra principal ocupa su renglón y
+   las demás se reparten debajo; en la más angosta, de dos en dos. */
+@container cifras (max-width: 720px) {
+  .nc-ink > div[style*='flex: 1'] {
+    display: none;
+  }
+  .nc-ink__principal {
+    flex: 1 1 100%;
+  }
+  .nc-ink__cifra {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 12px;
+  }
+  .nc-ink__cifra-unidad {
+    font-size: 14px;
+  }
+}
+@container cifras (max-width: 520px) {
+  .nc-ink__cifra {
+    flex: 1 1 calc(50% - var(--space-8));
+    padding: 8px 12px 0;
+    border-left: 0;
+    border-top: 1px solid rgba(243, 245, 242, 0.1);
+  }
+  .nc-ink__sub {
+    font-size: 12px;
+    line-height: 18px;
+  }
 }
 .tono-verde {
   color: #2bc47a;
@@ -433,7 +517,7 @@ button.ui-link {
 /* Filas de la tabla de alertas */
 .ui-alerta {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 140px 140px;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(0, 140px) minmax(0, 140px);
   gap: 16px;
   align-items: center;
   padding: 14px 12px;
@@ -581,10 +665,11 @@ button.ui-menuitem:hover {
 }
 
 /* Login a pantalla completa. --panel es el ancho del formulario y --texto el espacio que ocupa el lema
-   a la izquierda; en pantallas medianas o bajas ambos se reducen junto con la tipografía. */
+   a la izquierda; ambos (y la tipografía) se interpolan con el ancho y el alto, el menor de los dos:
+   500 px en una laptop de 1366 × 768 y 600 px desde 1920 × 1000 (fórmula en fluido.css). */
 .acceso {
-  --panel: 600px;
-  --texto: 580px;
+  --panel: min(clamp(440px, 266.09px + 17.391vw, 600px), clamp(500px, 44.44px + 55.556vh, 600px));
+  --texto: calc(var(--panel) - 20px);
   position: relative;
   display: flex;
   height: 100vh;
@@ -660,13 +745,18 @@ button.ui-menuitem:hover {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 56px 64px;
+  /* Cada medida es lineal en --panel: el valor de 500 px en la laptop y el de 600 px en la PC */
+  padding: calc(0.16 * var(--panel) - 40px) calc(0.16 * var(--panel) - 32px);
+}
+.acceso__lema .nc-logo svg {
+  width: auto;
+  height: calc(0.12 * var(--panel) - 8px);
 }
 .acceso__lema h2 {
   margin: 0;
-  max-width: 480px;
-  font-size: 44px;
-  line-height: 52px;
+  max-width: calc(0.8 * var(--panel));
+  font-size: calc(0.1 * var(--panel) - 16px);
+  line-height: 1.18;
   font-weight: 700;
   letter-spacing: -0.03em;
   text-wrap: pretty;
@@ -683,7 +773,7 @@ button.ui-menuitem:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48px 80px;
+  padding: calc(0.08 * var(--panel)) calc(0.24 * var(--panel) - 64px);
   box-sizing: border-box;
   background: var(--surface);
   color: var(--text-primary);
@@ -694,67 +784,37 @@ button.ui-menuitem:hover {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 420px;
-  gap: 32px;
+  max-width: calc(0.4 * var(--panel) + 180px);
+  gap: calc(0.08 * var(--panel) - 16px);
   /* Centrado vertical que no corta el inicio cuando el contenido es más alto que la pantalla */
   margin: auto 0;
 }
 .acceso__form h1 {
   margin: 0;
-  font-size: 40px;
-  line-height: 48px;
+  font-size: calc(0.08 * var(--panel) - 8px);
+  line-height: 1.22;
   font-weight: 700;
   letter-spacing: -0.025em;
 }
 .acceso__pie {
   width: 100%;
-  max-width: 420px;
+  max-width: calc(0.4 * var(--panel) + 180px);
   padding-top: 24px;
   font-size: 12px;
   color: var(--text-muted);
 }
-/* Pantallas medianas o bajas (laptops de 1366 a 1600 px): todo un poco más chico */
-@media (max-width: 1600px), (max-height: 820px) {
+/* Punto de quiebre movil: solo el formulario, a todo lo ancho, con el logo arriba */
+@media (max-width: 900px) {
   .acceso {
     --panel: 500px;
-    --texto: 470px;
   }
-  .acceso__lema {
-    padding: 40px 48px;
-  }
-  .acceso__lema .nc-logo svg {
-    width: auto;
-    height: 52px;
-  }
-  .acceso__lema h2 {
-    max-width: 400px;
-    font-size: 34px;
-    line-height: 40px;
-  }
-  .acceso__panel {
-    padding: 40px 56px;
-  }
-  .acceso__form,
-  .acceso__pie {
-    max-width: 380px;
-  }
-  .acceso__form {
-    gap: 24px;
-  }
-  .acceso__form h1 {
-    font-size: 32px;
-    line-height: 40px;
-  }
-}
-/* Pantallas angostas: solo el formulario, a todo lo ancho, con el logo arriba */
-@media (max-width: 1000px) {
   .acceso__lema,
   .acceso__anillo {
     display: none;
   }
   .acceso__panel {
     width: 100%;
-    padding: 40px 24px;
+    padding: var(--space-10) var(--space-6);
     border-radius: 0;
     box-shadow: none;
   }
@@ -775,10 +835,12 @@ button.ui-menuitem:hover {
 }
 .ui-modal__caja {
   width: 540px;
+  max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 32px;
+  padding: var(--space-8);
+  container: modal / inline-size;
   box-sizing: border-box;
   background: var(--surface-elevated);
   border-radius: 24px;
@@ -786,18 +848,20 @@ button.ui-menuitem:hover {
 }
 .ui-modal__caja h2 {
   margin: 0;
-  font-size: 24px;
-  line-height: 32px;
+  font-size: var(--h2-size);
+  line-height: var(--h2-line);
   font-weight: 700;
   letter-spacing: -0.015em;
 }
+/* Dos columnas mientras cada una tenga al menos 14rem; si no, una sola (sin punto de quiebre) */
 .ui-grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   gap: 16px;
 }
 .ui-acciones {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -930,117 +994,64 @@ button.ui-menuitem:hover {
 .ui-col > .nc-grow {
   min-height: 160px;
 }
-/* Densidad: en ventanas de menos de 1000 px de alto las piezas se compactan para que
-   las tablas y listas muestren más filas, sin mover nada de lugar. */
-@media (max-height: 1100px) {
-  .app {
-    padding: 12px;
-    gap: 20px;
-  }
-  .app__main {
-    gap: 16px;
-    padding: 6px 6px 6px 2px;
-  }
-  .nc-header__title {
-    font-size: 28px;
-    line-height: 34px;
-  }
-  .nc-ink.nc-ink {
-    padding: 18px 28px 20px;
-    gap: 28px;
-  }
-  .nc-ink__valor {
-    font-size: 60px;
-    line-height: 60px;
-  }
-  .nc-ink__unidad {
-    font-size: 24px;
-  }
-  .nc-ink__titulo {
-    font-size: 30px;
-    line-height: 38px;
-  }
-  .nc-ink__cifra {
-    gap: 2px;
-  }
-  .nc-ink__cifra-valor {
-    font-size: 34px;
-    line-height: 38px;
-  }
-  .nc-card {
-    padding: 20px;
-  }
-  .nc-card__head {
-    margin-bottom: 12px;
-  }
-  .nc-table th {
-    padding-bottom: 8px;
-  }
-  .nc-table td {
-    padding: 8px 12px;
-  }
-  .nc-feed__item {
-    padding: 8px 0;
-  }
-  .nc-input,
-  .nc-search,
-  .nc-btn--md,
-  .nc-iconbtn {
-    height: 40px;
-  }
-  .nc-iconbtn {
-    width: 40px;
-  }
-  .nc-threshold {
-    padding: 20px;
-    gap: 14px;
-  }
-  .ui-umbral {
-    gap: 12px;
-    padding-bottom: 20px;
-  }
-  .ui-umbral__adv {
-    margin: 0 20px;
-    padding-top: 12px;
-  }
-  .ui-alerta {
-    padding: 10px 12px;
-  }
-  .ui-item {
-    padding: 10px 12px;
-  }
-  .nc-critical {
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
-  .ui-panel {
-    gap: 14px;
-  }
+/* Densidad: con menos alto las piezas se compactan para que las tablas y listas muestren más filas,
+   sin mover nada de lugar. Cada medida se interpola con el alto de la ventana (styles/fluido.css)
+   en lugar de saltar en 1100 y 820 px; en el celular movil.css fija los tamaños táctiles. */
+.nc-header__title {
+  font-size: var(--titulo-pagina);
+  line-height: var(--titulo-pagina-linea);
 }
-@media (max-height: 820px) {
-  .app__main {
-    gap: 12px;
-  }
+.nc-card {
+  padding: var(--tarjeta-relleno);
+}
+.nc-card__head {
+  margin-bottom: clamp(12px, -28px + 4vh, 20px);
+}
+.nc-table th {
+  padding-bottom: var(--celda-relleno);
+}
+.nc-table td {
+  padding: var(--celda-relleno) 12px;
+}
+.nc-feed__item {
+  padding: var(--celda-relleno) 0;
+}
+.nc-input,
+.nc-search,
+.nc-btn--md,
+.nc-iconbtn {
+  height: var(--control-alto);
+}
+.nc-iconbtn {
+  width: var(--control-alto);
+}
+.nc-threshold {
+  padding: var(--tarjeta-relleno);
+  gap: 14px;
+}
+.ui-alerta,
+.ui-item {
+  padding: calc(var(--celda-relleno) + 2px) 12px;
+}
+.nc-critical {
+  padding-top: var(--celda-relleno);
+  padding-bottom: var(--celda-relleno);
+}
+.ui-panel {
+  gap: clamp(14px, -16px + 3vh, 20px);
+}
+/* Punto de quiebre «baja» (escritorio de poco alto; ver fluido.css): fuera los textos secundarios. */
+@media (min-width: 901px) and (max-height: 820px) {
   .nc-header__eyebrow {
     display: none;
-  }
-  .nc-ink.nc-ink {
-    padding: 14px 24px 16px;
-  }
-  .nc-ink__valor {
-    font-size: 48px;
-    line-height: 50px;
-  }
-  .nc-ink__cifra-valor {
-    font-size: 28px;
-    line-height: 32px;
   }
   .nc-ink__sub,
   .nc-ink__cifra-sub {
     display: none;
   }
-  .nc-card {
-    padding: 16px;
+  /* Umbrales: el slider ya edita el rango permitido; quedan solo las casillas de advertencia. */
+  .ui-umbral .nc-threshold__inputs {
+    display: none;
   }
 }
 
@@ -1196,45 +1207,31 @@ button.ui-menuitem:hover {
 /* Filtros del panel en el encabezado: dispositivo y periodo */
 .ui-panel-filtros {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
 .ui-panel-filtros > .ui-desplegable {
-  min-width: 240px;
+  min-width: min(240px, 100%);
 }
 
 /* Menú lateral en ventanas bajas: sin scroll propio */
 .app > .nc-sidebar {
   overflow: hidden;
 }
-@media (max-height: 1100px) {
-  .app > .nc-sidebar {
-    padding-top: 18px;
-    padding-bottom: 14px;
-  }
-  .app > .nc-sidebar .nc-navitem {
-    height: 40px;
-  }
-  .app__nav-group {
-    margin-bottom: 8px;
-  }
-  .nc-sidebar__foot {
-    padding-top: 10px;
-    gap: 8px;
-  }
+.app > .nc-sidebar {
+  padding-top: clamp(18px, -26px + 4vh, 24px);
+  padding-bottom: clamp(14px, -30px + 4vh, 16px);
 }
-@media (max-height: 820px) {
-  .app > .nc-sidebar .nc-navitem {
-    height: 36px;
-  }
+.app > .nc-sidebar .nc-navitem {
+  height: var(--menu-item-alto);
 }
-
-/* Umbrales en ventanas bajas: el slider ya edita el rango permitido, así que se ocultan
-   sus casillas y quedan solo las de advertencia. */
-@media (max-height: 900px) {
-  .ui-umbral .nc-threshold__inputs {
-    display: none;
-  }
+.app__nav-group {
+  margin-bottom: clamp(8px, -32px + 4vh, 16px);
+}
+.nc-sidebar__foot {
+  padding-top: clamp(10px, -46px + 5.6vh, 24px);
+  gap: clamp(8px, -32px + 4vh, 12px);
 }
 
 /* Reportes: el reporte como dashboard de tarjetas personalizable (DashboardReporte) */
@@ -1707,7 +1704,7 @@ article.ui-hoja,
 }
 .ui-acciones-reporte {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
   gap: 8px;
 }
 .ui-acciones-reporte .nc-btn {
@@ -4896,7 +4893,7 @@ button.ui-menuitem:not(:disabled):hover svg {
 .ui-ia-archivos__texto .ui-muted {
   font-size: 12px;
 }
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .ui-ia-archivos__boton span:not(.ui-ia-archivos__cuenta) {
     display: none;
   }
@@ -4932,7 +4929,7 @@ button.ui-menuitem:not(:disabled):hover svg {
   font-size: 12px;
   animation: ui-ia-paso var(--duration-slow) var(--ease-standard) backwards;
 }
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .ui-ia-nota {
     flex-basis: 100%;
     margin: 4px 0 0;
@@ -5057,7 +5054,7 @@ button.ui-menuitem:not(:disabled):hover svg {
     animation: none;
   }
 }
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .ui-ia-sugiere__tipo {
     display: none;
   }
@@ -5126,7 +5123,7 @@ button.ui-menuitem:not(:disabled):hover svg {
 .ui-cambios code {
   font-size: 12px;
 }
-@media (max-width: 560px) {
+@container contenido (max-width: 528px) {
   .ui-codigos {
     grid-template-columns: minmax(0, 1fr);
   }

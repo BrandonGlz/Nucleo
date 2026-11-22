@@ -326,7 +326,7 @@ export function AreasPage() {
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
-        <div className="ui-fila" style={{ gridTemplateColumns: '320px minmax(0,1fr)' }}>
+        <div className="ui-fila" style={{ gridTemplateColumns: 'clamp(260px, 28%, 320px) minmax(0,1fr)' }}>
           <Card className="nc-grow">
             <div className="nc-card__head" style={{ marginBottom: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
