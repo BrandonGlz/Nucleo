@@ -456,6 +456,54 @@ button.ui-alerta.is-selected {
   border-radius: 12px;
   border-bottom-color: transparent;
 }
+/* Extracto de lo que se hizo (o del motivo del descarte) en una sola línea */
+.ui-alerta__nota {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+.ui-alerta__nota > .nc-icon {
+  flex: none;
+  color: var(--text-muted);
+}
+.ui-alerta__nota > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Detalle: qué se hizo / motivo del descarte, y la nota obligatoria al resolver */
+.ui-resolucion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ui-resolucion__texto {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ui-resolucion__texto.is-vacio {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.ui-nota-alerta.nc-input {
+  height: auto;
+  align-items: stretch;
+  padding: 10px 12px 10px 14px;
+}
+.ui-nota-alerta textarea {
+  min-height: 66px;
+  resize: vertical;
+  line-height: 21px;
+}
 .ui-valor {
   font-size: 20px;
   line-height: 26px;

@@ -24,7 +24,8 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
     """Alertas de los dispositivos a su alcance.
 
     Filtros: ``estado``, ``nivel``, ``dispositivo``, ``variable``, ``desde`` y ``hasta``.
-    Los administradores y supervisores las atienden o descartan.
+    Los administradores y supervisores las atienden o descartan, siempre con una nota
+    (``observaciones``) de qué se hizo o por qué se descarta.
     """
 
     serializer_class = AlertaSerializer
@@ -39,7 +40,7 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
         peticion = self.request
         consulta = Alerta.objects.filter(
             umbral__dispositivo__in=dispositivos_visibles(peticion.user)
-        ).select_related("umbral__variable", "umbral__dispositivo")
+        ).select_related("umbral__variable", "umbral__dispositivo", "atendida_por")
 
         estado = peticion.query_params.get("estado")
         if estado:
@@ -68,12 +69,14 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
                 {"detail": f"La alerta ya está {alerta.get_estado_display().lower()}."},
                 status=status.HTTP_409_CONFLICT,
             )
-        entrada = AtencionSerializer(data=request.data)
+        entrada = AtencionSerializer(
+            data=request.data, context={"descartar": estado == Alerta.Estado.DESCARTADA}
+        )
         entrada.is_valid(raise_exception=True)
         alerta.estado = estado
         alerta.atendida_por = request.user
         alerta.fecha_atencion = timezone.now()
-        alerta.observaciones = entrada.validated_data.get("observaciones") or None
+        alerta.observaciones = entrada.validated_data["observaciones"]
         alerta.save(update_fields=["estado", "atendida_por", "fecha_atencion", "observaciones"])
         eventos.alerta(
             alerta,

@@ -246,10 +246,15 @@ export async function alertas() {
   await esperar()
   return pagina(copia(db.alertas))
 }
+// Como la API: la nota (qué se hizo o por qué se descarta) es obligatoria, de 5 a 500 caracteres.
 function resolver(num, estado, observaciones) {
   const a = db.alertas.find((x) => x.num === num) ?? noEncontrado()
   if (a.estado !== 'PENDIENTE') throw new ApiError('La API respondió con el estado 409.', 409)
-  Object.assign(a, { estado, observaciones: observaciones || '', atendida_por: 2, fecha_atencion: new Date().toISOString() })
+  const nota = String(observaciones ?? '').trim()
+  const falta = estado === 'DESCARTADA' ? 'Escribe por qué se descarta la alerta.' : 'Escribe qué se hizo para atender la alerta.'
+  const problema = !nota ? falta : nota.length < 5 ? 'Describe con al menos 5 caracteres.' : nota.length > 500 ? 'La nota no puede pasar de 500 caracteres.' : null
+  if (problema) throw new ApiError('La API respondió con el estado 400.', 400, { observaciones: [problema] })
+  Object.assign(a, { estado, observaciones: nota, atendida_por: 2, fecha_atencion: new Date().toISOString() })
   return copia(a)
 }
 export async function atenderAlerta(num, { observaciones } = {}) {

@@ -163,7 +163,7 @@ class CanalEnVivoTests(PruebaTransaccional):
 
         def atender():
             return cliente_de(self.e.supervisor).post(
-                f"/api/v1/alertas/{alerta.pk}/atender/", {"observaciones": "ok"}
+                f"/api/v1/alertas/{alerta.pk}/atender/", {"observaciones": "Se ventiló el área"}
             )
 
         respuesta = await sync_to_async(atender)()

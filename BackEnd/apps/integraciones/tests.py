@@ -145,7 +145,9 @@ class WebhookTests(PruebaBase):
         )
         with mock.patch("apps.integraciones.envio._en_hilo") as en_hilo:
             with self.captureOnCommitCallbacks(execute=True):
-                r = cliente_de(self.e.admin).post(f"/api/v1/alertas/{alerta.pk}/atender/")
+                r = cliente_de(self.e.admin).post(
+                    f"/api/v1/alertas/{alerta.pk}/atender/", {"observaciones": "Se ventiló"}
+                )
         self.assertEqual(r.status_code, 200, r.content)
         _webhooks, evento, datos = en_hilo.call_args.args
         self.assertEqual(evento, "alerta.atendida")

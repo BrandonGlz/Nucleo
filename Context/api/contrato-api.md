@@ -137,9 +137,14 @@ Mediciones
 
 Alertas
 ├── GET /alertas/                           Filtros: estado, nivel, dispositivo, variable, desde, hasta;
-│                                           incluye la lectura que la disparó y los 4 límites
-├── POST /alertas/{num}/atender/            {"observaciones"}; ADMIN y SUPER
-├── POST /alertas/{num}/descartar/          {"observaciones"}; ADMIN y SUPER
+│                                           incluye la lectura que la disparó y los 4 límites;
+│                                           al resolverse, atendida_por(_nombre), fecha_atencion
+│                                           y observaciones (qué se hizo o por qué se descartó)
+├── POST /alertas/{num}/atender/            {"observaciones"} obligatorio (qué se hizo, 5-500
+│                                           caracteres sin espacios sobrantes); ADMIN y SUPER;
+│                                           400 si falta o es corto, 409 si ya no está pendiente
+├── POST /alertas/{num}/descartar/          {"observaciones"} obligatorio (por qué se descarta,
+│                                           mismas reglas); ADMIN y SUPER
 ├── GET /alertas/exportar/                  CSV con los mismos filtros; queda en la auditoría
 └── GET /notificaciones/                    Notificaciones del propio usuario
 

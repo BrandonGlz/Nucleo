@@ -48,15 +48,50 @@ class AlertaApiTests(PruebaBase):
         self.assertEqual(self.alerta.estado, Alerta.Estado.ATENDIDA)
         self.assertEqual(self.alerta.atendida_por, self.e.supervisor)
         self.assertIsNotNone(self.alerta.fecha_atencion)
+        self.assertEqual(self.alerta.observaciones, "Se abrió la ventana")
+        self.assertEqual(r.json()["observaciones"], "Se abrió la ventana")
+        self.assertEqual(r.json()["atendida_por_nombre"], self.e.supervisor.get_full_name())
+
+    def test_descartar_guarda_el_motivo_sin_espacios_sobrantes(self):
+        r = cliente_de(self.e.admin).post(
+            self.url("descartar/"), {"observaciones": "  Puerta abierta en la carga  "}
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.alerta.refresh_from_db()
+        self.assertEqual(self.alerta.estado, Alerta.Estado.DESCARTADA)
+        self.assertEqual(self.alerta.observaciones, "Puerta abierta en la carga")
+
+    def test_atender_o_descartar_exige_la_nota(self):
+        cliente = cliente_de(self.e.supervisor)
+        casos = (
+            ("atender/", {}, "qué se hizo"),
+            ("atender/", {"observaciones": "    "}, "qué se hizo"),
+            ("descartar/", {}, "por qué se descarta"),
+            ("descartar/", {"observaciones": ""}, "por qué se descarta"),
+            ("atender/", {"observaciones": "ok"}, "al menos 5"),
+            ("descartar/", {"observaciones": "x" * 501}, "500"),
+        )
+        for accion, datos, mensaje in casos:
+            with self.subTest(accion=accion, datos=datos):
+                r = cliente.post(self.url(accion), datos)
+                self.assertEqual(r.status_code, 400, r.content)
+                self.assertIn(mensaje, r.json()["observaciones"][0])
+        self.alerta.refresh_from_db()
+        self.assertEqual(self.alerta.estado, Alerta.Estado.PENDIENTE)
+        self.assertIsNone(self.alerta.atendida_por)
+        self.assertIsNone(self.alerta.observaciones)
 
     def test_una_alerta_resuelta_no_se_vuelve_a_resolver(self):
         cliente = cliente_de(self.e.admin)
-        self.assertEqual(cliente.post(self.url("descartar/")).status_code, 200)
-        self.assertEqual(cliente.post(self.url("atender/")).status_code, 409)
+        nota = {"observaciones": "Limpieza programada"}
+        self.assertEqual(cliente.post(self.url("descartar/"), nota).status_code, 200)
+        self.assertEqual(cliente.post(self.url("atender/"), nota).status_code, 409)
 
     def test_operador_y_analista_no_atienden(self):
+        nota = {"observaciones": "Se abrió la ventana"}
         for usuario in (self.e.operador, self.e.analista):
-            self.assertEqual(cliente_de(usuario).post(self.url("atender/")).status_code, 403)
+            r = cliente_de(usuario).post(self.url("atender/"), nota)
+            self.assertEqual(r.status_code, 403)
 
     def test_otra_organizacion_no_ve_la_alerta(self):
         otro = Escenario("b")
