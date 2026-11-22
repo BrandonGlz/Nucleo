@@ -64,6 +64,16 @@ export const NIVEL_ALERTA = {
   PELIGRO: { status: 'critical', tone: 'danger', icon: 'octagon-alert', level: 'critical' },
   ADVERTENCIA: { status: 'warning', tone: 'warning', icon: 'triangle-alert', level: 'warning' },
 }
+// Tipos de la campana: las alertas de medición y los avisos del sistema (GET /avisos/).
+// Cada tipo tiene su ícono; el color sale del nivel.
+export const TIPOS_NOTIFICACION = {
+  ALERTA: { etiqueta: 'Alertas', ruta: '/alertas' },
+  DISPOSITIVO: { etiqueta: 'Dispositivos', icon: 'cpu', ruta: '/dispositivos' },
+  USUARIO: { etiqueta: 'Usuarios', icon: 'user', ruta: '/usuarios' },
+  REPORTE: { etiqueta: 'Reportes', icon: 'file-text', ruta: '/reportes' },
+  NICO: { etiqueta: 'Nico AI', icon: 'sparkles', ruta: '/agente' },
+}
+export const TONO_NIVEL = { PELIGRO: 'danger', ADVERTENCIA: 'warning', INFO: 'success' }
 export const ESTADO_ALERTA = {
   PENDIENTE: { tone: 'ink', icon: 'clock', label: 'Pendiente' },
   ATENDIDA: { tone: 'neutral', icon: 'circle-check', label: 'Atendida' },

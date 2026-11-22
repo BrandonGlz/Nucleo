@@ -270,6 +270,31 @@ export async function notificaciones() {
   return pagina(copia(db.notificaciones))
 }
 
+// Avisos de la campana (dispositivos, usuarios, reportes, Nico AI) con su marca de leído.
+export async function avisos({ tipo, no_leidos } = {}) {
+  await esperar()
+  const filas = db.avisos
+    .filter((a) => (!tipo || a.tipo === tipo) && (!no_leidos || !a.leido))
+    .sort((x, y) => (x.fecha_hora < y.fecha_hora ? 1 : -1))
+  return pagina(copia(filas))
+}
+export async function conteoAvisos() {
+  await esperar()
+  return { no_leidos: db.avisos.filter((a) => !a.leido).length }
+}
+export async function marcarAvisosLeidos({ nums } = {}) {
+  await esperar()
+  const todos = !nums?.length
+  let marcados = 0
+  for (const a of db.avisos) {
+    if (!a.leido && (todos || nums.includes(a.num))) {
+      a.leido = true
+      marcados++
+    }
+  }
+  return { marcados }
+}
+
 // Reportes
 export async function reportes() {
   await esperar()

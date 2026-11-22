@@ -161,6 +161,22 @@ export const notificaciones = alertas.map((a, i) => ({
   fecha_envio: hace([8, 22, 240, 300, 360, 1440][i] * MIN - 50),
 }))
 
+// Avisos del sistema (GET /avisos/) de los cuatro tipos; los más viejos ya están leídos.
+const V = (num, tipo, nivel, titulo, detalle, ruta, seg, leido = false) => ({
+  num, tipo, nivel, titulo, detalle, ruta, fecha_hora: hace(seg), leido,
+})
+export const avisos = [
+  V(9012, 'DISPOSITIVO', 'PELIGRO', 'Núcleo E-05 sin conexión', 'Guardería · NC-0290 dejó de enviar lecturas hace 6 min.', '/dispositivos/11', 5 * MIN),
+  V(9011, 'NICO', 'ADVERTENCIA', 'Nico AI sin conexión', 'El modelo local no responde; las preguntas quedan en espera.', '/agente', 15 * MIN),
+  V(9010, 'REPORTE', 'INFO', 'Reporte listo', 'Moldeo · semana del 9 al 15 de noviembre. Ya puedes descargar el PDF.', '/reportes', 50 * MIN),
+  V(9009, 'USUARIO', 'INFO', 'Nuevo usuario dado de alta', 'Paola Herrera Gil entró como Operador en Guardería.', '/usuarios', 2 * HORA),
+  V(9008, 'NICO', 'INFO', 'Nico AI está de vuelta', 'El asistente volvió a responder tras 12 min sin conexión.', '/agente', 3 * HORA, true),
+  V(9007, 'DISPOSITIVO', 'INFO', 'Núcleo L-08 reconectado', 'Laboratorio · NC-0418 volvió a enviar lecturas.', '/dispositivos/6', 5 * HORA, true),
+  V(9006, 'USUARIO', 'ADVERTENCIA', 'Cambio de rol', 'Mariana Cruz León ahora es Supervisor de Moldeo.', '/usuarios', 26 * HORA, true),
+  V(9005, 'DISPOSITIVO', 'ADVERTENCIA', 'Núcleo E-06 sin conexión', 'Guardería · NC-0291 lleva 2 h sin enviar lecturas.', '/dispositivos/12', 28 * HORA, true),
+  V(9004, 'REPORTE', 'INFO', 'Reporte listo', 'Laboratorio · octubre de 2026.', '/reportes', 2 * DIA + 3 * HORA, true),
+]
+
 export const reportes = [
   {
     num: 31, organizacion: 1, area: 1, generado_por: 2, origen: 'MANUAL',
