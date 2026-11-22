@@ -73,6 +73,14 @@ documento de su componente, enlazado en cada sección.
 - **Recuperación de contraseña** por correo: enlace de un solo uso que caduca en una hora; la
   respuesta es la misma exista o no el correo y se limita a 5 pedidos por hora por IP. Al
   restablecerla se cierran todas las sesiones.
+- **Solicitud de acceso** sin cuenta (`/auth/solicitar-acceso/`, web y app): responde 204 siempre
+  que los datos sean válidos, exista o no la cuenta (no revela correos registrados), tiene un campo
+  trampa (`sitio`) para bots y se limita a 5 por hora por IP. Solo un ADMIN de esa organización (o
+  el administrador de plataforma) la ve y la aprueba; la cuenta nace con contraseña temporal que se
+  cambia al entrar.
+- **Foto de perfil**: solo su dueño la cambia; se valida el contenido con Pillow (JPEG, PNG o WebP,
+  ≤ 5 MB y ≤ 40 Mpx), se recodifica a WebP 256×256 con nombre aleatorio y se entrega por
+  `/api/v1/fotos/` solo con sesión (`/media` no se publica).
 - Las contraseñas de los usuarios se guardan cifradas con el hasher de Django y pasan sus
   validadores de contraseña.
 - Autorización = rol + organización: cada vista declara qué roles leen, escriben o ejecutan
@@ -113,6 +121,9 @@ documento de su componente, enlazado en cada sección.
 - La IA local solo se usa con la firma HMAC-SHA256 del ESP32 de Núcleo A-01 sobre un reto de un
   solo uso; la firma se compara en tiempo constante (`hmac.compare_digest`). Sin firma, el agente
   contesta solo con reglas ([Nico AI](../agente/nico-ai.md)).
+- Supervisores, analistas y operadores solo usan a Nico con el ESP del dispositivo conectado; el
+  administrador de la organización (y el superusuario en la consola) tiene un **modo de pruebas**
+  sin ESP. La regla vive en el servidor (`puente.exige_puente`), no en los clientes.
 
 ## Firmware del ESP32 (OTA)
 

@@ -19,14 +19,21 @@ reportes, y expone una API REST que consumen la web y la app móvil.
   - Nico AI: un agente por dispositivo que responde con sus lecturas y alertas y genera
     reportes cuando se le piden ([Nico AI](../agente/nico-ai.md)).
 - **`FrontEnd/`**
-  - Web React: panel en vivo, Dispositivos (estado, batería, señal y «Calentando»), Detalle
-    de dispositivo, Histórico, Alertas (atender o descartar), Reportes, Nico AI, Umbrales,
-    Usuarios, Empresa y áreas, Mi perfil y Notificaciones, con tema claro u oscuro.
+  - Web React: Panel (gráficas de temperatura, humedad y aire por periodo), Dispositivos
+    (estado, batería, señal y «Calentando»), Detalle de dispositivo, Histórico (tabla del
+    periodo, sin gráfica), Alertas (atender o descartar con nota obligatoria), Reportes, Nico AI,
+    Umbrales, Usuarios, Empresa y áreas, Mi perfil (con foto) y Notificaciones (campana con
+    alertas y avisos de dispositivos, usuarios, reportes y Nico AI), con tema claro u oscuro y
+    tamaños fluidos (`styles/fluido.css`).
+  - Solicitud de acceso sin cuenta (`/solicitar-acceso`) que un administrador aprueba en
+    `/solicitudes/<num>`.
+  - Consolas aparte por host, solo superusuario: Nico AI (`nicoai.`) y administración (`admin.`).
   - Organizaciones, solo para el administrador de plataforma: alta, edición, suspensión, baja
     y primer administrador de cada empresa cliente.
 - **`Mobile/`**
-  - App Expo/React Native (Android): Inicio con el dispositivo en vivo (selector si hay
-    varios), Detalle de variable, Alertas y su detalle, Nico AI y Perfil.
+  - App Expo/React Native (Android): acceso con Nico y solicitud de cuenta, Inicio con el
+    dispositivo en vivo (selector si hay varios), Detalle de variable, Alertas y su detalle,
+    Histórico, Nico AI, Notificaciones y Perfil.
   - Canal en vivo con la app abierta y push con la app cerrada (las de peligro suenan y
     vibran); opción para reducir animaciones. Se instala con el APK de https://app.bynucleo.com.
 - **`IoT/`**

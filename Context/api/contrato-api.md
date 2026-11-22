@@ -51,11 +51,24 @@ POST /auth/telefono/           {"token_expo", "plataforma"}; activa los push en 
                                volver a entrar (interruptor del perfil de la app)
 DELETE /auth/telefono/         {"token_expo"}; los desactiva
 GET  /auth/yo/                 Usuario autenticado
+POST /auth/foto/               multipart {"foto"}: JPEG, PNG o WebP (se valida el contenido con
+                               Pillow, no la extensión), ≤ 5 MB y ≤ 40 Mpx; se recorta al centro
+                               a 256×256 y se guarda en WebP con nombre aleatorio (la anterior se
+                               borra) → usuario actualizado. 400 {"foto": [...]} si no sirve
+DELETE /auth/foto/             Quita la foto propia → usuario actualizado (foto_url null)
+GET  /fotos/{nombre}.webp      La imagen (image/webp, caché privada larga); cualquier sesión
+                               válida (cookie o token), 404 si el nombre no es de un usuario
 POST /auth/cambiar-password/   {"password_actual", "password_nueva"}; cierra todas sus sesiones
 GET  /auth/sesiones/           Sus sesiones abiertas (cliente, agente, IP, creada, último uso;
                                `actual` = la de esta petición)
 DELETE /auth/sesiones/{num}/   Cierra otra de sus sesiones (la actual: 400, usar logout)
 ```
+
+La **foto de perfil** solo la cambia su dueño (la ruta no recibe usuario). El usuario (de
+`/auth/yo/`, el login, `/usuarios/` y `/consola/usuarios/`; también `usuario` de
+`/consola/sesiones/`) trae `foto_url`: ruta relativa al dominio de la API
+(`/api/v1/fotos/<32 hex>.webp`) o `null`; los clientes la resuelven contra su URL de la API y
+muestran las iniciales si no hay o no carga. El nombre cambia en cada subida.
 
 Cada inicio de sesión abre una **sesión** propia (tabla `sesion`: navegador o teléfono, IP,
 creación y último uso; solo se guarda el SHA-256 de la clave). La web la recibe en una cookie
@@ -69,6 +82,37 @@ autenticación y `ALLOWED_HOSTS`.
 Si el rol está entre los que la política de seguridad obliga a usar la verificación en dos pasos y la cuenta aún no configura la verificación en dos
 pasos, todo lo que no sea `/auth/` responde 403 con `"segundo_factor_pendiente": true`; la web
 lleva a Mi perfil y la app pide configurarla en la web.
+
+### Solicitud de acceso
+
+Una persona sin cuenta pide entrar a su organización y área desde la pantalla de acceso de la web
+(`/solicitar-acceso`) o de la app («Solicita tu acceso»). Nico avisa por correo a los ADMIN de esa
+organización (si no tiene, a los administradores de plataforma) con el enlace a
+`/solicitudes/<num>` de la web, y al aprobarla crea la cuenta con contraseña temporal.
+
+```text
+GET  /auth/solicitar-acceso/          Sin sesión: organizaciones activas con sus áreas
+                                      [{num, nombre, areas: [{num, nombre}]}]
+POST /auth/solicitar-acceso/          Sin sesión: {"organizacion", "area", "nombre",
+                                      "primer_apellido", "segundo_apellido"?, "correo",
+                                      "sitio"?} → 204 siempre que los datos sean válidos, exista o
+                                      no la cuenta (no revela correos). No guarda nada si "sitio"
+                                      (campo trampa para bots) trae valor, si el correo ya tiene
+                                      cuenta o si ya hay una solicitud pendiente con él; 400 por
+                                      campo; 429 tras 5 por hora por IP
+GET  /solicitudes-acceso/{num}/       ADMIN de esa organización o ADMINPLAT: {num, estado
+                                      (PENDIENTE|APROBADA|RECHAZADA), nombre, apellidos, correo,
+                                      fecha_solicitud, organizacion {num, nombre}, area, areas,
+                                      roles [{codigo, nombre}], correo_registrado, atendida_por,
+                                      fecha_atencion}; 404 si es de otra organización
+POST /solicitudes-acceso/{num}/aprobar/   {"area", "rol" (OPER|ANALISTA|SUPER|ADMIN), "nombre",
+                                      "primer_apellido", "segundo_apellido"?} → crea la cuenta
+                                      con contraseña temporal de 12 caracteres (cambio obligatorio
+                                      al entrar), manda la bienvenida y avisa en la campana
+                                      (USUARIO); responde lo mismo que el GET + "correo_enviado".
+                                      400 si ya no está pendiente o el correo ya tiene cuenta
+POST /solicitudes-acceso/{num}/rechazar/  Marca RECHAZADA y Nico se lo informa por correo
+```
 
 ### Tokens de API (integraciones)
 
@@ -189,7 +233,8 @@ Reportes (ADMIN, SUPER y ANALISTA)
 Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
 └── /nico/
     ├── POST chat/ · POST calificar/       Igual que /agente/, con el dispositivo de cualquier empresa
-    ├── GET estado/                         Agentes activos de todas las empresas
+    ├── GET estado/                         Agentes activos de todas las empresas (exige_puente
+    │                                       falso: usa cualquiera, aun sin ESP, en modo de pruebas)
     ├── GET arbol/                          {puente, empresas: [{num, nombre, areas: [{num, nombre,
     │                                       dispositivos: [{num, nombre, activo, fisico}]}]}]}
     ├── GET resumen/                        Cifras y series del dashboard (por_dia, por_hora,
@@ -234,6 +279,10 @@ Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
                                             plano; GET ?seccion= → {estado, propuestas, error}
 
 Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
+├── GET /agente/estado/                     {puente, activos, fisicos, exige_puente, disponibles}:
+│                                           activos = ESP puente conectado; disponibles = los que
+│                                           este usuario puede usar ahora (ADMIN: todos, modo de
+│                                           pruebas; SUPER, ANALISTA y OPER: solo los activos)
 ├── GET /agente/sugerencias/               ?dispositivo= → {activas, maximo, sugerencias:
 │                                           [{texto, tipo, etiqueta}]}; la web las filtra al escribir
 └── POST /agente/                           {"pregunta", "dispositivo"}; un agente por dispositivo;
@@ -247,7 +296,10 @@ Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
                                             (nombres ambiguos, máx. 5) o "accion" {id,
                                             vence} (reporte, envío por correo o
                                             programación preparados que esperan «sí» o
-                                            «cancela», 10 min). Una precarga con el servidor
+                                            «cancela», 10 min). Con el ESP puente sin
+                                            conexión: 503 {detail, inactivo: true} para
+                                            SUPER, ANALISTA y OPER; el ADMIN recibe la
+                                            respuesta con "modo_pruebas": true. Una precarga con el servidor
                                             limitado o en mantenimiento recibe 429
                                             ("pasos": lo que el agente hizo, para «Cómo lo
                                             resolví») y, si la pregunta es de una

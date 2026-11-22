@@ -10,17 +10,21 @@ Ambos hablan solo con la API REST; el navegador no se conecta al broker MQTT.
 
 ## Qué hace
 
-- **Acceso:** inicio de sesión a pantalla completa. Sin sesión, cualquier ruta lleva
-  a `/acceso`.
-- **Monitoreo:** Panel con lecturas en vivo, Dispositivos, Detalle de dispositivo,
-  Histórico y Alertas (atender o descartar con nota).
+- **Acceso:** inicio de sesión a pantalla completa, recuperación de contraseña y «Solicitar
+  acceso» (una persona sin cuenta pide entrar a su organización y área; un administrador la
+  aprueba en `/solicitudes/<num>`). Sin sesión, cualquier ruta lleva a `/acceso`.
+- **Monitoreo:** Panel (gráficas de temperatura, humedad y aire con filtro Hoy / 7 / 30 días),
+  Dispositivos y su detalle con las lecturas en vivo, Histórico (tabla a todo el ancho con el
+  histórico completo del periodo, sin gráfica) y Alertas (atender o descartar con nota
+  obligatoria, visible en las resueltas).
 - **Análisis:** Reportes (vista previa y generación) y Nico AI, que también genera
   reportes cuando se le piden y los muestra en el chat con sus cifras y la descarga del PDF.
 - **Configuración:** Umbrales, Usuarios (ADMIN y SUPER) y Empresa y áreas (ADMIN).
 - **Plataforma:** Organizaciones (solo ADMINPLAT): alta, edición, suspensión, baja y
   primer administrador. Esa cuenta entra directo ahí y no ve los demás módulos.
-- **Cuenta:** Mi perfil y Notificaciones, a las que se llega desde el avatar y la
-  campana del encabezado.
+- **Cuenta:** Mi perfil (foto, seguridad, verificación en dos pasos) y Notificaciones, a las
+  que se llega desde el avatar y la campana del encabezado. La campana junta las alertas y los
+  avisos de dispositivos, usuarios, reportes y Nico AI.
 - **Diagnóstico:** `/estado` comprueba si la API responde.
 - **Tema:** claro, oscuro o el del sistema, desde el menú del avatar o Mi perfil.
 
@@ -88,7 +92,8 @@ FrontEnd/
 │   │   │                       mocks y el token
 │   │   ├── api/                Cliente HTTP (client.js) y salud
 │   │   └── mock/               datos.js (datos de ejemplo) y handlers.js (endpoints simulados)
-│   ├── styles/global.css       Marco de la app y piezas propias de las pantallas
+│   ├── styles/                 fluido.css (tamaños que escalan con la ventana y los dos puntos de
+│   │                           quiebre), global.css (marco y pantallas) y movil.css (≤ 900 px)
 │   ├── utils/                  convertir.js (contrato → componentes) y formato.js (fechas)
 │   ├── App.jsx                 Rutas y protección por sesión y rol
 │   └── main.jsx                Enciende la aplicación

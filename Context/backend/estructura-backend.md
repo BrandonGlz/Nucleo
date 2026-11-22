@@ -266,6 +266,11 @@ día) y `series` por variable con promedio, mínimo y máximo de cada tramo. El 
 con ReportLab, dibuja una curva por variable con sus picos y el conteo por nivel, y se
 guarda en `media/reportes/`.
 
+Las fotos de perfil (`apps/usuarios/fotos.py`) quedan en `media/fotos/<aleatorio>.webp`
+(256×256, recortadas con Pillow). `/media` no se publica en Caddy: se entregan por
+`GET /api/v1/fotos/<nombre>` con sesión. `BackEnd/media` entra en el respaldo
+`nucleo_broker_media`.
+
 Las programaciones (`/programaciones-reporte/`, ADMIN, SUPER y ANALISTA) guardan
 frecuencia diaria, semanal o mensual, área opcional, destinatarios (usuarios de la
 misma organización) y `proxima_ejecucion`, que por defecto es un periodo adelante.
@@ -305,6 +310,11 @@ firmware y entra por `procesar_mensaje` (o por el broker con `--mqtt`).
 el tema de la pregunta (temperatura, humedad, aire, alertas o conexión) y arma el texto con
 las lecturas de los últimos 7 días, el umbral y las alertas; no inventa cifras. Un
 operador lo usa solo si tiene `acceso_agente` y sobre su dispositivo.
+
+Con el puente de la IA encendido, supervisores, analistas y operadores solo lo usan si el ESP
+del dispositivo está activo (503 `inactivo` si no); el administrador (y el superusuario en la
+consola) lo usa sin él en modo de pruebas: `puente.exige_puente`, `puente.activar_pruebas` y
+`_ejecutar` sin esperar la firma del ESP. Detalle en `Context/agente/nico-ai.md`.
 
 Cada pregunta sigue el mismo camino, en `apps/reportes/`:
 

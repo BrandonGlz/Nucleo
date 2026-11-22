@@ -16,7 +16,8 @@ SSH y la instalación desde cero están en [`deploy/README.md`](../../deploy/REA
 
 Todo llega por un Cloudflare Tunnel, sin abrir puertos en el router. Abrir `dispositivos.` en el
 navegador lleva a `bynucleo.com`. Corre en equipos propios que funcionan como VPS casero, dos
-laptops con Debian 13 sin escritorio unidas por Tailscale:
+laptops con Debian 13 sin escritorio unidas por Tailscale (que va por un cable Ethernet directo entre
+ellas y, si se desconecta, por el Wi-Fi):
 
 | Equipo | Hardware | Papel |
 | --- | --- | --- |
@@ -114,6 +115,38 @@ flowchart LR
   ese horario los equipos no se suspenden con la tapa cerrada ni por inactividad; el equipo de
   compilación nunca se suspende y se actualiza a mano (`mantenimiento-asus`). Van por Wi-Fi con IP fija y una red de respaldo, y el túnel usa `http2` (TCP), que
   aguanta mejor los baches de señal que QUIC. Sin corriente y con poca batería se apagan en orden.
+
+## Operación en dos equipos
+
+| Qué | Dónde | Cuándo |
+| --- | --- | --- |
+| Despliegue (`desplegar-nucleo`: compila la web, la copia y el servidor instala) | Equipo de compilación | A mano, tras unir `dev` a `main` |
+| Build del APK (`compilar-apk-nucleo`, ~8 min con cambios en `Mobile/`) | Equipo de compilación | Solo cuando se pide; nunca dos a la vez |
+| Respaldo diario (`respaldo-nucleo-remoto.timer`: bases, aplicación, broker y archivos, firma de la app) | Equipo de compilación, por SSH | Todos los días 23:30 (se guarda 10 días ahí) |
+| Zip semanal cifrado a Drive (`respaldo-nucleo-semanal.timer`) | Equipo de compilación | Lunes 00:30 (unas 5 semanas en Drive) |
+| Prueba de restauración (`prueba-restauracion-nucleo-remoto.timer`) | Equipo de compilación | Primer domingo del mes, 04:30 |
+| Descanso diario (`descanso-lenovo.timer`: `apt upgrade`, reinicio si hace falta, suspensión) | Servidor | 06:00 a 12:00 |
+| Vigilante externo (`vigia`) | Equipo de compilación | Cada 60 s (no revisa 06:00-12:10 si el servidor duerme) |
+| Vigía de GitHub Actions (`.github/workflows/vigia.yml`) | GitHub | Cada 15 min (salta 06:00-12:10) |
+| Reportes programados (`nucleo-reportes.timer`) y recursos (`nucleo-recursos.timer`) | Servidor | Cada 15 y 10 min |
+| Actualización del equipo de compilación (`mantenimiento-asus`) | Equipo de compilación | A mano |
+
+- `desplegar-nucleo` y `compilar-apk-nucleo` usan candado (`flock`): si ya hay uno en curso, el
+  segundo se niega. El descanso tampoco suspende el servidor si hay un despliegue o una build en
+  curso. No se despliega durante el descanso; `despertar-lenovo` (desde el equipo de compilación)
+  despierta antes al servidor con un *magic packet* por Wi-Fi.
+- Si el equipo de compilación se apaga, Núcleo sigue igual: solo se pausan despliegues, builds,
+  respaldos y el vigilante (el vigía de GitHub sigue). Si cae el servidor, cae Núcleo; no hay
+  conmutación automática ([Servidor de reserva](../../deploy/README.md#servidor-de-reserva)).
+- **Nico AI** usa el Ollama del servidor (contenedor `nucleo_ollama`, tope de 3.5 GB, un modelo
+  cargado, 2 peticiones en paralelo y cola de 8): `qwen3:4b-instruct` sin «thinking», `num_ctx` 2048
+  y 3 hilos, espera máxima `IA_ESPERA_SEGUNDOS=40`; `qwen2.5:1.5b` queda de reserva para equipos con
+  menos memoria. Detalle en [Nico AI](../agente/nico-ai.md).
+- **Vigilancia:** `nucleo-aviso@.service` y `vigilar_recursos.sh` avisan desde el servidor; el
+  vigilante externo y el vigía de GitHub, desde fuera. El panel del servidor
+  (`hostprojects.bynucleo.com`, con usuario y contraseña, fuera del repo) usa el mismo túnel y
+  muestra el estado de Núcleo, sus respaldos y los trabajos en curso. Detalle en
+  [`deploy/README.md`](../../deploy/README.md#avisos-y-vigilancia).
 
 ## Actualizar
 

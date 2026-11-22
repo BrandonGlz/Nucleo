@@ -58,8 +58,8 @@ contraseña (`BatchMode`).
 
 ### Reparto entre los dos equipos
 
-Regla de diseño: los equipos se hablan por Wi-Fi (Tailscale), con latencias que van de unos
-milisegundos a casi un segundo. Por eso **todo lo que se consulta muchas veces por petición vive
+Regla de diseño: los equipos se hablan por Tailscale (por el cable directo, ~2 ms; si se desconecta,
+por el Wi-Fi, con latencias que van de unos milisegundos a casi un segundo). Por eso **todo lo que se consulta muchas veces por petición vive
 en el servidor** (API, bases, Redis, broker, Ollama) y entre los equipos solo viajan órdenes,
 volcados, la web compilada y el APK.
 
@@ -125,7 +125,7 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
   máximo; Ollama pierde ~4 %). Se quita con `sudo systemctl disable --now termica-servidor`.
 - `pantalla-apagada.service` apaga la retroiluminación de la pantalla interna (~3 W);
   `sudo systemctl stop pantalla-apagada` la vuelve a encender.
-- Fuera del descanso la laptop no se suspende con la tapa cerrada ni por inactividad
+- Fuera del descanso el servidor no se suspende con la tapa cerrada ni por inactividad
   (`sleep.target` y `suspend.target` siguen enmascarados; `rtcwake` suspende directo por el kernel). La red la maneja NetworkManager
   con IP fija (Wi-Fi principal y otra red de respaldo con menor prioridad), sin ahorro de energía
   en el Wi-Fi. La batería tiene tope de carga (conservation mode) y, sin corriente y con poca
@@ -154,6 +154,11 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
 
 - Los despliegues y las builds usan candado (`flock`): si otra sesión ya está desplegando o
   compilando, el script se niega y lo dice. Nunca corren dos builds del APK a la vez.
+- La build del APK se lanza solo cuando se pide expresamente («lanza la build»); un despliegue
+  («lanza el deploy») no compila el APK. Cada cambio de `Mobile/` sube `version` y
+  `android.versionCode` de `Mobile/app.json` en el mismo commit.
+- Ni despliegues ni builds durante el descanso del servidor (06:00 a 12:00), salvo que se haya
+  despertado antes con `despertar-lenovo`.
 - Los registros quedan en `~/despliegues/` (`nucleo-<fecha>.log`, `apk-<fecha>.log`).
 - Mismas medidas que el servidor: ufw solo Tailscale y apagado ordenado por batería, pero **nunca
   se suspende** (es el vigilante y el que despierta al servidor).
@@ -427,6 +432,15 @@ Tras un deploy que cambie encabezados, vacía la caché en **Caching → Configu
   de la plataforma afectada (túnel, dominios, Daphne o MQTT detenidos, ESP32 sin conexión,
   Nico AI, seguridad, respaldos, Caddy, Ollama, red). Usa el SMTP del `.env` y no repite lo que ya
   avisan `aviso_fallo.sh` y `vigilar_recursos.sh`.
+- **Panel del servidor** (`https://hostprojects.bynucleo.com`, con usuario y contraseña; no es parte
+  de Núcleo, solo usa su túnel: Caddy `127.0.0.1:8082`, archivos en `/var/www/hostprojects`,
+  instalado fuera del repo). Se actualiza cada minuto (`hostpanel.timer`) y muestra, de Núcleo:
+  túnel y subdominios, Daphne, MQTT y contenedores, personas conectadas y peticiones del día
+  (de la bitácora JSON de Caddy), Nico AI (puente ESP, preguntas y tokens de `pregunta_agente`),
+  Ollama, el estado del respaldo del día y del último zip semanal en Drive, los trabajos en curso
+  (deploys, builds, respaldos, restauraciones) y el estado del equipo de compilación, que este
+  envía cada minuto. En la terminal, `estadoServer.sh` (en los dos equipos) muestra lo mismo
+  (`--resumen`, `--corto` al entrar por SSH, `--json` para el panel).
 - `.github/workflows/vigia.yml`: cada 15 min revisa desde fuera la web, la API, la app y el
   subdominio de los ESP32. GitHub solo ejecuta los flujos programados de la rama principal, así
   que vigila desde `main`; las fallas llegan por correo de GitHub. De 06:00 a 12:10 (hora de
@@ -577,7 +591,7 @@ muestra el último diagnóstico de cada ESP para saber si un corte fue de la red
   `bash deploy/instalar.sh`; levanta Ollama y descarga el modelo. La misma clave va en el ESP.
 - Apagar: dejar `IA_PUENTE_CLAVE` vacía y volver a instalar; Ollama se detiene y el agente
   responde solo con lo predefinido, sin depender de ningún ESP.
-- Si la IA tarda más de `IA_ESPERA_SEGUNDOS` (20 s), hay 2 peticiones en cola o pone una cifra
+- Si la IA tarda más de `IA_ESPERA_SEGUNDOS` (40 s), hay 2 peticiones en cola o pone una cifra
   que no viene de los datos, se responde con la predefinida.
 - `deploy/compilar_apk.sh` apaga el Ollama del equipo donde compila y lo vuelve a encender al final;
   con la build en el equipo de compilación, el Ollama del servidor no se toca.

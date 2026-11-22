@@ -10,7 +10,9 @@ simulados.
 
 ## Qué hace
 
-- **Acceso:** inicio de sesión con validación y mensaje de credenciales incorrectas.
+- **Acceso:** inicio de sesión con validación y mensaje de credenciales incorrectas, con Nico
+  asomado sobre el formulario (imagen clara u oscura según el tema). «Solicita una cuenta» pide
+  acceso a una organización y área sin tener cuenta; un administrador la aprueba desde la web.
 - **Panel:** temperatura en vivo con su rango (el número cuenta hasta su valor y el punto «en
   vivo» late), humedad y aire con su tendencia, el estado del equipo (conexión, última lectura y
   batería), las barras de temperatura de 24 h o 7 días y las alertas recientes. La campana abre
@@ -94,9 +96,11 @@ Mobile/
 │   │   ├── Pantalla.js         Zona oscura + hoja clara de cada pantalla
 │   │   └── …                   Medidor, BarraRango, Cabecera, Alerta, EstadoError,
 │   │                           HealthStatusCard y ModuloBase
-│   ├── context/                SesionContext (sesión) y TemaContext (tema claro u oscuro)
-│   ├── hooks/                  useDatos, useOperador y useHealthCheck
-│   ├── modules/                acceso, panel, mediciones, alertas, perfil y estado;
+│   ├── context/                SesionContext (sesión), TemaContext (tema claro u oscuro) y
+│   │                           PreferenciasContext (preferencias y useAnimaciones)
+│   ├── hooks/                  useDatos, useOperador, useAvisos y useHealthCheck
+│   ├── modules/                acceso (con la solicitud de cuenta), panel, historico,
+│   │                           mediciones, alertas, agente, notificaciones, perfil y estado;
 │   │                           index.js es el registro. dispositivos queda fuera de la
 │   │                           navegación porque el operador ve su dispositivo en Inicio
 │   ├── navigation/             AppNavigator: acceso, pestañas y pantallas apiladas

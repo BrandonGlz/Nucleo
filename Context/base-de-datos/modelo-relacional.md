@@ -32,6 +32,8 @@ organizacion ─┬─ area ─┬─ usuario ─┬─ rol, estado_usuario
 umbral ── alerta ── notificacion ─┬─ usuario
                                   └─ telefono_push (solo canal PUSH)
 usuario ── aviso                   (campana: dispositivos, usuarios, reportes y Nico AI)
+organizacion ─┬─ solicitud_acceso  (persona sin cuenta que pide entrar; área opcional)
+area ─────────┘   (atendida_por y usuario_creado → usuario)
 
 nucleo_iot
 sensor_num, variable_codigo ··· lectura        (sin llave foránea; viene de nucleo_db)
@@ -63,6 +65,8 @@ area           num, organizacion_num, nombre, descripcion
 usuario        num, organizacion_num (opcional), area_num (opcional), rol_codigo,
                estado_usuario_codigo, nombre, primer_apellido, segundo_apellido,
                correo (único), telefono (TEXT cifrado con Fernet), password (hash),
+               foto (opcional, ≤ 100: ruta en MEDIA_ROOT «fotos/<aleatorio>.webp»),
+               debe_cambiar_password (def. FALSE; TRUE en las altas con contraseña temporal),
                ultimo_acceso, fecha_registro
                CHECK (rol_codigo = 'ADMINPLAT') = (organizacion_num IS NULL)
                ÍNDICE (organizacion_num, area_num)
@@ -98,6 +102,12 @@ aviso          num (bigint), usuario_num (CASCADE), tipo, nivel (def. INFO), tit
                CHECK tipo en DISPOSITIVO, USUARIO, REPORTE, NICO; CHECK nivel en INFO,
                ADVERTENCIA, PELIGRO; CHECK ruta vacía o empieza con /
                ÍNDICE (usuario_num, fecha_hora DESC); ÍNDICE (usuario_num) WHERE leido_en IS NULL
+solicitud_acceso
+               num, organizacion_num (CASCADE), area_num (opcional, SET NULL), nombre,
+               primer_apellido, segundo_apellido (def. ''), correo, estado (def. PENDIENTE),
+               ip, fecha_solicitud (def. now()), atendida_por (opcional), fecha_atencion,
+               usuario_creado (opcional)
+               estado en PENDIENTE, APROBADA, RECHAZADA (choices de Django, sin CHECK en la base)
 programacion_reporte
                num, organizacion_num, area_num (opcional), creada_por, frecuencia,
                destinatarios (INTEGER[]), activa (def. TRUE), proxima_ejecucion,

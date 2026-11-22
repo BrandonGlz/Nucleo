@@ -26,22 +26,29 @@ Mobile/
 │   │   └── TabBar.js               # barra inferior flotante
 │   ├── components/Pantalla.js      # zona oscura + hoja clara, con scroll y recarga
 │   ├── components/                 # Medidor, BarraRango, Cabecera, Alerta, EstadoError,
-│   │                               # HealthStatusCard, ModuloBase
+│   │                               # HealthStatusCard, ModuloBase, Movimiento,
+│   │                               # ReporteChat, SelectorDispositivo
 │   ├── context/SesionContext.js    # token y usuario mientras la app está abierta
 │   ├── context/TemaContext.js      # tema del sistema o elegido; TemaFijo para zonas fijas
+│   ├── context/PreferenciasContext.js  # preferencias del perfil; useAnimaciones()
 │   ├── hooks/useDatos.js           # { estado, datos, error, reintentar }
 │   ├── hooks/useOperador.js        # OperadorProvider: dispositivo, lecturas, umbrales, alertas
+│   ├── hooks/useAvisos.js          # centro de avisos de la campana (lo visto, en el teléfono)
 │   ├── hooks/useHealthCheck.js
-│   ├── modules/index.js            # registro de pantallas
-│   ├── modules/<modulo>/           # acceso, panel, mediciones, alertas (lista y detalle),
-│   │                               # perfil, estado; dispositivos fuera de la navegación
+│   ├── modules/index.js            # registro: acceso, publicas (sin sesión) y modulos
+│   ├── modules/<modulo>/           # acceso (MarcoAcceso, AccesoScreen, SolicitarAccesoScreen),
+│   │                               # panel, historico, mediciones (detalle de variable),
+│   │                               # alertas (lista y detalle), agente (Nico AI con voz),
+│   │                               # notificaciones, perfil (sesiones y contraseña), estado;
+│   │                               # dispositivos fuera de la navegación
 │   ├── navigation/AppNavigator.js
 │   ├── services/api/client.js
 │   ├── services/api/health.js
 │   ├── services/config.js          # USAR_MOCKS, token y pedir() con Authorization
 │   ├── services/mock/              # datos.js y handlers.js
-│   ├── services/<dominio>.js       # auth, dispositivos, lecturas, alertas, umbrales,
-│   │                               # usuarios, organizaciones
+│   ├── services/<dominio>.js       # auth, dispositivos, lecturas, alertas, umbrales, usuarios,
+│   │                               # organizaciones, agente, reportes, solicitudes,
+│   │                               # notificaciones (push) y tiempoReal (canal en vivo)
 │   ├── utils/                      # convertir.js, formato.js, formatDate.js
 │   └── theme.js                    # colors.light/dark, marca, space, radius, font
 ├── App.js
@@ -55,9 +62,11 @@ Mobile/
 
 - `App.js` carga las cinco variantes de Plus Jakarta Sans (`@expo-google-fonts`) y monta
   `SafeAreaProvider`, `TemaProvider`, `SesionProvider` y `AppNavigator`.
-- `AppNavigator` usa `native-stack` en la raíz: `Acceso` sin sesión, y con sesión
-  `Principal` (pestañas de `bottom-tabs` con el `TabBar` propio) más las pantallas
-  apiladas `Variable`, `DetalleAlerta` y `Estado`.
+- `AppNavigator` usa `native-stack` en la raíz: sin sesión, `Acceso` y las `publicas`
+  (`SolicitarAcceso`); con sesión, `Principal` (pestañas de `bottom-tabs` con el `TabBar` propio:
+  Panel, Alertas, Histórico, Nico AI y Mi perfil) más las pantallas apiladas `Variable`,
+  `DetalleAlerta`, `Notificaciones`, `Sesiones`, `Contrasena` y `Estado`. Alertas, Histórico,
+  Notificaciones y Nico AI solo aparecen para cuentas con organización (`permiso`).
 - Cada entrada de `modules/index.js` lleva `nombre`, `titulo`, `Pantalla` y, si va en la
   barra inferior, `pestana` con el ícono.
 - `OperadorProvider` hace una sola consulta para todas las pestañas y la repite cada 30 s.
@@ -88,6 +97,19 @@ prefijo.
 Para un teléfono físico, Django debe escuchar en `0.0.0.0:8000` y la IP local
 debe estar en `DJANGO_ALLOWED_HOSTS`. La app nativa no necesita configurar CORS,
 pero el backend sí valida el encabezado `Host`.
+
+## Acceso y solicitud de cuenta
+
+`MarcoAcceso` es el marco de las pantallas sin sesión, como `.acceso` en la web: zona superior con
+el logo y Nico asomado sobre la hoja del formulario (`assets/nico-acceso-claro.webp` y
+`nico-acceso-oscuro.webp`, según el tema; fuentes en `Docs/Nico/`, fuera de git). Con el teclado
+abierto la hoja sube y se recorre hasta los campos; respeta «Reducir animaciones».
+
+«Solicita una cuenta» abre `SolicitarAccesoScreen`: elige organización y área
+(`GET /auth/solicitar-acceso/`) y manda nombre, apellidos y correo (`POST`, 204). Nico avisa a los
+administradores, que la aprueban desde la web (`/solicitudes/<num>`); la persona recibe por correo
+una contraseña temporal que cambia al entrar. Contrato en
+[`api/contrato-api.md`](../api/contrato-api.md#solicitud-de-acceso).
 
 ## Autenticación
 
@@ -133,11 +155,22 @@ correspondiente.
 aplicó `npm audit fix --force` porque puede romper la compatibilidad del SDK; conviene
 revisarlas al actualizar Expo.
 
+## Compilación y publicación
+
+El APK firmado se compila en el equipo de compilación con `compilar-apk-nucleo` (solo cuando se
+pide; nunca dos a la vez) y se publica en https://app.bynucleo.com. Cada cambio de `Mobile/` sube
+`version` y `android.versionCode` de `app.json` en el mismo commit. Detalle en
+[`deploy/README.md`](../../deploy/README.md#app-móvil-apk).
+
+Ya funcionan con la API real: canal en vivo (`/ws/panel/`), registro del teléfono (`token_expo`),
+push con `expo-notifications` (Expo + Firebase) y las preferencias del perfil (reducir animaciones,
+push y sonido).
+
 ## Pendientes
 
-- Probar con la API real en teléfonos físicos.
 - Guardar el token de forma segura para no pedir sesión cada vez.
-- Conexión en vivo (`/ws/panel/`), registro del teléfono (`token_expo`) y
-  notificaciones push con `expo-notifications`.
-- Aplicar al dispositivo las preferencias del Perfil (reducir animaciones, push y sonido).
-- Compilación firmada y publicación en tiendas.
+- **Nota al atender o descartar:** la API la exige (5 a 500 caracteres) desde la nota obligatoria
+  de la web, pero la app todavía resuelve con el gesto de deslizar sin pedirla
+  (`AlertasScreen` llama a `alertas.resolver(num, accion)` sin `observaciones`), así que recibe
+  400. Hace falta pedir la nota en la app.
+- Publicación en tiendas.

@@ -13,7 +13,7 @@ flowchart LR
         W["Chat de Nico AI<br/>Web React"]
         A["Chat de Nico AI<br/>App Expo"]
     end
-    subgraph HOST["Servidor · laptop Debian"]
+    subgraph HOST["Servidor · Debian 13"]
         direction TB
         CF["Cloudflare Tunnel<br/>bynucleo.com"]
         C["Caddy :8081"]
@@ -68,8 +68,25 @@ flowchart LR
 
 El ESP manda un latido cada 20 s: sin latido en 75 s, o con su último mensaje al desconectarse,
 Nico se desactiva. Solo A-01 usa la IA; los demás dispositivos son simulados y responden sin
-ella. Si la firma no llega en 12 s o la IA tarda más de 20 s, el agente contesta solo con las
-reglas.
+ella. Si la firma no llega en 12 s o la IA tarda más de `IA_ESPERA_SEGUNDOS` (40 s en producción), el
+agente contesta solo con las reglas.
+
+### Quién necesita el ESP encendido
+
+- **Supervisor, analista y operador:** solo usan a Nico con el ESP del dispositivo activo. Si
+  está sin conexión, `POST /agente/` responde 503 con `{"detail": "Nico AI no está disponible:
+  <dispositivo> no está activo.", "inactivo": true}` y el chat queda deshabilitado.
+- **Administrador de la organización** (y el superusuario en la consola de Nico AI): lo usa
+  aunque el ESP esté sin conexión, para probar el agente sin tener el dispositivo conectado
+  (**modo de pruebas**). La IA del servidor responde sin esperar la firma del ESP y la
+  respuesta trae `"modo_pruebas": true`.
+
+La regla vive en el servidor (`puente.exige_puente` / `puente.disponible`, en `AgenteView`,
+que también usa la consola), así que vale para la web, la app y la consola. `GET
+/agente/estado/` (y `/nico/estado/`) devuelve `exige_puente` y `disponibles` (los dispositivos
+cuyo agente ese usuario puede usar ahora); la web y la app solo leen esos datos. En modo de
+pruebas el punto de estado sigue gris (es el estado del ESP) y se muestra el aviso discreto
+«ESP32 sin conexión · modo de pruebas del administrador».
 
 Para validar cambios: `manage.py evaluar_agente --dispositivo NC-0501` corre el banco de casos
 (`apps/reportes/casos_agente.py`) sin guardar nada. El detalle está en
@@ -157,8 +174,8 @@ temperatura) lee la petición a ~30 tokens/s y genera a ~10 tokens/s (medido el 
 solo ahorra el inicio idéntico de la petición: las instrucciones sí, pero el texto base, las cifras
 y la pregunta cambian cada vez y se procesan siempre, y cada token cuesta más cuanto más largo es
 lo que va antes. Medido en producción con el equipo y el modelo anteriores: sin documento, una respuesta de la IA tarda 4-11 s; con el
-documento completo en las instrucciones (~1 000 tokens), 15-20 s y a veces pasa el límite de 20 s
-del chat. Por eso el documento no va en cada respuesta: se convierte en respuestas del banco.
+documento completo en las instrucciones (~1 000 tokens), 15-20 s, y pasaba el límite que entonces tenía
+el chat (20 s; hoy `IA_ESPERA_SEGUNDOS` es 40 s). Por eso el documento no va en cada respuesta: se convierte en respuestas del banco.
 `puente.calentar` deja en caché los prefijos (redactor y clasificador) al abrir el chat y cada
 10 min, y `puente.recalentar` lo repite al guardar el documento.
 
