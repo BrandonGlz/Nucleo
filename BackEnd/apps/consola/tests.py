@@ -352,6 +352,20 @@ class AlertasSeguridadTests(PruebaBase):
             )
         self.assertTrue(AlertaSeguridad.objects.filter(tipo="cuenta_fallidos").exists())
 
+    def test_el_titulo_conserva_acentos_y_enes_del_nombre(self):
+        # El título copia el nombre tal cual está guardado: «m¿ Perez» en producción venía del
+        # nombre de la cuenta, no de la alerta.
+        u = self.e.analista
+        u.nombre, u.primer_apellido, u.segundo_apellido = "María Íñiguez", "Pérez", "Núñez"
+        u.save()
+        self._fallidos(3, usuario=u)
+        alerta = AlertaSeguridad.objects.get(tipo="cuenta_fallidos")
+        esperado = "3 intentos fallidos en la cuenta de María Íñiguez Pérez Núñez"
+        self.assertEqual(alerta.titulo, esperado)
+        r = self.c.get("/api/v1/consola/alertas/", {"tipo": "cuenta_fallidos"})
+        self.assertEqual(r.json()["results"][0]["titulo"], esperado)
+        self.assertEqual(r.json()["results"][0]["usuario"]["nombre"], "María Íñiguez Pérez Núñez")
+
     def test_bloquear_abre_y_desbloquear_la_cierra(self):
         self.c.patch(
             f"/api/v1/consola/usuarios/{self.e.analista.pk}/",
