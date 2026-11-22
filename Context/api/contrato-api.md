@@ -148,6 +148,15 @@ Alertas
 ├── GET /alertas/exportar/                  CSV con los mismos filtros; queda en la auditoría
 └── GET /notificaciones/                    Notificaciones del propio usuario
 
+Avisos (campana: dispositivos, usuarios, reportes y Nico AI; cada usuario solo los suyos)
+├── GET /avisos/                            Paginado; filtros tipo (DISPOSITIVO, USUARIO, REPORTE,
+│                                           NICO) y no_leidos=1. Item: {num, tipo, nivel (INFO,
+│                                           ADVERTENCIA, PELIGRO), titulo, detalle, ruta (ruta de
+│                                           la web, p. ej. /dispositivos/12), fecha_hora, leido}
+├── GET /avisos/conteo/                     {"no_leidos": n}
+└── POST /avisos/marcar-leidos/             {"nums": [..]} → {"marcados": n}; sin nums o con la
+                                            lista vacía marca todos los sin leer
+
 Seguridad
 ├── GET /auditoria/                         ADMIN (su organización) y ADMINPLAT (todo); filtros
 │                                           accion, recurso, usuario, desde, hasta; paginado
@@ -367,11 +376,15 @@ alerta.nueva       num, estado, nivel, tipo, variable, dispositivo, dispositivo_
 alerta.atendida    los mismos campos
 alerta.descartada  los mismos campos
 dispositivo.estado dispositivo, nombre, estado, nivel_bateria, ultima_conexion
+aviso.nuevo        {"tipo": "aviso.nuevo", "aviso": {…}, "datos": {…}}: el aviso con el mismo
+                   formato que GET /avisos/ ("datos" repite "aviso")
 ```
 
 Cada conexión recibe solo los eventos de su organización que su rol puede ver: el operador,
 los de su dispositivo; el supervisor y el analista con área, los de su área; el
-administrador, todos. El canal no transmite lecturas: para ellas se consulta
+administrador, todos. `aviso.nuevo` es personal: se publica al grupo `usuario.<num>` de su
+destinatario, al que solo se unen las conexiones de esa cuenta. Un aviso igual (usuario, tipo,
+título y ruta) sin leer de los últimos 30 minutos no se repite. El canal no transmite lecturas: para ellas se consulta
 `/dispositivos/{num}/ultimas-lecturas/`. Si la conexión se cae, el cliente debe reconectar
 con espera creciente y volver a pedir por la API lo que haya cambiado.
 

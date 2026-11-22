@@ -35,6 +35,7 @@ BackEnd/
 │   ├── umbrales/            # umbral de cuatro límites por variable y dispositivo
 │   ├── mediciones/          # lectura (TimescaleDB); ingesta MQTT y consultas de histórico
 │   ├── alertas/             # alerta y notificacion; correo y push con Expo
+│   ├── avisos/              # aviso: campana de dispositivos, usuarios, reportes y Nico AI
 │   ├── tiempo_real/         # WebSocket ws/panel/: consumidor, eventos y rutas
 │   ├── reportes/            # reporte y programacion_reporte; cifras, IA y PDF; rutas del ESP puente
 │   ├── auditoria/           # registro_auditoria: middleware, señales, vista y depuración
@@ -217,11 +218,36 @@ de un dispositivo el backend publica su configuración como mensaje retenido en
 `routing.py`, `config/asgi.py` con `ProtocolTypeRouter`). Autentica con el mismo token de
 la API (código de cierre 4401 si falta, es falso, está caducado o es del administrador
 de plataforma), une la conexión al grupo `org.<n>` y entrega solo los eventos que el rol
-puede ver. `eventos.py` publica `alerta.nueva`, `alerta.atendida`, `alerta.descartada` y
-`dispositivo.estado` con `transaction.on_commit`; si Redis no responde, el error se registra y
+puede ver; además la une a su grupo personal `usuario.<n>`. `eventos.py` publica `alerta.nueva`,
+`alerta.atendida`, `alerta.descartada` y `dispositivo.estado` (al grupo de la organización) y
+`aviso.nuevo` (al grupo personal del destinatario) con `transaction.on_commit`; si Redis no responde, el error se registra y
 quien publicó sigue su curso. Redis (servicio `redis` de Docker Compose) hace de capa de
 canales entre procesos (consumidor MQTT, servidor web y cron). Los formatos están en
 `Context/api/contrato-api.md`.
+
+## Avisos de la campana
+
+`apps/avisos/` guarda en `aviso` lo que no es una alerta de medición. `servicios.crear_avisos`
+crea uno por usuario, omite el mismo aviso (usuario + tipo + título + ruta) que siga sin leer y
+tenga menos de 30 minutos, y publica `aviso.nuevo` solo a su destinatario. Los disparadores
+nunca interrumpen a quien los llama (punto de guardado y registro en el log):
+
+```text
+DISPOSITIVO  sin conexión (ADVERTENCIA, marcar_sin_conexion), vuelve a conectarse (INFO) y batería
+             baja (ADVERTENCIA, al pasar a BATBAJA) en la ingesta → administradores de la
+             organización, supervisores del área y operador asignado; ruta /dispositivos/<num>
+USUARIO      alta (API y solicitud aprobada), baja o bloqueo, reactivación y cambio de rol o área
+             → administradores de la organización salvo quien lo hizo; cambio de rol o área
+             también al propio usuario (ruta /perfil); los demás, /usuarios
+REPORTE      reporte manual o de Nico listo → quien lo pidió; enviado por correo (programado o
+             desde Nico) → destinatarios activos (y quien creó la programación); ruta /reportes
+NICO         el ESP puente de un dispositivo deja de latir o vuelve (nico/avisos.vigilar) →
+             usuarios activos de la organización que pueden usar Nico AI con ese dispositivo;
+             ruta /agente
+```
+
+Solo hay campana (sin correo ni push) y siempre usuarios activos de la misma organización.
+`sembrar_demo` deja avisos de ejemplo de cada tipo.
 
 Daphne es la primera app instalada, así que `manage.py runserver` ya atiende HTTP y
 WebSocket. Fuera de desarrollo: `daphne -b 0.0.0.0 -p 8000 config.asgi:application`.

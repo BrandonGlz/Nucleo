@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import ExpressionWrapper, F, fields
 from django.utils import timezone
 
+from apps.avisos import servicios as avisos
 from apps.dispositivos.models import Dispositivo
 from apps.tiempo_real import eventos
 from common import roles
@@ -26,12 +27,15 @@ def marcar_sin_conexion(ahora=None):
 
     Un dispositivo se considera sin conexión cuando pasan más de
     ``NUCLEO_SIN_CONEXION_FACTOR`` intervalos de muestreo sin recibir datos.
-    Devuelve los dispositivos marcados.
+    Cada uno avisa en la campana a sus responsables (``apps.avisos``). Devuelve los
+    dispositivos marcados.
     """
+
     ahora = ahora or timezone.now()
     factor = settings.NUCLEO_SIN_CONEXION_FACTOR
     vencidos = (
         Dispositivo.objects.exclude(estado_dispositivo_id__in=ESTADOS_SIN_SEGUIMIENTO)
+        .select_related("area")
         .filter(ultima_conexion__isnull=False)
         .annotate(
             limite=ExpressionWrapper(
@@ -49,6 +53,7 @@ def marcar_sin_conexion(ahora=None):
         for dispositivo in marcados:
             dispositivo.estado_dispositivo_id = roles.DISPOSITIVO_SIN_CONEXION
             eventos.estado_dispositivo(dispositivo)
+            avisos.dispositivo_sin_conexion(dispositivo)
         logger.warning("Dispositivos sin conexión: %s", [d.codigo_mqtt for d in marcados])
     return marcados
 

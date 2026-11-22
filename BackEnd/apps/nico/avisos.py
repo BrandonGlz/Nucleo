@@ -6,7 +6,9 @@ Eventos que avisan (``NotificacionNico.Tipo``):
   y organización; las del propio superusuario no avisan).
 - ``NEGATIVA``: una respuesta recibió 👎.
 - ``APRENDIDA``: el banco activó una respuesta aprendida por los 👍.
-- ``PUENTE``: el ESP puente de un dispositivo dejó de latir o volvió.
+- ``PUENTE``: el ESP puente de un dispositivo dejó de latir o volvió (además, la campana de la
+  web avisa a los usuarios de la organización que usan Nico con ese dispositivo:
+  ``apps.avisos.servicios.nico_agente``).
 - ``CARGA``: la IA se suspendió por poca memoria del servidor o se reanudó.
 
 Cada superusuario elige en la consola qué tipos ve en la campana y cuáles le llegan por correo
@@ -25,6 +27,7 @@ from django.conf import settings
 from django.db import close_old_connections, transaction
 from django.utils import timezone
 
+from apps.avisos import servicios as avisos_campana
 from common import correo, roles
 
 from .models import MarcaAvisoNico, NotificacionNico, PreferenciaAvisosNico
@@ -324,6 +327,8 @@ def _vigilar_puentes():
         if anterior is None or (anterior == "activo") == activo:
             continue
         lugar = f"{d.area.organizacion.nombre} · {d.area.nombre}"
+        # Campana de la web: los usuarios de la organización que usan Nico con ese dispositivo.
+        avisos_campana.nico_agente(d, activo)
         if activo:
             avisar(
                 Tipo.PUENTE,

@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 
 from apps.auditoria.models import RegistroAuditoria
 from apps.auditoria.servicios import registrar
+from apps.avisos import servicios as avisos
 from apps.catalogos.models import Rol
 from apps.organizaciones.models import Area, Organizacion
 from apps.usuarios.models import SolicitudAcceso, Usuario
@@ -297,6 +298,7 @@ class AprobarSolicitudView(APIView):
             descripcion=f"Alta por solicitud de acceso de {usuario.correo}",
             request=request,
         )
+        avisos.usuario_alta(usuario, request.user)
         enviado = enviar_bienvenida(usuario, clave, request.user)
         return Response({**_datos(solicitud), "correo_enviado": enviado})
 

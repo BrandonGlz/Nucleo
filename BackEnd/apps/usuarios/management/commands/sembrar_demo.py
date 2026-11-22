@@ -8,6 +8,8 @@ from django.db import connections, transaction
 from django.utils import timezone
 
 from apps.alertas.models import Alerta, Notificacion
+from apps.avisos import servicios as avisos
+from apps.avisos.models import Aviso
 from apps.dispositivos.models import Dispositivo, Sensor
 from apps.mediciones.models import Lectura
 from apps.mediciones.simulacion import Generador
@@ -140,6 +142,7 @@ class Command(BaseCommand):
             self._dispositivos()
         self._lecturas_y_alertas(dias)
         self._reportes()
+        self._avisos()
         self._resumen()
 
     # --- Limpieza ---------------------------------------------------------------------------
@@ -147,6 +150,7 @@ class Command(BaseCommand):
         with connections["iot"].cursor() as cursor:
             cursor.execute("TRUNCATE TABLE lectura")
         with transaction.atomic():
+            Aviso.objects.all().delete()
             Notificacion.objects.all().delete()
             Alerta.objects.all().delete()
             Reporte.objects.all().delete()
@@ -310,13 +314,15 @@ class Command(BaseCommand):
     def _lecturas_y_alertas(self, dias):
         total_lecturas = 0
         total_alertas = 0
-        inicio = self.ahora - timedelta(days=dias)
-        pasos = int((self.ahora - inicio) / PASO)
         for i, (dispositivo, area, horas_sin) in enumerate(self.dispositivos):
             generador = Generador(area, semilla=f"{dispositivo.codigo_mqtt}")
             ruido = random.Random(i)
             sensores = {s.modelo: s for s in dispositivo.sensores.all()}
             fin = self.ahora - timedelta(hours=horas_sin)
+            # Con pocos días, el que lleva más horas sin conexión igual tiene un día de lecturas
+            # antes de quedarse callado.
+            inicio = min(self.ahora - timedelta(days=dias), fin - timedelta(days=1))
+            pasos = int((fin - inicio) / PASO)
             forzada = FORZADAS.get(dispositivo.codigo_mqtt)
             lecturas = []
             for paso in range(pasos + 1):
@@ -473,6 +479,46 @@ class Command(BaseCommand):
                 ultima_ejecucion=self.ahora - timedelta(days=1),
             )
         self.stdout.write(f"{hechos} reportes y {len(programaciones)} programaciones.")
+
+    # --- Avisos de la campana ----------------------------------------------------------------
+    def _avisos(self):
+        """Avisos de ejemplo (dispositivos, usuarios, reportes y Nico AI) repartidos en las
+        últimas horas; los más viejos quedan leídos para que la campana tenga de ambos."""
+        hace = []
+        for dispositivo, _area, horas_sin in self.dispositivos:
+            if horas_sin:
+                hace.append((avisos.dispositivo_sin_conexion(dispositivo), horas_sin * 60))
+            elif dispositivo.estado_dispositivo_id == roles.DISPOSITIVO_BATERIA_BAJA:
+                hace.append((avisos.dispositivo_bateria_baja(dispositivo), 50))
+        inactivo = Usuario.objects.filter(
+            organizacion=self.org, estado_usuario_id=roles.USUARIO_INACTIVO
+        ).first()
+        if inactivo is not None:
+            hace.append((avisos.usuario_baja(inactivo), 60 * 26))
+        operador = Usuario.objects.filter(organizacion=self.org, rol_id=roles.OPERADOR).first()
+        if operador is not None:
+            hace.append((avisos.usuario_alta(operador), 60 * 30))
+        con_nico = next((d for d, area, horas in self.dispositivos if area != "Urgencias"), None)
+        if con_nico is not None:
+            hace.append((avisos.nico_agente(con_nico, False), 95))
+            hace.append((avisos.nico_agente(con_nico, True), 80))
+        total = 0
+        for creados, minutos in hace:
+            nums = [a.pk for a in creados]
+            fecha = self.ahora - timedelta(minutes=minutos)
+            Aviso.objects.filter(pk__in=nums).update(
+                fecha_hora=fecha,
+                leido_en=fecha + timedelta(minutes=5) if minutos > 60 * 24 else None,
+            )
+            total += len(nums)
+        # Los «reporte listo» de los reportes sembrados toman la fecha de su reporte.
+        for aviso in Aviso.objects.filter(tipo=Aviso.Tipo.REPORTE):
+            num = aviso.titulo.split()[1]
+            reporte = Reporte.objects.filter(pk=num).first() if num.isdigit() else None
+            if reporte is not None:
+                Aviso.objects.filter(pk=aviso.pk).update(fecha_hora=reporte.fecha_generacion)
+        total += Aviso.objects.filter(tipo=Aviso.Tipo.REPORTE).count()
+        self.stdout.write(f"{total} avisos en la campana.")
 
     def _resumen(self):
         self.stdout.write(

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.umbrales",
     "apps.mediciones",
     "apps.alertas",
+    "apps.avisos",
     "apps.reportes",
     "apps.nico",
     "apps.tiempo_real",

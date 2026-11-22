@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from apps.auditoria.models import RegistroAuditoria
 from apps.auditoria.servicios import registrar
+from apps.avisos import servicios as avisos
 from apps.usuarios import seguridad
 from apps.usuarios.models import Sesion, TelefonoPush, Usuario
 from apps.usuarios.serializers import (
@@ -198,8 +199,27 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return usuarios_gestionables(self.request.user).select_related("rol", "estado_usuario")
 
+    def perform_create(self, serializer):
+        usuario = serializer.save()
+        avisos.usuario_alta(usuario, self.request.user)
+
+    def perform_update(self, serializer):
+        antes = serializer.instance
+        rol, area, estado = antes.rol_id, antes.area_id, antes.estado_usuario_id
+        usuario = serializer.save()
+        actor = self.request.user
+        if usuario.estado_usuario_id != estado:
+            if usuario.estado_usuario_id in avisos.ESTADOS_BAJA:
+                avisos.usuario_baja(usuario, actor)
+            elif usuario.estado_usuario_id == roles.USUARIO_ACTIVO:
+                avisos.usuario_reactivado(usuario, actor)
+        avisos.usuario_cambio(usuario, rol, area, actor)
+
     def perform_destroy(self, instancia):
+        anterior = instancia.estado_usuario_id
         instancia.estado_usuario_id = roles.USUARIO_INACTIVO
         instancia.save(update_fields=["estado_usuario"])
         cerrar_sesiones(instancia)
         instancia.telefonos_push.all().delete()
+        if anterior != roles.USUARIO_INACTIVO:
+            avisos.usuario_baja(instancia, self.request.user)

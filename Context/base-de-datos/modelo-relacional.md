@@ -31,6 +31,7 @@ organizacion ─┬─ area ─┬─ usuario ─┬─ rol, estado_usuario
 
 umbral ── alerta ── notificacion ─┬─ usuario
                                   └─ telefono_push (solo canal PUSH)
+usuario ── aviso                   (campana: dispositivos, usuarios, reportes y Nico AI)
 
 nucleo_iot
 sensor_num, variable_codigo ··· lectura        (sin llave foránea; viene de nucleo_db)
@@ -91,6 +92,12 @@ notificacion   num (bigint), alerta_num, usuario_num, telefono_push_num (opciona
                canal, estado_envio, fecha_envio
                CHECK canal en CORREO, PUSH; CHECK estado_envio en ENVIADA, FALLIDA
                CHECK canal = 'PUSH' o telefono_push_num nulo
+aviso          num (bigint), usuario_num (CASCADE), tipo, nivel (def. INFO), titulo (≤ 120),
+               detalle (≤ 300, def. ''), ruta (≤ 200, ruta de la web, def. ''), fecha_hora
+               (def. now()), leido_en (NULL = sin leer)
+               CHECK tipo en DISPOSITIVO, USUARIO, REPORTE, NICO; CHECK nivel en INFO,
+               ADVERTENCIA, PELIGRO; CHECK ruta vacía o empieza con /
+               ÍNDICE (usuario_num, fecha_hora DESC); ÍNDICE (usuario_num) WHERE leido_en IS NULL
 programacion_reporte
                num, organizacion_num, area_num (opcional), creada_por, frecuencia,
                destinatarios (INTEGER[]), activa (def. TRUE), proxima_ejecucion,

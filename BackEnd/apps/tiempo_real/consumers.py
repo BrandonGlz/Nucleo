@@ -7,7 +7,7 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
 from django.http import parse_cookie
 
-from apps.tiempo_real.eventos import grupo_de
+from apps.tiempo_real.eventos import AVISO_NUEVO, grupo_de, grupo_de_usuario
 from common import roles
 from common.autenticacion import token_de_cookie, usuario_de_token
 
@@ -29,7 +29,9 @@ class PanelConsumer(AsyncJsonWebsocketConsumer):
 
     La conexión recibe solo los eventos de su organización que su rol puede ver: el
     operador, los de su dispositivo; el supervisor y el analista con área, los de su área;
-    el administrador, todos. La caducidad del token se revisa al conectar.
+    el administrador, todos. Además se une al grupo personal ``usuario.<num>``, por donde
+    llegan sus avisos de la campana (``aviso.nuevo``). La caducidad del token se revisa al
+    conectar.
     """
 
     async def connect(self):
@@ -46,13 +48,17 @@ class PanelConsumer(AsyncJsonWebsocketConsumer):
             return
         self.usuario = usuario
         self.grupo = grupo_de(usuario.organizacion_id)
+        self.grupo_personal = grupo_de_usuario(usuario.pk)
         await self.channel_layer.group_add(self.grupo, self.channel_name)
+        await self.channel_layer.group_add(self.grupo_personal, self.channel_name)
         await self.accept()
         await self.send_json({"tipo": "conectado", "usuario": usuario.pk})
 
     async def disconnect(self, code):
         if hasattr(self, "grupo"):
             await self.channel_layer.group_discard(self.grupo, self.channel_name)
+        if hasattr(self, "grupo_personal"):
+            await self.channel_layer.group_discard(self.grupo_personal, self.channel_name)
 
     async def receive_json(self, contenido, **kwargs):
         if contenido.get("tipo") == "ping":
@@ -69,3 +75,9 @@ class PanelConsumer(AsyncJsonWebsocketConsumer):
     async def evento(self, evento):
         if self._en_alcance(evento):
             await self.send_json({"tipo": evento["tipo"], "datos": evento["datos"]})
+
+    async def aviso_usuario(self, evento):
+        # ``datos`` repite el aviso para los clientes que leen todos los eventos igual.
+        await self.send_json(
+            {"tipo": AVISO_NUEVO, "aviso": evento["datos"], "datos": evento["datos"]}
+        )

@@ -1,7 +1,9 @@
 """Eventos en vivo para la web y la app móvil (SRS 3.1.4).
 
 Cada evento se publica en el grupo de la organización; el consumidor de cada conexión
-decide si el evento entra en el alcance de su rol. Publicar nunca interrumpe a quien lo
+decide si el evento entra en el alcance de su rol. Los avisos de la campana (``aviso.nuevo``)
+son personales: van al grupo ``usuario.<num>`` de su destinatario, al que solo se unen las
+conexiones de esa cuenta. Publicar nunca interrumpe a quien lo
 llama: si Redis no responde, el error se registra y las alertas y lecturas siguen su curso.
 """
 
@@ -17,10 +19,15 @@ ALERTA_NUEVA = "alerta.nueva"
 ALERTA_ATENDIDA = "alerta.atendida"
 ALERTA_DESCARTADA = "alerta.descartada"
 DISPOSITIVO_ESTADO = "dispositivo.estado"
+AVISO_NUEVO = "aviso.nuevo"
 
 
 def grupo_de(organizacion_num):
     return f"org.{organizacion_num}"
+
+
+def grupo_de_usuario(usuario_num):
+    return f"usuario.{usuario_num}"
 
 
 def _enviar(organizacion_num, tipo, area_num, operador_num, datos):
@@ -80,3 +87,20 @@ def estado_dispositivo(dispositivo):
     organizacion = dispositivo.area.organizacion_id
     area, operador = dispositivo.area_id, dispositivo.operador_id
     transaction.on_commit(lambda: _enviar(organizacion, DISPOSITIVO_ESTADO, area, operador, datos))
+
+
+def _enviar_aviso(usuario_num, datos):
+    capa = get_channel_layer()
+    if capa is None:
+        return
+    try:
+        async_to_sync(capa.group_send)(
+            grupo_de_usuario(usuario_num), {"type": "aviso_usuario", "datos": datos}
+        )
+    except Exception:
+        logger.exception("No se pudo publicar el aviso %s", datos.get("num"))
+
+
+def aviso(usuario_num, datos):
+    """Publica un aviso de la campana solo a las conexiones de su destinatario."""
+    transaction.on_commit(lambda: _enviar_aviso(usuario_num, datos))

@@ -45,6 +45,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from apps.alertas.services import generar_alerta
+from apps.avisos import servicios as avisos
 from apps.catalogos.models import VariableAmbiental
 from apps.dispositivos.models import Dispositivo
 from apps.mediciones.models import Lectura
@@ -230,6 +231,12 @@ def procesar_mensaje(datos):
         for campo, valor in cambios.items():
             setattr(dispositivo, campo, valor)
         eventos.estado_dispositivo(dispositivo)
+        # Avisos de la campana: reconexión tras «Sin conexión» y batería baja.
+        nuevo = cambios["estado_dispositivo_id"]
+        if estado_anterior == roles.DISPOSITIVO_SIN_CONEXION:
+            avisos.dispositivo_reconectado(dispositivo)
+        if nuevo == roles.DISPOSITIVO_BATERIA_BAJA:
+            avisos.dispositivo_bateria_baja(dispositivo)
 
     # Cada alerta se registra con sus notificaciones en su propia transacción.
     for lectura in resultado.lecturas:

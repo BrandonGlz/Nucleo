@@ -10,6 +10,7 @@ from django.db.models.functions import TruncDay, TruncHour
 from django.utils import timezone
 
 from apps.alertas.models import Alerta
+from apps.avisos import servicios as avisos
 from apps.catalogos.models import VariableAmbiental
 from apps.dispositivos.models import Sensor
 from apps.mediciones.models import Lectura
@@ -155,6 +156,9 @@ def generar_reporte(organizacion, area, inicio, fin, origen, usuario=None):
         reporte.refresh_from_db()
         reporte.archivo_pdf = pdf.guardar(reporte)
         reporte.save(update_fields=["archivo_pdf"])
+    if origen != Reporte.Origen.PROGRAMADO:
+        # El programado avisa al enviarse (``enviar_reporte``) a sus destinatarios.
+        avisos.reporte_listo(reporte, usuario)
     return reporte
 
 
@@ -206,6 +210,7 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
             motivo="Recibe este reporte porque figura entre sus destinatarios en Núcleo.",
             adjuntos=[(f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf")],
         )
+        avisos.reporte_enviado(reporte, destinatarios)
     return correos
 
 
