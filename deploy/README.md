@@ -214,7 +214,9 @@ estos pasos (con candado y registro en `~/despliegues/`):
    `https://bynucleo.com/` y `/api/v1/health/`.
 
 `compilar-apk-nucleo` trae `main`, corre `deploy/compilar_apk.sh` con prioridad baja y copia
-`deploy/descargas/` completo al servidor (`rsync`); el enlace de `app.bynucleo.com` no cambia.
+`deploy/descargas/` completo al servidor (`rsync`); el enlace de `app.bynucleo.com` no cambia. Una build
+con cambios en `Mobile/` tarda unos 8 minutos en el equipo de compilación (0.2.9: 7 min 57 s, de la compilación
+a la publicación).
 
 Para instalar o actualizar los scripts en el equipo de compilación:
 
@@ -626,7 +628,9 @@ los dos, luego el servidor y al final el equipo de compilación.
    `w /sys/bus/platform/devices/VPC2004:00/conservation_mode - - - - 1` lo deja fijo en cada arranque.
 5. Paquetes: `openssh-server git curl tmux rsync jq lm-sensors rclone docker.io docker-compose ufw
    fail2ban auditd unattended-upgrades` (o Docker desde su repositorio), `uv` (Python 3.12) y Node 22
-   con nvm.
+   con nvm. `uv` se instala en `~/.local/bin`, que las sesiones de tmux abiertas por SSH no cargan: enlázalo
+   con `sudo ln -sf ~/.local/bin/uv ~/.local/bin/uvx /usr/local/bin/` o los despliegues fallan con
+   «uv: orden no encontrada».
 6. Tailscale (`curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`), llaves SSH
    de los equipos de administración en `~/.ssh/authorized_keys` y la llave del equipo de
    compilación en el servidor. Prueba el SSH por Tailscale **antes** del siguiente paso.
