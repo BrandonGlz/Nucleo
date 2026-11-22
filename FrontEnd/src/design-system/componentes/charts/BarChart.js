@@ -14,9 +14,10 @@ function BarChart(p) {
   var inicial = p.activeIndex != null ? p.activeIndex : data.length - 1;
   var act = useState(null);
   var activa = interactivo && act[0] != null ? act[0] : inicial;
+  // Sin datos o todo en cero, el máximo sería 0 y las alturas NaN: se usa 1.
   var mx = p.max || Math.max.apply(null, data.map(function (d) {
     return d.value;
-  })) * 1.15;
+  })) * 1.15 || 1;
   var padT = 28,
     padB = 26;
   var ih = H - padT - padB;
