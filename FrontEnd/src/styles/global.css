@@ -241,6 +241,13 @@ button.ui-link {
   line-height: 20px;
   color: var(--text-muted);
 }
+/* Título y detalle en una sola línea con «…» (p. ej. la campana de la consola de administración) */
+.ui-titulo-fila--recorte > strong,
+.ui-titulo-fila--recorte > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ui-dato {
   display: flex;
   flex-direction: column;

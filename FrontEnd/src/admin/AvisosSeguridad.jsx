@@ -44,6 +44,8 @@ export function AvisosSeguridadProvider({ children }) {
           alerta: a,
           titulo: a.titulo,
           meta: [TIPO_ALERTA[a.tipo]?.label, a.usuario?.correo, a.ip].filter(Boolean).join(' · '),
+          // Detalle de una línea para el desplegable de la campana (el completo va en el title).
+          resumen: [TIPO_ALERTA[a.tipo]?.corto ?? TIPO_ALERTA[a.tipo]?.label, a.usuario?.correo ?? a.ip].filter(Boolean).join(' · '),
           fecha: n.fecha,
           nivel: n.nivel,
           icon: nivel.icon,

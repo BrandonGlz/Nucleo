@@ -121,15 +121,18 @@ export function Encabezado({ eyebrow, titulo, acciones, volver }) {
               key={n.num}
               type="button"
               className={`ui-item ui-item--boton${n.leida ? '' : ' is-unread'}`}
+              title={n.resumen ? `${n.titulo}\n${n.meta}` : undefined}
               onClick={() => {
                 marcarLeidas([n.num])
                 ir(n.ruta || '/alertas')
               }}
             >
               <IconCircle name={n.icon} tone={n.tone} size="sm" />
-              <div className="ui-titulo-fila" style={{ flex: 1 }}>
+              {/* Con `resumen` (avisos de títulos largos) el título y el detalle van en una línea con «…»
+                  y el texto completo queda en el title. */}
+              <div className={`ui-titulo-fila${n.resumen ? ' ui-titulo-fila--recorte' : ''}`} style={{ flex: 1 }}>
                 <strong style={{ fontSize: 14, lineHeight: '20px' }}>{n.titulo}</strong>
-                <span style={{ fontSize: 12, lineHeight: '18px' }}>{n.meta}</span>
+                <span style={{ fontSize: 12, lineHeight: '18px' }}>{n.resumen ?? n.meta}</span>
               </div>
               <span className="ui-hora" style={{ fontSize: 12 }}>
                 {fechaCorta(n.fecha)}

@@ -26,10 +26,11 @@ export const NIVEL_ALERTA = {
   critico: { label: 'Crítico', tone: 'danger', icon: 'octagon-alert' },
   advertencia: { label: 'Advertencia', tone: 'warning', icon: 'triangle-alert' },
 }
+// `corto`: etiqueta para el detalle de una línea de la campana.
 export const TIPO_ALERTA = {
   ip_fallidos: { label: 'Intentos fallidos por IP', icon: 'shield-alert' },
-  cuenta_fallidos: { label: 'Intentos fallidos en una cuenta', icon: 'lock' },
-  ip_nueva: { label: 'Acceso desde una IP nueva', icon: 'signal' },
+  cuenta_fallidos: { label: 'Intentos fallidos en una cuenta', corto: 'Intentos fallidos', icon: 'lock' },
+  ip_nueva: { label: 'Acceso desde una IP nueva', corto: 'Acceso desde IP nueva', icon: 'signal' },
   cuenta_bloqueada: { label: 'Cuenta bloqueada', icon: 'user-x' },
   sin_2fa: { label: 'Sin verificación en dos pasos', icon: 'shield-off' },
 }
