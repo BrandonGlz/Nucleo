@@ -15,8 +15,8 @@ export async function calificar(registro, voto) {
   return pedir(AGENTE_CALIFICAR, { metodo: 'POST', cuerpo: { registro, voto } })
 }
 
-// Agentes activos: su ESP32 puente está conectado.
+// Agentes activos (su ESP32 puente está conectado) y los que este usuario puede usar ahora.
 export async function estado() {
-  if (USAR_MOCKS) return { puente: false, activos: [] }
+  if (USAR_MOCKS) return { puente: false, activos: [], disponibles: [], exige_puente: false }
   return pedir(AGENTE_ESTADO)
 }

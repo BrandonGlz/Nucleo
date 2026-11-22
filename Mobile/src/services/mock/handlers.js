@@ -193,3 +193,17 @@ export async function preguntarAgente(pregunta, dispositivo) {
     } La batería está al ${d.nivel_bateria} %.`,
   }
 }
+
+// Solicitud de acceso (sin sesión): organizaciones activas con sus áreas y envío (204 → null).
+// Con un correo que termina en @existe.mx responde 400 como la API, para revisar los errores.
+export async function opcionesSolicitud() {
+  await esperar()
+  return db.organizaciones
+    .filter((o) => o.estado === 'ACTIVA')
+    .map((o) => ({ num: o.num, nombre: o.nombre, areas: db.areas.filter((a) => a.organizacion === o.num).map(({ num, nombre }) => ({ num, nombre })) }))
+}
+export async function solicitarAcceso(datos) {
+  await esperar()
+  if (/@existe\.mx$/i.test(datos.correo)) throw new ApiError('La API respondió con el estado 400.', 400, { correo: ['Introduzca una dirección de correo electrónico válida.'] })
+  return null
+}

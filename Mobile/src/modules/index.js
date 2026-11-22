@@ -3,6 +3,7 @@ import { puedeUsarAgente } from '../utils/convertir'
 // Alertas y agente son de una organización; la cuenta de plataforma no tiene.
 const conOrganizacion = (u) => !!u?.organizacion
 import { AccesoScreen } from './acceso/AccesoScreen'
+import { SolicitarAccesoScreen } from './acceso/SolicitarAccesoScreen'
 import { AgenteScreen } from './agente/AgenteScreen'
 import { AlertasScreen } from './alertas/AlertasScreen'
 import { DetalleAlertaScreen } from './alertas/DetalleAlertaScreen'
@@ -22,6 +23,8 @@ import { SesionesScreen } from './perfil/SesionesScreen'
 // La carpeta modules/dispositivos se conserva fuera de la navegación: el operador solo tiene
 // un dispositivo y lo ve en Inicio.
 export const acceso = { nombre: 'Acceso', Pantalla: AccesoScreen }
+// Pantallas públicas que se apilan sobre Acceso (sin sesión).
+export const publicas = [{ nombre: 'SolicitarAcceso', titulo: 'Solicita tu acceso', Pantalla: SolicitarAccesoScreen }]
 
 export const modulos = [
   { nombre: 'Inicio', titulo: 'Panel', Pantalla: PanelScreen, pestana: 'layout-dashboard' },

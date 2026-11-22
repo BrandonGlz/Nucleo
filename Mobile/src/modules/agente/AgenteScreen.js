@@ -79,13 +79,18 @@ export function AgenteScreen() {
   // Pasos que se muestran mientras responde (como en la web) y el que va.
   const [plan, setPlan] = useState(null)
   const [paso, setPaso] = useState(0)
-  // Con el puente encendido, solo responde el agente cuyo ESP32 está conectado.
-  const [puente, setPuente] = useState({ puente: false, activos: [] })
+  // Con el puente encendido, solo responde el agente cuyo ESP32 está conectado. El servidor
+  // decide quién puede usarlo sin él (`disponibles`): el administrador, en modo de pruebas.
+  const [puente, setPuente] = useState({ puente: false, activos: [], disponibles: [] })
   const { datos: op } = useOperador()
   const dispositivos = op?.dispositivos ?? []
   const d = dispositivos.find((x) => x.num === elegido) ?? op?.dispositivo ?? dispositivos[0]
   const lista = d ? (mensajes[d.num] ?? []) : []
-  const activo = !puente.puente || (d && puente.activos.includes(d.num))
+  const enLinea = !puente.puente || (d && puente.activos.includes(d.num))
+  // `activo`: se puede preguntar. `modoPruebas`: el ESP32 está sin conexión pero el usuario
+  // (administrador) puede usar a Nico igual; supervisores, analistas y operadores, no.
+  const activo = enLinea || (d && (puente.disponibles ?? []).includes(d.num))
+  const modoPruebas = Boolean(activo && !enLinea)
 
   useEffect(() => {
     let vivo = true
@@ -201,7 +206,12 @@ export function AgenteScreen() {
       if ((conVoz || leerRef.current) && r.texto) voz.hablar(r.texto)
     } catch (e) {
       await pausa
-      if (e.datos?.inactivo) setPuente((x) => ({ ...x, activos: x.activos.filter((n) => n !== num) }))
+      if (e.datos?.inactivo)
+        setPuente((x) => ({
+          ...x,
+          activos: x.activos.filter((n) => n !== num),
+          disponibles: (x.disponibles ?? []).filter((n) => n !== num),
+        }))
       agregar({
         de: 'error',
         texto: e.datos?.inactivo
@@ -440,6 +450,14 @@ export function AgenteScreen() {
             </Pressable>
           </View>
         )}
+        {modoPruebas && (
+          <View style={s.pruebas} accessibilityLabel={`${d.nombre}: ESP32 sin conexión, modo de pruebas del administrador`}>
+            <Icon name="wifi-off" size={13} color={c.textMuted} />
+            <T size={12} color={c.textMuted}>
+              ESP32 sin conexión · modo de pruebas del administrador
+            </T>
+          </View>
+        )}
         <View
           style={[
             s.compositor,
@@ -618,5 +636,6 @@ const s = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1 },
   enviar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   halo: { position: 'absolute', width: 40, height: 40, borderRadius: 20, borderWidth: 3 },
+  pruebas: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginHorizontal: 16, marginBottom: 6 },
   aviso: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 14 },
 })

@@ -10,7 +10,7 @@ import { useSesion } from '../context/SesionContext'
 import { useTema } from '../context/TemaContext'
 import { OperadorProvider, pendientesDe, useOperador } from '../hooks/useOperador'
 import { alTocar } from '../services/notificaciones'
-import { acceso, modulos } from '../modules'
+import { acceso, modulos, publicas } from '../modules'
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -66,7 +66,7 @@ function Principal() {
 
 const navegacion = createNavigationContainerRef()
 
-// Sin sesión: Acceso. Con sesión: las pestañas y, encima, las pantallas de detalle.
+// Sin sesión: Acceso y la solicitud de cuenta. Con sesión: las pestañas y, encima, las pantallas de detalle.
 export function AppNavigator() {
   const { usuario } = useSesion()
   // Tocar una notificación de alerta (push o del canal en vivo) abre su detalle.
@@ -96,7 +96,12 @@ export function AppNavigator() {
           ))}
         </>
       ) : (
-        <Stack.Screen name={acceso.nombre} component={acceso.Pantalla} />
+        <>
+          <Stack.Screen name={acceso.nombre} component={acceso.Pantalla} />
+          {publicas.map(({ nombre, Pantalla }) => (
+            <Stack.Screen key={nombre} name={nombre} component={Pantalla} />
+          ))}
+        </>
       )}
     </Stack.Navigator>
   )

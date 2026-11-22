@@ -1,16 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
-import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import { StatusBar } from 'expo-status-bar'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useRef, useState } from 'react'
+import { Pressable, StyleSheet, View } from 'react-native'
 import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { Alerta } from '../../components/Alerta'
-import { Avatar, Button, Input, Logo, LogoMark, T } from '../../components/ui'
+import { Avatar, Button, Input, T } from '../../components/ui'
 import * as auth from '../../services/auth'
 import { cuentasDemo, PASSWORD_DEMO } from '../../services/auth'
 import { USAR_MOCKS } from '../../services/config'
 import { nombreCompleto, ROL } from '../../utils/convertir'
-import { marca } from '../../theme'
+import { MarcoAcceso } from './MarcoAcceso'
 
 const ORDEN_ROL = ['ADMIN', 'SUPER', 'ANALISTA', 'OPER']
 
@@ -52,11 +50,10 @@ const MENSAJES = {
   403: 'Tu cuenta está inactiva. Pide al administrador que la active.',
 }
 
-// Inicio de sesión a pantalla completa: zona oscura con el logo y hoja con el formulario.
-export function AccesoScreen() {
+// Inicio de sesión a pantalla completa: zona superior con el logo y Nico, y hoja con el formulario.
+export function AccesoScreen({ navigation }) {
   const { c } = useTema()
   const { login } = useSesion()
-  const inset = useSafeAreaInsets()
   const [correo, setCorreo] = useState('')
   const [password, setPassword] = useState('')
   const [errores, setErrores] = useState({})
@@ -67,16 +64,8 @@ export function AccesoScreen() {
   const [codigo, setCodigo] = useState('')
   const [recuperando, setRecuperando] = useState(false)
   const [aviso, setAviso] = useState(null)
-  // Con el teclado abierto la hoja sube sobre él (igual que en Nico AI) y se recorre hasta los campos.
-  const scroll = useRef(null)
-  const hojaY = useRef(0)
+  // Con el teclado abierto el marco recorre la hoja hasta los campos.
   const camposY = useRef(0)
-  useEffect(() => {
-    const sub = Keyboard.addListener('keyboardDidShow', () =>
-      scroll.current?.scrollTo({ y: Math.max(0, hojaY.current + camposY.current - 24), animated: true }),
-    )
-    return () => sub.remove()
-  }, [])
 
   const entrar = async (demo) => {
     const co = demo ?? correo.trim()
@@ -132,144 +121,130 @@ export function AccesoScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: marca.tinta }} behavior="padding">
-      <StatusBar style="light" />
-      <ScrollView ref={scroll} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" bounces={false}>
-        <View style={[s.arriba, { paddingTop: inset.top + 48 }]}>
-          <View style={s.anillo} />
-          <View style={{ position: 'absolute', right: -70, top: inset.top + 84 }}>
-            <LogoMark tone="verde" size={260} />
-          </View>
-          <Logo size={40} inverse />
-        </View>
-        <View
-          style={[s.hoja, { backgroundColor: c.surface, paddingBottom: inset.bottom + 44 }]}
-          onLayout={(e) => (hojaY.current = e.nativeEvent.layout.y)}
-        >
-          <View style={{ gap: 8 }}>
-            <T peso={700} size={30} lh={36} style={{ letterSpacing: -0.75 }}>
-              {pideCodigo ? 'Verificación en dos pasos' : recuperando ? 'Recupera tu contraseña' : 'Inicia sesión'}
-            </T>
-            <T size={15} lh={24} color={c.textSecondary}>
-              {pideCodigo
-                ? 'Escribe el código de 6 dígitos de tu app de autenticación, o uno de recuperación.'
-                : recuperando
-                  ? 'Te mandaremos un enlace al correo para elegir una contraseña nueva.'
-                  : 'Entra con la cuenta que te dio el administrador de tu organización.'}
-            </T>
-          </View>
-          {errorApi && <Alerta tono="danger" titulo={errorApi} />}
-          {aviso && <Alerta tono="success" titulo="Revisa tu correo" texto={aviso} />}
-          {pideCodigo && (
-            <View style={{ gap: 12 }}>
-              <Input
-                label="Código"
-                icon="lock"
-                value={codigo}
-                onChangeText={setCodigo}
-                placeholder="123456"
-                keyboardType="number-pad"
-                autoComplete="one-time-code"
-                autoFocus
-                onSubmitEditing={() => entrar()}
-                error={errores.codigo}
-              />
-              <Pressable
-                onPress={() => {
-                  setPideCodigo(false)
-                  setCodigo('')
-                  setErrores({})
-                }}
-              >
-                <T peso={600} size={14}>
-                  Usar otra cuenta
-                </T>
-              </Pressable>
-            </View>
-          )}
-          {recuperando && (
-            <View style={{ gap: 16 }}>
-              <Input
-                label="Correo"
-                icon="mail"
-                value={correo}
-                onChangeText={setCorreo}
-                placeholder="nombre@empresa.mx"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                error={errores.correo}
-              />
-              <Button size="lg" icon="send" block disabled={enviando} onPress={pedirEnlace}>
-                {enviando ? 'Enviando…' : 'Enviar enlace'}
-              </Button>
-              <Pressable onPress={() => setRecuperando(false)}>
-                <T peso={600} size={14}>
-                  Volver a iniciar sesión
-                </T>
-              </Pressable>
-            </View>
-          )}
-          <View
-            style={{ gap: 16, display: pideCodigo || recuperando ? 'none' : 'flex' }}
-            onLayout={(e) => (camposY.current = e.nativeEvent.layout.y)}
+    <MarcoAcceso camposY={camposY}>
+      <View style={{ gap: 8 }}>
+        <T peso={700} size={30} lh={36} style={{ letterSpacing: -0.75 }}>
+          {pideCodigo ? 'Verificación en dos pasos' : recuperando ? 'Recupera tu contraseña' : 'Inicia sesión'}
+        </T>
+        <T size={15} lh={24} color={c.textSecondary}>
+          {pideCodigo
+            ? 'Escribe el código de 6 dígitos de tu app de autenticación, o uno de recuperación.'
+            : recuperando
+              ? 'Te mandaremos un enlace al correo para elegir una contraseña nueva.'
+              : 'Entra con la cuenta que te dio el administrador de tu organización.'}
+        </T>
+      </View>
+      {errorApi && <Alerta tono="danger" titulo={errorApi} />}
+      {aviso && <Alerta tono="success" titulo="Revisa tu correo" texto={aviso} />}
+      {pideCodigo && (
+        <View style={{ gap: 12 }}>
+          <Input
+            label="Código"
+            icon="lock"
+            value={codigo}
+            onChangeText={setCodigo}
+            placeholder="123456"
+            keyboardType="number-pad"
+            autoComplete="one-time-code"
+            autoFocus
+            onSubmitEditing={() => entrar()}
+            error={errores.codigo}
+          />
+          <Pressable
+            onPress={() => {
+              setPideCodigo(false)
+              setCodigo('')
+              setErrores({})
+            }}
           >
-            <Input
-              label="Correo"
-              icon="mail"
-              value={correo}
-              onChangeText={setCorreo}
-              placeholder="nombre@empresa.mx"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              error={errores.correo}
-            />
-            <Input
-              label="Contraseña"
-              icon="lock"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Tu contraseña"
-              secureTextEntry
-              autoComplete="password"
-              onSubmitEditing={() => entrar()}
-              error={errores.password}
-            />
-            <Pressable
-              style={{ alignSelf: 'flex-end' }}
-              onPress={() => {
-                setErrorApi(null)
-                setAviso(null)
-                setRecuperando(true)
-              }}
-            >
-              <T peso={600} size={14}>
-                ¿Olvidaste tu contraseña?
-              </T>
-            </Pressable>
-          </View>
-          {!recuperando && (
-            <Button size="lg" icon="log-in" block disabled={enviando} onPress={() => entrar()}>
-              {enviando ? 'Entrando…' : pideCodigo ? 'Verificar y entrar' : 'Iniciar sesión'}
-            </Button>
-          )}
-          <T size={14} lh={22} color={c.textMuted}>
-            ¿Necesitas acceso? Pídelo al administrador de tu organización.
-          </T>
-          <CuentasDemo entrar={entrar} enviando={enviando} />
+            <T peso={600} size={14}>
+              Usar otra cuenta
+            </T>
+          </Pressable>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      )}
+      {recuperando && (
+        <View style={{ gap: 16 }}>
+          <Input
+            label="Correo"
+            icon="mail"
+            value={correo}
+            onChangeText={setCorreo}
+            placeholder="nombre@empresa.mx"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            error={errores.correo}
+          />
+          <Button size="lg" icon="send" block disabled={enviando} onPress={pedirEnlace}>
+            {enviando ? 'Enviando…' : 'Enviar enlace'}
+          </Button>
+          <Pressable onPress={() => setRecuperando(false)}>
+            <T peso={600} size={14}>
+              Volver a iniciar sesión
+            </T>
+          </Pressable>
+        </View>
+      )}
+      <View
+        style={{ gap: 16, display: pideCodigo || recuperando ? 'none' : 'flex' }}
+        onLayout={(e) => (camposY.current = e.nativeEvent.layout.y)}
+      >
+        <Input
+          label="Correo"
+          icon="mail"
+          value={correo}
+          onChangeText={setCorreo}
+          placeholder="nombre@empresa.mx"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          error={errores.correo}
+        />
+        <Input
+          label="Contraseña"
+          icon="lock"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Tu contraseña"
+          secureTextEntry
+          autoComplete="password"
+          onSubmitEditing={() => entrar()}
+          error={errores.password}
+        />
+        <Pressable
+          style={{ alignSelf: 'flex-end' }}
+          onPress={() => {
+            setErrorApi(null)
+            setAviso(null)
+            setRecuperando(true)
+          }}
+        >
+          <T peso={600} size={14}>
+            ¿Olvidaste tu contraseña?
+          </T>
+        </Pressable>
+      </View>
+      {!recuperando && (
+        <Button size="lg" icon="log-in" block disabled={enviando} onPress={() => entrar()}>
+          {enviando ? 'Entrando…' : pideCodigo ? 'Verificar y entrar' : 'Iniciar sesión'}
+        </Button>
+      )}
+      {!pideCodigo && (
+        <Pressable accessibilityRole="link" hitSlop={8} onPress={() => navigation.navigate('SolicitarAcceso')}>
+          <T size={14} lh={22} color={c.textMuted}>
+            ¿Necesitas acceso?{' '}
+            <T peso={600} size={14} lh={22}>
+              Solicita una cuenta
+            </T>
+          </T>
+        </Pressable>
+      )}
+      <CuentasDemo entrar={entrar} enviando={enviando} />
+    </MarcoAcceso>
   )
 }
 
 const s = StyleSheet.create({
   cuenta: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1 },
-  arriba: { flex: 1, minHeight: 230, paddingHorizontal: 28, overflow: 'hidden' },
-  anillo: { position: 'absolute', right: -150, top: 40, width: 420, height: 420, borderRadius: 999, borderWidth: 2, borderColor: 'rgba(243,245,242,0.08)' },
-  hoja: {
-    gap: 24, paddingTop: 32, paddingHorizontal: 24, borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 40, shadowOffset: { width: 0, height: -12 }, elevation: 8,
-  },
 })
