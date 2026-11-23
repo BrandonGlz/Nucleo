@@ -1,6 +1,7 @@
 from django.core import mail
 from django.core.cache import cache
 from django.test import override_settings
+from django.utils import timezone
 
 from apps.reportes import aprendizaje
 from apps.reportes.models import PreguntaAgente, RespuestaAprendida
@@ -308,7 +309,12 @@ class ConsolaNicoTests(PruebaBase):
         resumen = self.su.get("/api/v1/nico/resumen/").json()
         self.assertEqual(resumen["preguntas"], 1)
         self.assertEqual(len(resumen["por_dia"]), 14)
-        self.assertEqual(resumen["por_dia"][-1]["total"], 1)
+        # El día se toma de la pregunta guardada y no de «hoy»: si la prueba cruza la
+        # medianoche local entre el chat y el resumen, la pregunta cae en el penúltimo día.
+        pregunta = PreguntaAgente.objects.exclude(datos__contains={"precarga": True}).get()
+        dia = timezone.localtime(pregunta.fecha).date().isoformat()
+        self.assertEqual({d["fecha"]: d["total"] for d in resumen["por_dia"]}.get(dia), 1)
+        self.assertEqual(sum(d["total"] for d in resumen["por_dia"]), 1)
         self.assertEqual(sum(h["total"] for h in resumen["por_hora"]), 1)
         self.assertEqual(resumen["por_empresa"][0]["empresa"], self.e.organizacion.nombre)
         self.assertEqual(len(resumen["tiempo_por_via"]), 1)

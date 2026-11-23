@@ -19,6 +19,28 @@ from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte, R
 from common.testing import Escenario, PruebaBase, cliente_de
 
 
+def fijar_reloj(prueba, ancla=None):
+    """Fija ``timezone.now`` para la prueba: arranca en ``ancla`` y avanza con el reloj real.
+
+    Sin ``ancla`` se usa el mediodía local más reciente. Las pruebas del agente crean lecturas
+    «hace N minutos» y preguntan por «hoy», «esta semana» o «este mes»; con el reloj real, cerca
+    de la medianoche local (o del lunes, o del día 1) parte de esas lecturas caía en el periodo
+    anterior y la prueba fallaba según la hora a la que se corría. A mediodía, unos minutos
+    atrás siempre son el mismo día, semana y mes.
+    """
+    real = timezone.now
+    inicio = real()
+    if ancla is None:
+        local = timezone.localtime(inicio)
+        ancla = local.replace(hour=12, minute=0, second=0, microsecond=0)
+        if ancla > local:
+            ancla -= timedelta(days=1)
+    parche = mock.patch.object(timezone, "now", lambda: ancla + (real() - inicio))
+    parche.start()
+    prueba.addCleanup(parche.stop)
+    return ancla
+
+
 class ReporteTests(PruebaBase):
     def setUp(self):
         self.e = Escenario()
@@ -286,6 +308,7 @@ class AgenteTests(PruebaBase):
         medios = override_settings(MEDIA_ROOT=carpeta)
         medios.enable()
         self.addCleanup(medios.disable)
+        fijar_reloj(self)
         self.e = Escenario()
         ahora = timezone.now()
         for i, valor in enumerate((22, 26.4, 23)):
@@ -450,6 +473,55 @@ class AgenteTests(PruebaBase):
         temperatura = next(v for v in resumen["variables"] if v["variable"] == "TEMP")
         self.assertEqual((temperatura["minimo"], temperatura["maximo"]), (22.0, 26.4))
         self.assertTrue(resumen["resumen"])
+
+    def _justo_despues_de_medianoche(self):
+        """Reloj a las 00:03 locales de un lunes 1.º de mes: «hoy», «esta semana» y «este mes»
+        empiezan hace 3 minutos. Una lectura de las 23:58 de ayer y otra de las 00:01 de hoy."""
+        ancla = timezone.make_aware(timezone.datetime(2026, 6, 1, 0, 3))
+        fijar_reloj(self, ancla)
+        Lectura.objects.all().delete()  # las de setUp son de otra fecha
+        for minutos, valor in ((5, 30), (2, 21)):
+            Lectura.objects.create(
+                sensor_num=self.e.dht22.pk,
+                variable_codigo="TEMP",
+                valor=valor,
+                fecha_hora=ancla - timedelta(minutes=minutos),
+            )
+        return ancla
+
+    def test_hoy_empieza_a_la_medianoche_local(self):
+        ancla = self._justo_despues_de_medianoche()
+        inicio, fin, texto = agente.periodo_de("temperatura de hoy")
+        self.assertEqual((inicio, texto), (ancla - timedelta(minutes=3), "hoy"))
+        self.assertGreaterEqual(fin, ancla)
+        cuerpo = self._preguntar(self.e.analista, "¿cuál fue la temperatura máxima de hoy?")
+        self.assertIn("21.0 °C", cuerpo["texto"])
+        self.assertNotIn("30.0 °C", cuerpo["texto"])  # la de ayer a las 23:58 no es de hoy
+
+    @override_settings(IA_PROVEEDOR="local")
+    def test_reporte_de_hoy_justo_despues_de_medianoche(self):
+        self._justo_despues_de_medianoche()
+        r = self._reporte_confirmado(self.e.supervisor, "Hazme un reporte de la temperatura de hoy")
+        self.assertEqual(r.status_code, 200, r.content)
+        resumen = r.json()["reporte"]
+        self.assertEqual(resumen["lecturas"], 1)
+        temperatura = next(v for v in resumen["variables"] if v["variable"] == "TEMP")
+        self.assertEqual((temperatura["minimo"], temperatura["maximo"]), (21.0, 21.0))
+
+    def test_reporte_de_hoy_sin_lecturas_de_hoy(self):
+        ancla = timezone.make_aware(timezone.datetime(2026, 6, 1, 0, 3))
+        fijar_reloj(self, ancla)
+        Lectura.objects.all().delete()
+        Lectura.objects.create(
+            sensor_num=self.e.dht22.pk,
+            variable_codigo="TEMP",
+            valor=30,
+            fecha_hora=ancla - timedelta(minutes=5),
+        )
+        cuerpo = self._preguntar(self.e.supervisor, "Hazme un reporte de la temperatura de hoy")
+        self.assertEqual(cuerpo["codigo"], "sin_datos")
+        self.assertIn(f"No hay lecturas de {self.e.dispositivo.area.nombre} hoy.", cuerpo["texto"])
+        self.assertNotIn("accion", cuerpo)
 
     @override_settings(IA_PROVEEDOR="local")
     def test_operador_no_genera_reportes(self):
@@ -1251,6 +1323,7 @@ class CasosAgenteTests(PruebaBase):
     def test_banco_de_casos(self):
         from apps.reportes.evaluacion import evaluar
 
+        fijar_reloj(self)
         e = Escenario()
         ahora = timezone.now()
         for i, (codigo, sensor, valor) in enumerate(
@@ -1283,6 +1356,7 @@ class HerramientasAgenteTests(PruebaBase):
         medios = override_settings(MEDIA_ROOT=carpeta)
         medios.enable()
         self.addCleanup(medios.disable)
+        fijar_reloj(self)
         self.e = Escenario()
         self.ahora = timezone.now()
         self.lectura = Lectura.objects.create(

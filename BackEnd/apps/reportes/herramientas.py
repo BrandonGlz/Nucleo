@@ -603,7 +603,9 @@ def preparar_reporte(usuario, dispositivo, pregunta):
     lecturas = sum(v.get("muestras", 0) for v in _valores(cifras["variables"]))
     if not lecturas:
         return {
-            "texto": f"No hay lecturas de {area.nombre} en {descripcion}. ¿Quieres otro periodo?",
+            # «No hay lecturas de Almacén hoy», no «en hoy».
+            "texto": f"No hay lecturas de {area.nombre} {agente._en(descripcion)}. "
+            "¿Quieres otro periodo?",
             "codigo": "sin_datos",
         }
     destinatarios = []

@@ -78,7 +78,7 @@ def sesiones_vigentes():
 class ResumenView(ConsolaMixin, APIView):
     def get(self, request):
         ahora = timezone.now()
-        hoy = timezone.localdate()
+        hoy = timezone.localdate(ahora)
         usuarios = Usuario.objects.exclude(rol_id=roles.ADMIN_PLATAFORMA)
         por_estado = Counter(usuarios.values_list("estado_usuario_id", flat=True))
         dispositivos = Counter(Dispositivo.objects.values_list("estado_dispositivo_id", flat=True))
