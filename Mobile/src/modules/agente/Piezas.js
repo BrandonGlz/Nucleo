@@ -3,7 +3,7 @@
 import { StyleSheet, View } from 'react-native'
 import { Icon, T, TrendChart } from '../../components/ui'
 import { useTema } from '../../context/TemaContext'
-import { cuando, fechaCorta } from '../../utils/formato'
+import { cuando, fechaCorta, periodo } from '../../utils/formato'
 
 const ORDEN = ['TEMP', 'HUM', 'AIRE']
 const NOMBRES = { serie: 'Gráfica del periodo', alertas: 'Alertas por variable', cifras: 'Cifras clave', general: 'Resumen del dispositivo' }
@@ -11,7 +11,6 @@ const VAR = { TEMP: 'Temperatura', HUM: 'Humedad', AIRE: 'Calidad del aire' }
 const mayuscula = (t) => t.charAt(0).toUpperCase() + t.slice(1)
 const dec = (unidad) => (unidad === 'ppm' || !unidad ? 0 : 1)
 const fmt = (v, unidad) => (v == null ? '—' : `${Number(v).toFixed(dec(unidad))}${unidad ? ` ${unidad}` : ''}`)
-const fecha = (iso) => new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
 const etiqueta = (iso, porHora) => {
   const f = new Date(iso)
   return porHora ? `${String(f.getHours()).padStart(2, '0')}:00` : `${f.getDate()}/${f.getMonth() + 1}`
@@ -117,7 +116,7 @@ export function GraficaChat({ g }) {
       <Cabeza
         icono={g.elemento === 'alertas' ? 'bell' : g.elemento === 'cifras' ? 'layout-grid' : 'activity'}
         titulo={NOMBRES[g.elemento]}
-        detalle={`${g.donde} · ${fecha(g.periodo_inicio)} – ${fecha(g.periodo_fin)}`}
+        detalle={`${g.donde} · ${periodo(g.periodo_inicio, g.periodo_fin)}`}
       />
       <View style={s.cuerpo}>{cuerpo}</View>
     </View>

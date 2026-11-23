@@ -67,6 +67,38 @@ function useTrasTransicion() {
 // Solo números finitos: un NaN en un path o en un estilo nativo cierra la app en Android.
 const finito = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
+// Escala del eje y con marcas «bonitas» (1, 2, 2.5, 5 × 10^n, nunca menores a 1): el eje acaba en
+// valores redondos (0–1500, no 0–1504) con, como mucho, `pasos` renglones. Igual que en la web.
+export function escalaBonita(bajo, alto, pasos, fijoMin, fijoMax) {
+  if (fijoMin != null && fijoMax != null) {
+    const ticks = Array.from({ length: pasos + 1 }, (_, t) => fijoMin + ((fijoMax - fijoMin) * t) / pasos)
+    return { mn: fijoMin, mx: fijoMax, ticks }
+  }
+  if (fijoMin != null) bajo = fijoMin
+  if (fijoMax != null) alto = fijoMax
+  if (alto - bajo < 1e-9) {
+    bajo -= 1
+    alto += 1
+  }
+  const base = 10 ** Math.max(0, Math.floor(Math.log10((alto - bajo) / pasos)))
+  let paso = base
+  let mn = bajo
+  let mx = alto
+  for (let intento = 0; intento < 40; intento++) {
+    const m = [1, 2, 2.5, 5][intento % 4] * base * 10 ** Math.floor(intento / 4)
+    if (m === 2.5) continue // 2.5 daría marcas con decimales (22.5); desde 25 sí es redondo
+    mn = fijoMin ?? Math.floor(bajo / m + 1e-9) * m
+    mx = fijoMax ?? (fijoMin != null ? mn + Math.ceil((alto - mn) / m - 1e-9) * m : Math.ceil(alto / m - 1e-9) * m)
+    if (fijoMax != null) mn = mx - Math.ceil((mx - bajo) / m - 1e-9) * m
+    paso = m
+    if (Math.round((mx - mn) / m) <= pasos) break
+  }
+  if (mx <= mn) mx = mn + paso
+  const ticks = []
+  for (let v = mn; v <= mx + paso / 2; v += paso) ticks.push(+v.toFixed(6))
+  return { mn, mx, ticks }
+}
+
 export function TrendChart({ data: crudos = [], unit = '', threshold: umbral, min, max, height = 200, activeIndex, decimals = 1, tooltip = true }) {
   const data = crudos.filter((d) => finito(d?.value) != null)
   const threshold = { min: finito(umbral?.min), max: finito(umbral?.max) }
@@ -82,16 +114,13 @@ export function TrendChart({ data: crudos = [], unit = '', threshold: umbral, mi
   const padB = 26
   const vals = data.map((d) => d.value)
   const todos = vals.concat([threshold.max, threshold.min].filter((v) => v != null))
-  let mn = min ?? Math.floor(Math.min(...todos) - 1)
-  let mx = max ?? Math.ceil(Math.max(...todos) + 1)
-  if (max == null) mx = mn + Math.ceil((mx - mn) / 4) * 4
+  const { mn, mx, ticks } = escalaBonita(Math.min(...todos), Math.max(...todos), 4, min, max)
   const iw = Math.max(10, W - padL - padR)
   const ih = H - padT - padB
   const X = (i) => padL + (data.length > 1 ? (i / (data.length - 1)) * iw : iw / 2)
   const Y = (v) => padT + ih - ((v - mn) / (mx - mn || 1)) * ih
   const pts = data.map((d, i) => [+X(i).toFixed(1), +Y(d.value).toFixed(1)])
   const linea = suave(pts)
-  const ticks = [0, 1, 2, 3, 4].map((t) => mn + ((mx - mn) * t) / 4)
   const hi = Math.max(0, Math.min(data.length - 1, hover))
   const cur = data[hi]
   const cada = Math.max(1, Math.ceil(data.length / Math.max(2, Math.floor(iw / 56))))
@@ -102,6 +131,13 @@ export function TrendChart({ data: crudos = [], unit = '', threshold: umbral, mi
     setHover(Math.max(0, Math.min(data.length - 1, i)))
   }
   const ejes = { fill: c.textMuted, fontSize: 10, fontFamily: font[500] }
+  // Etiquetas de umbral por fuera de su línea (Máx arriba, Mín abajo), salvo que así se salgan del
+  // área de la gráfica (p. ej. un umbral en el borde de la escala): entonces van por dentro.
+  const yEtiqueta = (k) => {
+    const y = Y(threshold[k])
+    if (k === 'max') return y - 22 < 0 ? y + 4 : y - 22
+    return y + 22 > padT + ih ? y - 22 : y + 4
+  }
   const tipX = cur ? X(hi) : 0
   const izquierda = tipX > W - 140
 
@@ -144,14 +180,14 @@ export function TrendChart({ data: crudos = [], unit = '', threshold: umbral, mi
             ) : null,
           )}
           {[
-            ['max', c.danger, c.dangerSoft, -22, 'Máx'],
-            ['min', c.warning, c.warningSoft, 4, 'Mín'],
-          ].map(([k, linea_, fondo, dy, txt]) =>
+            ['max', c.danger, c.dangerSoft, 'Máx'],
+            ['min', c.warning, c.warningSoft, 'Mín'],
+          ].map(([k, linea_, fondo, txt]) =>
             threshold[k] != null ? (
               <G key={k}>
                 <Line x1={padL} x2={W - padR} y1={Y(threshold[k])} y2={Y(threshold[k])} stroke={linea_} strokeWidth={1.5} strokeDasharray="6 5" />
-                <Rect x={W - padR - 86} y={Y(threshold[k]) + dy} width={86} height={18} rx={9} fill={fondo} />
-                <SvgText x={W - padR - 43} y={Y(threshold[k]) + dy + 13} textAnchor="middle" fill={linea_} fontSize={10} fontFamily={font[700]}>
+                <Rect x={W - padR - 86} y={yEtiqueta(k)} width={86} height={18} rx={9} fill={fondo} />
+                <SvgText x={W - padR - 43} y={yEtiqueta(k) + 13} textAnchor="middle" fill={linea_} fontSize={10} fontFamily={font[700]}>
                   {`${txt} ${fmt(threshold[k])} ${unit}`}
                 </SvgText>
               </G>

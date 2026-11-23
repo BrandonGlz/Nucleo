@@ -3,9 +3,9 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
 import { useTema } from '../context/TemaContext'
 import { abrirPdf, verEnWeb } from '../services/reportes'
 import { VARIABLE } from '../utils/convertir'
+import { periodo } from '../utils/formato'
 import { Icon, T } from './ui'
 
-const fecha = (iso) => new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
 const cifra = (v, unidad) => (v == null ? '—' : Number(v).toFixed(unidad === 'ppm' ? 0 : 1))
 
 // Resumen del reporte que generó Nico AI, dentro del chat: cifras clave, rango por variable y el
@@ -36,7 +36,7 @@ export function ReporteChat({ r }) {
             {r.titulo}
           </T>
           <T size={12} color={c.textMuted}>
-            {`${fecha(r.periodo_inicio)} – ${fecha(r.periodo_fin)} · Folio R-${String(r.num).padStart(4, '0')}`}
+            {`${periodo(r.periodo_inicio, r.periodo_fin)} · Folio R-${String(r.num).padStart(4, '0')}`}
           </T>
         </View>
       </View>

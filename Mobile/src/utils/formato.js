@@ -66,9 +66,12 @@ export const accesoCorto = (iso) => {
   return t.endsWith(' s') ? 'Ahora' : t.replace('hace ', '')
 }
 
+// Periodo «15–21 nov 2026» en hora local. El fin se guarda exclusivo (un reporte semanal acaba a
+// la medianoche del día siguiente), así que el último día es el del instante anterior a `fin`.
 export const periodo = (inicio, fin) => {
   const a = new Date(inicio)
-  const b = new Date(new Date(fin).getTime() - 1)
+  const b = new Date(Math.max(a.getTime(), new Date(fin).getTime() - 1))
+  if (a.getFullYear() !== b.getFullYear()) return `${fechaLarga(inicio)} – ${fechaLarga(b.toISOString())}`
   if (a.getMonth() === b.getMonth()) return `${a.getDate()}–${b.getDate()} ${MESES[b.getMonth()]} ${b.getFullYear()}`
   return `${fechaCorta(inicio)} – ${fechaLarga(b.toISOString())}`
 }
