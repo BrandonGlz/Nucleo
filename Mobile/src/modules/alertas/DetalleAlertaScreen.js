@@ -4,7 +4,8 @@ import { Cabecera } from '../../components/Cabecera'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { ActivityFeed, Badge, Button, Card, Skeleton, StatusBadge, T, TrendChart } from '../../components/ui'
-import { confirmarResolver, puedeResolver } from './AlertasScreen'
+import { puedeResolver } from './AlertasScreen'
+import { useResolver } from './HojaResolver'
 import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
@@ -13,7 +14,7 @@ import * as alertasApi from '../../services/alertas'
 import * as lecturasApi from '../../services/lecturas'
 import * as usuariosApi from '../../services/usuarios'
 import { ESTADO_ALERTA, NIVEL_ALERTA, nombreCorto, pagina, tituloAlerta, VARIABLE } from '../../utils/convertir'
-import { hora, horaSeg, num } from '../../utils/formato'
+import { fechaCorta, hora, horaSeg, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 async function cargarDetalle(num_) {
@@ -41,6 +42,7 @@ export function DetalleAlertaScreen({ navigation, route }) {
   const oper = usuario?.rol === 'OPER'
   const resolver = puedeResolver(usuario)
   const { estado, datos, reintentar, refrescar } = useDatos(() => cargarDetalle(route.params.num), [route.params.num])
+  const { abrir: abrirResolver, hoja } = useResolver(() => (refrescar(), refrescarOp()))
   const a = datos?.a
   const volver = <Cabecera titulo="Alerta" onVolver={() => navigation.goBack()} />
 
@@ -60,6 +62,9 @@ export function DetalleAlertaScreen({ navigation, route }) {
   const tope = Math.max(valor, limite) * 1.25
   const est = ESTADO_ALERTA[a.estado]
   const notif = datos.notificaciones[0]
+  const descartada = a.estado === 'DESCARTADA'
+  // Quién la resolvió: de la lista de usuarios (si se puede listar) o el nombre que da la API.
+  const quien = nombreCorto(datos.quien) || a.atendida_por_nombre || (oper ? 'tu supervisor' : 'el supervisor')
   const linea = [
     { level: peligro ? 'critical' : 'warning', title: 'Creada', meta: `Lectura de ${num(valor, dec)} ${a.unidad} a las ${horaSeg(a.lectura_fecha_hora)}`, time: hora(a.fecha_hora) },
     notif && {
@@ -71,8 +76,8 @@ export function DetalleAlertaScreen({ navigation, route }) {
       ? { level: 'info', icon: 'clock', title: 'Pendiente', meta: oper ? 'Tu supervisor la atenderá' : resolver ? 'Atiéndela o descártala aquí abajo' : 'La atiende el supervisor', time: '' }
       : {
           level: a.estado === 'ATENDIDA' ? 'normal' : 'offline', icon: a.estado === 'ATENDIDA' ? undefined : 'circle-x',
-          title: `${a.estado === 'ATENDIDA' ? 'Atendida' : 'Descartada'} por ${nombreCorto(datos.quien) || (oper ? 'tu supervisor' : 'el supervisor')}`,
-          meta: a.observaciones || 'Sin observaciones', time: hora(a.fecha_atencion),
+          title: `${a.estado === 'ATENDIDA' ? 'Atendida' : 'Descartada'} por ${quien}`,
+          meta: a.fecha_atencion ? fechaCorta(a.fecha_atencion) : '', time: hora(a.fecha_atencion),
         },
   ].filter(Boolean)
 
@@ -123,6 +128,19 @@ export function DetalleAlertaScreen({ navigation, route }) {
           height={150}
         />
       </Card>
+      {a.estado !== 'PENDIENTE' && (
+        <View style={[s.nota, { backgroundColor: c.surface }]}>
+          <T mayus color={c.textMuted}>
+            {descartada ? 'Motivo del descarte' : 'Qué se hizo'}
+          </T>
+          <T size={15} lh={22} color={a.observaciones ? c.textPrimary : c.textMuted} style={!a.observaciones && { fontStyle: 'italic' }}>
+            {a.observaciones || 'No se registró una nota.'}
+          </T>
+          <T size={12} num color={c.textMuted}>
+            {`${descartada ? 'Descartada' : 'Atendida'} por ${quien}${a.fecha_atencion ? ` · ${fechaCorta(a.fecha_atencion)}, ${hora(a.fecha_atencion)}` : ''}`}
+          </T>
+        </View>
+      )}
       <View style={[s.linea, { backgroundColor: c.surface }]}>
         <T mayus color={c.textMuted} style={{ paddingTop: 8 }}>
           Línea de tiempo
@@ -132,17 +150,18 @@ export function DetalleAlertaScreen({ navigation, route }) {
       {resolver && a.estado === 'PENDIENTE' && (
         <View style={s.botones}>
           <View style={{ flex: 1 }}>
-            <Button variant="secondary" size="lg" icon="circle-x" block onPress={() => confirmarResolver(a, 'descartar', () => (refrescar(), refrescarOp()))}>
+            <Button variant="secondary" size="lg" icon="circle-x" block onPress={() => abrirResolver(a, 'descartar')}>
               Descartar
             </Button>
           </View>
           <View style={{ flex: 1 }}>
-            <Button size="lg" icon="check" block onPress={() => confirmarResolver(a, 'atender', () => (refrescar(), refrescarOp()))}>
+            <Button size="lg" icon="check" block onPress={() => abrirResolver(a, 'atender')}>
               Atender
             </Button>
           </View>
         </View>
       )}
+      {hoja}
     </Pantalla>
   )
 }
@@ -151,5 +170,6 @@ const s = StyleSheet.create({
   badges: { flexDirection: 'row', gap: 6 },
   entre: { flexDirection: 'row', justifyContent: 'space-between' },
   botones: { flexDirection: 'row', gap: 10 },
+  nota: { gap: 8, padding: 16, borderRadius: 24 },
   linea: { gap: 4, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 24 },
 })

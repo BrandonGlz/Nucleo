@@ -3,7 +3,7 @@
     "name": "Núcleo",
     "slug": "-nucleo-mobile",
     "owner": "nucleo-expo",
-    "version": "0.2.10",
+    "version": "0.2.11",
     "orientation": "portrait",
     "scheme": "nucleo",
     "userInterfaceStyle": "automatic",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.nucleo.mobile",
-      "versionCode": 22,
+      "versionCode": 23,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icono-adaptativo.png",
         "monochromeImage": "./assets/icono-monocromo.png",
@@ -23,6 +23,12 @@
     },
     "plugins": [
       "expo-font",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Núcleo no usa Face ID; tu sesión se guarda cifrada en el teléfono."
+        }
+      ],
       [
         "expo-audio",
         {
@@ -42,6 +48,14 @@
         {
           "icon": "./assets/icono-monocromo.png",
           "color": "#2BC47A"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Núcleo usa tus fotos para que elijas tu foto de perfil.",
+          "cameraPermission": false,
+          "microphonePermission": "Núcleo usa el micrófono para que dictes tus preguntas a Nico AI."
         }
       ]
     ],

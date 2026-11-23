@@ -2,6 +2,7 @@ import { createContext, createElement, useContext, useEffect, useMemo, useRef, u
 import { AppState } from 'react-native'
 import { usePreferencias } from '../context/PreferenciasContext'
 import * as alertasApi from '../services/alertas'
+import { agregarAviso, olvidarAvisos, recargarAvisos } from '../services/avisosEnVivo'
 import * as dispositivosApi from '../services/dispositivos'
 import * as organizacionesApi from '../services/organizaciones'
 import { avisarAlerta, marcarCanal, preparar } from '../services/notificaciones'
@@ -60,7 +61,10 @@ export function OperadorProvider({ usuario, children }) {
     let antes = AppState.currentState === 'active'
     const sub = AppState.addEventListener('change', (estado) => {
       const frente = estado === 'active'
-      if (frente && !antes) refrescar() // al volver, datos al día sin esperar al sondeo
+      if (frente && !antes) {
+        refrescar() // al volver, datos al día sin esperar al sondeo
+        recargarAvisos()
+      }
       antes = frente
       setAlFrente(frente)
     })
@@ -75,10 +79,21 @@ export function OperadorProvider({ usuario, children }) {
   useEffect(() => {
     preparar().catch(() => {})
   }, [])
+  // Avisos de la campana de esta cuenta (los de otra cuenta se olvidan al cambiar o salir).
+  useEffect(() => {
+    if (!usuario?.organizacion) return undefined
+    recargarAvisos()
+    return olvidarAvisos
+  }, [usuario?.num, usuario?.organizacion])
   useEffect(() => {
     if (!alFrente || !usuario?.organizacion) return undefined
     marcarCanal(true)
     const cerrar = escucharPanel((evento) => {
+      // Un aviso de la campana se agrega tal cual llega, sin notificación (no es una alerta).
+      if (evento.tipo === 'aviso.nuevo') {
+        agregarAviso(evento.aviso ?? evento.datos)
+        return
+      }
       refrescar()
       // La API ya filtra los eventos por el alcance del usuario.
       if (evento.tipo === 'alerta.nueva' && avisos.current.push) {

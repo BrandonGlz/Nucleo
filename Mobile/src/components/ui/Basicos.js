@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { Animated, Easing, Pressable, StyleSheet, TextInput, View } from 'react-native'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Animated, Easing, Image, Pressable, StyleSheet, TextInput, View } from 'react-native'
 import { useAnimaciones } from '../../context/PreferenciasContext'
 import { useTema } from '../../context/TemaContext'
 import { font, radius } from '../../theme'
@@ -106,13 +106,30 @@ const iniciales = (n = '') =>
     .join('')
     .toUpperCase()
 
-export function Avatar({ name, size = 40 }) {
+// `foto`: fuente de la imagen ({uri, headers}); si falta o no carga, quedan las iniciales.
+export function Avatar({ name, size = 40, foto }) {
   const { c } = useTema()
+  const [fallida, setFallida] = useState(null)
+  const conFoto = !!foto?.uri && fallida !== foto.uri
+  // Misma fuente mientras no cambien la ruta ni el token: un objeto nuevo en cada render haría
+  // que la imagen se volviera a pedir.
+  const uri = foto?.uri
+  const auth = foto?.headers?.Authorization
+  const fuente = useMemo(() => (uri ? { uri, ...(auth ? { headers: { Authorization: auth } } : {}) } : null), [uri, auth])
   return (
-    <View style={[s.circulo, { width: size, height: size, backgroundColor: c.accentSoft, borderWidth: 1, borderColor: c.border }]}>
-      <T peso={700} size={Math.round(size * 0.38)} style={{ letterSpacing: -0.2 }}>
-        {iniciales(name)}
-      </T>
+    <View style={[s.circulo, { width: size, height: size, backgroundColor: c.accentSoft, borderWidth: 1, borderColor: c.border, overflow: 'hidden' }]}>
+      {conFoto ? (
+        <Image
+          source={fuente}
+          style={{ width: size, height: size }}
+          onError={() => setFallida(foto.uri)}
+          accessibilityLabel={name ? `Foto de ${name}` : 'Foto de perfil'}
+        />
+      ) : (
+        <T peso={700} size={Math.round(size * 0.38)} style={{ letterSpacing: -0.2 }}>
+          {iniciales(name)}
+        </T>
+      )}
     </View>
   )
 }

@@ -9,6 +9,7 @@ import { Avatar, Icon, IconButton, Skeleton, Sparkline, T, Tabs } from '../../co
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
 import { useAvisos } from '../../hooks/useAvisos'
+import { fuenteFoto } from '../../services/auth'
 import { useDatos } from '../../hooks/useDatos'
 import { lecturaDe, umbralDe, useOperador } from '../../hooks/useOperador'
 import { ESTADO_FORZADO } from '../../services/mock/handlers'
@@ -60,7 +61,7 @@ function ZonaPanel({ usuario, op, estado, sinConexion, onAvisos }) {
   const u = umbralDe(op, 'TEMP')
   const cabeza = (
     <View style={s.fila12}>
-      <Avatar name={`${usuario.nombre} ${usuario.primer_apellido}`} size={40} />
+      <Avatar name={`${usuario.nombre} ${usuario.primer_apellido}`} size={40} foto={fuenteFoto(usuario.foto_url)} />
       <View style={{ flex: 1 }}>
         <T size={12} color={c.textMuted}>
           {hoyTexto()}
@@ -198,8 +199,14 @@ function BarrasTemp({ serie, ultima, dispositivo, onPress }) {
     () => (rango === '7d' ? lecturasApi.serie(dispositivo, 'TEMP', { intervalo: 'dia', desde: new Date(Date.now() - 7 * 864e5).toISOString() }) : Promise.resolve(null)),
     [rango, dispositivo],
   )
-  const puntos = rango === '7d' ? (semana.datos ?? []) : serie
+  // Solo promedios numéricos: un NaN deja la barra sin altura (o cierra la app en Android).
+  const puntos = (rango === '7d' ? (semana.datos ?? []) : serie).filter((p) => Number.isFinite(Number(p?.promedio)))
   const valores = puntos.map((p) => Number(p.promedio))
+  // Con pocos puntos las barras no se estiran a todo el ancho (un bloque claro enorme): se dejan
+  // huecos tenues a la izquierda hasta completar las 24 horas o los 7 días.
+  const ranuras = rango === '7d' ? 7 : 24
+  const huecos = Math.max(0, ranuras - valores.length)
+  const pocos = valores.length < 2
   const mn = valores.length ? Math.min(...valores) : 0
   const mx = valores.length ? Math.max(...valores) : 1
   const titulo = rango === '7d' ? 'Temperatura · 7 días' : ultima ? `Temperatura · 24 h hasta el ${fechaCorta(ultima)}` : 'Temperatura · 24 h'
@@ -223,21 +230,38 @@ function BarrasTemp({ serie, ultima, dispositivo, onPress }) {
         />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: rango === '7d' ? 8 : 3, height: 52 }}>
-        {rango === '7d' && !semana.datos
-          ? <Skeleton height={52} style={{ borderRadius: 8 }} />
-          : valores.map((v, i) => (
+        {rango === '7d' && !semana.datos ? (
+          <Skeleton height={52} style={{ borderRadius: 8 }} />
+        ) : pocos ? (
+          <View style={[s.vacioGrafica, { borderColor: c.border }]}>
+            <Icon name="chart-line" size={16} color={c.textMuted} />
+            <T size={12} color={c.textSecondary} style={{ flexShrink: 1 }}>
+              {valores.length
+                ? `Solo una lectura (${num(valores[0], 1)} °C): aún no hay tendencia.`
+                : 'Sin lecturas en este periodo.'}
+            </T>
+          </View>
+        ) : (
+          <>
+            {Array.from({ length: huecos }, (_, i) => (
+              <View key={`h${i}`} style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: c.chartGrid }} />
+            ))}
+            {valores.map((v, i) => (
               <BarraCrece
                 key={`${rango}-${i}`}
                 indice={i}
                 style={{
                   flex: 1, borderRadius: 4, backgroundColor: c.grafica,
                   height: Math.round(8 + ((v - mn) / (mx - mn || 1)) * 44),
-                  opacity: i === valores.length - 1 ? 1 : Math.min(0.85, 0.12 + i * (rango === '7d' ? 0.12 : 0.025)),
+                  // Rampa por posición relativa: igual con 3 barras que con 24; la última, opaca.
+                  opacity: i === valores.length - 1 ? 1 : 0.2 + 0.55 * (i / (valores.length - 1)),
                 }}
               />
             ))}
+          </>
+        )}
       </View>
-      {valores.length > 0 && (
+      {!pocos && (
         <View style={s.entre}>
           <T size={11} color={c.textMuted}>{rango === '7d' ? fechaCorta(puntos[0].periodo) : cuando(puntos[0].periodo)}</T>
           <T size={11} num color={c.textMuted}>{`Mín ${mn.toFixed(1)} · Máx ${mx.toFixed(1)} °C`}</T>
@@ -335,7 +359,7 @@ export function PanelScreen({ navigation }) {
             <Mosaico variable="HUM" tipo="verde" lectura={lecturaDe(op, 'HUM')} serie={(sH?.puntos ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('HUM')} />
             <Mosaico variable="AIRE" tipo="tinta" lectura={lecturaDe(op, 'AIRE')} serie={(sA?.puntos ?? []).slice(-6).map((p) => Number(p.promedio))} sinConexion={sinConexion} desde={d.ultima_conexion} onPress={() => ver('AIRE')} />
           </View>
-          {sT?.puntos?.length > 1 && <BarrasTemp serie={sT.puntos} ultima={sT.ultima} dispositivo={d.num} onPress={() => ver('TEMP')} />}
+          {series.datos && <BarrasTemp serie={sT?.puntos ?? []} ultima={sT?.ultima} dispositivo={d.num} onPress={() => ver('TEMP')} />}
         </>
       )}
     </Pantalla>
@@ -353,4 +377,8 @@ const s = StyleSheet.create({
   tarjeta: { paddingVertical: 14, paddingHorizontal: 18, borderRadius: 28 },
   equipo: { flexDirection: 'row', gap: 12, paddingVertical: 12 },
   celda: { flex: 1, minWidth: 0, gap: 3 },
+  vacioGrafica: {
+    flex: 1, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed',
+  },
 })

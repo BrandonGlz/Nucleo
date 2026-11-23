@@ -70,6 +70,7 @@ import {
   MicOff,
   Volume2,
   VolumeX,
+  Camera,
 } from 'lucide-react-native'
 
 const ICONS = {
@@ -142,6 +143,7 @@ const ICONS = {
   'mic-off': MicOff,
   'volume-2': Volume2,
   'volume-x': VolumeX,
+  'camera': Camera,
 }
 
 export { ICONS }

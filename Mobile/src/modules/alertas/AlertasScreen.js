@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Animated, PanResponder, Pressable, StyleSheet, View } from 'react-native'
+import { Animated, PanResponder, Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { Aparece, Chip, Icon, IconCircle, Input, Skeleton, T } from '../../components/ui'
@@ -7,7 +7,7 @@ import { useAnimaciones } from '../../context/PreferenciasContext'
 import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { pendientesDe, useOperador } from '../../hooks/useOperador'
-import * as alertasApi from '../../services/alertas'
+import { useResolver } from './HojaResolver'
 import { ESTADO_ALERTA, NIVEL_ALERTA, tituloAlerta, valorAlerta, VARIABLE } from '../../utils/convertir'
 import { esAyer, esHoy, fechaLarga, haceCuanto } from '../../utils/formato'
 import { colors, marca } from '../../theme'
@@ -21,27 +21,6 @@ const FILTROS = [
 export const puedeResolver = (u) => u?.rol === 'ADMIN' || u?.rol === 'SUPER'
 const grupoDe = (iso) => (esHoy(iso) ? 'Hoy' : esAyer(iso) ? 'Ayer' : fechaLarga(iso))
 const UMBRAL = 96
-
-// Pregunta y resuelve la alerta; al terminar refresca los datos.
-export function confirmarResolver(a, accion, alTerminar) {
-  const atender = accion === 'atender'
-  Alert.alert(
-    atender ? '¿Atender la alerta?' : '¿Descartar la alerta?',
-    `${tituloAlerta(a)} · ${a.dispositivo_nombre}`,
-    [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: atender ? 'Atender' : 'Descartar',
-        style: atender ? 'default' : 'destructive',
-        onPress: () =>
-          alertasApi
-            .resolver(a.num, accion)
-            .then(alTerminar)
-            .catch(() => Alert.alert('No se pudo guardar', 'Revisa tu conexión e inténtalo de nuevo.')),
-      },
-    ],
-  )
-}
 
 // Tarjeta que se desliza: a la izquierda «Atender», a la derecha «Descartar». Sin animaciones o
 // sin permiso queda fija (el detalle de la alerta tiene los mismos botones).
@@ -119,6 +98,11 @@ export function TarjetaAlerta({ a, onPress }) {
         <T size={12} lh={17} color={c.textSecondary}>
           {`${a.dispositivo_nombre} marcó ${valorAlerta(a)} (${limiteCruzado(a)})`}
         </T>
+        {!pendiente && a.observaciones ? (
+          <T size={12} lh={17} color={c.textSecondary} numberOfLines={1} style={{ fontStyle: 'italic' }}>
+            {`${a.estado === 'DESCARTADA' ? 'Motivo' : 'Qué se hizo'}: ${a.observaciones}`}
+          </T>
+        ) : null}
         <T size={11} color={pendiente ? c[nivel.tone] : c.textMuted}>
           {`${a.nivel === 'PELIGRO' ? 'Crítica' : 'Advertencia'} · ${est.label} · ${haceCuanto(a.fecha_hora).replace(/^hace/, 'Hace')}`}
         </T>
@@ -138,6 +122,7 @@ export function AlertasScreen({ navigation }) {
   const [filtro, setFiltro] = useState('todas')
   const [buscar, setBuscar] = useState('')
   const resolver = puedeResolver(usuario)
+  const { abrir: abrirResolver, hoja } = useResolver(refrescar)
   const alertas = [...(op?.alertas ?? [])].sort((x, y) => (x.fecha_hora < y.fecha_hora ? 1 : -1))
   const criticas = alertas.filter((a) => a.estado === 'PENDIENTE' && a.nivel === 'PELIGRO').length
   const advertencias = alertas.filter((a) => a.estado === 'PENDIENTE' && a.nivel === 'ADVERTENCIA').length
@@ -248,7 +233,7 @@ export function AlertasScreen({ navigation }) {
                     </T>
                     {items.map((a, i) => (
                       <Aparece key={`${filtro}-${a.num}`} indice={i}>
-                        <Deslizable activo={resolver && a.estado === 'PENDIENTE'} alResolver={(accion) => confirmarResolver(a, accion, refrescar)}>
+                        <Deslizable activo={resolver && a.estado === 'PENDIENTE'} alResolver={(accion) => abrirResolver(a, accion)}>
                           <TarjetaAlerta a={a} onPress={() => navigation.navigate('DetalleAlerta', { num: a.num })} />
                         </Deslizable>
                       </Aparece>
@@ -272,6 +257,7 @@ export function AlertasScreen({ navigation }) {
           )}
         </>
       )}
+      {hoja}
     </Pantalla>
   )
 }

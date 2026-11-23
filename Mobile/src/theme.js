@@ -26,7 +26,7 @@ export const colors = {
     focusRing: '#2BC47A', chartLine: '#2BC47A', chartArea: '#2BC47A', chartGrid: '#272B2A',
     logoColor: '#2BC47A',
     seleccion: '#F3F5F2', seleccionTexto: '#1A1C1C', cuentaSeleccion: '#2BC47A', cuentaSeleccionTexto: '#FFFFFF',
-    grafica: '#F3F5F2', iconoNeutro: '#202323', iconoNeutroTexto: '#B4BAB6',
+    grafica: '#2BC47A', iconoNeutro: '#202323', iconoNeutroTexto: '#B4BAB6',
   },
 }
 

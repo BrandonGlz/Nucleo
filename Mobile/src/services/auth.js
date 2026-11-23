@@ -1,5 +1,7 @@
-import { AUTH_CAMBIAR_PASSWORD, AUTH_LOGIN, AUTH_LOGOUT, AUTH_RECUPERAR, AUTH_SESION, AUTH_SESIONES, AUTH_YO } from '../api'
-import { USAR_MOCKS, pedir } from './config'
+import { Platform } from 'react-native'
+import { AUTH_CAMBIAR_PASSWORD, AUTH_FOTO, AUTH_LOGIN, AUTH_LOGOUT, AUTH_RECUPERAR, AUTH_SESION, AUTH_SESIONES, AUTH_YO } from '../api'
+import { API_BASE_URL, apiRequest } from './api/client'
+import { USAR_MOCKS, leerToken, pedir } from './config'
 import * as mock from './mock/handlers'
 import { telefono } from './notificaciones'
 
@@ -64,4 +66,34 @@ export async function cerrarSesion(num) {
 export async function cambiarPassword(actual, nueva) {
   if (USAR_MOCKS) return mock.cambiarPassword(actual, nueva)
   return pedir(AUTH_CAMBIAR_PASSWORD, { metodo: 'POST', cuerpo: { password_actual: actual, password_nueva: nueva } })
+}
+
+// Foto de perfil propia. `imagen`: el resultado de expo-image-picker ({uri, mimeType, fileName}).
+// La API la recorta a 256×256 WebP y devuelve el usuario con `foto_url`.
+export async function subirFoto(imagen) {
+  if (USAR_MOCKS) return mock.subirFoto(imagen.uri)
+  const tipo = imagen.mimeType || 'image/jpeg'
+  const extension = tipo.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg'
+  const nombre = imagen.fileName || `foto.${extension}`
+  const datos = new FormData()
+  // En el teléfono FormData lleva {uri, name, type}; en la web el selector entrega un File.
+  if (Platform.OS === 'web') datos.append('foto', imagen.file ?? (await (await fetch(imagen.uri)).blob()), nombre)
+  else datos.append('foto', { uri: imagen.uri, name: nombre, type: tipo })
+  const token = leerToken()
+  // Sin Content-Type: fetch pone el multipart con su separador.
+  return apiRequest(AUTH_FOTO, { method: 'POST', headers: token ? { Authorization: `Token ${token}` } : {}, body: datos })
+}
+export async function quitarFoto() {
+  if (USAR_MOCKS) return mock.quitarFoto()
+  return pedir(AUTH_FOTO, { metodo: 'DELETE' })
+}
+
+// `foto_url` viene relativa al dominio de la API (/api/v1/fotos/…) y se pide con el token, como
+// el resto de la API. En modo simulado ya es la imagen local.
+const DOMINIO_API = API_BASE_URL.replace(/\/api\/v\d+$/, '')
+export function fuenteFoto(fotoUrl) {
+  if (!fotoUrl) return null
+  if (/^(https?|file|content|data):/.test(fotoUrl)) return { uri: fotoUrl }
+  const token = leerToken()
+  return { uri: `${DOMINIO_API}${fotoUrl}`, headers: token ? { Authorization: `Token ${token}` } : undefined }
 }

@@ -38,6 +38,10 @@ function iniciarVivo() {
   }, 30000)
 }
 
+// Cuenta con la que se entró (la foto de perfil y quién resolvió una alerta).
+let enSesion = db.USUARIO_SESION
+const usuarioEnSesion = () => db.usuarios.find((u) => u.num === enSesion)
+
 // Acceso: se entra con el correo de cualquier cuenta de datos.js (cualquier contraseña); un correo
 // desconocido entra como el operador Luis Ortega. error@nucleo.mx devuelve el error de
 // credenciales y una cuenta inactiva, el 403.
@@ -49,6 +53,7 @@ export async function login({ correo }) {
   }
   const usuario = db.usuarios.find((u) => u.correo === buscado) ?? db.usuarios.find((u) => u.num === db.USUARIO_SESION)
   if (usuario.estado_usuario !== 'ACT') throw new ApiError('La API respondió con el estado 403.', 403)
+  enSesion = usuario.num
   return { token: 'mock', usuario: copia(usuario) }
 }
 // Cuentas de prueba que ofrece la pantalla de acceso.
@@ -158,18 +163,68 @@ export async function alerta(num) {
   await esperar()
   return copia(db.alertas.find((a) => a.num === Number(num)) ?? noEncontrado())
 }
+// Igual que la API: la nota es obligatoria (5–500 caracteres sin los espacios de los lados) y una
+// alerta ya resuelta responde 409.
 export async function resolverAlerta(num, accion, observaciones) {
   await esperar()
   const a = db.alertas.find((x) => x.num === Number(num)) ?? noEncontrado()
-  a.estado = accion === 'atender' ? 'ATENDIDA' : 'DESCARTADA'
-  a.fecha_atencion = new Date().toISOString()
-  a.atendida_por = db.USUARIO_SESION
-  a.observaciones = observaciones
+  if (a.estado !== 'PENDIENTE') throw new ApiError('La API respondió con el estado 409.', 409, { detail: 'La alerta ya fue resuelta.' })
+  const nota = String(observaciones ?? '').trim()
+  const falta = accion === 'descartar' ? 'Escribe por qué se descarta la alerta.' : 'Escribe qué se hizo para atender la alerta.'
+  const problema = !nota ? falta : nota.length < 5 ? 'Describe con al menos 5 caracteres.' : nota.length > 500 ? 'La nota no puede pasar de 500 caracteres.' : null
+  if (problema) throw new ApiError('La API respondió con el estado 400.', 400, { observaciones: [problema] })
+  const quien = usuarioEnSesion()
+  Object.assign(a, {
+    estado: accion === 'atender' ? 'ATENDIDA' : 'DESCARTADA',
+    fecha_atencion: new Date().toISOString(),
+    atendida_por: enSesion,
+    atendida_por_nombre: quien ? `${quien.nombre} ${quien.primer_apellido}` : null,
+    observaciones: nota,
+  })
   return copia(a)
 }
 export async function notificaciones() {
   await esperar()
   return pagina(copia(db.notificaciones))
+}
+
+// Avisos de la campana (dispositivos, usuarios, reportes, Nico AI) con su marca de leído.
+export async function avisos({ tipo, no_leidos } = {}) {
+  await esperar()
+  const filas = db.avisos
+    .filter((a) => (!tipo || a.tipo === tipo) && (!no_leidos || !a.leido))
+    .sort((x, y) => (x.fecha_hora < y.fecha_hora ? 1 : -1))
+  return pagina(copia(filas))
+}
+export async function conteoAvisos() {
+  await esperar()
+  return { no_leidos: db.avisos.filter((a) => !a.leido).length }
+}
+export async function marcarAvisosLeidos({ nums } = {}) {
+  await esperar()
+  const todos = !nums?.length
+  let marcados = 0
+  for (const a of db.avisos) {
+    if (!a.leido && (todos || nums.includes(a.num))) {
+      a.leido = true
+      marcados++
+    }
+  }
+  return { marcados }
+}
+
+// Foto de perfil: en modo simulado `foto_url` es la imagen elegida en el teléfono.
+export async function subirFoto(uri) {
+  await esperar()
+  const u = usuarioEnSesion()
+  u.foto_url = uri
+  return copia(u)
+}
+export async function quitarFoto() {
+  await esperar()
+  const u = usuarioEnSesion()
+  u.foto_url = null
+  return copia(u)
 }
 
 // Agente IA: uno por dispositivo; responde con los datos del dispositivo elegido.

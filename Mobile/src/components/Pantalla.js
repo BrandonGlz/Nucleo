@@ -39,6 +39,8 @@ function Deco({ tipo }) {
 // Esquema de las pantallas móviles: zona oscura con el dato principal y hoja clara que
 // sube sobre ella con el resto. Todo hace scroll; `pestanas` deja lugar a la barra flotante y
 // `compacta` reduce los márgenes para que la pantalla quepa sin desplazarse.
+// Área segura: la zona empieza bajo la barra de estado, el notch o la Dynamic Island (inset.top) y
+// la hoja deja libre la barra de navegación o el indicador de inicio (inset.bottom).
 export function Pantalla({ zona, deco = 'anillos', pestanas = true, compacta, recargando, onRecargar, children }) {
   const { c } = useTema()
   const inset = useSafeAreaInsets()
@@ -76,7 +78,11 @@ export function Pantalla({ zona, deco = 'anillos', pestanas = true, compacta, re
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          onRecargar ? <RefreshControl refreshing={!!recargando} onRefresh={onRecargar} tintColor={marca.claro} /> : undefined
+          // `progressViewOffset` (Android) baja el indicador bajo la barra de estado; en iPhone el
+          // contenido ya empieza bajo el notch o la Dynamic Island por el paddingTop de la zona.
+          onRecargar ? (
+            <RefreshControl refreshing={!!recargando} onRefresh={onRecargar} tintColor={marca.claro} progressViewOffset={inset.top} />
+          ) : undefined
         }
       >
         <TemaFijo tema="dark">

@@ -105,6 +105,7 @@ const A = (num, disp, variable, nivel, valor, seg, estado, obs) => {
     advertencia_min: umbral.advertencia_min, advertencia_max: umbral.advertencia_max,
     peligro_max: umbral.peligro_max, nivel, tipo: 'POR_ENCIMA', estado, fecha_hora: hace(seg),
     atendida_por: estado === 'PENDIENTE' ? null : 3,
+    atendida_por_nombre: estado === 'PENDIENTE' ? null : 'Mariana Cruz',
     fecha_atencion: estado === 'PENDIENTE' ? null : hace(seg - 18 * MIN),
     observaciones: obs || '',
   }
@@ -115,6 +116,21 @@ export const alertas = [
   A(106, 1, 'AIRE', 'PELIGRO', 1280, 4 * HORA, 'ATENDIDA', 'Se ajustó la extracción de Línea 1.'),
   A(103, 5, 'HUM', 'ADVERTENCIA', 58.6, DIA, 'ATENDIDA', 'Se ajustó el deshumidificador.'),
   A(102, 1, 'HUM', 'ADVERTENCIA', 60.6, DIA + 2 * HORA, 'DESCARTADA', 'Puerta abierta durante la carga.'),
+]
+
+// Avisos del sistema (GET /avisos/) de los cuatro tipos; los más viejos ya están leídos.
+const V = (num, tipo, nivel, titulo, detalle, ruta, seg, leido = false) => ({
+  num, tipo, nivel, titulo, detalle, ruta, fecha_hora: hace(seg), leido,
+})
+export const avisos = [
+  V(9012, 'DISPOSITIVO', 'PELIGRO', 'Núcleo L-07 sin conexión', 'Laboratorio · NC-0417 dejó de enviar lecturas hace 6 min.', '/dispositivos/5', 5 * MIN),
+  V(9011, 'NICO', 'ADVERTENCIA', 'Nico AI sin conexión', 'El modelo local no responde; las preguntas quedan en espera.', '/agente', 15 * MIN),
+  V(9010, 'REPORTE', 'INFO', 'Reporte listo', 'Moldeo · semana del 9 al 15 de noviembre. Ya puedes descargar el PDF.', '/reportes', 50 * MIN),
+  V(9009, 'USUARIO', 'INFO', 'Nuevo usuario dado de alta', 'Paola Herrera Gil entró como Operador en Moldeo.', '/usuarios', 2 * HORA),
+  V(9008, 'NICO', 'INFO', 'Nico AI está de vuelta', 'El asistente volvió a responder tras 12 min sin conexión.', '/agente', 3 * HORA, true),
+  V(9007, 'DISPOSITIVO', 'INFO', 'Núcleo T-01 reconectado', 'Moldeo · NC-0341 volvió a enviar lecturas.', '/dispositivos/1', 5 * HORA, true),
+  V(9006, 'USUARIO', 'ADVERTENCIA', 'Cambio de rol', 'Mariana Cruz León ahora es Supervisor de Moldeo.', '/usuarios', 26 * HORA, true),
+  V(9004, 'REPORTE', 'INFO', 'Reporte listo', 'Laboratorio · octubre de 2026.', '/reportes', 2 * DIA + 3 * HORA, true),
 ]
 
 // Notificaciones: push al teléfono, una por alerta.

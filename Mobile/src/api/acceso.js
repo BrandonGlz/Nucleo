@@ -23,3 +23,7 @@ export const AUTH_SOLICITAR_ACCESO = '/auth/solicitar-acceso/'
 export const SOLICITUD_ACCESO = (num) => `/solicitudes-acceso/${num}/` // GET → datos, áreas y roles asignables
 export const SOLICITUD_APROBAR = (num) => `/solicitudes-acceso/${num}/aprobar/` // POST {area, rol, nombre, primer_apellido, segundo_apellido?} → crea la cuenta y manda la bienvenida
 export const SOLICITUD_RECHAZAR = (num) => `/solicitudes-acceso/${num}/rechazar/` // POST → avisa a la persona
+// Foto de perfil propia: POST multipart {foto} (JPEG, PNG o WebP ≤ 5 MB; queda 256×256 WebP) o
+// DELETE para quitarla; ambas → usuario actualizado con `foto_url`. GET de `foto_url`
+// (/api/v1/fotos/<nombre>.webp, relativa al dominio de la API) entrega la imagen con sesión.
+export const AUTH_FOTO = '/auth/foto/'

@@ -113,6 +113,13 @@ export function TrendChart({ data: crudos = [], unit = '', threshold: umbral, mi
       onResponderGrant={(e) => mover(e.nativeEvent.locationX)}
       onResponderMove={(e) => mover(e.nativeEvent.locationX)}
     >
+      {data.length === 0 && (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: c.border }}>
+          <T size={12} color={c.textSecondary}>
+            Sin lecturas en este periodo.
+          </T>
+        </View>
+      )}
       {listo && W > 0 && data.length > 0 && (
         <Svg width={W} height={H} pointerEvents="none">
           <Defs>

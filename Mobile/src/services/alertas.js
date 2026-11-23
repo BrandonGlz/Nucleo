@@ -15,8 +15,9 @@ export async function notificaciones() {
   return pedir(NOTIFICACIONES)
 }
 
-// Atender o descartar (ADMIN y SUPER). accion: 'atender' | 'descartar'.
-export async function resolver(num, accion, observaciones = '') {
+// Atender o descartar (ADMIN y SUPER). accion: 'atender' | 'descartar'. La API exige
+// `observaciones` (5–500 caracteres sin los espacios de los lados); si falta responde 400.
+export async function resolver(num, accion, observaciones) {
   if (USAR_MOCKS) return mock.resolverAlerta(num, accion, observaciones)
   return pedir(accion === 'atender' ? ALERTA_ATENDER(num) : ALERTA_DESCARTAR(num), { metodo: 'POST', cuerpo: { observaciones } })
 }
