@@ -2,6 +2,7 @@ import {
   CONSOLA_ALERTA_DESCARTAR,
   CONSOLA_ALERTA_REVISAR,
   CONSOLA_ALERTAS,
+  CONSOLA_ALERTAS_EXPORTAR,
   CONSOLA_ALERTAS_RESUMEN,
   CONSOLA_ALERTAS_REVISAR_TODAS,
   CONSOLA_DISPOSITIVO,
@@ -23,6 +24,7 @@ import {
 } from '../api'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/consola'
+import { descargarCsv, guardarArchivo } from './seguridad'
 
 // Consola de administración (admin.<dominio>): solo con sesión de superusuario. Con
 // VITE_USE_MOCKS=true responde services/mock/consola.js.
@@ -59,6 +61,12 @@ export const guardarPoliticas = (cambios) =>
 
 // Alertas de seguridad y sus notificaciones (campana de la consola)
 export const alertas = (params) => (USAR_MOCKS ? mock.listaAlertas(limpio(params)) : pedir(CONSOLA_ALERTAS, { params: limpio(params) }))
+// CSV de las alertas con los filtros del listado. En mocks se arma aquí con las mismas columnas.
+export async function exportarAlertas(params) {
+  if (!USAR_MOCKS) return descargarCsv(CONSOLA_ALERTAS_EXPORTAR, limpio(params))
+  const hoy = new Date().toLocaleDateString('en-CA') // AAAA-MM-DD local, como el nombre que da la API
+  guardarArchivo(new Blob([await mock.csvAlertas(limpio(params))], { type: 'text/csv' }), `alertas-seguridad-${hoy}.csv`)
+}
 export const resumenAlertas = () => (USAR_MOCKS ? mock.resumenAlertas() : pedir(CONSOLA_ALERTAS_RESUMEN))
 export const revisarAlerta = (num, nota = '') =>
   USAR_MOCKS ? mock.cerrarAlerta(num, 'revisada', nota) : pedir(CONSOLA_ALERTA_REVISAR(num), { metodo: 'POST', cuerpo: { nota } })

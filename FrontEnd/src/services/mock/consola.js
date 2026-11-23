@@ -128,6 +128,41 @@ export async function listaAlertas({ estado, nivel, tipo, q } = {}) {
   )
 }
 
+// CSV del mock con las alertas filtradas (como GET /consola/alertas/exportar/).
+// Mismo CSV que GET /consola/alertas/exportar/: columnas, orden, BOM y textos que parecerían
+// fórmulas (=, +, -, @, tabulador o retorno al inicio) con un apóstrofo delante.
+export async function csvAlertas(params) {
+  const { results } = await listaAlertas(params)
+  const celda = (v) => {
+    let t = String(v ?? '')
+    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(t)) t = `'${t}`
+    return /[",\r\n]/.test(t) ? `"${t.replaceAll('"', '""')}"` : t
+  }
+  const cabecera = ['alerta', 'tipo', 'nivel', 'estado', 'titulo', 'detalle', 'usuario', 'correo', 'ip', 'eventos', 'creada', 'ultimo_evento', 'revisada_por', 'fecha_revision', 'nota']
+  const filas = results.map((a) =>
+    [
+      a.num,
+      a.tipo,
+      a.nivel,
+      a.estado,
+      a.titulo,
+      a.detalle,
+      a.usuario?.nombre ?? '',
+      a.usuario?.correo ?? '',
+      a.ip ?? '',
+      a.eventos,
+      a.creada,
+      a.ultimo_evento,
+      a.revisada_por ?? '',
+      a.fecha_revision ?? '',
+      a.nota ?? '',
+    ]
+      .map(celda)
+      .join(','),
+  )
+  return '\ufeff' + [cabecera.join(','), ...filas].join('\r\n') + '\r\n'
+}
+
 export async function resumenAlertas() {
   await esperar()
   const nuevas = alertasSeguridad.filter((a) => a.estado === 'nueva')

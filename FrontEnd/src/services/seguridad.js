@@ -56,7 +56,12 @@ export async function descargarCsv(ruta, params = {}) {
   if (!respuesta.ok) throw new ApiError(`La API respondió con el estado ${respuesta.status}.`, respuesta.status)
   const nombre =
     /filename="([^"]+)"/.exec(respuesta.headers.get('Content-Disposition') || '')?.[1] || 'nucleo.csv'
-  const url = URL.createObjectURL(await respuesta.blob())
+  guardarArchivo(await respuesta.blob(), nombre)
+}
+
+// Hace que el navegador guarde un archivo ya en memoria (también lo usan los mocks).
+export function guardarArchivo(blob, nombre) {
+  const url = URL.createObjectURL(blob)
   const enlace = document.createElement('a')
   enlace.href = url
   enlace.download = nombre

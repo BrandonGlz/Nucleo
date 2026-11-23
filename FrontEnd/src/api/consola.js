@@ -24,6 +24,8 @@ export const CONSOLA_FLASHEO_ARCHIVOS = '/consola/flasheo/archivos/' // GET → 
 export const CONSOLA_FLASHEO_CONFIGURACION = '/consola/flasheo/configuracion/'
 // Alertas de seguridad (módulo «Alertas»): GET ?estado=nueva|revisada|descartada&nivel=critico|advertencia&tipo&q&page (paginada)
 export const CONSOLA_ALERTAS = '/consola/alertas/'
+// GET CSV con los mismos filtros que CONSOLA_ALERTAS (estado, nivel, tipo, q), sin paginar
+export const CONSOLA_ALERTAS_EXPORTAR = '/consola/alertas/exportar/'
 export const CONSOLA_ALERTAS_RESUMEN = '/consola/alertas/resumen/' // GET → {nuevas, criticas, ultimos_30_dias, por_tipo: [{tipo, total}], sin_2fa}
 export const CONSOLA_ALERTA_REVISAR = (num) => `/consola/alertas/${num}/revisar/` // POST {nota?} → alerta
 export const CONSOLA_ALERTA_DESCARTAR = (num) => `/consola/alertas/${num}/descartar/` // POST {nota?} → alerta

@@ -247,6 +247,18 @@ export default function AlertasAdmin() {
   const seleccion = alertas.find((a) => a.num === elegida) ?? alertas[0]
   const r = resumen.datos
   const hayFiltros = nivel || tipo || q
+  const [exportando, setExportando] = useState(false)
+  // CSV con los mismos filtros del listado (pestaña, nivel, tipo y búsqueda), sin paginar.
+  const exportar = async () => {
+    setExportando(true)
+    try {
+      await adminApi.exportarAlertas({ estado: pestana === 'todas' ? '' : pestana, nivel, tipo, q })
+    } catch (e) {
+      avisar(mensajeError(e, 'No se pudo exportar. Intenta de nuevo.'), 'danger')
+    } finally {
+      setExportando(false)
+    }
+  }
 
   const refrescar = () => {
     lista.reintentar()
@@ -284,6 +296,9 @@ export default function AlertasAdmin() {
           <Link to="/notificaciones" className="nc-btn nc-btn--secondary nc-btn--sm">
             <Icon name="bell" size={16} /> Notificaciones
           </Link>
+          <Button variant="secondary" size="sm" icon="download" disabled={exportando} onClick={exportar}>
+            {exportando ? 'Exportando…' : 'Exportar CSV'}
+          </Button>
           <Button size="sm" icon="circle-check" disabled={!r?.nuevas} onClick={() => setTodas(true)}>
             Marcar todas revisadas
           </Button>
