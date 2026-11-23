@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useSesion } from './SesionContext'
 import * as alertasApi from '../services/alertas'
 import * as avisosApi from '../services/avisos'
@@ -7,6 +7,8 @@ import { limiteAlerta, NIVEL_ALERTA, pagina, TIPOS_NOTIFICACION, TONO_NIVEL, tit
 
 const AvisosContext = createContext(null)
 const CLAVE_LEIDAS = 'nucleo.notificaciones.leidas'
+// Avisos por página: la campana y /notificaciones cargan la primera y piden más con «Cargar más».
+const AVISOS_POR_PAGINA = 50
 
 // Los avisos llevan su propia clave para no chocar con los números de las notificaciones de alertas.
 const claveAviso = (num) => `v${num}`
@@ -33,6 +35,15 @@ export function AvisosProvider({ children }) {
   const [alertas, setAlertas] = useState([])
   const [notifs, setNotifs] = useState([])
   const [avisos, setAvisos] = useState([])
+  // Paginación de GET /avisos/: última página cargada, total y si hay más; el contador sin leer
+  // viene de GET /avisos/conteo/ (cuenta también los que aún no se cargan).
+  const [paginaAvisos, setPaginaAvisos] = useState({ num: 1, total: 0, hayMas: false, cargando: false })
+  const [avisosSinLeer, setAvisosSinLeer] = useState(0)
+  // Números de los avisos ya cargados, para no contar dos veces uno que llega en vivo repetido.
+  const numsAvisos = useRef(new Set())
+  useEffect(() => {
+    numsAvisos.current = new Set(avisos.map((v) => v.num))
+  }, [avisos])
   const [leidas, setLeidas] = useState(leerLeidas)
   const [vuelta, setVuelta] = useState(0)
 
@@ -48,8 +59,17 @@ export function AvisosProvider({ children }) {
       })
       .catch(() => {})
     avisosApi
-      .lista()
-      .then((v) => vivo && setAvisos(pagina(v)))
+      .lista({ page_size: AVISOS_POR_PAGINA })
+      .then((v) => {
+        if (!vivo) return
+        const filas = pagina(v)
+        setAvisos(filas)
+        setPaginaAvisos({ num: 1, total: v?.count ?? filas.length, hayMas: Boolean(v?.next), cargando: false })
+      })
+      .catch(() => {})
+    avisosApi
+      .conteo()
+      .then((c) => vivo && setAvisosSinLeer(c?.no_leidos ?? 0))
       .catch(() => {})
     return () => {
       vivo = false
@@ -57,6 +77,25 @@ export function AvisosProvider({ children }) {
   }, [vuelta, conOrganizacion])
 
   const recargar = useCallback(() => setVuelta((v) => v + 1), [])
+
+  // Siguiente página de avisos. Los que llegaron en vivo desplazan las páginas, así que se
+  // descartan los repetidos por número.
+  const cargarMas = useCallback(() => {
+    if (!paginaAvisos.hayMas || paginaAvisos.cargando) return
+    const num = paginaAvisos.num + 1
+    setPaginaAvisos((p) => ({ ...p, cargando: true }))
+    avisosApi
+      .lista({ page_size: AVISOS_POR_PAGINA, page: num })
+      .then((v) => {
+        const filas = pagina(v)
+        setAvisos((lista) => {
+          const vistos = new Set(lista.map((a) => a.num))
+          return [...lista, ...filas.filter((a) => !vistos.has(a.num))]
+        })
+        setPaginaAvisos({ num, total: v?.count ?? 0, hayMas: Boolean(v?.next), cargando: false })
+      })
+      .catch(() => setPaginaAvisos((p) => ({ ...p, cargando: false })))
+  }, [paginaAvisos])
 
   // Canal en vivo: una alerta nueva o resuelta vuelve a pedir todo; un aviso nuevo se agrega
   // tal cual llega (sin sonido: solo las alertas críticas suenan).
@@ -68,6 +107,10 @@ export function AvisosProvider({ children }) {
       if (tipo?.startsWith('alerta.')) recargar()
       else if (tipo === 'aviso.nuevo' && e.detail.aviso) {
         const nuevo = e.detail.aviso
+        if (!numsAvisos.current.has(nuevo.num)) {
+          setPaginaAvisos((p) => ({ ...p, total: p.total + 1 }))
+          if (!nuevo.leido) setAvisosSinLeer((n) => n + 1)
+        }
         setAvisos((lista) => [nuevo, ...lista.filter((v) => v.num !== nuevo.num)])
       }
     }
@@ -133,10 +176,17 @@ export function AvisosProvider({ children }) {
       }
       if (nums && !deAvisos.size) return
       // Se marca de inmediato en pantalla; si la API falla, la siguiente recarga lo corrige.
+      // Sin `nums` también se marcan los avisos que aún no se cargan (la API marca todos).
+      const sinLeer = avisos.filter((v) => !v.leido && deAvisos.has(v.num)).length
       setAvisos((vs) => vs.map((v) => (!nums || deAvisos.has(v.num) ? { ...v, leido: true } : v)))
-      avisosApi.marcarLeidos(nums ? [...deAvisos] : undefined).catch(() => {})
+      setAvisosSinLeer((n) => (nums ? Math.max(0, n - sinLeer) : 0))
+      avisosApi
+        .marcarLeidos(nums ? [...deAvisos] : undefined)
+        .then(() => avisosApi.conteo())
+        .then((c) => setAvisosSinLeer(c?.no_leidos ?? 0))
+        .catch(() => {})
     },
-    [leidas, notificaciones],
+    [leidas, notificaciones, avisos],
   )
 
   const valor = useMemo(
@@ -144,11 +194,17 @@ export function AvisosProvider({ children }) {
       alertas,
       pendientes: alertas.filter((a) => a.estado === 'PENDIENTE'),
       notificaciones,
-      noLeidas: notificaciones.filter((n) => !n.leida).length,
+      // Las de alertas se cuentan aquí; las de avisos, con el conteo de la API.
+      noLeidas: notificaciones.filter((n) => !n.leida && n.aviso == null).length + avisosSinLeer,
+      // Total de notificaciones (incluye los avisos aún sin cargar) y paginación de los avisos.
+      total: notificaciones.filter((n) => n.aviso == null).length + Math.max(paginaAvisos.total, avisos.length),
+      hayMas: paginaAvisos.hayMas,
+      cargandoMas: paginaAvisos.cargando,
+      cargarMas,
       marcarLeidas,
       recargar,
     }),
-    [alertas, notificaciones, marcarLeidas, recargar],
+    [alertas, notificaciones, avisos.length, avisosSinLeer, paginaAvisos, cargarMas, marcarLeidas, recargar],
   )
   return <AvisosContext.Provider value={valor}>{children}</AvisosContext.Provider>
 }

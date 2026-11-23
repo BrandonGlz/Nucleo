@@ -320,12 +320,21 @@ export async function notificaciones() {
 }
 
 // Avisos de la campana (dispositivos, usuarios, reportes, Nico AI) con su marca de leído.
-export async function avisos({ tipo, no_leidos } = {}) {
+// Paginado como DRF (?page, ?page_size; 50 por página).
+export async function avisos({ tipo, no_leidos, page = 1, page_size = 50 } = {}) {
   await esperar()
   const filas = db.avisos
     .filter((a) => (!tipo || a.tipo === tipo) && (!no_leidos || !a.leido))
     .sort((x, y) => (x.fecha_hora < y.fecha_hora ? 1 : -1))
-  return pagina(copia(filas))
+  const [num, tam] = [Number(page), Number(page_size)]
+  const desde = (num - 1) * tam
+  if (desde > 0 && desde >= filas.length) noEncontrado()
+  return {
+    count: filas.length,
+    next: desde + tam < filas.length ? `/avisos/?page=${num + 1}` : null,
+    previous: num > 1 ? `/avisos/?page=${num - 1}` : null,
+    results: copia(filas.slice(desde, desde + tam)),
+  }
 }
 export async function conteoAvisos() {
   await esperar()

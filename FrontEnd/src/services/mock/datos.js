@@ -175,6 +175,15 @@ export const avisos = [
   V(9006, 'USUARIO', 'ADVERTENCIA', 'Cambio de rol', 'Mariana Cruz León ahora es Supervisor de Moldeo.', '/usuarios', 26 * HORA, true),
   V(9005, 'DISPOSITIVO', 'ADVERTENCIA', 'Núcleo E-06 sin conexión', 'Guardería · NC-0291 lleva 2 h sin enviar lecturas.', '/dispositivos/12', 28 * HORA, true),
   V(9004, 'REPORTE', 'INFO', 'Reporte listo', 'Laboratorio · octubre de 2026.', '/reportes', 2 * DIA + 3 * HORA, true),
+  // Historial ya leído de reconexiones de los últimos días, para que la bandeja tenga más de una
+  // página (50 por página) y se vea «Cargar más».
+  ...Array.from({ length: 56 }, (_, i) => {
+    const disp = 1 + (i % 12)
+    const codigo = `NC-${String(400 + disp).padStart(4, '0')}`
+    return i % 2
+      ? V(8900 - i, 'DISPOSITIVO', 'INFO', 'Dispositivo reconectado', `${codigo} volvió a enviar lecturas.`, `/dispositivos/${disp}`, 3 * DIA + i * 9 * HORA, true)
+      : V(8900 - i, 'DISPOSITIVO', 'ADVERTENCIA', 'Dispositivo sin conexión', `${codigo} dejó de enviar lecturas unos minutos.`, `/dispositivos/${disp}`, 3 * DIA + i * 9 * HORA - 20 * MIN, true)
+  }),
 ]
 
 export const reportes = [

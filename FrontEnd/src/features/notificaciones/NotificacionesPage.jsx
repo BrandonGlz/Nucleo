@@ -10,8 +10,10 @@ const grupo = (iso) => (esHoy(iso) ? 'Hoy' : esAyer(iso) ? 'Ayer' : fechaCorta(i
 
 // Bandeja de la campana: las alertas de medición (GET /notificaciones/ unidas a su alerta) y los
 // avisos de dispositivos, usuarios, reportes y Nico AI (GET /avisos/), filtrables por tipo.
+// Los avisos llegan por páginas de 50: «Cargar más» trae la siguiente; las cifras por tipo y por
+// día cuentan lo cargado, y «sin leer» y «Todas», el total de la API.
 export function NotificacionesPage() {
-  const { notificaciones, noLeidas, marcarLeidas } = useAvisos()
+  const { notificaciones, noLeidas, total, hayMas, cargandoMas, cargarMas, marcarLeidas } = useAvisos()
   const navegar = useNavigate()
   const [tipo, setTipo] = useState('todas')
   const [soloSinLeer, setSoloSinLeer] = useState(false)
@@ -19,7 +21,7 @@ export function NotificacionesPage() {
   const delTipo = notificaciones.filter((n) => tipo === 'todas' || n.tipo === tipo)
   const visibles = soloSinLeer ? delTipo.filter((n) => !n.leida) : delTipo
   const pestanas = [
-    { id: 'todas', label: 'Todas', count: notificaciones.length },
+    { id: 'todas', label: 'Todas', count: total ?? notificaciones.length },
     // Solo los tipos que esta cuenta recibió (y la pestaña elegida, para no perderla al vaciarse).
     ...Object.entries(TIPOS_NOTIFICACION)
       .map(([id, t]) => ({
@@ -69,7 +71,7 @@ export function NotificacionesPage() {
               variant="ghost"
               size="sm"
               icon="circle-check"
-              disabled={!sinLeerTipo.length}
+              disabled={tipo === 'todas' ? !noLeidas : !sinLeerTipo.length}
               onClick={() => marcarLeidas(tipo === 'todas' ? undefined : sinLeerTipo)}
             >
               Marcar todo como leído
@@ -104,6 +106,13 @@ export function NotificacionesPage() {
               ))}
             </div>
           ))}
+          {hayMas && (
+            <div className="ui-cargar-mas">
+              <Button variant="secondary" size="sm" icon="chevron-down" disabled={cargandoMas} onClick={cargarMas}>
+                {cargandoMas ? 'Cargando…' : 'Cargar más'}
+              </Button>
+            </div>
+          )}
         </div>
       </Card>
     </Pantalla>
