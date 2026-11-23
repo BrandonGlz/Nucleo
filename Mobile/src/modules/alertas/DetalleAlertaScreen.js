@@ -14,7 +14,7 @@ import * as alertasApi from '../../services/alertas'
 import * as lecturasApi from '../../services/lecturas'
 import * as usuariosApi from '../../services/usuarios'
 import { ESTADO_ALERTA, NIVEL_ALERTA, nombreCorto, pagina, tituloAlerta, VARIABLE } from '../../utils/convertir'
-import { fechaCorta, hora, horaSeg, num } from '../../utils/formato'
+import { cuando, fechaCorta, hora, horaSeg, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 async function cargarDetalle(num_) {
@@ -95,7 +95,7 @@ export function DetalleAlertaScreen({ navigation, route }) {
           {tituloAlerta(a)}
         </T>
         <T size={13} color={colors.dark.textSecondary}>
-          {`${a.dispositivo_nombre}${a.dispositivo === op?.dispositivo?.num && op?.area ? ` · ${op.area.nombre}` : ''} · ${hora(a.fecha_hora)}`}
+          {`${a.dispositivo_nombre}${a.dispositivo === op?.dispositivo?.num && op?.area ? ` · ${op.area.nombre}` : ''} · ${cuando(a.fecha_hora)}`}
         </T>
       </View>
       <T peso={800} size={a.variable === 'AIRE' ? 88 : 104} lh={100} num style={{ letterSpacing: -5.5 }}>
@@ -120,7 +120,7 @@ export function DetalleAlertaScreen({ navigation, route }) {
     <Pantalla pestanas={false} deco="alerta" zona={zona}>
       <Card padding="sm">
         <TrendChart
-          data={datos.serie.map((p, i) => ({ label: i % 2 ? '' : hora(p.periodo), time: `Hoy · ${hora(p.periodo)}`, value: Number(p.promedio) }))}
+          data={datos.serie.map((p, i) => ({ label: i % 2 ? '' : hora(p.periodo), time: cuando(p.periodo, ' · '), value: Number(p.promedio) }))}
           unit={a.unidad}
           decimals={dec}
           threshold={{ max: limite }}

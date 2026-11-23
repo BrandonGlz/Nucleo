@@ -3,6 +3,7 @@
 import { StyleSheet, View } from 'react-native'
 import { Icon, T, TrendChart } from '../../components/ui'
 import { useTema } from '../../context/TemaContext'
+import { cuando, fechaCorta } from '../../utils/formato'
 
 const ORDEN = ['TEMP', 'HUM', 'AIRE']
 const NOMBRES = { serie: 'Gráfica del periodo', alertas: 'Alertas por variable', cifras: 'Cifras clave', general: 'Resumen del dispositivo' }
@@ -52,7 +53,8 @@ function Serie({ cifras, variable }) {
       <TrendChart
         data={puntos.map((p, i) => ({
           label: i % cada === 0 ? etiqueta(p.t, porHora) : '',
-          time: etiqueta(p.t, porHora),
+          // El cursor dice el día real del punto («Ayer 17:00»), no solo la hora.
+          time: porHora ? cuando(p.t) : fechaCorta(p.t),
           value: Number(p.promedio),
         }))}
         unit={info.unidad}

@@ -16,7 +16,7 @@ import { ESTADO_FORZADO } from '../../services/mock/handlers'
 import { USAR_MOCKS } from '../../services/config'
 import * as lecturasApi from '../../services/lecturas'
 import { enLinea, ESTADO_DISPOSITIVO, escala, nivelLectura, posicion, UNIDAD, VARIABLE } from '../../utils/convertir'
-import { cuando, fechaCorta, haceCuanto, hora, hoyTexto, num } from '../../utils/formato'
+import { cuando, diaRelativo, fechaCorta, haceCuanto, hoyTexto, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const TONO_ZONA = { normal: marca.verde, warning: colors.dark.warning, critical: colors.dark.danger }
@@ -263,10 +263,11 @@ function BarrasTemp({ serie, ultima, dispositivo, onPress }) {
       </View>
       {!pocos && (
         <View style={s.entre}>
-          <T size={11} color={c.textMuted}>{rango === '7d' ? fechaCorta(puntos[0].periodo) : cuando(puntos[0].periodo)}</T>
+          <T size={11} color={c.textMuted}>{rango === '7d' ? diaRelativo(puntos[0].periodo) : cuando(puntos[0].periodo)}</T>
           <T size={11} num color={c.textMuted}>{`Mín ${mn.toFixed(1)} · Máx ${mx.toFixed(1)} °C`}</T>
+          {/* El extremo derecho es la última barra: su día real («Hoy», «Ayer» o la fecha), no siempre «Hoy». */}
           <T size={11} color={c.textMuted}>
-            {rango === '7d' ? 'Hoy' : ultima ? hora(puntos.at(-1).periodo) : 'Ahora'}
+            {rango === '7d' ? diaRelativo(puntos.at(-1).periodo) : cuando(puntos.at(-1).periodo)}
           </T>
         </View>
       )}

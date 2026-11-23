@@ -36,11 +36,18 @@ export const esAyer = (iso) => {
   return new Date(iso).toDateString() === d.toDateString()
 }
 
-// Día y hora cortos para ejes y listas: «Hoy 14:05», «Ayer 18:21», «7 nov 09:10».
-export const cuando = (iso) =>
-  `${esHoy(iso) ? 'Hoy' : esAyer(iso) ? 'Ayer' : fechaCorta(iso)} ${hora(iso)}`
+// Único sitio que decide «Hoy» / «Ayer» / fecha según el día LOCAL de la fecha (no la de ahora):
+// una lectura de ayer a las 17:19 dice «Ayer», nunca «Hoy». `largo` usa «7 nov 2026».
+export const diaRelativo = (iso, { largo = false } = {}) => {
+  if (!iso) return '—'
+  if (esHoy(iso)) return 'Hoy'
+  if (esAyer(iso)) return 'Ayer'
+  return largo ? fechaLarga(iso) : fechaCorta(iso)
+}
+// Día y hora cortos para ejes y listas: «Hoy 14:05», «Ayer 18:21», «7 nov 09:10» (sep: « · », «, »…).
+export const cuando = (iso, sep = ' ') => (iso ? `${diaRelativo(iso)}${sep}${hora(iso)}` : '—')
 // Solo el día para listas: la hora si es hoy, «Ayer» o la fecha.
-export const diaCorto = (iso) => (esHoy(iso) ? hora(iso) : esAyer(iso) ? 'Ayer' : fechaCorta(iso))
+export const diaCorto = (iso) => (esHoy(iso) ? hora(iso) : diaRelativo(iso))
 
 // «hace 4 s», «hace 6 min», «hace 2 h», «Ayer, 17:42», «12 ago, 08:10».
 export function haceCuanto(iso) {
@@ -50,8 +57,7 @@ export function haceCuanto(iso) {
   if (seg < 60) return `hace ${seg} s`
   if (seg < 3600) return `hace ${Math.round(seg / 60)} min`
   if (esHoy(iso)) return `hace ${Math.round(seg / 3600)} h`
-  if (esAyer(iso)) return `Ayer, ${hora(iso)}`
-  return `${fechaCorta(iso)}, ${hora(iso)}`
+  return cuando(iso, ', ')
 }
 
 // Versión corta para la tarjeta de cifras: «Ahora», «5 min», «2 h».

@@ -9,7 +9,7 @@ import { useTema } from '../../context/TemaContext'
 import { pendientesDe, useOperador } from '../../hooks/useOperador'
 import { useResolver } from './HojaResolver'
 import { ESTADO_ALERTA, NIVEL_ALERTA, tituloAlerta, valorAlerta, VARIABLE } from '../../utils/convertir'
-import { esAyer, esHoy, fechaLarga, haceCuanto } from '../../utils/formato'
+import { diaRelativo, haceCuanto } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const FILTROS = [
@@ -19,7 +19,7 @@ const FILTROS = [
 ]
 // Atienden y descartan alertas el administrador y el supervisor (como en la web).
 export const puedeResolver = (u) => u?.rol === 'ADMIN' || u?.rol === 'SUPER'
-const grupoDe = (iso) => (esHoy(iso) ? 'Hoy' : esAyer(iso) ? 'Ayer' : fechaLarga(iso))
+const grupoDe = (iso) => diaRelativo(iso, { largo: true })
 const UMBRAL = 96
 
 // Tarjeta que se desliza: a la izquierda «Atender», a la derecha «Descartar». Sin animaciones o

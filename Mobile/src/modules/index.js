@@ -1,4 +1,5 @@
 import { puedeUsarAgente } from '../utils/convertir'
+import { puedeVerReportes } from '../services/reportes'
 
 // Alertas y agente son de una organización; la cuenta de plataforma no tiene.
 const conOrganizacion = (u) => !!u?.organizacion
@@ -15,6 +16,7 @@ import { PanelScreen } from './panel/PanelScreen'
 import { ContrasenaScreen } from './perfil/ContrasenaScreen'
 import { PerfilScreen } from './perfil/PerfilScreen'
 import { SesionesScreen } from './perfil/SesionesScreen'
+import { ReportesScreen } from './reportes/ReportesScreen'
 
 // Registro único de pantallas: AppNavigator las crea a partir de aquí.
 // - `pestana`: aparece en la barra inferior con ese ícono.
@@ -36,6 +38,8 @@ export const modulos = [
   { nombre: 'DetalleAlerta', titulo: 'Alerta', Pantalla: DetalleAlertaScreen },
   { nombre: 'Estado', titulo: 'Estado de la API', Pantalla: EstadoScreen },
   { nombre: 'Notificaciones', titulo: 'Notificaciones', Pantalla: NotificacionesScreen, permiso: conOrganizacion },
+  // Reportes: ADMIN, SUPER y ANALISTA (como /reportes en la web); se abre desde Mi perfil y los avisos.
+  { nombre: 'Reportes', titulo: 'Reportes', Pantalla: ReportesScreen, permiso: puedeVerReportes },
   { nombre: 'Sesiones', titulo: 'Sesiones abiertas', Pantalla: SesionesScreen },
   { nombre: 'Contrasena', titulo: 'Cambiar contraseña', Pantalla: ContrasenaScreen },
 ]

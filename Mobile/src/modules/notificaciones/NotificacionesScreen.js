@@ -7,8 +7,9 @@ import { useSesion } from '../../context/SesionContext'
 import { useTema } from '../../context/TemaContext'
 import { useAvisos } from '../../hooks/useAvisos'
 import { useOperador } from '../../hooks/useOperador'
+import { puedeVerReportes } from '../../services/reportes'
 import { puedeUsarAgente, tituloAlerta, valorAlerta } from '../../utils/convertir'
-import { esAyer, esHoy, fechaCorta, haceCuanto } from '../../utils/formato'
+import { diaRelativo, haceCuanto } from '../../utils/formato'
 import { colors } from '../../theme'
 
 const DEL_TIPO = {
@@ -26,12 +27,12 @@ const ICONO_AVISO = { DISPOSITIVO: 'cpu', USUARIO: 'user', REPORTE: 'file-text',
 const TONO_NIVEL = { PELIGRO: 'danger', ADVERTENCIA: 'warning', INFO: 'success' }
 const vistaAviso = (v) => ({ icono: ICONO_AVISO[v.tipo] ?? 'info', tono: TONO_NIVEL[v.nivel] ?? 'neutral', titulo: v.titulo, texto: v.detalle })
 const vista = (x) => (x.aviso ? vistaAviso(x.aviso) : DEL_TIPO[x.tipo](x.alerta))
-const grupo = (iso) => (esHoy(iso) ? 'Hoy' : esAyer(iso) ? 'Ayer' : fechaCorta(iso))
+const grupo = (iso) => diaRelativo(iso)
 
 // Centro de avisos (campana del Panel), como las notificaciones de la web: alertas nuevas y cambios
 // de estado de las alertas a la vista, más los avisos de dispositivos, usuarios, reportes y Nico AI.
 // Tocar uno lo marca como leído y abre lo equivalente en la app: la alerta, el dispositivo en el
-// Panel o Nico AI. Usuarios y reportes no tienen pantalla en la app: solo se marcan.
+// Panel, Nico AI, Reportes (con el reporte del aviso resaltado) o Mi perfil (avisos de usuario).
 export function NotificacionesScreen({ navigation }) {
   const { c } = useTema()
   const { usuario } = useSesion()
@@ -53,6 +54,14 @@ export function NotificacionesScreen({ navigation }) {
       }
     }
     if (v.tipo === 'NICO' && puedeUsarAgente(usuario)) return () => navigation.navigate('Principal', { screen: 'Agente' })
+    // «Reporte 12 listo» / «Reporte programado 12 enviado»: la lista de reportes con ese resaltado.
+    if (v.tipo === 'REPORTE' && puedeVerReportes(usuario)) {
+      const num = Number(/\bReporte (?:programado )?(\d+)/.exec(v.titulo ?? '')?.[1]) || undefined
+      return () => navigation.navigate('Reportes', { num })
+    }
+    // Cambios de rol o de área (propios o, para el administrador, de otras cuentas): la app no
+    // administra usuarios, así que lo coherente es Mi perfil, donde se ven el rol y el área vigentes.
+    if (v.tipo === 'USUARIO') return () => navigation.navigate('Principal', { screen: 'Perfil' })
     return null
   }
   const tocar = (x) => {

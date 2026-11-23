@@ -11,6 +11,7 @@ import { useOperador } from '../../hooks/useOperador'
 import * as authApi from '../../services/auth'
 import { activarPush } from '../../services/notificaciones'
 import * as organizacionesApi from '../../services/organizaciones'
+import { puedeVerReportes } from '../../services/reportes'
 import * as usuariosApi from '../../services/usuarios'
 import { nombreCompleto, pagina, ROL } from '../../utils/convertir'
 import { marca } from '../../theme'
@@ -73,6 +74,29 @@ function FotoPerfil({ usuario, nombre }) {
   )
 }
 
+// Fila que abre otra pantalla (reportes, sesiones, contraseña).
+function Enlace({ icono, titulo, texto, borde, onPress }) {
+  const { c } = useTema()
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [s.enlace, borde && { borderTopWidth: 1, borderTopColor: c.border }, pressed && { opacity: 0.7 }]}
+    >
+      <IconCircle name={icono} size="sm" />
+      <View style={{ flex: 1 }}>
+        <T peso={600} size={14}>
+          {titulo}
+        </T>
+        <T size={12} color={c.textMuted}>
+          {texto}
+        </T>
+      </View>
+      <Icon name="chevron-right" size={18} color={c.textMuted} />
+    </Pressable>
+  )
+}
+
 // Mi perfil: datos de la cuenta, preferencias del teléfono (tema incluido), seguridad (sesiones
 // abiertas y contraseña) y cierre de sesión.
 export function PerfilScreen({ navigation }) {
@@ -81,27 +105,45 @@ export function PerfilScreen({ navigation }) {
   const { datos: op } = useOperador()
   const { prefs, cambiar } = usePreferencias()
   const [saliendo, setSaliendo] = useState(false)
+  // Datos de la cuenta según el rol. `usuario.area` es el área de la cuenta (la del supervisor es
+  // la que tiene a cargo); el dispositivo a la vista puede ser de otra área.
+  // /usuarios/ no filtra por ?rol ni ?area: al supervisor le devuelve los operadores de su área y al
+  // administrador toda la organización; a operador y analista les responde 403. Por eso se filtra
+  // aquí y solo se muestra un supervisor si de verdad lo es del área de la cuenta.
   const extra = useDatos(
     () =>
       Promise.all([
-        organizacionesApi.propia(usuario.organizacion),
-        // La API solo deja listar usuarios a administradores y supervisores; sin permiso queda «—».
-        usuariosApi
-          .lista({ rol: 'SUPER', area: usuario.area })
-          .then(pagina)
-          .catch(() => []),
+        usuario.organizacion ? organizacionesApi.propia(usuario.organizacion) : null,
+        usuario.area ? organizacionesApi.area(usuario.area).catch(() => null) : null,
+        usuario.rol === 'ADMIN' || !usuario.organizacion
+          ? []
+          : usuariosApi
+              .lista()
+              .then(pagina)
+              .catch(() => []),
       ]),
     [usuario.num],
   )
-  const [org, supers] = extra.datos ?? []
-  const area = op?.area?.nombre ?? '—'
+  const [org, areaPropia, gente = []] = extra.datos ?? []
+  const delArea = (rol) => gente.filter((x) => x.rol === rol && x.area === usuario.area && x.num !== usuario.num && (x.estado_usuario ?? 'ACT') === 'ACT')
+  const area = areaPropia?.nombre ?? (usuario.area && op?.area?.num === usuario.area ? op.area.nombre : null) ?? (usuario.rol === 'ADMIN' ? 'Toda la organización' : '—')
   const d = op?.dispositivo
+  const supervisores = usuario.rol === 'OPER' || usuario.rol === 'ANALISTA' ? delArea('SUPER') : []
+  const operadores = usuario.rol === 'SUPER' ? delArea('OPER') : []
   const filas = [
     { k: 'Correo', v: usuario.correo },
-    { k: 'Área', v: area },
-    { k: 'Dispositivo', v: d ? `${d.nombre} · ${d.codigo_mqtt}` : '—' },
-    { k: 'Supervisor', v: supers?.[0] ? nombreCompleto(supers[0]) : '—', verde: true },
-  ]
+    { k: usuario.rol === 'SUPER' ? 'Área a cargo' : 'Área', v: area },
+    { k: usuario.rol === 'OPER' ? 'Dispositivo' : 'A la vista', v: d ? `${d.nombre} · ${d.codigo_mqtt}` : '—' },
+    usuario.rol === 'SUPER' && extra.datos && {
+      k: 'Operadores',
+      v: operadores.length ? `${operadores.length} en tu área` : 'Sin operadores en tu área',
+    },
+    supervisores.length > 0 && {
+      k: supervisores.length > 1 ? 'Supervisores' : 'Supervisor',
+      v: supervisores.map(nombreCompleto).join(', '),
+      verde: true,
+    },
+  ].filter(Boolean)
   const nombre = nombreCompleto(usuario)
 
   const zona = (
@@ -111,13 +153,15 @@ export function PerfilScreen({ navigation }) {
         {nombre}
       </T>
       <T size={13} color="#B4BAB6">
-        {`${ROL[usuario.rol]} · ${org?.nombre ?? '…'}`}
+        {usuario.organizacion ? `${ROL[usuario.rol]} · ${org?.nombre ?? '…'}` : ROL[usuario.rol]}
       </T>
-      <View style={s.area}>
-        <T peso={700} size={12} color={marca.tinta}>
-          {area}
-        </T>
-      </View>
+      {area !== '—' && (
+        <View style={s.area}>
+          <T peso={700} size={12} color={marca.tinta}>
+            {area}
+          </T>
+        </View>
+      )}
     </View>
   )
 
@@ -178,29 +222,23 @@ export function PerfilScreen({ navigation }) {
           </View>
         </View>
       </View>
+      {puedeVerReportes(usuario) && (
+        <View style={s.seccion}>
+          <T mayus color={c.textMuted}>
+            Análisis
+          </T>
+          <View style={[s.tarjeta, { backgroundColor: c.surface }]}>
+            <Enlace icono="file-text" titulo="Reportes" texto="Consulta y descarga los reportes en PDF" onPress={() => navigation.navigate('Reportes')} />
+          </View>
+        </View>
+      )}
       <View style={s.seccion}>
         <T mayus color={c.textMuted}>
           Seguridad
         </T>
         <View style={[s.tarjeta, { backgroundColor: c.surface }]}>
           {enlaces.map((x, i) => (
-            <Pressable
-              key={x.ir}
-              onPress={() => navigation.navigate(x.ir)}
-              accessibilityRole="button"
-              style={({ pressed }) => [s.enlace, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }, pressed && { opacity: 0.7 }]}
-            >
-              <IconCircle name={x.icono} size="sm" />
-              <View style={{ flex: 1 }}>
-                <T peso={600} size={14}>
-                  {x.titulo}
-                </T>
-                <T size={12} color={c.textMuted}>
-                  {x.texto}
-                </T>
-              </View>
-              <Icon name="chevron-right" size={18} color={c.textMuted} />
-            </Pressable>
+            <Enlace key={x.ir} {...x} borde={i > 0} onPress={() => navigation.navigate(x.ir)} />
           ))}
         </View>
       </View>
