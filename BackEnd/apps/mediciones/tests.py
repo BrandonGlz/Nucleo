@@ -1,4 +1,5 @@
-from datetime import timedelta
+import re
+from datetime import datetime, timedelta
 from decimal import Decimal
 from io import StringIO
 
@@ -451,6 +452,107 @@ class ConsultaDeLecturasTests(PruebaBase):
         porvariable = {x["variable"]: Decimal(x["valor"]) for x in r.json()}
         self.assertEqual(porvariable, {"TEMP": 24, "HUM": 45})
         self.assertEqual({x["sensor_modelo"] for x in r.json()}, {"DHT22"})
+
+
+class PaginasPorMomentoTests(PruebaBase):
+    """Las páginas del histórico no parten un momento (varias filas con la misma ``fecha_hora``)."""
+
+    def setUp(self):
+        self.e = Escenario()
+        self.cliente = cliente_de(self.e.analista)
+        self.ahora = timezone.now().replace(microsecond=0)
+        # Tres momentos de 3 filas (DHT22 TEMP y HUM, CCS811 AIRE), creadas en desorden.
+        self.momentos = [self.ahora - timedelta(minutes=m) for m in (1, 2, 3)]
+        for fecha in reversed(self.momentos):
+            for sensor, variable, valor in (
+                (self.e.ccs811, "AIRE", 600),
+                (self.e.dht22, "TEMP", 22),
+                (self.e.dht22, "HUM", 50),
+            ):
+                Lectura.objects.create(
+                    sensor_num=sensor.pk, variable_codigo=variable, valor=valor, fecha_hora=fecha
+                )
+
+    def _pagina(self, tamano, numero=1, estado=200):
+        r = self.cliente.get("/api/v1/lecturas/", {"page_size": tamano, "page": numero})
+        self.assertEqual(r.status_code, estado, r.content)
+        return r.json()
+
+    def _todas(self, tamano):
+        """Recorre las páginas siguiendo ``next``, como la web («Cargar más»)."""
+        filas, numero = [], 1
+        while True:
+            pagina = self._pagina(tamano, numero)
+            self.assertEqual(pagina["count"], 9)
+            self.assertTrue(pagina["results"], "next llevó a una página vacía")
+            filas.append(pagina["results"])
+            if not pagina["next"]:
+                return filas
+            siguiente = int(re.search(r"[?&]page=(\d+)", pagina["next"]).group(1))
+            self.assertGreater(siguiente, numero)
+            numero = siguiente
+
+    def test_orden_estable_dentro_del_momento(self):
+        filas = self._pagina(50)["results"]
+        claves = [
+            (
+                -datetime.fromisoformat(x["fecha_hora"]).timestamp(),
+                x["sensor_num"],
+                x["variable_codigo"],
+            )
+            for x in filas
+        ]
+        self.assertEqual(claves, sorted(claves))
+        self.assertEqual(len(set(claves)), 9)
+
+    def test_ninguna_pagina_parte_un_momento(self):
+        for tamano in (1, 2, 3, 4, 5, 8, 9, 10):
+            with self.subTest(page_size=tamano):
+                paginas = self._todas(tamano)
+                nums = [x["num"] for p in paginas for x in p]
+                self.assertEqual(len(nums), 9)  # ni repetidas ni perdidas
+                self.assertEqual(len(set(nums)), 9)
+                vistos = set()
+                for pagina in paginas:
+                    momentos = {x["fecha_hora"] for x in pagina}
+                    self.assertFalse(momentos & vistos, "un momento quedó en dos páginas")
+                    vistos |= momentos
+                    for momento in momentos:
+                        self.assertEqual(sum(x["fecha_hora"] == momento for x in pagina), 3)
+
+    def test_la_pagina_se_extiende_hasta_cerrar_el_momento(self):
+        # page_size=4 corta el 2.º momento: la 1.ª página lo trae completo (6 filas), la 2.ª
+        # trae el 3.º y no hay más, aunque count/page_size diría 3 páginas.
+        primera = self._pagina(4)
+        self.assertEqual(len(primera["results"]), 6)
+        self.assertIsNone(primera["previous"])
+        segunda = self._pagina(4, 2)
+        self.assertEqual(len(segunda["results"]), 3)
+        self.assertIsNone(segunda["next"])
+        self.assertIsNotNone(segunda["previous"])
+        self.assertNotIn("page=", segunda["previous"])
+
+    def test_un_momento_mas_grande_que_la_pagina(self):
+        # page_size=1: cada página trae su momento entero y next salta a la del siguiente.
+        primera = self._pagina(1)
+        self.assertEqual(len(primera["results"]), 3)
+        self.assertIn("page=4", primera["next"])
+        self.assertEqual(self._pagina(1, 2)["results"], [])  # quedó dentro del 1.er momento
+
+    def test_corte_exacto_y_paginas_invalidas(self):
+        self.assertEqual(len(self._pagina(3)["results"]), 3)
+        self.assertEqual(len(self._pagina(3, 3)["results"]), 3)
+        self._pagina(3, 4, estado=404)
+        self._pagina(3, "x", estado=404)
+        self.assertEqual(len(self._pagina(3, "last")["results"]), 3)
+
+    def test_filtros_y_pagina_por_omision(self):
+        r = self.cliente.get("/api/v1/lecturas/", {"variable": "TEMP"}).json()
+        self.assertEqual((r["count"], len(r["results"]), r["next"]), (3, 3, None))
+        vacia = self.cliente.get(
+            "/api/v1/lecturas/", {"variable": "TEMP", "hasta": "2000-01-01T00:00:00Z"}
+        )
+        self.assertEqual(vacia.json(), {"count": 0, "next": None, "previous": None, "results": []})
 
 
 class CompresionYRetencionTests(PruebaBase):

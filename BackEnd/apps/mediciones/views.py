@@ -13,9 +13,12 @@ from apps.mediciones import consultas
 from apps.mediciones.serializers import LecturaSerializer, PuntoSerieSerializer
 from common.exportar import respuesta_csv
 from common.filtros import parametro_entero, parametro_fecha
+from common.paginacion import PaginacionPorMomento
 from common.permissions import PermisoPorRol
 
 TRUNCADORES = {"minuto": TruncMinute, "hora": TruncHour, "dia": TruncDay}
+# Orden estable: dentro de un mismo momento, por sensor y variable (y ``num`` por si acaso).
+ORDEN = ("-fecha_hora", "sensor_num", "variable_codigo", "num")
 
 
 class LecturaViewSet(viewsets.ReadOnlyModelViewSet):
@@ -24,9 +27,13 @@ class LecturaViewSet(viewsets.ReadOnlyModelViewSet):
     Filtros: ``dispositivo``, ``sensor``, ``variable``, ``estabilizada``, ``desde`` y
     ``hasta``. ``serie/`` devuelve promedios, mínimos y máximos por intervalo para las
     gráficas de tendencia.
+
+    La lista va de la más reciente a la más antigua en orden estable y sus páginas nunca
+    parten un momento (todas las filas de una ``fecha_hora`` salen en la misma página).
     """
 
     serializer_class = LecturaSerializer
+    pagination_class = PaginacionPorMomento
     authentication_classes = con_token_api()
     permission_classes = [PermisoPorRol]
 
@@ -62,7 +69,7 @@ class LecturaViewSet(viewsets.ReadOnlyModelViewSet):
         hasta = parametro_fecha(peticion, "hasta")
         if hasta:
             consulta = consulta.filter(fecha_hora__lt=hasta)
-        return consulta
+        return consulta.order_by(*ORDEN)
 
     @action(detail=False, methods=["get"])
     def serie(self, request):
@@ -116,7 +123,10 @@ class LecturaViewSet(viewsets.ReadOnlyModelViewSet):
         ]
 
         def filas():
-            for lectura in consulta.order_by("fecha_hora").iterator(chunk_size=2000):
+            antiguas_primero = consulta.order_by(
+                "fecha_hora", "sensor_num", "variable_codigo", "num"
+            )
+            for lectura in antiguas_primero.iterator(chunk_size=2000):
                 yield [
                     lectura.fecha_hora.isoformat(),
                     sensores.get(lectura.sensor_num),
