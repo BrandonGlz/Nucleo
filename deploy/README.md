@@ -312,11 +312,7 @@ rclone config create gdrive-nucleo-cifrado crypt \
 Guarda las dos contraseñas fuera del servidor (gestor de contraseñas): sin ellas los respaldos
 no se pueden leer. Desde ese momento `respaldar.sh` usa el remoto cifrado y los respaldos en claro
 anteriores se borran solos a los 30 días. Para restaurar en otra máquina se crea el mismo remoto
-con las mismas contraseñas y `rclone copy gdrive-nucleo-cifrado:semanal ~/traspaso --max-age 8d`
-(el zip de la última semana). Para restaurar un día: de su carpeta los `.dump` y, por cada tar, el de
-la carpeta que diga la tabla de `CONTENIDO.txt` («incluido» = la del día; «en <día>» = la de ese otro
-día, que la nota nombra), todo en una carpeta vacía; desde cero, primero se extrae el tar `aplicacion`
-en la carpeta del proyecto (trae el `.env`) y luego `bash deploy/restaurar.sh <carpeta>`.
+con las mismas contraseñas y se baja el zip de la última semana (ver [Restaurar](#restaurar)).
 
 **Únicos respaldos.** Los únicos respaldos son `respaldo-nucleo-remoto.timer` (diario 23:30, local en el
 equipo de compilación) y `respaldo-nucleo-semanal.timer` (zip de los lunes a Drive). En el servidor,
@@ -325,6 +321,39 @@ equipo de compilación) y `respaldo-nucleo-semanal.timer` (zip de los lunes a Dr
 viejos de la raíz del remoto caducan a los 30 días). La prueba de restauración mensual no es un
 respaldo y sigue activa; `dpkg-db-backup.timer` es de Debian (copia de la base de paquetes en
 `/var/backups`) y no tiene que ver con estos.
+
+### Restaurar
+
+`bash deploy/restaurar.sh [opciones] <carpeta o zip>`, desde la carpeta del proyecto (un clon del
+repositorio). El origen puede ser `~/respaldos/nucleo` del equipo de compilación (copiado a `~/traspaso`),
+una carpeta con los archivos de un día o el zip semanal tal cual (lo extrae en un temporal y lo borra al
+terminar). Desde Drive: `rclone copy gdrive-nucleo-cifrado:semanal ~/traspaso --max-age 8d`.
+
+Usa cinco tipos de archivo, con la fecha en el nombre (`_AAAA-MM-DD_HHMM`):
+
+| Archivo | Qué restaura | Dónde |
+| --- | --- | --- |
+| `nucleo_db_*.dump` | PostgreSQL (`nucleo_db`) | contenedor `nucleo_postgres` |
+| `nucleo_iot_*.dump` | TimescaleDB (`nucleo_iot`) | contenedor `nucleo_timescaledb` |
+| `nucleo_aplicacion_*.tar.gz` | código desplegado, `.env` raíz, `BackEnd/.env`, Caddy, systemd, Mosquitto y `VERSION_DESPLEGADA` | carpeta del proyecto |
+| `nucleo_broker_media_*.tar.gz` | certificados y usuarios del broker y `BackEnd/media` (archivos subidos) | carpeta del proyecto |
+| `nucleo_firma_app_*.tar.gz` | llave de firma del APK (`nucleo-app/`) | solo con `--firma <carpeta>` (en el equipo de compilación, `--firma ~`) |
+
+Toma el `nucleo_db` más reciente (o el de `--fecha AAAA-MM-DD[_HHMM]`) y, de cada otro tipo, el más
+reciente que no sea posterior. Así, con el zip semanal, un tar que no cambió y solo está en un día anterior
+(«en <día>» en `CONTENIDO.txt`) se encuentra solo: `--fecha 2026-11-21` toma las bases del sábado, la
+aplicación del viernes y la firma del lunes. `--lista` muestra qué hay de cada tipo y cuál usaría, sin tocar
+nada. Primero muestra lo elegido y pregunta si sigue; luego extrae la aplicación y el broker (agrega lo que
+falta y, si hay archivos que ya existen con otro contenido, como un `.env` distinto, los lista y solo los
+reemplaza si se confirma o con `--sobrescribir`; sin terminal o con `-y` se conservan), levanta
+`postgres`, `timescaledb` y `redis` con `docker compose` y restaura las dos bases, que deben estar vacías
+(si no, se detiene: para empezar de cero, `docker compose down -v`). Al final dice qué commit corría
+(`VERSION_DESPLEGADA`) y, si el repositorio está en otro, el `git checkout` para igualarlo.
+
+Para probarlo sin tocar nada: `--destino <carpeta vacía>` extrae ahí en vez del proyecto, y
+`NUCLEO_PG`/`NUCLEO_TS` con `NUCLEO_SIN_COMPOSE=1` restauran en otros contenedores (sin red, creados a
+mano con las mismas imágenes, usuarios y bases). `NUCLEO_SOLO_BASES=1` solo restaura las bases (lo usa
+`probar_restauracion.sh`).
 
 ### Objetivos de recuperación
 
@@ -653,7 +682,8 @@ los dos, luego el servidor y al final el equipo de compilación.
 ### Servidor
 
 1. Clona el repositorio en `/var/www/html/Nucleo` (rama `main`). Copia los respaldos a
-   `~/traspaso` y corre `bash deploy/restaurar.sh ~/traspaso`.
+   `~/traspaso` (o el zip semanal) y corre `bash deploy/restaurar.sh ~/traspaso`: trae la aplicación
+   (`.env` incluidos), el broker y las bases ([Restaurar](#restaurar)).
 2. `bash deploy/configurar_env.sh` — crea `BackEnd/.env`; pide la contraseña de aplicación de Gmail.
 3. Cloudflare Tunnel: `sudo apt install cloudflared` (repositorio `pkg.cloudflare.com`),
    `cloudflared tunnel login` (se autoriza `bynucleo.com` en el navegador), luego

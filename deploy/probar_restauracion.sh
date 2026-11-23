@@ -60,7 +60,7 @@ docker run -d --name "$ts_prueba" --memory 1g \
 
 restaurado_en=""
 NUCLEO_PG="$pg_prueba" NUCLEO_TS="$ts_prueba" NUCLEO_SIN_COMPOSE=1 NUCLEO_SOLO_BASES=1 \
-  bash "$raiz/deploy/restaurar.sh" "$origen"
+  bash "$raiz/deploy/restaurar.sh" --si "$origen"
 restaurado_en="$(date +%s)"
 
 sql() { docker exec "$1" sh -c 'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "$1"' _ "$2"; }
