@@ -20,11 +20,14 @@ export function NotificacionesPage() {
   const visibles = soloSinLeer ? delTipo.filter((n) => !n.leida) : delTipo
   const pestanas = [
     { id: 'todas', label: 'Todas', count: notificaciones.length },
-    ...Object.entries(TIPOS_NOTIFICACION).map(([id, t]) => ({
-      id,
-      label: t.etiqueta,
-      count: notificaciones.filter((n) => n.tipo === id).length,
-    })),
+    // Solo los tipos que esta cuenta recibió (y la pestaña elegida, para no perderla al vaciarse).
+    ...Object.entries(TIPOS_NOTIFICACION)
+      .map(([id, t]) => ({
+        id,
+        label: t.etiqueta,
+        count: notificaciones.filter((n) => n.tipo === id).length,
+      }))
+      .filter((p) => p.count > 0 || p.id === tipo),
   ]
   const sinLeerTipo = delTipo.filter((n) => !n.leida).map((n) => n.num)
   const grupos = []
