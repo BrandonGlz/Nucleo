@@ -28,6 +28,16 @@ async function cargarCatalogo() {
 const TAMANO_PAGINA = 600
 const paginaLecturas = (disp, rango, page) =>
   lecturasApi.lista({ dispositivo: disp, desde: rango.desde, hasta: rango.hasta, page_size: TAMANO_PAGINA, page })
+// La API pagina por momento (nunca parte uno entre páginas) y `next` puede saltarse una página
+// que quedaría vacía: la siguiente es la que indica `next`, no la actual + 1.
+function paginaSiguiente(r) {
+  if (!r?.next) return null
+  try {
+    return Number(new URL(r.next, window.location.origin).searchParams.get('page')) || null
+  } catch {
+    return null
+  }
+}
 
 // La serie solo alimenta las cifras clave (máximo, mínimo y promedio del periodo); la tabla
 // trae el histórico real del periodo por páginas («Cargar más»).
@@ -44,8 +54,7 @@ async function cargarLecturas(disp, variable, periodo) {
     rango,
     lecturas,
     total: lect?.count ?? lecturas.length,
-    pagina: 1,
-    hayMas: Boolean(lect?.next),
+    siguiente: paginaSiguiente(lect),
     umbrales: pagina(umb),
     ultima: rango.ultima,
   }
@@ -97,11 +106,9 @@ export function MedicionesPage() {
     const base = lect.datos
     setCargandoMas(true)
     try {
-      const r = await paginaLecturas(disp, base.rango, base.pagina + 1)
+      const r = await paginaLecturas(disp, base.rango, base.siguiente)
       lect.actualizar((d) =>
-        d === base
-          ? { ...d, lecturas: [...d.lecturas, ...pagina(r)], pagina: d.pagina + 1, hayMas: Boolean(r?.next) }
-          : d,
+        d === base ? { ...d, lecturas: [...d.lecturas, ...pagina(r)], siguiente: paginaSiguiente(r) } : d,
       )
     } catch {
       window.alert('No se pudieron cargar más lecturas. Intenta de nuevo.')
@@ -252,11 +259,11 @@ export function MedicionesPage() {
           {vista && vista.filas.length > 0 && (
             <div className="ui-lecturas-pie">
               <span className="ui-muted">
-                {lect.datos.hayMas
+                {lect.datos.siguiente
                   ? `Mostrando ${miles(vista.filas.length)} de ${miles(Math.round(lect.datos.total / 3))} mediciones`
                   : `${miles(vista.filas.length)} mediciones del periodo`}
               </span>
-              {lect.datos.hayMas && (
+              {lect.datos.siguiente && (
                 <Button variant="secondary" size="sm" icon="chevron-down" disabled={cargandoMas} onClick={cargarMas}>
                   {cargandoMas ? 'Cargando…' : 'Cargar más'}
                 </Button>
