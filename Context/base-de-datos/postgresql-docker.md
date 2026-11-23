@@ -158,5 +158,5 @@ docker exec -t nucleo_timescaledb pg_dump -U nucleo_iot -Fc nucleo_iot \
   > ~/respaldos-nucleo/nucleo_iot_$(date +%Y%m%d_%H%M%S).dump
 ```
 
-La restauración sobre una base existente es destructiva y requiere un
-procedimiento revisado.
+Para restaurar se usa `bash deploy/restaurar.sh <carpeta o zip semanal>`, que exige las bases
+vacías (sección Restaurar de [`deploy/README.md`](../../deploy/README.md#restaurar)).

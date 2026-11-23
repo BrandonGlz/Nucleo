@@ -42,7 +42,9 @@ BackEnd/
 │   └── integraciones/       # token_api (ApiKey de solo lectura) y webhook (envío firmado)
 ├── common/                  # roles, permisos, token con caducidad, aislamiento por organización,
 │                            # errores, utilidades de prueba, cifrado.py (Fernet), totp.py,
-│                            # red.py (IP real y límite por IP) y exportar.py (CSV)
+│                            # red.py (IP real y límite por IP), exportar.py (CSV protegido
+│                            # contra fórmulas) y paginacion.py (Paginacion y
+│                            # PaginacionPorMomento, la de /lecturas/)
 ├── scripts/                 # scripts operativos
 ├── manage.py
 ├── requirements.txt

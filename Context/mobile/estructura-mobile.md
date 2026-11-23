@@ -28,28 +28,31 @@ Mobile/
 │   ├── components/                 # Medidor, BarraRango, Cabecera, Alerta, EstadoError,
 │   │                               # HealthStatusCard, ModuloBase, Movimiento,
 │   │                               # ReporteChat, SelectorDispositivo
-│   ├── context/SesionContext.js    # token y usuario mientras la app está abierta
+│   ├── context/SesionContext.js    # sesión: restaura la guardada y la valida con /auth/yo/
 │   ├── context/TemaContext.js      # tema del sistema o elegido; TemaFijo para zonas fijas
 │   ├── context/PreferenciasContext.js  # preferencias del perfil; useAnimaciones()
 │   ├── hooks/useDatos.js           # { estado, datos, error, reintentar }
 │   ├── hooks/useOperador.js        # OperadorProvider: dispositivo, lecturas, umbrales, alertas
-│   ├── hooks/useAvisos.js          # centro de avisos de la campana (lo visto, en el teléfono)
+│   ├── hooks/useAvisos.js          # campana: alertas (lo visto, en el teléfono) + avisos de la API
 │   ├── hooks/useHealthCheck.js
 │   ├── modules/index.js            # registro: acceso, publicas (sin sesión) y modulos
 │   ├── modules/<modulo>/           # acceso (MarcoAcceso, AccesoScreen, SolicitarAccesoScreen),
 │   │                               # panel, historico, mediciones (detalle de variable),
-│   │                               # alertas (lista y detalle), agente (Nico AI con voz),
-│   │                               # notificaciones, perfil (sesiones y contraseña), estado;
+│   │                               # alertas (lista, detalle y HojaResolver), agente (Nico AI
+│   │                               # con voz), notificaciones, perfil (foto, sesiones y
+│   │                               # contraseña), reportes, estado;
 │   │                               # dispositivos fuera de la navegación
 │   ├── navigation/AppNavigator.js
 │   ├── services/api/client.js
 │   ├── services/api/health.js
 │   ├── services/config.js          # USAR_MOCKS, token y pedir() con Authorization
+│   ├── services/sesionGuardada.js  # token, usuario e inicio en expo-secure-store
+│   ├── services/avisosEnVivo.js    # avisos de la campana en memoria, compartidos
 │   ├── services/mock/              # datos.js y handlers.js
 │   ├── services/<dominio>.js       # auth, dispositivos, lecturas, alertas, umbrales, usuarios,
 │   │                               # organizaciones, agente, reportes, solicitudes,
 │   │                               # notificaciones (push) y tiempoReal (canal en vivo)
-│   ├── utils/                      # convertir.js, formato.js, formatDate.js
+│   ├── utils/                      # convertir.js, formato.js (diaRelativo), formatDate.js
 │   └── theme.js                    # colors.light/dark, marca, space, radius, font
 ├── App.js
 ├── index.js
@@ -65,13 +68,16 @@ Mobile/
 - `AppNavigator` usa `native-stack` en la raíz: sin sesión, `Acceso` y las `publicas`
   (`SolicitarAcceso`); con sesión, `Principal` (pestañas de `bottom-tabs` con el `TabBar` propio:
   Panel, Alertas, Histórico, Nico AI y Mi perfil) más las pantallas apiladas `Variable`,
-  `DetalleAlerta`, `Notificaciones`, `Sesiones`, `Contrasena` y `Estado`. Alertas, Histórico,
-  Notificaciones y Nico AI solo aparecen para cuentas con organización (`permiso`).
+  `DetalleAlerta`, `Notificaciones`, `Reportes`, `Sesiones`, `Contrasena` y `Estado`. Alertas,
+  Histórico, Notificaciones y Nico AI solo aparecen para cuentas con organización (`permiso`);
+  Reportes, para ADMIN, SUPER y ANALISTA.
 - Cada entrada de `modules/index.js` lleva `nombre`, `titulo`, `Pantalla` y, si va en la
   barra inferior, `pestana` con el ícono.
 - `OperadorProvider` hace una sola consulta para todas las pestañas y la repite cada 30 s.
 - `theme.js` tiene los tokens de `Docs/Mockups/fuente/estilos` en camelCase; el tema sigue
   al sistema (`userInterfaceStyle: "automatic"`) y el Perfil lo puede fijar.
+- `utils/formato.js` → `diaRelativo(iso, {largo})` es el único que decide «Hoy» / «Ayer» / fecha
+  según el día local de la fecha; `cuando`, `diaCorto` y `haceCuanto` lo usan.
 - `react-native-web` y `react-dom` permiten abrir la app en el navegador con `npm run web`.
 
 ## Datos simulados
@@ -115,14 +121,33 @@ una contraseña temporal que cambia al entrar. Contrato en
 
 La pantalla de salud es pública. El resto de la API exige el token de DRF
 (`Authorization: Token <token>`): `services/config.js` lo agrega a cada petición
-después de iniciar sesión. El token vive en memoria y se pierde al cerrar la app. No
-se guardan contraseñas en el dispositivo. En producción la API debe servirse por HTTPS.
+después de iniciar sesión. Token, usuario y fecha de inicio se guardan cifrados con
+`expo-secure-store` (`services/sesionGuardada.js`; en la web no se guardan). Al abrir la app la
+sesión guardada se valida con `/auth/yo/` (sin red se entra con el usuario guardado). Vale 30 días
+desde el último inicio de sesión; aparte, el servidor la cierra tras `NUCLEO_TOKEN_DIAS_SIN_USO`
+(7) días sin uso, y cualquier 401 la borra y vuelve al acceso. No se guardan contraseñas en el
+dispositivo. En producción la API debe servirse por HTTPS.
 
 Si la cuenta tiene la verificación en dos pasos, el acceso pide el código de la app de
 autenticación (o uno de recuperación) después de la contraseña. Se configura solo en la web: si
 el rol la exige y aún no la tiene, la app cierra esa sesión y avisa que se configure en Mi
 perfil de la web. «¿Olvidaste tu contraseña?» pide el enlace por correo
 (`POST /auth/recuperar/`); la contraseña nueva se elige en la web.
+
+## Alertas, campana, perfil y reportes
+
+- **Atender o descartar** (botón o gesto) abre `alertas/HojaResolver.js`, que pide la nota
+  obligatoria (5 a 500 caracteres, como la API y la web).
+- **Campana:** junta las alertas de medición con los avisos de `/avisos/` (`services/avisosEnVivo.js`,
+  se piden al entrar, al volver al frente y al abrir el Panel o la campana; los nuevos llegan en
+  vivo como `aviso.nuevo`). Un aviso REPORTE abre Reportes con ese reporte resaltado; uno USUARIO,
+  Mi perfil.
+- **Mi perfil:** foto desde la galería con `expo-image-picker` (sin permiso de cámara; `POST` /
+  `DELETE /auth/foto/`) y datos según el rol: área (o «Área a cargo» del supervisor), dispositivo y,
+  solo para SUPER, los operadores de su área (`/usuarios/` responde 403 a OPER y ANALISTA).
+- **Reportes** (`modules/reportes/ReportesScreen.js`, ADMIN, SUPER y ANALISTA; se abre desde Mi
+  perfil y los avisos): tarjetas con periodo, origen, cifras y extracto; el PDF se descarga y se
+  abre con el menú de compartir.
 
 ## Comandos
 
@@ -168,9 +193,4 @@ push y sonido).
 
 ## Pendientes
 
-- Guardar el token de forma segura para no pedir sesión cada vez.
-- **Nota al atender o descartar:** la API la exige (5 a 500 caracteres) desde la nota obligatoria
-  de la web, pero la app todavía resuelve con el gesto de deslizar sin pedirla
-  (`AlertasScreen` llama a `alertas.resolver(num, accion)` sin `observaciones`), así que recibe
-  400. Hace falta pedir la nota en la app.
 - Publicación en tiendas.

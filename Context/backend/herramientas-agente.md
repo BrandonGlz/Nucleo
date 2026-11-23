@@ -9,7 +9,8 @@ plataforma (`servicios.calcular_cifras`, `common.scoping`).
 
 Las herramientas no dependen del canal: la web y la app móvil usan el mismo `POST /agente/`.
 Fechas en America/Tijuana (`TIME_ZONE`); los periodos relativos (hoy, ayer, esta semana,
-octubre, últimos N días) se resuelven en el servidor con `agente.periodo_de`.
+octubre, últimos N días) se resuelven en el servidor con `agente.periodo_de`, en hora local: «hoy»
+desde las 00:00, «esta semana» desde el lunes y «este mes» desde el día 1.
 
 ## Catálogo
 
@@ -110,6 +111,9 @@ Sus textos se devuelven tal cual.
 organizaciones y áreas, detalle de alerta, programaciones, reporte con dato faltante,
 cancelación, acción vencida sin datos, programar, cambiar y cancelar programaciones, envío por correo, nombres ambiguos
 y de otra organización, límite por carga y mantenimiento) y los casos de `casos_agente.py`.
+`AgenteTests` fija el reloj con `fijar_reloj` (`apps/reportes/tests.py`: mediodía local, o un ancla
+dada, y avanza con el reloj real) para que el resultado no dependa de la hora a la que se corre;
+otras pruebas lo anclan a las 00:03 de un lunes 1.º para revisar el borde de medianoche.
 
 ## Fuera de alcance por decisión
 

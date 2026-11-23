@@ -119,7 +119,8 @@ marco del acceso.
   de ese dispositivo con su barra de rango de advertencia y de cuándo es la lectura, su humedad y
   su aire, y del alcance completo los dispositivos en línea y las alertas pendientes (con las
   críticas). Se actualiza cada 30 s y con el canal en vivo (`useMonitoreo`). En escritorio franja y
-  gráficas se reparten el alto sin scroll.
+  gráficas se reparten el alto sin scroll; en `baja` humedad y aire ceden el subtítulo y las
+  gráficas quedan compactas.
 - **Histórico** (`/mediciones`): sin gráfica. La franja de cifras da máximo, mínimo y promedio del
   periodo; la tabla ocupa todo el ancho con el histórico real del periodo por páginas («Cargar
   más») y el CSV exporta dispositivo, variable y periodo elegidos.
@@ -132,8 +133,10 @@ marco del acceso.
 alertas de medición (`/notificaciones/`; lo leído se recuerda en `localStorage` porque el contrato
 no lo guarda) y los **avisos** de dispositivos, usuarios, reportes y Nico AI (`/avisos/`, que sí
 traen `leido` y se marcan con `/avisos/marcar-leidos/`). El canal en vivo trae `aviso.nuevo` solo a
-su destinatario. La campana del encabezado muestra los últimos y `/notificaciones` los separa por
-tipo en pestañas. El administrador ve como notificación cada alerta de su organización.
+su destinatario. Los avisos se piden de 50 en 50 (`page_size`); el contador sin leer sale de
+`/avisos/conteo/` (cuenta también los no cargados) y `/notificaciones` trae más con «Cargar más».
+La campana del encabezado muestra los últimos y `/notificaciones` los separa en pestañas, solo de
+los tipos que la cuenta recibió. El administrador ve como notificación cada alerta de su organización.
 
 ## Foto de perfil
 
@@ -155,7 +158,9 @@ Solo quedan **dos puntos de quiebre** por pantalla:
 
 - `(max-width: 900px)`: el menú lateral pasa a cajón (☰) y la página hace scroll completo
   (`CONSULTA_MOVIL` de `hooks/useMenuMovil.js` debe coincidir).
-- `(min-width: 901px) and (max-height: 820px)`: escritorio bajo; se ocultan textos secundarios.
+- `(min-width: 901px) and (max-height: 820px)`: escritorio bajo (`baja`); se ocultan textos
+  secundarios y Panel, Umbrales, detalle de dispositivo y panel de la consola de administración se
+  compactan para caber sin scroll. El menú lateral se desliza si sus grupos no caben.
 
 Lo demás responde al ancho de su contenedor: rejillas `repeat(auto-fit, minmax(min(100%, X), 1fr))`,
 `@container cifras` (720 px: la cifra principal en su renglón; 520 px: de dos en dos) y
@@ -169,6 +174,11 @@ Cada pantalla ocupa la altura de la ventana: las tarjetas que llenan el resto ll
 `nc-grow` y solo las listas y tablas largas hacen scroll dentro de `nc-scroll`, con el
 encabezado de la tabla fijo.
 
+Las gráficas toman el alto libre de su tarjeta con `components/GraficaAjustable.jsx`: por debajo de
+170 px pasa `tooltipFijo={false}` a `TrendChart` (el tooltip solo aparece al pasar el mouse, en un
+renglón). `TrendChart` coloca las etiquetas Máx/Mín del umbral por dentro si por fuera chocarían,
+las quita si no hay alto para las dos y no dibuja eje negativo para variables que no bajan de 0.
+
 ## Consolas por dominio
 
 `main.jsx` elige la aplicación por el host; las dos son de la misma web compilada, se descargan
@@ -178,7 +188,7 @@ aparte (lazy) y solo deja entrar al administrador de plataforma (superusuario):
   (Banco de respuestas, Registro de preguntas) y Configuración (Herramientas, Sugerencias,
   Documento, Notificaciones). El Chat usa cualquier dispositivo, aun sin ESP (modo de pruebas).
 - `admin.<dominio>` → `src/admin/` (consola de administración): Seguridad (Panel, Alertas de
-  seguridad con lista y detalle como la web, Auditoría, Políticas), Accesos (Usuarios, Sesiones
+  seguridad con lista, detalle y **Exportar CSV** con los filtros de la lista, Auditoría, Políticas), Accesos (Usuarios, Sesiones
   abiertas) y Dispositivos (Dispositivos ESP32, Cargar firmware por USB, Integraciones); la bandeja
   de la campana (`/notificaciones`) va fuera del menú. Rutas de la API en `src/api/consola.js`,
   llamadas en `src/services/admin.js` y `src/services/seguridad.js`.

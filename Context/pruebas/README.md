@@ -9,6 +9,8 @@
   lecturas con alertas de advertencia y peligro y calentamiento del CCS811, la caducidad
   del token, el canal en vivo (conexión, rechazo, filtro por rol y eventos), el push con
   Expo (con la API simulada) y los reportes con PDF, series y programaciones (134 pruebas).
+  Las del agente fijan el reloj con `fijar_reloj` (`apps/reportes/tests.py`) para no depender
+  de la hora a la que se corren y revisan el borde de medianoche.
 - Análisis estático: Ruff en backend y Oxlint en web y móvil.
 - Compilación: `npm run build` para la web y `expo export` para móvil.
 - IoT: MicroPython no se compila; `mpremote devs` confirma que la placa está
