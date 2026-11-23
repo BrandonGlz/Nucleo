@@ -8,14 +8,15 @@
   permisos por rol, el administrador de plataforma, los teléfonos push, la ingesta de
   lecturas con alertas de advertencia y peligro y calentamiento del CCS811, la caducidad
   del token, el canal en vivo (conexión, rechazo, filtro por rol y eventos), el push con
-  Expo (con la API simulada) y los reportes con PDF, series y programaciones (134 pruebas).
+  Expo (con la API simulada) y los reportes con PDF, series y programaciones (el total
+  lo informa `manage.py test --noinput`; no se anota aquí para que no quede desactualizado).
   Las del agente fijan el reloj con `fijar_reloj` (`apps/reportes/tests.py`) para no depender
   de la hora a la que se corren y revisan el borde de medianoche.
 - Análisis estático: Ruff en backend y Oxlint en web y móvil.
 - Compilación: `npm run build` para la web y `expo export` para móvil.
 - IoT: MicroPython no se compila; `mpremote devs` confirma que la placa está
   conectada. La lógica del firmware (umbrales, calentamiento, baseline del CCS811, cola
-  de lecturas sin conexión y forma del mensaje) tiene 16 pruebas en `IoT/tests/` que se
+  de lecturas sin conexión y forma del mensaje) tiene pruebas en `IoT/tests/` que se
   ejecutan en una computadora con módulos simulados; el resto se prueba en el ESP32 real.
 - Integración con el broker real: se comprobó a mano que un dispositivo publica por TLS
   con su usuario, que la ACL le impide publicar en otro tópico, y que la lectura llega al
