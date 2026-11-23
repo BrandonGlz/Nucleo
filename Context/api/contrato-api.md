@@ -21,6 +21,10 @@ elementos por página y el parámetro `?page=`; `?page_size=` pide hasta 1000 po
 (la web y la app piden 1000 y filtran en el dispositivo). Los nombres de campo son los del
 modelo relacional, en español.
 
+Las exportaciones (`…/exportar/`) son CSV en UTF-8 con BOM, generados al vuelo y auditados.
+Un texto que empieza con `=`, `+`, `-`, `@`, tabulador o retorno de carro sale con un `'`
+delante para que Excel o LibreOffice no lo tomen como fórmula.
+
 ## Autenticación
 
 Las rutas, salvo `health`, `auth/login`, `auth/recuperar` y `auth/restablecer`, exigen el
@@ -172,9 +176,18 @@ Umbrales
 
 Mediciones
 ├── GET /lecturas/                          Filtros: dispositivo, sensor, variable, desde, hasta,
-│                                           estabilizada (true|false)
+│                                           estabilizada (true|false). Orden estable: fecha_hora
+│                                           descendente, luego sensor_num y variable_codigo. Las
+│                                           páginas (page, page_size) nunca parten un momento:
+│                                           todas las filas de una misma fecha_hora salen en la
+│                                           misma página, así que una página puede traer unas
+│                                           filas más o menos que page_size; count es el total de
+│                                           filas, cada fila sale en una sola página y next (si
+│                                           quedan más antiguas) apunta a la página donde empieza
+│                                           el siguiente momento
 ├── GET /lecturas/exportar/                 CSV con los mismos filtros; sin fechas, últimos 7 días;
-│                                           máximo NUCLEO_EXPORTAR_MAX_FILAS; queda en la auditoría
+│                                           máximo NUCLEO_EXPORTAR_MAX_FILAS; queda en la auditoría;
+│                                           de la más antigua a la más reciente, mismo desempate
 └── GET /lecturas/serie/                    Tendencia: dispositivo y variable obligatorios,
                                             intervalo=minuto|hora|dia; sin fechas, últimas 24 h;
                                             solo lecturas estabilizadas
@@ -317,7 +330,13 @@ Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
                                             periodo_inicio, periodo_fin, dias, lecturas,
                                             alertas, peligro, variables[{variable, nombre,
                                             unidad, promedio, minimo, maximo, alertas}],
-                                            resumen}}, que la web y la app muestran en el chat
+                                            resumen}}, que la web y la app muestran en el chat.
+                                            Los periodos son de la hora local del servidor
+                                            (TIME_ZONE): «hoy» desde las 00:00, «esta semana»
+                                            desde el lunes, «este mes» desde el día 1. Sin
+                                            lecturas en el periodo: "codigo": "sin_datos" y
+                                            "texto" «No hay lecturas de <área> hoy. ¿Quieres
+                                            otro periodo?», sin "accion"
 ```
 
 Las fechas se envían y se reciben en ISO 8601 con zona horaria, por ejemplo
@@ -385,6 +404,13 @@ GET   /consola/alertas/resumen/         {nuevas, criticas, ultimos_30_dias, por_
 POST  /consola/alertas/{num}/revisar/   {nota?} → alerta (400 si ya no es nueva)
 POST  /consola/alertas/{num}/descartar/ {nota?} → alerta (400 si ya no es nueva)
 POST  /consola/alertas/revisar-todas/   → {revisadas}
+GET   /consola/alertas/exportar/        Mismos filtros que la lista (estado, nivel, tipo, q), sin
+                                        paginar: text/csv; charset=utf-8 con BOM, adjunto
+                                        alertas-seguridad-AAAA-MM-DD.csv (fecha local). Columnas:
+                                        alerta, tipo, nivel, estado, titulo, detalle, usuario,
+                                        correo, ip, eventos, creada, ultimo_evento, revisada_por,
+                                        fecha_revision, nota. Queda en la auditoría (EXPORTAR,
+                                        recurso alertas_seguridad); 403 si no es superusuario
 GET   /consola/notificaciones/          ?leida=true|false (paginada) + no_leidas: avisos del
                                         superusuario que consulta, con los niveles de su campana:
                                         {num, alerta, nivel, fecha, leida, correo_enviado}

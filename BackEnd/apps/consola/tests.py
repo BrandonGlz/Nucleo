@@ -419,8 +419,53 @@ class AlertasSeguridadTests(PruebaBase):
         self.assertEqual(r.data["revisadas"], 2)
         self.assertFalse(AlertaSeguridad.objects.filter(estado="nueva").exists())
 
+    def _csv(self, **filtros):
+        r = self.c.get("/api/v1/consola/alertas/exportar/", filtros)
+        self.assertEqual(r.status_code, 200)
+        texto = b"".join(r.streaming_content).decode("utf-8")
+        return r, texto
+
+    def test_exporta_csv_con_los_filtros_de_la_lista(self):
+        self._fallidos(6)
+        r, texto = self._csv()
+        self.assertEqual(r["Content-Type"], "text/csv; charset=utf-8")
+        self.assertEqual(
+            r["Content-Disposition"],
+            f'attachment; filename="alertas-seguridad-{timezone.localdate():%Y-%m-%d}.csv"',
+        )
+        self.assertTrue(texto.startswith("\ufeffalerta,tipo,nivel,estado,titulo,"))
+        filas = texto.strip().splitlines()
+        self.assertEqual(len(filas), 3)  # encabezado + ip_fallidos + cuenta_fallidos
+        self.assertIn("198.51.100.7", texto)
+        _, solo_ip = self._csv(tipo="ip_fallidos", estado="nueva")
+        self.assertEqual(len(solo_ip.strip().splitlines()), 2)
+        self.assertIn(",ip_fallidos,", solo_ip)
+        _, ninguna = self._csv(nivel="critico")
+        self.assertEqual(len(ninguna.strip().splitlines()), 1)
+        _, busqueda = self._csv(q="misma IP")
+        self.assertEqual(len(busqueda.strip().splitlines()), 2)
+        self.assertEqual(
+            RegistroAuditoria.objects.filter(
+                accion=Accion.EXPORTAR, recurso="alertas_seguridad"
+            ).count(),
+            4,
+        )
+
+    def test_el_csv_no_deja_formulas(self):
+        AlertaSeguridad.objects.create(
+            tipo="ip_nueva",
+            nivel="advertencia",
+            clave="ip_nueva:x",
+            titulo="Acceso desde una IP nueva",
+            usuario_correo="=HYPERLINK(1)",
+            ultimo_evento=timezone.now(),
+        )
+        _, texto = self._csv()
+        self.assertIn(",'=HYPERLINK(1),", texto)
+        self.assertNotIn(",=HYPERLINK", texto)
+
     def test_solo_el_superusuario(self):
-        for ruta in ("alertas/", "alertas/resumen/", "notificaciones/"):
+        for ruta in ("alertas/", "alertas/resumen/", "alertas/exportar/", "notificaciones/"):
             r = cliente_de(self.e.admin).get(f"/api/v1/consola/{ruta}")
             self.assertEqual(r.status_code, 403, ruta)
 

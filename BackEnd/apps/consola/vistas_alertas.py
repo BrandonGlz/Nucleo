@@ -13,6 +13,7 @@ from rest_framework.response import Response
 
 from apps.auditoria.models import RegistroAuditoria
 from apps.auditoria.servicios import registrar
+from common.exportar import respuesta_csv
 
 from . import alertas
 from .models import AlertaSeguridad, NotificacionSeguridad, PreferenciaAvisosSeguridad
@@ -113,6 +114,55 @@ class AlertaSeguridadViewSet(
                 request=request,
             )
         return Response({"revisadas": len(nuevas)})
+
+    @action(detail=False, methods=["get"])
+    def exportar(self, request):
+        """CSV de las alertas de seguridad con los mismos filtros de la lista (``estado``,
+        ``nivel``, ``tipo``, ``q``), de la más reciente a la más antigua. Queda auditado."""
+        consulta = self.get_queryset()
+        encabezado = [
+            "alerta",
+            "tipo",
+            "nivel",
+            "estado",
+            "titulo",
+            "detalle",
+            "usuario",
+            "correo",
+            "ip",
+            "eventos",
+            "creada",
+            "ultimo_evento",
+            "revisada_por",
+            "fecha_revision",
+            "nota",
+        ]
+
+        def fecha(valor):
+            return timezone.localtime(valor).isoformat() if valor else ""
+
+        def filas():
+            for a in consulta.iterator(chunk_size=500):
+                yield [
+                    a.pk,
+                    a.tipo,
+                    a.nivel,
+                    a.estado,
+                    a.titulo,
+                    a.detalle,
+                    a.usuario.get_full_name() if a.usuario_id else "",
+                    a.usuario.correo if a.usuario_id else a.usuario_correo,
+                    a.ip or "",
+                    a.eventos,
+                    fecha(a.creada),
+                    fecha(a.ultimo_evento),
+                    a.revisada_por.get_full_name() if a.revisada_por_id else "",
+                    fecha(a.fecha_revision),
+                    a.nota,
+                ]
+
+        archivo = f"alertas-seguridad-{timezone.localdate():%Y-%m-%d}.csv"
+        return respuesta_csv(request, "alertas_seguridad", encabezado, filas(), archivo)
 
     @action(detail=False, methods=["get"])
     def resumen(self, request):
