@@ -5,7 +5,7 @@ clave, una tarjeta por variable, la gráfica del periodo, las alertas por variab
 en hojas A4 con pie y número de página.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -18,6 +18,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfgen import canvas as lienzo
 from reportlab.platypus import Paragraph
+
+from common.fechas import dias_periodo
 
 TINTA = colors.HexColor("#121413")
 SECUNDARIO = colors.HexColor("#4A4F4B")
@@ -80,8 +82,7 @@ def _fecha(f):
 
 
 def _periodo(inicio, fin):
-    a = _local(inicio)
-    b = _local(fin) - timedelta(microseconds=1)
+    a, b = dias_periodo(_local(inicio), _local(fin))
     if (a.year, a.month) == (b.year, b.month):
         return f"{a.day}–{b.day} {MESES[b.month - 1]} {b.year}"
     return f"{a.day} {MESES[a.month - 1]} – {_fecha(b)}"

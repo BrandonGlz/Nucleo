@@ -20,6 +20,7 @@ from django.utils import timezone
 from apps.avisos.models import Aviso
 from apps.tiempo_real import eventos
 from common import roles
+from common.fechas import periodo_texto
 
 logger = logging.getLogger(__name__)
 
@@ -303,10 +304,8 @@ def usuario_cambio(usuario, rol_anterior, area_anterior, actor=None):
 
 
 def _periodo(reporte):
-    inicio = timezone.localtime(reporte.periodo_inicio)
-    fin = timezone.localtime(reporte.periodo_fin)
     alcance = reporte.area.nombre if reporte.area_id else "Todas las áreas"
-    return f"{alcance} · {inicio:%d/%m/%Y} al {fin:%d/%m/%Y}"
+    return f"{alcance} · {periodo_texto(reporte.periodo_inicio, reporte.periodo_fin)}"
 
 
 @_seguro

@@ -435,7 +435,7 @@ class Command(BaseCommand):
     # --- Reportes y programaciones -----------------------------------------------------------
     def _reportes(self):
         dia = timedelta(days=1)
-        hoy = timezone.localtime(self.ahora).replace(hour=0, minute=0)
+        hoy = timezone.localtime(self.ahora).replace(hour=0, minute=0, second=0, microsecond=0)
         solicitudes = [
             (self.org, "Moldeo", hoy - 7 * dia, hoy, "MANUAL", "Mariana", 0.3),
             (self.org, "Laboratorio", hoy - 7 * dia, hoy, "PROGRAMADO", None, 0.5),

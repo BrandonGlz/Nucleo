@@ -25,6 +25,7 @@ from apps.alertas.models import Alerta
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.umbrales.models import Umbral
 from common import roles
+from common.fechas import periodo_texto
 from common.scoping import dispositivos_visibles
 
 from . import agente
@@ -251,8 +252,8 @@ def reportes(dispositivo, limite=5):
         }
     origen = {"MANUAL": "manual", "PROGRAMADO": "programado", "AGENTE": "pedido al agente"}
     filas = [
-        f"#{r.num} del {timezone.localtime(r.periodo_inicio):%d/%m} al "
-        f"{timezone.localtime(r.periodo_fin):%d/%m/%Y} ({origen.get(r.origen, r.origen)}, "
+        f"#{r.num} del {periodo_texto(r.periodo_inicio, r.periodo_fin, corto=True)} "
+        f"({origen.get(r.origen, r.origen)}, "
         f"{agente._n((r.cifras or {}).get('alertas', {}).get('total', 0), 'alerta')})"
         for r in lista
     ]
@@ -629,7 +630,7 @@ def preparar_reporte(usuario, dispositivo, pregunta):
     return {
         "texto": (
             f"Voy a generar el reporte del área {area.nombre} de {descripcion} "
-            f"({timezone.localtime(inicio):%d/%m/%Y} – {timezone.localtime(fin):%d/%m/%Y}): "
+            f"({periodo_texto(inicio, fin)}): "
             f"{agente._n(len(cifras['dispositivos']), 'dispositivo')}, "
             f"{agente._n(lecturas, 'lectura válida', 'lecturas válidas')} y "
             f"{agente._n(alertas, 'alerta')}"
@@ -675,7 +676,7 @@ def confirmar_reporte(usuario, dispositivo, accion):
     return {
         "texto": (
             f"Listo: generé el reporte de {area.nombre} de {accion['descripcion']} "
-            f"({timezone.localtime(inicio):%d/%m/%Y} – {timezone.localtime(fin):%d/%m/%Y}). "
+            f"({periodo_texto(inicio, fin)}). "
             "Puedes visualizarlo aquí o descargarlo en PDF desde Reportes."
         ),
         "reporte": agente.resumen_reporte(reporte, f"{area.nombre} · {accion['descripcion']}"),
@@ -829,10 +830,7 @@ def preparar_envio(usuario, dispositivo, pregunta):
             "codigo": "datos_faltantes",
             "faltan": ["destinatarios"],
         }
-    periodo = (
-        f"{timezone.localtime(reporte.periodo_inicio):%d/%m} – "
-        f"{timezone.localtime(reporte.periodo_fin):%d/%m/%Y}"
-    )
+    periodo = periodo_texto(reporte.periodo_inicio, reporte.periodo_fin, corto=True)
     return {
         "texto": f"Voy a enviar por correo el reporte #{reporte.num} de {area.nombre} "
         f"({periodo}), con su PDF, a {_nombres(destinatarios)}. ¿Lo envío? Responde «sí» o "

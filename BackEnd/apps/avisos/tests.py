@@ -1,10 +1,11 @@
 import tempfile
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from unittest import mock
 
 from asgiref.sync import sync_to_async
 from channels.testing import WebsocketCommunicator
+from django.core import mail
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.test import override_settings
@@ -14,10 +15,12 @@ from apps.avisos import servicios
 from apps.avisos.models import Aviso
 from apps.dispositivos.services import marcar_sin_conexion
 from apps.mediciones import services as ingesta
-from apps.reportes import ia
-from apps.reportes.models import ProgramacionReporte
+from apps.reportes import ia, pdf
+from apps.reportes import servicios as reportes
+from apps.reportes.models import ProgramacionReporte, Reporte
 from common import roles
 from common.autenticacion import crear_sesion
+from common.fechas import periodo_texto
 from common.testing import Escenario, PruebaBase, PruebaTransaccional, cliente_de
 
 Tipo, Nivel = Aviso.Tipo, Aviso.Nivel
@@ -264,6 +267,33 @@ class ReporteTests(PruebaBase):
         self.assertEqual((aviso.tipo, aviso.ruta), (Tipo.REPORTE, "/reportes"))
         self.assertIn("listo", aviso.titulo)
         self.assertEqual(Aviso.objects.count(), 1)
+
+    @override_settings(TIME_ZONE="America/Tijuana")
+    def test_periodo_en_hora_local_con_fin_inclusivo(self):
+        # Semana del domingo 15 al sábado 21 en Tijuana (UTC-8): [15 00:00, 22 00:00).
+        inicio = datetime(2026, 11, 15, 8, tzinfo=UTC)
+        fin = datetime(2026, 11, 22, 8, tzinfo=UTC)
+        r = cliente_de(self.e.analista).post(
+            "/api/v1/reportes/",
+            {"periodo_inicio": inicio.isoformat(), "periodo_fin": fin.isoformat()},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        aviso = de(self.e.analista)[0]
+        self.assertIn("15/11/2026 al 21/11/2026", aviso.detalle)
+        reporte = Reporte.objects.get(pk=r.data["num"])
+        self.assertEqual(
+            pdf._periodo(reporte.periodo_inicio, reporte.periodo_fin), "15–21 nov 2026"
+        )
+        reportes.enviar_reporte(reporte, [self.e.analista.pk])
+        self.assertIn("15/11/2026 al 21/11/2026", mail.outbox[-1].subject)
+        # Un fin a media tarde (no medianoche) cuenta ese día; un periodo dentro del día, uno solo.
+        tarde = datetime(2026, 11, 22, 18, 30, tzinfo=UTC)  # 22/11 10:30 en Tijuana
+        self.assertEqual(periodo_texto(inicio, tarde), "15/11/2026 al 22/11/2026")
+        self.assertEqual(periodo_texto(fin, tarde, corto=True), "22/11 al 22/11/2026")
+        # A las 23:30 de Tijuana ya es el día siguiente en UTC: cuenta el día local.
+        noche = datetime(2026, 11, 22, 7, 30, tzinfo=UTC)  # 21/11 23:30 en Tijuana
+        self.assertEqual(periodo_texto(inicio, noche), "15/11/2026 al 21/11/2026")
 
     def test_programado_avisa_a_destinatarios_y_a_quien_lo_programo(self):
         ProgramacionReporte.objects.create(

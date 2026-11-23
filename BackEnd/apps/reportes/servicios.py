@@ -7,7 +7,6 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.db.models.functions import TruncDay, TruncHour
-from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.avisos import servicios as avisos
@@ -18,6 +17,7 @@ from apps.reportes import ia, pdf
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.usuarios.models import Usuario
 from common import correo, roles
+from common.fechas import periodo_texto
 
 
 def _numero(valor):
@@ -191,9 +191,7 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
     if correos:
         org = reporte.organizacion.nombre
         alcance = reporte.area.nombre if reporte.area_id else "Todas las áreas"
-        inicio = timezone.localtime(reporte.periodo_inicio)
-        fin = timezone.localtime(reporte.periodo_fin)
-        periodo = f"{inicio:%d/%m/%Y} al {fin:%d/%m/%Y}"
+        periodo = periodo_texto(reporte.periodo_inicio, reporte.periodo_fin)
         correo.enviar(
             correos,
             asunto or f"Reporte de {org} · {periodo}",
