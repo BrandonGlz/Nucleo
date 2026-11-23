@@ -16,7 +16,7 @@ import { ESTADO_FORZADO } from '../../services/mock/handlers'
 import { USAR_MOCKS } from '../../services/config'
 import * as lecturasApi from '../../services/lecturas'
 import { enLinea, ESTADO_DISPOSITIVO, escala, nivelLectura, posicion, UNIDAD, VARIABLE } from '../../utils/convertir'
-import { cuando, diaRelativo, fechaCorta, haceCuanto, hoyTexto, num } from '../../utils/formato'
+import { cuando, diaRelativo, esAyer, esHoy, fechaCorta, haceCuanto, hoyTexto, num } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const TONO_ZONA = { normal: marca.verde, warning: colors.dark.warning, critical: colors.dark.danger }
@@ -209,7 +209,9 @@ function BarrasTemp({ serie, ultima, dispositivo, onPress }) {
   const pocos = valores.length < 2
   const mn = valores.length ? Math.min(...valores) : 0
   const mx = valores.length ? Math.max(...valores) : 1
-  const titulo = rango === '7d' ? 'Temperatura · 7 días' : ultima ? `Temperatura · 24 h hasta el ${fechaCorta(ultima)}` : 'Temperatura · 24 h'
+  // «hasta ayer» u «hasta el 21 nov», igual que el eje (que ya dice «Ayer 17:00»)
+  const hasta = !ultima ? '' : esHoy(ultima) ? ' hasta hoy' : esAyer(ultima) ? ' hasta ayer' : ` hasta el ${fechaCorta(ultima)}`
+  const titulo = rango === '7d' ? 'Temperatura · 7 días' : `Temperatura · 24 h${hasta}`
   return (
     <View style={[s.tarjeta, { backgroundColor: c.surface, gap: 10 }]}>
       <View style={s.entre}>

@@ -108,14 +108,14 @@ export function PerfilScreen({ navigation }) {
   // Datos de la cuenta según el rol. `usuario.area` es el área de la cuenta (la del supervisor es
   // la que tiene a cargo); el dispositivo a la vista puede ser de otra área.
   // /usuarios/ no filtra por ?rol ni ?area: al supervisor le devuelve los operadores de su área y al
-  // administrador toda la organización; a operador y analista les responde 403. Por eso se filtra
-  // aquí y solo se muestra un supervisor si de verdad lo es del área de la cuenta.
+  // administrador toda la organización; a operador y analista les responde 403, así que solo se
+  // pide para el supervisor (y se filtra aquí por rol y área).
   const extra = useDatos(
     () =>
       Promise.all([
         usuario.organizacion ? organizacionesApi.propia(usuario.organizacion) : null,
         usuario.area ? organizacionesApi.area(usuario.area).catch(() => null) : null,
-        usuario.rol === 'ADMIN' || !usuario.organizacion
+        usuario.rol !== 'SUPER' || !usuario.organizacion
           ? []
           : usuariosApi
               .lista()
@@ -128,7 +128,6 @@ export function PerfilScreen({ navigation }) {
   const delArea = (rol) => gente.filter((x) => x.rol === rol && x.area === usuario.area && x.num !== usuario.num && (x.estado_usuario ?? 'ACT') === 'ACT')
   const area = areaPropia?.nombre ?? (usuario.area && op?.area?.num === usuario.area ? op.area.nombre : null) ?? (usuario.rol === 'ADMIN' ? 'Toda la organización' : '—')
   const d = op?.dispositivo
-  const supervisores = usuario.rol === 'OPER' || usuario.rol === 'ANALISTA' ? delArea('SUPER') : []
   const operadores = usuario.rol === 'SUPER' ? delArea('OPER') : []
   const filas = [
     { k: 'Correo', v: usuario.correo },
@@ -137,11 +136,6 @@ export function PerfilScreen({ navigation }) {
     usuario.rol === 'SUPER' && extra.datos && {
       k: 'Operadores',
       v: operadores.length ? `${operadores.length} en tu área` : 'Sin operadores en tu área',
-    },
-    supervisores.length > 0 && {
-      k: supervisores.length > 1 ? 'Supervisores' : 'Supervisor',
-      v: supervisores.map(nombreCompleto).join(', '),
-      verde: true,
     },
   ].filter(Boolean)
   const nombre = nombreCompleto(usuario)
