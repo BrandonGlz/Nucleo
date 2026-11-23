@@ -100,11 +100,13 @@ function GraficaVariable({ variable, datos, dispositivo, periodo, className = ''
   const u = datos?.umbral
   return (
     <Card className={`nc-grow ui-panel-grafica ${className}`.trim()}>
-      <div className="nc-card__head" style={{ marginBottom: 12 }}>
+      <div className="nc-card__head ui-panel-grafica__cabeza">
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 className="nc-card__title">{info.etiqueta}</h3>
           <p className="nc-card__sub">
-            {dispositivo?.nombre} · umbral {rangoUmbral(u, unidad)}
+            <span className="ui-panel-grafica__umbral">
+              {dispositivo?.nombre} · umbral {rangoUmbral(u, unidad)}
+            </span>
             {datos?.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(datos.ultima)}</span>}
           </p>
         </div>

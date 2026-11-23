@@ -1104,6 +1104,153 @@ button.ui-menuitem:hover {
   border-top: 1px solid var(--border);
 }
 
+/* Detalle de dispositivo: ficha (nombre y datos en un renglón) y tarjeta del intervalo */
+.ui-ficha__nombre {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.ui-ficha__datos {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, -8px + 2.4vw, 32px);
+}
+.ui-ficha__datos .ui-eyebrow,
+.ui-ficha__datos strong {
+  white-space: nowrap;
+}
+.ui-intervalo .nc-field__label {
+  white-space: nowrap;
+}
+/* Columna angosta (≈1024 px): el rol del operador ya lo dice «Asignado a»; en escritorio bajo la
+   pista del intervalo se omite (el error lo explica si el valor no vale). */
+@container contenido (min-width: 529px) and (max-width: 820px) {
+  .ui-ficha__rol {
+    display: none;
+  }
+}
+@media (min-width: 901px) and (max-height: 820px) {
+  .ui-intervalo .nc-field__msg:not(.nc-field__msg--error) {
+    display: none;
+  }
+  .ui-intervalo .nc-card__head {
+    margin-bottom: 8px !important;
+  }
+}
+
+/* Umbrales: barra del dispositivo (selector, a qué aplica y acciones) que baja de renglón las
+   acciones antes de apretar el texto, y rejilla de las tres variables. */
+.ui-umbrales-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 24px;
+}
+.ui-umbrales-barra__disp {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+.ui-umbrales-barra__info {
+  flex: 1 1 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 2px;
+  min-width: 0;
+}
+.ui-umbrales-barra__info > :first-child {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ui-umbrales-barra__info > :last-child {
+  font-size: 13px;
+}
+.ui-umbrales-barra__acciones {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.ui-rejilla-umbrales {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14.5rem), 1fr));
+  gap: clamp(16px, -26px + 6vh, 24px);
+  flex: none;
+}
+.ui-umbrales-vista.nc-card {
+  min-height: 190px;
+}
+/* Tarjeta angosta (tres columnas en 1024 px): cada límite de advertencia en su renglón, con la
+   etiqueta a la izquierda, para que la casilla no recorte el número. */
+.ui-umbral {
+  container: umbral / inline-size;
+}
+@container umbral (max-width: 290px) {
+  .ui-umbral__adv {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .ui-umbral__adv > .nc-field {
+    display: grid;
+    grid-template-columns: 6.5em minmax(0, 1fr);
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 4px;
+  }
+  .ui-umbral__adv > .nc-field > :nth-child(n + 3) {
+    grid-column: 1 / -1;
+  }
+  .ui-umbral__adv .nc-input {
+    gap: 6px;
+    padding: 0 10px;
+  }
+  /* Sin el ícono de la variable, «Rango permitido …» cabe en un renglón. */
+  .ui-umbral .nc-threshold__head > :first-child {
+    display: none;
+  }
+  .ui-umbral__adv input[type='number'] {
+    appearance: textfield;
+  }
+  .ui-umbral__adv input[type='number']::-webkit-inner-spin-button,
+  .ui-umbral__adv input[type='number']::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+}
+.ui-umbrales-vista .nc-card__head {
+  margin-bottom: 8px;
+}
+/* Escritorio bajo: las tarjetas de las variables se compactan y la vista previa cede alto. */
+@media (min-width: 901px) and (max-height: 820px) {
+  .ui-umbral__adv {
+    padding-top: 10px;
+  }
+  .ui-umbral {
+    gap: 8px;
+    padding-bottom: 14px;
+  }
+  .ui-umbral > .nc-threshold {
+    gap: 12px;
+  }
+  .ui-umbrales-barra__por {
+    display: none;
+  }
+  .ui-umbrales-barra__cambio {
+    display: inline-block;
+  }
+  .ui-umbrales-barra__cambio::first-letter {
+    text-transform: uppercase;
+  }
+  /* La vista previa ya dice «Humedad» en los límites de la gráfica; queda el aviso de últimas lecturas. */
+  .ui-umbrales-vista__sub:not(:has(.ui-aviso-ultima)) {
+    display: none;
+  }
+  .ui-umbrales-vista.nc-card {
+    min-height: 132px;
+  }
+}
+
 .ui-umbral__adv--texto {
   display: flex;
   justify-content: space-between;
@@ -1204,6 +1351,44 @@ button.ui-menuitem:hover {
 .ui-panel-graficas > .ui-col > .ui-panel-grafica {
   flex: 1 1 0;
 }
+.ui-panel-grafica__cabeza.nc-card__head {
+  margin-bottom: 12px;
+}
+/* Escritorio bajo («baja»): humedad y aire ceden el subtítulo (el dispositivo está en el selector
+   y el umbral se dibuja en la gráfica) y compactan la cabecera para dejarle alto al trazo. El aviso
+   de «últimas lecturas guardadas» se queda. */
+@media (min-width: 901px) and (max-height: 820px) {
+  .ui-col > .ui-panel-grafica .ui-panel-grafica__umbral {
+    display: none;
+  }
+  .ui-col > .ui-panel-grafica .nc-card__sub:not(:has(.ui-aviso-ultima)) {
+    display: none;
+  }
+  .ui-col > .ui-panel-grafica .ui-panel-grafica__cabeza.nc-card__head {
+    margin-bottom: 4px;
+  }
+  .ui-col > .ui-panel-grafica.nc-card {
+    padding-top: calc(var(--tarjeta-relleno) - 4px);
+    padding-bottom: calc(var(--tarjeta-relleno) - 6px);
+  }
+}
+/* Gráfica baja: tooltip en un renglón (sin la hora) y solo al pasar el mouse */
+.nc-trend--compacta .nc-tooltip {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+}
+.nc-trend--compacta .nc-tooltip__time {
+  display: none;
+}
+.nc-trend--compacta .nc-tooltip__value {
+  font-size: 15px;
+  line-height: 20px;
+}
+.nc-trend--compacta .nc-tooltip .nc-badge {
+  margin-top: 0;
+}
 /* Filtros del panel en el encabezado: dispositivo y periodo */
 .ui-panel-filtros {
   display: flex;
@@ -1215,9 +1400,12 @@ button.ui-menuitem:hover {
   min-width: min(240px, 100%);
 }
 
-/* Menú lateral en ventanas bajas: sin scroll propio */
+/* Menú lateral en ventanas bajas: sin barra de scroll propia; si con todos los grupos (SUPER,
+   ADMIN) y el aviso de alertas aun así no cabe, se desliza en vez de cortar la tarjeta del usuario */
 .app > .nc-sidebar {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 .app > .nc-sidebar {
   padding-top: clamp(18px, -26px + 4vh, 24px);
@@ -3676,6 +3864,12 @@ button.ui-menuitem:not(:disabled):hover svg {
   padding-top: 12px;
   border-top: 1px solid var(--border);
   font-size: 13px;
+}
+/* Notificaciones: «Cargar más» al final de la bandeja */
+.ui-cargar-mas {
+  display: flex;
+  justify-content: center;
+  padding: 14px 0 6px;
 }
 .ui-aviso-ultima {
   color: var(--warning);

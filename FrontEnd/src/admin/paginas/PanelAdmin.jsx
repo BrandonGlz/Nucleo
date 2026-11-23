@@ -100,7 +100,7 @@ export default function PanelAdmin() {
               <div className="nc-card__head" style={{ marginBottom: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 className="nc-card__title">Dispositivos que requieren atención</h3>
-                  <p className="nc-card__sub">Sin conexión, batería baja o en mantenimiento, de todas las organizaciones</p>
+                  <p className="nc-card__sub ui-admin-panel__sub">Sin conexión, batería baja o en mantenimiento, de todas las organizaciones</p>
                 </div>
                 <Link className="ui-admin-vertodos" to="/dispositivos">
                   Ver todos

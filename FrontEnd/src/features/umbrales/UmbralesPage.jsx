@@ -113,8 +113,8 @@ export function UmbralesPage() {
   return (
     <Pantalla eyebrow={`${organizacion} · rango permitido por dispositivo`} titulo="Umbrales" cifras={cifras}>
       <Card>
-        <div className="ui-filtros" style={{ display: 'flex', gap: 24, alignItems: 'flex-end' }}>
-          <div style={{ width: 360 }}>
+        <div className="ui-filtros ui-umbrales-barra">
+          <div className="ui-umbrales-barra__disp">
             <Select
               label="Dispositivo"
               icon="cpu"
@@ -123,14 +123,25 @@ export function UmbralesPage() {
               options={dispositivos.map((d) => ({ value: String(d.num), label: `${d.nombre} · ${d.codigo_mqtt}` }))}
             />
           </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, paddingBottom: 2 }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Aplica a {actual?.nombre ?? '…'}</span>
-            <span className="ui-muted" style={{ fontSize: 13 }}>
-              {aviso ?? `El umbral es por dispositivo${ultimo ? ` · último cambio ${autor ? `por ${nombreCorto(autor)} ` : ''}· ${haceCuanto(ultimo.fecha_actualizacion)}` : ''}`}
+          <div className="ui-umbrales-barra__info">
+            <span>Aplica a {actual?.nombre ?? '…'}</span>
+            {/* En escritorio bajo queda solo el último cambio («por dispositivo» ya lo dice «Aplica a»). */}
+            <span className="ui-muted">
+              {aviso ??
+                (ultimo ? (
+                  <>
+                    <span className="ui-umbrales-barra__por">El umbral es por dispositivo · </span>
+                    <span className="ui-umbrales-barra__cambio">
+                      último cambio {autor ? `por ${nombreCorto(autor)} ` : ''}· {haceCuanto(ultimo.fecha_actualizacion)}
+                    </span>
+                  </>
+                ) : (
+                  'El umbral es por dispositivo'
+                ))}
             </span>
           </div>
           {editable && (
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="ui-umbrales-barra__acciones">
               <Button variant="ghost" disabled={!cambiados.length} onClick={() => setBorrador(Object.fromEntries(datos.umbrales.map((u) => [u.variable, { ...u }])))}>
                 Cancelar
               </Button>
@@ -150,7 +161,7 @@ export function UmbralesPage() {
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
         <>
-          <div className="ui-rejilla-umbrales" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 18rem), 1fr))', gap: 24, flex: 'none' }}>
+          <div className="ui-rejilla-umbrales">
             {['TEMP', 'HUM', 'AIRE'].map((v) => {
               const u = borrador[v]
               if (!u) return null
@@ -198,11 +209,11 @@ export function UmbralesPage() {
               )
             })}
           </div>
-          <Card className="nc-grow" style={{ minHeight: 190 }}>
+          <Card className="nc-grow ui-umbrales-vista">
             <div className="nc-card__head" style={{ marginBottom: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 className="nc-card__title">Vista previa contra las últimas lecturas</h3>
-                <p className="nc-card__sub">
+                <p className="nc-card__sub ui-umbrales-vista__sub">
                   Humedad · últimas 24 h · {rangoUmbral(uHum, '%HR')}
                   {datos.serie.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(datos.serie.ultima)}</span>}
                 </p>

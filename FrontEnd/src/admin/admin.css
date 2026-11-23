@@ -359,6 +359,19 @@
 .ui-admin-panel__graficas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
 .ui-admin-panel .nc-card { min-width: 0; }
 .ui-admin-panel .ui-admin-serie__barras { height: 150px; }
+/* Escritorio bajo: las barras de accesos ceden alto para que la tabla de abajo quepa sin scroll de la página. */
+@media (min-width: 901px) and (max-height: 820px) {
+  .ui-admin-panel .ui-admin-serie__barras { height: 124px; }
+  .ui-admin-panel .ui-admin-serie { gap: 10px; }
+  /* La columna «Estado» ya dice por qué cada equipo requiere atención. */
+  .ui-admin-panel__sub { display: none; }
+}
+/* Columna angosta (≈1024 px): una fecha de cada cuatro barras para que no se encimen. */
+@container contenido (min-width: 529px) and (max-width: 820px) {
+  .ui-admin-panel .ui-admin-serie__barras li:nth-child(4n + 3) small { visibility: hidden; }
+  .ui-admin-panel .ui-admin-leyenda { gap: 6px 12px; font-size: 12px; }
+  .ui-admin-panel .ui-admin-leyenda span { gap: 6px; }
+}
 .ui-admin-vertodos { font-size: .875rem; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
 .ui-admin-vertodos:hover { text-decoration: underline; }
 @media (max-width: 900px) {

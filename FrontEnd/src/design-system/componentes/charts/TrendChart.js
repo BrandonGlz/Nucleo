@@ -17,6 +17,9 @@ function TrendChart(p) {
   var interactivo = p.interactivo !== false;
   var inicial = p.activeIndex != null ? p.activeIndex : data.length - 1;
   var hover = useState(null);
+  // `tooltipFijo={false}` (gráficas bajas): el tooltip del punto inicial no se queda fijo, solo
+  // aparece al pasar el mouse, para no tapar la línea cuando hay poco alto.
+  var fijo = p.tooltipFijo !== false;
   // Sin puntos no hay línea que dibujar: se muestra un aviso en lugar de la gráfica
   if (!data.length) {
     return h('div', {
@@ -36,7 +39,9 @@ function TrendChart(p) {
   var all = vals.concat([th.max, th.min].filter(function (v) {
     return v != null;
   }));
-  var mn = p.min != null ? p.min : Math.floor(Math.min.apply(null, all) - 1),
+  var minimo = Math.min.apply(null, all);
+  // Una variable que nunca baja de 0 (aire, humedad) no muestra un eje negativo
+  var mn = p.min != null ? p.min : minimo >= 0 ? Math.max(0, Math.floor(minimo - 1)) : Math.floor(minimo - 1),
     mx = p.max != null ? p.max : Math.ceil(Math.max.apply(null, all) + 1);
   if (p.max == null) mx = mn + Math.ceil((mx - mn) / 4) * 4;
   var iw = Math.max(10, W - padL - padR),
@@ -52,7 +57,8 @@ function TrendChart(p) {
   });
   var line = smoothPath(pts);
   var ticks = [];
-  var steps = 4;
+  // Con poco alto (vista previa de Umbrales en escritorio bajo) cinco renglones del eje se encimarían
+  var steps = ih < 60 ? 1 : ih < 110 ? 2 : 4;
   for (var t = 0; t <= steps; t++) ticks.push(mn + (mx - mn) * t / steps);
   // Al salir el mouse vuelve al punto inicial en vez de quedarse en el último que se tocó
   var hi = Math.max(0, Math.min(data.length - 1, hover[0] != null ? hover[0] : inicial));
@@ -70,6 +76,12 @@ function TrendChart(p) {
     if (th.warnMax != null && v > th.warnMax) return 'warning';
     return 'normal';
   };
+  // Las etiquetas de umbral van por fuera de su línea (Máx arriba, Mín abajo), salvo que así se
+  // salgan del área de la gráfica y choquen con el eje x o el borde: entonces van por dentro.
+  var yMax = th.max != null ? (Y(th.max) - 22 < 0 ? Y(th.max) + 4 : Y(th.max) - 22) : 0;
+  var yMin = th.min != null ? (Y(th.min) + 22 > padT + ih ? Y(th.min) - 22 : Y(th.min) + 4) : 0;
+  // Sin alto para las dos etiquetas sin encimarse se quedan solo las líneas (el rango va en el subtítulo)
+  var etiquetas = ih >= 60;
   var tipX = cur ? X(hi) : 0;
   var tipLeft = tipX > W - 150;
   return h('div', {
@@ -137,15 +149,15 @@ function TrendChart(p) {
     x2: W - padR,
     y1: Y(th.max),
     y2: Y(th.max)
-  }), h('rect', {
+  }), etiquetas && h('rect', {
     x: W - padR - 92,
-    y: Y(th.max) - 22,
+    y: yMax,
     width: 92,
     height: 18,
     rx: 9
-  }), h('text', {
+  }), etiquetas && h('text', {
     x: W - padR - 46,
-    y: Y(th.max) - 9,
+    y: yMax + 13,
     textAnchor: 'middle'
   }, 'Máx ' + fmt(th.max) + ' ' + unit)) : null, th.min != null ? h('g', {
     className: 'nc-trend__threshold nc-trend__threshold--min'
@@ -154,15 +166,15 @@ function TrendChart(p) {
     x2: W - padR,
     y1: Y(th.min),
     y2: Y(th.min)
-  }), h('rect', {
+  }), etiquetas && h('rect', {
     x: W - padR - 92,
-    y: Y(th.min) + 4,
+    y: yMin,
     width: 92,
     height: 18,
     rx: 9
-  }), h('text', {
+  }), etiquetas && h('text', {
     x: W - padR - 46,
-    y: Y(th.min) + 17,
+    y: yMin + 13,
     textAnchor: 'middle'
   }, 'Mín ' + fmt(th.min) + ' ' + unit)) : null, h('path', {
     d: line + ' L' + pts[pts.length - 1][0] + ' ' + (padT + ih) + ' L' + pts[0][0] + ' ' + (padT + ih) + ' Z',
@@ -186,7 +198,7 @@ function TrendChart(p) {
     cy: Y(cur.value),
     r: 4.5,
     className: 'nc-trend__dot'
-  })) : null), cur && p.tooltip !== false ? h('div', {
+  })) : null), cur && p.tooltip !== false && (fijo || hover[0] != null) ? h('div', {
     className: 'nc-tooltip',
     style: {
       left: tipLeft ? tipX - 12 : tipX + 12,

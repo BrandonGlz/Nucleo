@@ -164,8 +164,10 @@ function TarjetaSensores({ d, lecturas, sinConexion }) {
         ? 'Todo funciona: sensores respondiendo y firmware al día'
         : 'Todos los sensores responden'
       : `${responden} de ${filas.length} sensores responden`
-  const fila = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }
-  const derecha = { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, textAlign: 'right' }
+  // En tarjetas angostas (1024 px) el estado baja de renglón en vez de apretar la descripción
+  const fila = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }
+  const derecha = { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, marginLeft: 'auto', textAlign: 'right' }
+  const titulo = { flex: '1 1 150px' }
   return (
     <Card className="nc-grow">
       <div className="nc-card__head" style={{ marginBottom: 4 }}>
@@ -180,7 +182,7 @@ function TarjetaSensores({ d, lecturas, sinConexion }) {
           return (
             <div key={s.num} style={fila}>
               <IconCircle name={VAR_POR_SENSOR[s.modelo] ?? 'cpu'} size="sm" />
-              <div className="ui-titulo-fila" style={{ flex: 1 }}>
+              <div className="ui-titulo-fila" style={titulo}>
                 <strong style={{ fontSize: 14, lineHeight: '20px' }}>{s.modelo}</strong>
                 <span style={{ fontSize: 12, lineHeight: '16px' }}>
                   {s.funcion}
@@ -200,7 +202,7 @@ function TarjetaSensores({ d, lecturas, sinConexion }) {
         })}
         <div style={{ ...fila, borderBottom: 0 }}>
           <IconCircle name="cpu" size="sm" />
-          <div className="ui-titulo-fila" style={{ flex: 1 }}>
+          <div className="ui-titulo-fila" style={titulo}>
             <strong style={{ fontSize: 14, lineHeight: '20px' }}>{d.version_firmware ? `Firmware v${d.version_firmware}` : 'Firmware'}</strong>
             <span style={{ fontSize: 12, lineHeight: '16px' }}>
               {d.version_firmware
@@ -286,7 +288,7 @@ export function DetalleDispositivo() {
           <IconCircle name="cpu" size="lg" tone="ink" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <strong style={{ fontSize: 20, lineHeight: '28px', fontWeight: 700, letterSpacing: '-0.01em' }}>{d.nombre}</strong>
+              <strong className="ui-ficha__nombre">{d.nombre}</strong>
               <StatusBadge {...(sinConexion ? { status: 'offline', label: 'Sin conexión' } : statusDispositivo(d, datos.lecturas, umbrales))} />
             </div>
             <span className="ui-muted" style={{ fontSize: 14 }}>
@@ -294,7 +296,7 @@ export function DetalleDispositivo() {
             </span>
           </div>
           <div style={{ flex: 1 }} />
-          <div className="ui-ficha__datos" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+          <div className="ui-ficha__datos">
             <div className="ui-dato">
               <span className="ui-eyebrow">Batería</span>
               <Battery level={d.nivel_bateria} />
@@ -313,7 +315,7 @@ export function DetalleDispositivo() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Avatar name={nombreCompleto(operador)} src={fotoDe(operador)} size={24} />
                   <strong style={{ fontSize: 14 }}>{nombreCompleto(operador)}</strong>
-                  <span className="ui-muted" style={{ fontSize: 13 }}>
+                  <span className="ui-muted ui-ficha__rol" style={{ fontSize: 13 }}>
                     · Operador
                   </span>
                 </div>
@@ -334,7 +336,7 @@ export function DetalleDispositivo() {
         <div className="ui-col">
           <TarjetaSensores d={d} lecturas={datos.lecturas} sinConexion={sinConexion} />
           {editable && (
-            <Card>
+            <Card className="ui-intervalo">
               <div className="nc-card__head" style={{ marginBottom: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 className="nc-card__title">Intervalo de muestreo</h3>
