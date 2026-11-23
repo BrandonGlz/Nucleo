@@ -113,9 +113,13 @@ marco del acceso.
 
 ## Pantallas de monitoreo
 
-- **Panel:** solo las gráficas de temperatura, humedad y calidad del aire del dispositivo elegido
-  (por defecto el primero en línea), con un único filtro de periodo Hoy / 7 días / 30 días para
-  las tres. Las cifras en vivo están en Dispositivos y su detalle.
+- **Panel:** franja negra de cifras y debajo las gráficas de temperatura, humedad y calidad del
+  aire del dispositivo elegido en el encabezado (por defecto el primero en línea), con un único
+  filtro de periodo Hoy / 7 días / 30 días para las tres. La franja muestra la última temperatura
+  de ese dispositivo con su barra de rango de advertencia y de cuándo es la lectura, su humedad y
+  su aire, y del alcance completo los dispositivos en línea y las alertas pendientes (con las
+  críticas). Se actualiza cada 30 s y con el canal en vivo (`useMonitoreo`). En escritorio franja y
+  gráficas se reparten el alto sin scroll.
 - **Histórico** (`/mediciones`): sin gráfica. La franja de cifras da máximo, mínimo y promedio del
   periodo; la tabla ocupa todo el ancho con el histórico real del periodo por páginas («Cargar
   más») y el CSV exporta dispositivo, variable y periodo elegidos.
