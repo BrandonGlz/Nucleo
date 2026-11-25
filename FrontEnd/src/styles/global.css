@@ -348,6 +348,10 @@ button.ui-link {
   gap: 6px;
   min-width: 0;
 }
+/* Control que solo afecta a la banda de cifras (la variable del Histórico) */
+.nc-ink__controles {
+  margin-bottom: 12px;
+}
 .nc-ink__valor {
   font-size: var(--cifra-principal);
   line-height: 1;
@@ -3853,7 +3857,17 @@ button.ui-menuitem:not(:disabled):hover svg {
   font-size: 12px;
 }
 
-/* Aviso de que la gráfica muestra las últimas lecturas guardadas y no las del periodo actual */
+/* Histórico: búsqueda y estado de la tabla, junto a «Exportar CSV» */
+.ui-lecturas-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ui-lecturas-filtros > .ui-desplegable {
+  min-width: 170px;
+}
 /* Histórico: pie de la tabla de lecturas con el conteo y «Cargar más» */
 .ui-lecturas-pie {
   display: flex;
@@ -5334,7 +5348,8 @@ button.ui-menuitem:not(:disabled):hover svg {
 
 /* Foto de perfil */
 .foto-perfil { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
-.foto-perfil__marco { position: relative; padding: 4px; border-radius: 999px; box-shadow: 0 0 0 3px var(--accent); }
+/* Grid evita el hueco de la línea de texto del avatar en línea: el marco queda 72 × 72. */
+.foto-perfil__marco { position: relative; display: grid; place-items: center; padding: 4px; border-radius: 999px; box-shadow: 0 0 0 3px var(--accent); }
 .foto-perfil__marco.is-cargando .nc-avatar { opacity: 0.55; transition: opacity 0.2s; }
 .foto-perfil__giro {
   position: absolute; inset: -3px; border-radius: 999px; border: 3px solid transparent;

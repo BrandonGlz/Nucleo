@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, StatusBadge } from '../../design-system/componentes/index.js'
+import { Button, Card, PeriodFilter, StatusBadge } from '../../design-system/componentes/index.js'
+import { Buscador } from '../../components/Buscador'
 import { Select } from '../../components/Desplegable'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
@@ -14,10 +15,16 @@ import { nivelLectura, pagina, rangoUmbral, UNIDAD, VARIABLE } from '../../utils
 import { avisoUltima, fechaCorta, horaSeg, miles, num, puntoSerie } from '../../utils/formato'
 import { useSesion } from '../../context/SesionContext'
 
-const PERIODOS = [
-  { value: 'hoy', label: 'Hoy' },
-  { value: '7', label: 'Últimos 7 días' },
-  { value: '30', label: 'Últimos 30 días' },
+// El estado usa los códigos de la API; el selector del encabezado habla con sus etiquetas.
+const PERIODO = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }
+const ETIQUETA_PERIODO = { hoy: 'Hoy', 7: '7 días', 30: '30 días' }
+// La banda elige la variable por su nombre corto; la API usa el código.
+const CODIGO_VARIABLE = Object.fromEntries(Object.entries(VARIABLE).map(([codigo, v]) => [v.corta, codigo]))
+const ESTADOS = [
+  { value: '', label: 'Todos los estados' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'warning', label: 'Advertencia' },
+  { value: 'critical', label: 'Peligro' },
 ]
 
 async function cargarCatalogo() {
@@ -71,13 +78,24 @@ function filasPorMomento(lecturas) {
   return [...grupos.values()].sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1))
 }
 
+// Texto de la fila que usa el buscador de la tabla (hora y fecha de la medición).
+const textoFila = (f) => `${horaSeg(f.fecha_hora)} ${fechaCorta(f.fecha_hora)}`
+
+// Estado de la fila: el peor nivel de sus tres variables contra sus umbrales.
+function estadoFila(fila, umbrales) {
+  return ['TEMP', 'HUM', 'AIRE']
+    .map((v) => nivelLectura(fila[v], umbrales?.find((x) => x.variable === v)))
+    .reduce((a, b) => (a === 'critical' || b === 'critical' ? 'critical' : a === 'warning' || b === 'warning' ? 'warning' : 'normal'))
+}
+
 export function MedicionesPage() {
   const { organizacion } = useSesion()
   const cat = useDatos(cargarCatalogo, [])
-  const [area, setArea] = useState('')
   const [elegido, setDisp] = useState('')
   const [variable, setVariable] = useState('HUM')
   const [periodo, setPeriodo] = useState('hoy')
+  const [busqueda, setBusqueda] = useState('')
+  const [estadoTabla, setEstadoTabla] = useState('')
   const [exportando, setExportando] = useState(false)
   const [cargandoMas, setCargandoMas] = useState(false)
   const dispositivos = cat.datos?.dispositivos ?? []
@@ -118,13 +136,30 @@ export function MedicionesPage() {
   }
 
   const areas = cat.datos?.areas ?? []
-  const visibles = dispositivos.filter((d) => !area || d.area === Number(area))
   const actual = dispositivos.find((d) => d.num === Number(disp))
   const info = VARIABLE[variable]
   const unidad = UNIDAD[variable]
   const u = lect.datos?.umbrales.find((x) => x.variable === variable)
 
-  const nombrePeriodo = PERIODOS.find((p) => p.value === periodo).label.toLowerCase()
+  // Nombre del dispositivo con su área al final cuando el usuario tiene más de una.
+  const etiquetaDispositivo = (d) => {
+    const area = areas.find((a) => a.num === d.area)
+    return `${d.nombre} · ${d.codigo_mqtt}${areas.length > 1 && area ? ` · ${area.nombre}` : ''}`
+  }
+
+  // Al cambiar los filtros del encabezado se limpian los de la tabla.
+  const cambiarDispositivo = (e) => {
+    setDisp(e.target.value)
+    setBusqueda('')
+    setEstadoTabla('')
+  }
+  const cambiarPeriodo = (v) => {
+    setPeriodo(PERIODO[v])
+    setBusqueda('')
+    setEstadoTabla('')
+  }
+
+  const nombrePeriodo = ETIQUETA_PERIODO[periodo].toLowerCase()
   const vista = useMemo(() => {
     if (!lect.datos) return null
     const serie = lect.datos.serie.map((p) => puntoSerie(p, periodo))
@@ -136,8 +171,25 @@ export function MedicionesPage() {
     return { serie, max, min, prom, sobre, filas: filasPorMomento(lect.datos.lecturas) }
   }, [lect.datos, u, periodo])
 
+  // Filtros de la tabla: trabajan sobre las filas ya cargadas, sin pedir nada a la API.
+  const q = busqueda.trim().toLowerCase()
+  const filtrandoTabla = q !== '' || estadoTabla !== ''
+  const filasVisibles = (vista?.filas ?? []).filter(
+    (f) => (!q || textoFila(f).toLowerCase().includes(q)) && (!estadoTabla || estadoFila(f, lect.datos?.umbrales) === estadoTabla),
+  )
+
+  const controlesVariable = (
+    <PeriodFilter
+      label="Variable"
+      options={['Temperatura', 'Humedad', 'Aire']}
+      value={info.corta}
+      onChange={(v) => setVariable(CODIGO_VARIABLE[v])}
+    />
+  )
+
   const cifras = vista?.serie.length
     ? {
+        controles: controlesVariable,
         principal: {
           etiqueta: `${info.etiqueta} · ${nombrePeriodo} · ${actual?.nombre ?? ''}`,
           valor: num(vista.max, info.decimales),
@@ -155,6 +207,7 @@ export function MedicionesPage() {
         ],
       }
     : {
+        controles: controlesVariable,
         principal: {
           etiqueta: info.etiqueta,
           valor: '--.-',
@@ -163,43 +216,32 @@ export function MedicionesPage() {
         },
       }
 
+  const filtros = (
+    <div className="ui-panel-filtros">
+      {dispositivos.length > 1 && (
+        <Select
+          icon="cpu"
+          value={disp}
+          onChange={cambiarDispositivo}
+          options={dispositivos.map((d) => ({ value: String(d.num), label: etiquetaDispositivo(d) }))}
+        />
+      )}
+      <PeriodFilter value={ETIQUETA_PERIODO[periodo]} onChange={cambiarPeriodo} />
+    </div>
+  )
+
   return (
-    <Pantalla eyebrow={`${organizacion} · lecturas cada ${actual?.intervalo_muestreo_seg ?? 60} s`} titulo="Histórico" cifras={cifras}>
-      <Card>
-        <div className="ui-rejilla-filtros" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 13rem), 1fr))', gap: 16 }}>
-          <Select
-            label="Área"
-            icon="map-pin"
-            value={area}
-            onChange={(e) => {
-              setArea(e.target.value)
-              const primero = dispositivos.find((d) => !e.target.value || d.area === Number(e.target.value))
-              setDisp(primero ? String(primero.num) : '')
-            }}
-            options={[{ value: '', label: 'Todas las áreas' }, ...areas.map((a) => ({ value: String(a.num), label: a.nombre }))]}
-          />
-          <Select
-            label="Dispositivo"
-            icon="cpu"
-            value={disp}
-            onChange={(e) => setDisp(e.target.value)}
-            options={visibles.map((d) => ({ value: String(d.num), label: `${d.nombre} · ${d.codigo_mqtt}` }))}
-          />
-          <Select
-            label="Variable"
-            icon={info.icono}
-            value={variable}
-            onChange={(e) => setVariable(e.target.value)}
-            options={Object.entries(VARIABLE).map(([value, v]) => ({ value, label: v.etiqueta }))}
-          />
-          <Select label="Periodo" icon="calendar" value={periodo} onChange={(e) => setPeriodo(e.target.value)} options={PERIODOS} />
-        </div>
-      </Card>
+    <Pantalla
+      eyebrow={`${organizacion} · lecturas cada ${actual?.intervalo_muestreo_seg ?? 60} s`}
+      titulo="Histórico"
+      acciones={filtros}
+      cifras={cifras}
+    >
       {lect.estado === 'error' ? (
         <EstadoError reintentar={lect.reintentar} />
       ) : (
         <Card className="nc-grow">
-          <div className="nc-card__head" style={{ marginBottom: 12 }}>
+          <div className="nc-card__head ui-lecturas-cabeza" style={{ marginBottom: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <h3 className="nc-card__title">Lecturas</h3>
               <p className="nc-card__sub">
@@ -207,9 +249,13 @@ export function MedicionesPage() {
                 {lect.datos?.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(lect.datos.ultima)}</span>}
               </p>
             </div>
-            <Button variant="secondary" icon="download" size="sm" disabled={!disp || exportando} onClick={exportar}>
-              {exportando ? 'Exportando…' : 'Exportar CSV'}
-            </Button>
+            <div className="ui-lecturas-filtros">
+              <Buscador valor={busqueda} cambiar={setBusqueda} placeholder="Buscar hora o fecha…" ancho={220} />
+              <Select value={estadoTabla} onChange={(e) => setEstadoTabla(e.target.value)} options={ESTADOS} />
+              <Button variant="secondary" icon="download" size="sm" disabled={!disp || exportando} onClick={exportar}>
+                {exportando ? 'Exportando…' : 'Exportar CSV'}
+              </Button>
+            </div>
           </div>
           <div className="nc-table-wrap nc-scroll">
             <table className="nc-table">
@@ -223,17 +269,15 @@ export function MedicionesPage() {
                 </tr>
               </thead>
               <tbody>
-                {vista && !vista.filas.length && (
+                {vista && !filasVisibles.length && (
                   <tr>
                     <td colSpan={5} className="ui-muted" style={{ textAlign: 'center', padding: '32px 0' }}>
-                      Sin lecturas en este periodo
+                      {vista.filas.length ? 'Ninguna medición cargada coincide con el filtro' : 'Sin lecturas en este periodo'}
                     </td>
                   </tr>
                 )}
-                {(vista?.filas ?? []).map((f) => {
-                  const peor = ['TEMP', 'HUM', 'AIRE']
-                    .map((v) => nivelLectura(f[v], lect.datos.umbrales.find((x) => x.variable === v)))
-                    .reduce((a, b) => (a === 'critical' || b === 'critical' ? 'critical' : a === 'warning' || b === 'warning' ? 'warning' : 'normal'))
+                {filasVisibles.map((f) => {
+                  const peor = estadoFila(f, lect.datos.umbrales)
                   const resalta = (v) => (v === variable ? 'ui-num ui-strong' : 'ui-num')
                   return (
                     <tr key={f.fecha_hora}>
@@ -259,9 +303,11 @@ export function MedicionesPage() {
           {vista && vista.filas.length > 0 && (
             <div className="ui-lecturas-pie">
               <span className="ui-muted">
-                {lect.datos.siguiente
-                  ? `Mostrando ${miles(vista.filas.length)} de ${miles(Math.round(lect.datos.total / 3))} mediciones`
-                  : `${miles(vista.filas.length)} mediciones del periodo`}
+                {filtrandoTabla
+                  ? `${miles(filasVisibles.length)} de ${miles(vista.filas.length)} mediciones cargadas coinciden`
+                  : lect.datos.siguiente
+                    ? `Mostrando ${miles(vista.filas.length)} de ${miles(Math.round(lect.datos.total / 3))} mediciones`
+                    : `${miles(vista.filas.length)} mediciones del periodo`}
               </span>
               {lect.datos.siguiente && (
                 <Button variant="secondary" size="sm" icon="chevron-down" disabled={cargandoMas} onClick={cargarMas}>

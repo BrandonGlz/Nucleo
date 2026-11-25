@@ -3,10 +3,11 @@ import { LogoMark } from '../design-system/componentes/index.js'
 // Tarjeta oscura de cifras clave que abre cada pantalla (clase nc-ink).
 // principal: { etiqueta, valor, unidad, titulo, sub, tonoValor, tonoUnidad, tonoSub }
 // barra: { desde, ancho, marca } en porcentaje · cifras: [{ etiqueta, valor, unidad, sub, tono }]
+// controles: nodo opcional que afecta solo a la banda (p. ej. la variable); va antes de la etiqueta.
 // Los tonos son verde, peligro, tenue, apagado o claro.
 const tono = (t) => (t ? `tono-${t}` : undefined)
 
-export function CifrasClave({ principal, barra, cifras = [] }) {
+export function CifrasClave({ principal, barra, cifras = [], controles }) {
   return (
     <section className="nc-ink" data-theme="dark" aria-label="Cifras clave">
       <div className="nc-ink__deco" style={{ right: -180, top: -250, width: 480, height: 480 }} />
@@ -16,6 +17,7 @@ export function CifrasClave({ principal, barra, cifras = [] }) {
       </div>
 
       <div className="nc-ink__principal">
+        {controles && <div className="nc-ink__controles">{controles}</div>}
         <span className="ui-eyebrow">{principal.etiqueta}</span>
         {principal.valor != null && (
           <div className={`nc-ink__valor ${tono(principal.tonoValor) ?? ''}`}>

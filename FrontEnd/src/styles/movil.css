@@ -356,6 +356,19 @@
     overflow-wrap: anywhere;
   }
 
+  /* Histórico: los filtros de la tabla bajan de renglón y se reparten */
+  .ui-lecturas-cabeza {
+    flex-wrap: wrap;
+  }
+  .ui-lecturas-filtros {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+  .ui-lecturas-filtros > .ui-buscador {
+    flex: 1 1 200px;
+    width: auto !important;
+  }
+
   /* Barras de filtros (Dispositivos, Usuarios, Umbrales, Auditoría) */
   .ui-filtros {
     flex-wrap: wrap !important;
