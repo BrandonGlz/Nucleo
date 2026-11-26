@@ -317,7 +317,7 @@
   "capacidades": {
     "ADMIN": "Puedo responderte sobre las lecturas actuales y el histórico de tus dispositivos, sus alertas y quién las atendió, el estado de dispositivos y sensores, los umbrales y los reportes. También genero reportes del área con IA, los envío por correo a usuarios de tu organización y creo, cambio o cancelo programaciones de reportes; antes de hacerlo te muestro un resumen y espero tu «sí». No modifico umbrales, usuarios, dispositivos ni alertas: eso se hace en la plataforma.",
     "SUPER": "Puedo responderte sobre las lecturas actuales y el histórico de los dispositivos de tu área, sus alertas y quién las atendió, el estado de dispositivos y sensores, los umbrales y los reportes. También genero reportes de tu área con IA, los envío por correo y creo, cambio o cancelo programaciones, siempre con tu confirmación. No modifico umbrales, usuarios, dispositivos ni alertas desde el chat.",
-    "ANALISTA": "Puedo responderte sobre las lecturas actuales y el histórico de los dispositivos de tu área, sus alertas, el estado de dispositivos y sensores, los umbrales y los reportes. También genero reportes de tu área con IA, los envío por correo y creo, cambio o cancelo programaciones, siempre con tu confirmación. No modifico umbrales, usuarios, dispositivos ni alertas desde el chat.",
+    "ANALISTA": "Puedo responderte sobre las lecturas actuales y el histórico de los dispositivos de tu área, sus alertas, el estado de dispositivos y sensores, los umbrales y los reportes. También genero reportes de tu área con IA, los envío por correo y consulto las programaciones; crearlas, cambiarlas o pausarlas es cosa de administradores y supervisores. No modifico umbrales, usuarios, dispositivos ni alertas desde el chat.",
     "OPER": "Puedo responderte sobre las lecturas, alertas, sensores y umbrales de tu dispositivo asignado. Los reportes los generan administradores, supervisores y analistas."
   },
   "permisos": {
@@ -371,8 +371,7 @@
     "nota": "OPER*: solo con acceso_agente y sobre su dispositivo asignado. Los reportes son del área asignada (la del dispositivo del agente), nunca de toda la organización. SUPER y ANALISTA con área solo ven su área. ADMINPLAT no usa el agente.",
     "enviar_y_programar": [
       "ADMIN",
-      "SUPER",
-      "ANALISTA"
+      "SUPER"
     ]
   },
   "errores": {

@@ -4,7 +4,9 @@ export const REPORTE = (num) => `/reportes/${num}/` // GET
 export const REPORTE_PDF = (num) => `/reportes/${num}/pdf/` // GET: descarga en PDF
 export const REPORTE_FORMATO = (num) => `/reportes/${num}/formato/` // POST {formato}: cambia el formato y regenera el PDF
 export const PROGRAMACIONES_REPORTE = '/programaciones-reporte/' // GET, POST
-export const PROGRAMACION_REPORTE = (num) => `/programaciones-reporte/${num}/` // GET, PATCH, DELETE
+// GET, PATCH {activa} para pausar/reanudar; DELETE deshabilitado (405)
+export const PROGRAMACION_REPORTE = (num) => `/programaciones-reporte/${num}/`
+export const PROGRAMACION_PROBAR = (num) => `/programaciones-reporte/${num}/probar/` // POST: prueba solo al solicitante
 
 // Formatos de reporte (ADMIN y SUPER escriben; ANALISTA solo lee y usa)
 export const FORMATOS_REPORTE = '/formatos-reporte/' // GET; ?archivados=1; POST {nombre, conf}

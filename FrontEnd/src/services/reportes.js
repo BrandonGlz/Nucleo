@@ -2,6 +2,8 @@ import {
   AREAS,
   DISPOSITIVOS,
   PROGRAMACIONES_REPORTE,
+  PROGRAMACION_PROBAR,
+  PROGRAMACION_REPORTE,
   REPORTE,
   REPORTE_FORMATO,
   REPORTE_PDF,
@@ -76,6 +78,18 @@ export async function lista() {
 export async function programaciones() {
   if (USAR_MOCKS) return mock.programaciones()
   return pedir(PROGRAMACIONES_REPORTE)
+}
+export async function crearProgramacion(datos) {
+  if (USAR_MOCKS) return mock.crearProgramacion(datos)
+  return pedir(PROGRAMACIONES_REPORTE, { metodo: 'POST', cuerpo: datos })
+}
+export async function actualizarProgramacion(num, datos) {
+  if (USAR_MOCKS) return mock.actualizarProgramacion(num, datos)
+  return pedir(PROGRAMACION_REPORTE(num), { metodo: 'PATCH', cuerpo: datos })
+}
+export async function probarProgramacion(num) {
+  if (USAR_MOCKS) return mock.probarProgramacion(num)
+  return pedir(PROGRAMACION_PROBAR(num), { metodo: 'POST' })
 }
 export async function crear(datos) {
   if (USAR_MOCKS) return mock.crearReporte(datos)

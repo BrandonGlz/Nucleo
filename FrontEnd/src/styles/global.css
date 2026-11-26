@@ -2504,6 +2504,47 @@ article.ui-hoja,
   flex: 0 1 auto;
   min-width: 0;
 }
+/* Programaciones de reportes */
+.ui-programacion__cabeza {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.ui-programacion__cabeza .ui-titulo-fila {
+  flex: 1;
+}
+.ui-programacion__destinatarios {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ui-programacion__destinatarios legend {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ui-programacion__destinatarios p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 17px;
+}
+.ui-programacion__destinatarios > div {
+  display: grid;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.ui-programacion__destinatarios label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+}
+.ui-programacion__destinatarios small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
 /* Formatos de reporte */
 .ui-formato-cabeza {
   display: flex;
@@ -3629,6 +3670,15 @@ button.ui-menuitem:not(:disabled):hover svg {
 .ui-aviso--danger {
   background: var(--danger-soft);
   color: var(--danger);
+}
+/* Avisos de varias líneas en una sección (no una píldora) */
+.ui-aviso--bloque {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  line-height: 18px;
 }
 .ui-buscador {
   flex: none;

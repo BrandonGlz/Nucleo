@@ -1,5 +1,5 @@
 import random
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -469,13 +469,20 @@ class Command(BaseCommand):
             ("Moldeo", "Mariana", "DIARIA", ["Mariana", "Tomás"]),
         ]
         for area, autor, frecuencia, destinatarios in programaciones:
+            dia_semana = 0 if frecuencia == "SEMANAL" else None
+            dia_mes = 1 if frecuencia == "MENSUAL" else None
             ProgramacionReporte.objects.create(
                 organizacion=self.org,
                 area=self.areas.get(area),
                 creada_por=self.usuarios[autor],
                 frecuencia=frecuencia,
+                hora=time(8, 0),
+                dia_semana=dia_semana,
+                dia_mes=dia_mes,
                 destinatarios=[self.usuarios[n].pk for n in destinatarios],
-                proxima_ejecucion=servicios.desplazar(self.ahora, frecuencia, 1),
+                proxima_ejecucion=servicios.siguiente_ejecucion(
+                    frecuencia, time(8, 0), dia_semana, dia_mes, desde=self.ahora
+                ),
                 ultima_ejecucion=self.ahora - timedelta(days=1),
             )
         self.stdout.write(f"{hechos} reportes y {len(programaciones)} programaciones.")

@@ -376,10 +376,84 @@ export async function reportes() {
   await esperar()
   return pagina(db.reportes.map(prepararReporte))
 }
+const prepararProgramacion = (p) => {
+  const formato = p.formato ? formatoDe(p.formato) : null
+  return copia({
+    ...p,
+    formato: formato?.num ?? p.formato ?? null,
+    formato_nombre: formato?.nombre ?? p.formato_nombre ?? '',
+  })
+}
+
 export async function programaciones() {
   await esperar()
-  return pagina(copia(db.programaciones))
+  return pagina(db.programaciones.map(prepararProgramacion))
 }
+
+export async function crearProgramacion(datos) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const formato = datos.formato ? formatoDe(datos.formato) : null
+  const nueva = {
+    num: Math.max(...db.programaciones.map((p) => p.num)) + 1,
+    organizacion: 1,
+    area: datos.area ? Number(datos.area) : null,
+    creada_por: USUARIO_POR_ROL[rolMock()] ?? 2,
+    formato: formato?.num ?? null,
+    formato_nombre: formato?.nombre ?? '',
+    frecuencia: datos.frecuencia,
+    hora: datos.hora || '08:00:00',
+    dia_semana: datos.frecuencia === 'SEMANAL' ? Number(datos.dia_semana) : null,
+    dia_mes: datos.frecuencia === 'MENSUAL' ? Number(datos.dia_mes) : null,
+    destinatarios: [...datos.destinatarios],
+    activa: true,
+    proxima_ejecucion: new Date(Date.now() + 86400000).toISOString(),
+    ultima_ejecucion: null,
+    fecha_creacion: new Date().toISOString(),
+  }
+  db.programaciones.push(nueva)
+  return prepararProgramacion(nueva)
+}
+
+export async function actualizarProgramacion(num, cambios) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const p = db.programaciones.find((x) => x.num === Number(num)) ?? noEncontrado()
+  if (cambios.formato !== undefined) {
+    const formato = cambios.formato ? formatoDe(cambios.formato) : null
+    p.formato = formato?.num ?? null
+    p.formato_nombre = formato?.nombre ?? ''
+  }
+  for (const campo of ['frecuencia', 'hora', 'dia_semana', 'dia_mes', 'destinatarios', 'activa']) {
+    if (cambios[campo] !== undefined) p[campo] = cambios[campo]
+  }
+  if (p.frecuencia !== 'SEMANAL') p.dia_semana = null
+  if (p.frecuencia !== 'MENSUAL') p.dia_mes = null
+  if (cambios.activa === true) p.proxima_ejecucion = new Date(Date.now() + 86400000).toISOString()
+  return prepararProgramacion(p)
+}
+
+export async function probarProgramacion(num) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const p = db.programaciones.find((x) => x.num === Number(num)) ?? noEncontrado()
+  const base = db.reportes.find((r) => r.area === p.area) ?? db.reportes[0]
+  const formato = p.formato ? formatoDe(p.formato) : formatoPredeterminado()
+  return copia({
+    ...base,
+    num: Math.max(...db.reportes.map((r) => r.num)) + 1,
+    area: p.area,
+    origen: 'PROGRAMADO',
+    formato: formato.num,
+    formato_nombre: formato.nombre,
+    formato_version: formato.version,
+    formato_conf: formato.conf,
+    periodo_inicio: new Date(Date.now() - 86400000).toISOString(),
+    periodo_fin: new Date().toISOString(),
+    fecha_generacion: new Date().toISOString(),
+  })
+}
+
 export async function crearReporte({ area, formato, periodo_inicio, periodo_fin }) {
   await esperar()
   const base = db.reportes.find((r) => r.area === Number(area)) ?? db.reportes[0]

@@ -44,6 +44,10 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Programaciones de reportes administrables desde la web: crear, editar, pausar, reanudar y
+  «Enviar prueba ahora» (solo a quien la pide, sin mover las fechas). Se elige la hora, el día de
+  la semana o del mes (1–28) y el formato. Solo ADMIN y SUPER las administran; ANALISTA las
+  consulta, y ya no se eliminan.
 - Formatos de reporte en el servidor, compartidos por la organización: cuatro plantillas
   (Ejecutivo, Cumplimiento, Operativo detallado e Incidentes), versiones al guardar,
   predeterminados de la organización y de cada área, duplicar, archivar y consultar versiones.

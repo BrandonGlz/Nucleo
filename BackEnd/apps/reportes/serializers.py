@@ -1,4 +1,6 @@
-from django.utils import timezone
+from datetime import time
+
+from django.db.models import Q
 from rest_framework import serializers
 
 from apps.reportes import formatos, servicios
@@ -152,10 +154,11 @@ class SolicitudReporteSerializer(serializers.Serializer):
 
 
 class ProgramacionReporteSerializer(serializers.ModelSerializer):
-    """Programación periódica; sin ``proxima_ejecucion`` se programa un periodo adelante."""
+    """Programación periódica; sin ``proxima_ejecucion`` se calcula con hora y día."""
 
     destinatarios = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
     proxima_ejecucion = serializers.DateTimeField(required=False)
+    formato_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = ProgramacionReporte
@@ -164,7 +167,12 @@ class ProgramacionReporteSerializer(serializers.ModelSerializer):
             "organizacion",
             "area",
             "creada_por",
+            "formato",
+            "formato_nombre",
             "frecuencia",
+            "hora",
+            "dia_semana",
+            "dia_mes",
             "destinatarios",
             "activa",
             "proxima_ejecucion",
@@ -175,16 +183,33 @@ class ProgramacionReporteSerializer(serializers.ModelSerializer):
             "num",
             "organizacion",
             "creada_por",
+            "formato_nombre",
             "ultima_ejecucion",
             "fecha_creacion",
         ]
         extra_kwargs = {"activa": {"required": False}}
+
+    def get_formato_nombre(self, programacion):
+        return programacion.formato.nombre if programacion.formato_id else ""
 
     def validate_area(self, area):
         actor = self.context["request"].user
         if area is not None and not areas_visibles(actor).filter(pk=area.pk).exists():
             raise serializers.ValidationError("El área no existe o no está a su alcance.")
         return area
+
+    def validate_formato(self, formato):
+        if formato is None:
+            return None
+        actor = self.context["request"].user
+        visible = FormatoReporte.objects.filter(
+            Q(organizacion_id=actor.organizacion_id) | Q(organizacion__isnull=True),
+            activo=True,
+            pk=formato.pk,
+        ).exists()
+        if not visible:
+            raise serializers.ValidationError("El formato no existe o no está a su alcance.")
+        return formato
 
     def validate_destinatarios(self, numeros):
         organizacion = self.context["request"].user.organizacion_id
@@ -204,6 +229,38 @@ class ProgramacionReporteSerializer(serializers.ModelSerializer):
         if actor.rol_id != roles.ADMIN and actor.area_id:
             # Supervisor y analista con área solo programan reportes de su área.
             datos["area"] = areas_visibles(actor).filter(pk=actor.area_id).first()
-        if self.instance is None and "proxima_ejecucion" not in datos:
-            datos["proxima_ejecucion"] = servicios.desplazar(timezone.now(), datos["frecuencia"], 1)
+
+        frecuencia = datos.get("frecuencia", getattr(self.instance, "frecuencia", None))
+        hora = datos.get("hora", getattr(self.instance, "hora", time(8, 0)))
+        dia_semana = datos.get("dia_semana", getattr(self.instance, "dia_semana", None))
+        dia_mes = datos.get("dia_mes", getattr(self.instance, "dia_mes", None))
+
+        if hora.minute not in (0, 30):
+            raise serializers.ValidationError({"hora": "La hora debe ser en punto o y media."})
+        if dia_semana is not None and not 0 <= dia_semana <= 6:
+            raise serializers.ValidationError({"dia_semana": "El día debe estar entre 0 y 6."})
+        if dia_mes is not None and not 1 <= dia_mes <= 28:
+            raise serializers.ValidationError({"dia_mes": "El día debe estar entre 1 y 28."})
+        if frecuencia == ProgramacionReporte.Frecuencia.SEMANAL and dia_semana is None:
+            raise serializers.ValidationError(
+                {"dia_semana": "Elige el día de la semana de la programación."}
+            )
+        if frecuencia == ProgramacionReporte.Frecuencia.MENSUAL and dia_mes is None:
+            raise serializers.ValidationError(
+                {"dia_mes": "Elige el día del mes de la programación."}
+            )
+
+        cambia_horario = any(
+            campo in datos for campo in ("frecuencia", "hora", "dia_semana", "dia_mes")
+        )
+        reanuda = bool(self.instance and datos.get("activa") is True and not self.instance.activa)
+        if self.instance is None:
+            if "proxima_ejecucion" not in datos:
+                datos["proxima_ejecucion"] = servicios.siguiente_ejecucion(
+                    frecuencia, hora, dia_semana, dia_mes
+                )
+        elif cambia_horario or reanuda:
+            datos["proxima_ejecucion"] = servicios.siguiente_ejecucion(
+                frecuencia, hora, dia_semana, dia_mes
+            )
         return datos

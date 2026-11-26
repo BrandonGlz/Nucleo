@@ -15,7 +15,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from functools import cache
 from pathlib import Path
 
@@ -774,11 +774,29 @@ def _puede_reportes(usuario):
     return usuario.rol_id in (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA)
 
 
+def _puede_programar(usuario):
+    return usuario.rol_id in (roles.ADMIN, roles.SUPERVISOR)
+
+
 SIN_PERMISO_REPORTES = {
     "texto": "Los reportes y sus envíos los gestionan administradores, supervisores y "
     "analistas. Puedo responderte sobre las lecturas y alertas de tu dispositivo.",
     "codigo": "sin_permiso",
 }
+SIN_PERMISO_PROGRAMAR = {
+    "texto": "Solo ADMIN y SUPER pueden programar reportes.",
+    "codigo": "sin_permiso",
+}
+
+
+def _horario_programacion(frecuencia):
+    """Valores por omisión del chat hasta la tarea 6.4 (allí Nico aprende hora y día)."""
+    datos = {"hora": "08:00"}
+    if frecuencia == ProgramacionReporte.Frecuencia.SEMANAL:
+        datos["dia_semana"] = 0
+    if frecuencia == ProgramacionReporte.Frecuencia.MENSUAL:
+        datos["dia_mes"] = 1
+    return datos
 
 
 def pide_envio_de_reporte(pregunta):
@@ -954,8 +972,8 @@ def _serializar_programacion(usuario, datos, instancia=None):
 
 def preparar_programacion(usuario, dispositivo, pregunta):
     """Nueva programación del área del dispositivo (el área asignada del usuario)."""
-    if not _puede_reportes(usuario):
-        return SIN_PERMISO_REPORTES
+    if not _puede_programar(usuario):
+        return SIN_PERMISO_PROGRAMAR
     texto = agente._normalizar(pregunta)
     area = dispositivo.area
     frecuencias = _frecuencias(texto)
@@ -975,11 +993,13 @@ def preparar_programacion(usuario, dispositivo, pregunta):
             "faltan": ["destinatarios"],
         }
     frecuencia = frecuencias[0]
+    horario = _horario_programacion(frecuencia)
     s = _serializar_programacion(
         usuario,
         {
             "area": area.pk,
             "frecuencia": frecuencia,
+            **horario,
             "destinatarios": [u.pk for u in destinatarios],
         },
     )
@@ -987,7 +1007,12 @@ def preparar_programacion(usuario, dispositivo, pregunta):
         return {"texto": banco()["errores"]["sin_permiso"], "codigo": "sin_permiso"}
     from apps.reportes import servicios
 
-    primera = servicios.desplazar(timezone.now(), frecuencia, 1)
+    primera = servicios.siguiente_ejecucion(
+        frecuencia,
+        time(8, 0),
+        horario.get("dia_semana"),
+        horario.get("dia_mes"),
+    )
     return {
         "texto": "Voy a programar un reporte "
         f"{ProgramacionReporte.Frecuencia(frecuencia).label.lower()} del área {area.nombre} "
@@ -998,14 +1023,15 @@ def preparar_programacion(usuario, dispositivo, pregunta):
             pregunta,
             area=area.pk,
             frecuencia=frecuencia,
+            **horario,
             destinatarios=[u.pk for u in destinatarios],
         ),
     }
 
 
 def preparar_cambio_programacion(usuario, dispositivo, pregunta, cancelar=False):
-    if not _puede_reportes(usuario):
-        return SIN_PERMISO_REPORTES
+    if not _puede_programar(usuario):
+        return SIN_PERMISO_PROGRAMAR
     texto = agente._normalizar(pregunta)
     frecuencias = _frecuencias(texto)
     # «Cambia la semanal a mensual»: la última es la nueva; con una sola, solo si se pide como
@@ -1028,6 +1054,10 @@ def preparar_cambio_programacion(usuario, dispositivo, pregunta, cancelar=False)
     partes = []
     if nueva and nueva != programacion.frecuencia:
         cambios["frecuencia"] = nueva
+        if nueva == ProgramacionReporte.Frecuencia.SEMANAL:
+            cambios["dia_semana"] = 0
+        if nueva == ProgramacionReporte.Frecuencia.MENSUAL:
+            cambios["dia_mes"] = 1
         partes.append(f"frecuencia {ProgramacionReporte.Frecuencia(nueva).label.lower()}")
     personas, ambiguos = destinatarios_de(usuario, dispositivo.area, pregunta)
     if ambiguos:
@@ -1079,7 +1109,10 @@ def confirmar(usuario, dispositivo, accion):
             "propuesta": accion["pregunta"],
         }
     tipo = accion.get("tipo", "reporte")
-    if tipo != "reporte" and not _puede_reportes(usuario):
+    if tipo in ("programar", "editar_programacion", "cancelar_programacion"):
+        if not _puede_programar(usuario):
+            return SIN_PERMISO_PROGRAMAR
+    elif tipo != "reporte" and not _puede_reportes(usuario):
         return SIN_PERMISO_REPORTES
     if tipo == "reporte":
         r = confirmar_reporte(usuario, dispositivo, accion)
@@ -1114,6 +1147,9 @@ def confirmar(usuario, dispositivo, accion):
             {
                 "area": accion["area"],
                 "frecuencia": accion["frecuencia"],
+                "hora": accion.get("hora", "08:00"),
+                "dia_semana": accion.get("dia_semana"),
+                "dia_mes": accion.get("dia_mes"),
                 "destinatarios": accion["destinatarios"],
             },
         )

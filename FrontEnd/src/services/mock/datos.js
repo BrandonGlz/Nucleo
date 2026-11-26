@@ -8,6 +8,30 @@ const MIN = 60
 const HORA = 3600
 const DIA = 86400
 
+// Próxima ejecución futura para las programaciones de ejemplo (día 0 = lunes).
+function proximaEjecucion({ diaSemana = null, diaMes = null, hora = '08:00' } = {}) {
+  const base = new Date(AHORA)
+  const [h, m] = String(hora).split(':').map(Number)
+  if (diaSemana != null) {
+    const jsDia = (Number(diaSemana) + 1) % 7
+    let delta = (jsDia - base.getDay() + 7) % 7
+    if (delta === 0) delta = 7
+    const fecha = new Date(base)
+    fecha.setDate(base.getDate() + delta)
+    fecha.setHours(h, m, 0, 0)
+    return fecha.toISOString()
+  }
+  if (diaMes != null) {
+    const fecha = new Date(base.getFullYear(), base.getMonth(), Number(diaMes), h, m, 0, 0)
+    if (fecha <= base) fecha.setMonth(fecha.getMonth() + 1)
+    return fecha.toISOString()
+  }
+  const fecha = new Date(base)
+  fecha.setHours(h, m, 0, 0)
+  if (fecha <= base) fecha.setDate(fecha.getDate() + 1)
+  return fecha.toISOString()
+}
+
 export const catalogos = {
   roles: [
     { codigo: 'ADMINPLAT', nombre: 'Administrador de plataforma', descripcion: '' },
@@ -237,14 +261,18 @@ export const reportes = [
 
 export const programaciones = [
   {
-    num: 4, organizacion: 1, area: 2, creada_por: 2, frecuencia: 'SEMANAL', destinatarios: [2, 5, 1],
-    activa: true, proxima_ejecucion: '2026-11-09T15:00:00Z', ultima_ejecucion: '2026-11-02T15:00:00Z',
-    fecha_creacion: '2026-09-01T16:00:00Z',
+    num: 4, organizacion: 1, area: 2, creada_por: 2, frecuencia: 'SEMANAL',
+    formato: 5, formato_nombre: 'Formato de la organización', hora: '08:00:00',
+    dia_semana: 0, dia_mes: null, destinatarios: [2, 5, 1],
+    activa: true, proxima_ejecucion: proximaEjecucion({ diaSemana: 0 }),
+    ultima_ejecucion: hace(7 * DIA), fecha_creacion: '2026-09-01T16:00:00Z',
   },
   {
-    num: 5, organizacion: 1, area: null, creada_por: 1, frecuencia: 'MENSUAL', destinatarios: [1, 2, 3, 4, 5],
-    activa: true, proxima_ejecucion: '2026-12-01T15:00:00Z', ultima_ejecucion: '2026-11-01T15:00:00Z',
-    fecha_creacion: '2026-08-15T16:00:00Z',
+    num: 5, organizacion: 1, area: null, creada_por: 1, frecuencia: 'MENSUAL',
+    formato: null, formato_nombre: '', hora: '08:00:00',
+    dia_semana: null, dia_mes: 1, destinatarios: [1, 2, 3, 4, 5],
+    activa: true, proxima_ejecucion: proximaEjecucion({ diaMes: 1 }),
+    ultima_ejecucion: hace(24 * DIA), fecha_creacion: '2026-08-15T16:00:00Z',
   },
 ]
 

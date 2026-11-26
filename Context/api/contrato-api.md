@@ -262,11 +262,16 @@ Reportes (ADMIN, SUPER y ANALISTA)
 │                                           (local: plantillas con las cifras); sin proveedor, 503
 ├── POST /reportes/{num}/formato/           {"formato": num} → usa la versión actual de ese formato
 │                                           y regenera solo el PDF, sin llamar a la IA
-└── /programaciones-reporte/                Reportes periódicos: {"frecuencia" DIARIA|SEMANAL|MENSUAL,
-                                            "destinatarios" [num de usuario], "area"?,
-                                            "activa"?, "proxima_ejecucion"?}; destinatarios de la
-                                            misma organización; SUPER y ANALISTA con área
-                                            solo programan la suya
+├── /programaciones-reporte/                Reportes periódicos: {"frecuencia" DIARIA|SEMANAL|MENSUAL,
+│                                           "hora" "HH:MM" en punto o y media, "dia_semana" 0–6
+│                                           (semanal), "dia_mes" 1–28 (mensual), "formato"?,
+│                                           "destinatarios" [num de usuario], "area"?, "activa"?};
+│                                           destinatarios de la misma organización; crear y editar
+│                                           son ADMIN y SUPER; DELETE responde 405 y pausar/reanudar
+│                                           se hace con PATCH {"activa"}
+└── POST /programaciones-reporte/{num}/probar/
+                                            Genera el periodo actual y lo envía solo a quien lo pide
+                                            con el asunto «[Prueba]»; no mueve las fechas
 
 Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
 └── /nico/

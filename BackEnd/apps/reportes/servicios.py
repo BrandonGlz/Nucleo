@@ -1,12 +1,13 @@
 """Cálculo de cifras y generación de reportes."""
 
 import calendar
-from datetime import timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.db.models.functions import TruncDay, TruncHour
+from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.avisos import servicios as avisos
@@ -183,6 +184,59 @@ def desplazar(fecha, frecuencia, meses_o_periodos=1):
     return fecha.replace(year=anio, month=mes, day=dia)
 
 
+def siguiente_ejecucion(
+    frecuencia,
+    hora=time(8, 0),
+    dia_semana=None,
+    dia_mes=None,
+    desde=None,
+):
+    """Próxima ejecución futura de una programación, en la zona horaria del servidor.
+
+    La hora y el día salen de la programación; ``desde`` es el instante desde el que se
+    busca (por omisión, ahora). La semanal usa ``dia_semana`` (0 = lunes) y la mensual
+    ``dia_mes`` (1–28).
+    """
+    desde = desde or timezone.now()
+    if not timezone.is_aware(desde):
+        desde = timezone.make_aware(desde)
+    local = timezone.localtime(desde)
+    zona = timezone.get_current_timezone()
+    hora = hora or time(8, 0)
+
+    def candidato(fecha):
+        return timezone.make_aware(datetime.combine(fecha, hora), zona)
+
+    if frecuencia == ProgramacionReporte.Frecuencia.DIARIA:
+        proxima = candidato(local.date())
+        if proxima <= local:
+            proxima = candidato(local.date() + timedelta(days=1))
+        return proxima
+
+    if frecuencia == ProgramacionReporte.Frecuencia.SEMANAL:
+        if dia_semana is None:
+            raise ValueError("La programación semanal necesita un día de la semana.")
+        dias = (dia_semana - local.weekday()) % 7
+        proxima = candidato(local.date() + timedelta(days=dias))
+        if proxima <= local:
+            proxima = candidato(proxima.date() + timedelta(days=7))
+        return proxima
+
+    if frecuencia == ProgramacionReporte.Frecuencia.MENSUAL:
+        if dia_mes is None:
+            raise ValueError("La programación mensual necesita un día del mes.")
+        anio, mes = local.year, local.month
+        proxima = candidato(date(anio, mes, dia_mes))
+        if proxima <= local:
+            indice = anio * 12 + mes
+            anio, mes = divmod(indice, 12)
+            mes += 1
+            proxima = candidato(date(anio, mes, dia_mes))
+        return proxima
+
+    raise ValueError("La frecuencia de la programación no es válida.")
+
+
 def enviar_reporte(reporte, destinatarios, asunto=None):
     """Envía el reporte en PDF a los usuarios activos de su organización. Devuelve los correos."""
     correos = list(
@@ -219,7 +273,7 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
 def programaciones_vencidas(ahora):
     return ProgramacionReporte.objects.filter(
         activa=True, proxima_ejecucion__lte=ahora
-    ).select_related("organizacion", "area")
+    ).select_related("organizacion", "area", "formato")
 
 
 def ejecutar_programacion(programacion, ahora):
@@ -240,6 +294,7 @@ def ejecutar_programacion(programacion, ahora):
         ahora,
         Reporte.Origen.PROGRAMADO,
         usuario=programacion.creada_por,
+        formato=programacion.formato,
     )
     correos = enviar_reporte(
         reporte,
@@ -248,10 +303,13 @@ def ejecutar_programacion(programacion, ahora):
         f"de {programacion.organizacion.nombre}",
     )
 
-    siguiente = programacion.proxima_ejecucion
-    while siguiente <= ahora:
-        siguiente = desplazar(siguiente, programacion.frecuencia, 1)
     programacion.ultima_ejecucion = ahora
-    programacion.proxima_ejecucion = siguiente
+    programacion.proxima_ejecucion = siguiente_ejecucion(
+        programacion.frecuencia,
+        programacion.hora,
+        programacion.dia_semana,
+        programacion.dia_mes,
+        desde=ahora,
+    )
     programacion.save(update_fields=["ultima_ejecucion", "proxima_ejecucion"])
     return reporte, correos

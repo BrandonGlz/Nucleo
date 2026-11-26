@@ -1,5 +1,7 @@
 """Reportes con inteligencia artificial."""
 
+from datetime import time
+
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import F, Func, IntegerField, Q
@@ -223,7 +225,20 @@ class ProgramacionReporte(models.Model):
         db_column="creada_por",
         related_name="programaciones_reporte",
     )
+    formato = models.ForeignKey(
+        "reportes.FormatoReporte",
+        on_delete=models.PROTECT,
+        db_column="formato_num",
+        related_name="programaciones_reporte",
+        null=True,
+        blank=True,
+    )
     frecuencia = models.CharField(max_length=10, choices=Frecuencia.choices)
+    hora = models.TimeField(default=time(8, 0))
+    # 0 = lunes … 6 = domingo. Solo se usa en la frecuencia semanal.
+    dia_semana = models.SmallIntegerField(null=True, blank=True)
+    # 1–28 para que exista en todos los meses. Solo se usa en la frecuencia mensual.
+    dia_mes = models.SmallIntegerField(null=True, blank=True)
     destinatarios = ArrayField(models.IntegerField())
     activa = models.BooleanField(db_default=True)
     proxima_ejecucion = models.DateTimeField()
@@ -249,6 +264,27 @@ class ProgramacionReporte(models.Model):
                     0,
                 ),
                 name="ck_programacion_destinatarios",
+            ),
+            models.CheckConstraint(
+                condition=Q(hora__minute__in=(0, 30)),
+                name="ck_programacion_hora",
+            ),
+            models.CheckConstraint(
+                condition=Q(dia_semana__isnull=True)
+                | Q(dia_semana__gte=0, dia_semana__lte=6),
+                name="ck_programacion_dia_semana",
+            ),
+            models.CheckConstraint(
+                condition=Q(dia_mes__isnull=True) | Q(dia_mes__gte=1, dia_mes__lte=28),
+                name="ck_programacion_dia_mes",
+            ),
+            models.CheckConstraint(
+                condition=~Q(frecuencia="SEMANAL") | Q(dia_semana__isnull=False),
+                name="ck_programacion_semanal_dia",
+            ),
+            models.CheckConstraint(
+                condition=~Q(frecuencia="MENSUAL") | Q(dia_mes__isnull=False),
+                name="ck_programacion_mensual_dia",
             ),
         ]
 

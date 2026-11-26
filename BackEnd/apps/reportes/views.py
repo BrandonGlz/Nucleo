@@ -326,26 +326,57 @@ class FormatoReporteViewSet(viewsets.ModelViewSet):
 
 
 class ProgramacionReporteViewSet(viewsets.ModelViewSet):
-    """Reportes periódicos: frecuencia, área (o toda la organización) y destinatarios.
+    """Reportes periódicos: frecuencia, hora, día, área y destinatarios.
 
-    Los genera y envía por correo la tarea ``generar_reportes_programados``.
+    Los genera y envía por correo la tarea ``generar_reportes_programados``. No se eliminan
+    desde la web: se pausan o se reanudan con ``PATCH {activa}``.
     """
 
     serializer_class = ProgramacionReporteSerializer
     permission_classes = [PermisoPorRol]
     roles_lectura = (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA)
-    roles_escritura = (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA)
+    roles_escritura = (roles.ADMIN, roles.SUPERVISOR)
+    roles_acciones = {"probar": (roles.ADMIN, roles.SUPERVISOR)}
+    http_method_names = ["get", "post", "patch", "head", "options"]
 
     def get_queryset(self):
         usuario = self.request.user
         consulta = ProgramacionReporte.objects.filter(organizacion_id=usuario.organizacion_id)
         if usuario.rol_id != roles.ADMIN and usuario.area_id:
             consulta = consulta.filter(area_id=usuario.area_id)
-        return consulta
+        return consulta.select_related("formato")
 
     def perform_create(self, serializer):
         usuario = self.request.user
         serializer.save(organizacion=usuario.organizacion, creada_por=usuario)
+
+    @action(detail=True, methods=["post"])
+    def probar(self, request, pk=None):
+        """Genera el periodo actual y lo envía solo a quien pide la prueba."""
+        programacion = self.get_object()
+        ahora = timezone.now()
+        inicio = servicios.desplazar(ahora, programacion.frecuencia, -1)
+        try:
+            reporte = servicios.generar_reporte(
+                programacion.organizacion,
+                programacion.area,
+                inicio,
+                ahora,
+                Reporte.Origen.PROGRAMADO,
+                usuario=request.user,
+                formato=programacion.formato,
+            )
+        except ia.IANoDisponible as error:
+            return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        asunto = (
+            f"[Prueba] Reporte {programacion.get_frecuencia_display().lower()} "
+            f"de {programacion.organizacion.nombre}"
+        )
+        servicios.enviar_reporte(reporte, [request.user.pk], asunto=asunto)
+        return Response(
+            ReporteSerializer(reporte, context=self.get_serializer_context()).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class PreguntaAgenteSerializer(serializers.Serializer):

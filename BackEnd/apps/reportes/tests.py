@@ -1,5 +1,5 @@
 import tempfile
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, time, timedelta
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -14,8 +14,15 @@ from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.mediciones.models import Lectura
-from apps.reportes import agente, aprendizaje, carga, herramientas, ia, puente, servicios
-from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte, RespuestaAprendida
+from apps.reportes import agente, aprendizaje, carga, formatos, herramientas, ia, puente, servicios
+from apps.reportes.models import (
+    FormatoReporte,
+    PreguntaAgente,
+    ProgramacionReporte,
+    Reporte,
+    RespuestaAprendida,
+    VersionFormato,
+)
 from common.testing import Escenario, PruebaBase, cliente_de
 
 
@@ -167,21 +174,22 @@ class ProgramacionTests(PruebaBase):
     def datos(self, **extra):
         base = {
             "frecuencia": "SEMANAL",
+            "dia_semana": 0,
             "destinatarios": [self.e.supervisor.pk, self.e.analista.pk],
         }
         return {**base, **extra}
 
     def test_crea_una_programacion_con_proxima_ejecucion_por_defecto(self):
-        r = cliente_de(self.e.analista).post(
+        r = cliente_de(self.e.supervisor).post(
             "/api/v1/programaciones-reporte/", self.datos(), format="json"
         )
         self.assertEqual(r.status_code, 201, r.content)
         cuerpo = r.json()
-        self.assertEqual(cuerpo["creada_por"], self.e.analista.pk)
+        self.assertEqual(cuerpo["creada_por"], self.e.supervisor.pk)
         self.assertTrue(cuerpo["activa"])
         self.assertEqual(
             cuerpo["area"], self.e.area.pk
-        )  # el analista con área solo programa la suya
+        )  # el supervisor con área solo programa la suya
 
     def test_el_administrador_programa_toda_la_organizacion(self):
         r = cliente_de(self.e.admin).post(
@@ -299,6 +307,204 @@ class ProgramacionTests(PruebaBase):
         programacion.refresh_from_db()
         self.assertIsNone(programacion.ultima_ejecucion)
         self.assertFalse(Reporte.objects.exists())
+
+
+class ProgramacionHorarioTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        self.ahora = timezone.now()
+
+    def _local(self, anio, mes, dia, hora, minuto=0):
+        return timezone.make_aware(
+            datetime(anio, mes, dia, hora, minuto),
+            timezone.get_current_timezone(),
+        )
+
+    def test_siguiente_ejecucion_diaria_respeta_la_hora(self):
+        antes = servicios.siguiente_ejecucion(
+            "DIARIA", time(8, 0), desde=self._local(2026, 2, 27, 7, 0)
+        )
+        despues = servicios.siguiente_ejecucion(
+            "DIARIA", time(8, 0), desde=self._local(2026, 2, 27, 9, 0)
+        )
+
+        self.assertEqual(timezone.localtime(antes).strftime("%Y-%m-%d %H:%M"), "2026-02-27 08:00")
+        self.assertEqual(timezone.localtime(despues).strftime("%Y-%m-%d %H:%M"), "2026-02-28 08:00")
+
+    def test_siguiente_ejecucion_semanal_usa_el_dia(self):
+        desde = self._local(2026, 11, 23, 10, 0)
+        self.assertEqual(timezone.localtime(desde).weekday(), 0)  # lunes
+
+        proxima = servicios.siguiente_ejecucion(
+            "SEMANAL", time(9, 30), dia_semana=4, desde=desde
+        )
+
+        self.assertEqual(timezone.localtime(proxima).strftime("%Y-%m-%d %H:%M"), "2026-11-27 09:30")
+
+    def test_siguiente_ejecucion_mensual_usa_el_dia_28_en_febrero(self):
+        proxima = servicios.siguiente_ejecucion(
+            "MENSUAL", time(8, 0), dia_mes=28, desde=self._local(2026, 1, 31, 12, 0)
+        )
+
+        self.assertEqual(timezone.localtime(proxima).strftime("%Y-%m-%d %H:%M"), "2026-02-28 08:00")
+
+    def test_semanal_sin_dia_semana_se_rechaza(self):
+        r = cliente_de(self.e.admin).post(
+            "/api/v1/programaciones-reporte/",
+            {
+                "frecuencia": "SEMANAL",
+                "destinatarios": [self.e.supervisor.pk],
+            },
+            format="json",
+        )
+
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("dia_semana", r.json())
+
+    def test_analista_no_crea_ni_pausa_programaciones(self):
+        analista = cliente_de(self.e.analista)
+        r = analista.post(
+            "/api/v1/programaciones-reporte/",
+            {
+                "frecuencia": "DIARIA",
+                "destinatarios": [self.e.analista.pk],
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403)
+
+        programacion = ProgramacionReporte.objects.create(
+            organizacion=self.e.organizacion,
+            area=self.e.area,
+            creada_por=self.e.admin,
+            frecuencia="DIARIA",
+            hora=time(8, 0),
+            dia_semana=0,
+            dia_mes=1,
+            destinatarios=[self.e.analista.pk],
+            proxima_ejecucion=self.ahora,
+        )
+        r = analista.patch(
+            f"/api/v1/programaciones-reporte/{programacion.num}/",
+            {"activa": False},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403)
+
+    def test_reanudar_recalcula_la_proxima_ejecucion(self):
+        programacion = ProgramacionReporte.objects.create(
+            organizacion=self.e.organizacion,
+            creada_por=self.e.admin,
+            frecuencia="DIARIA",
+            hora=time(8, 0),
+            dia_semana=0,
+            dia_mes=1,
+            destinatarios=[self.e.admin.pk],
+            activa=False,
+            proxima_ejecucion=self.ahora - timedelta(days=10),
+        )
+
+        r = cliente_de(self.e.admin).patch(
+            f"/api/v1/programaciones-reporte/{programacion.num}/",
+            {"activa": True},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        programacion.refresh_from_db()
+        self.assertTrue(programacion.activa)
+        self.assertGreater(programacion.proxima_ejecucion, timezone.now())
+
+    def test_delete_esta_deshabilitado(self):
+        programacion = ProgramacionReporte.objects.create(
+            organizacion=self.e.organizacion,
+            creada_por=self.e.admin,
+            frecuencia="DIARIA",
+            hora=time(8, 0),
+            dia_semana=0,
+            dia_mes=1,
+            destinatarios=[self.e.admin.pk],
+            proxima_ejecucion=self.ahora,
+        )
+
+        r = cliente_de(self.e.admin).delete(
+            f"/api/v1/programaciones-reporte/{programacion.num}/"
+        )
+        self.assertEqual(r.status_code, 405)
+
+    def test_probar_envia_solo_al_solicitante_y_no_mueve_fechas(self):
+        formato = FormatoReporte.objects.create(
+            organizacion=self.e.organizacion,
+            nombre="Formato de prueba",
+        )
+        VersionFormato.objects.create(
+            formato=formato,
+            numero=1,
+            conf=formatos.CONF_OPERATIVO,
+        )
+        programacion = ProgramacionReporte.objects.create(
+            organizacion=self.e.organizacion,
+            creada_por=self.e.admin,
+            formato=formato,
+            frecuencia="DIARIA",
+            hora=time(8, 0),
+            dia_semana=0,
+            dia_mes=1,
+            destinatarios=[self.e.supervisor.pk, self.e.analista.pk],
+            proxima_ejecucion=self.ahora + timedelta(days=1),
+        )
+        proxima = programacion.proxima_ejecucion
+
+        with (
+            tempfile.TemporaryDirectory() as carpeta,
+            override_settings(MEDIA_ROOT=carpeta),
+            mock.patch.object(ia, "redactar", return_value="Prueba sin IA."),
+        ):
+            r = cliente_de(self.e.admin).post(
+                f"/api/v1/programaciones-reporte/{programacion.num}/probar/",
+                {},
+                format="json",
+            )
+
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [self.e.admin.correo])
+        self.assertTrue(mail.outbox[0].subject.startswith("[Prueba]"))
+        programacion.refresh_from_db()
+        self.assertEqual(programacion.proxima_ejecucion, proxima)
+        self.assertIsNone(programacion.ultima_ejecucion)
+        reporte = Reporte.objects.get()
+        self.assertEqual(reporte.formato_version.formato_id, formato.pk)
+
+    def test_la_tarea_programada_usa_el_formato(self):
+        formato = FormatoReporte.objects.create(
+            organizacion=self.e.organizacion,
+            nombre="Formato de la tarea",
+        )
+        VersionFormato.objects.create(
+            formato=formato,
+            numero=1,
+            conf=formatos.CONF_OPERATIVO,
+        )
+        programacion = ProgramacionReporte.objects.create(
+            organizacion=self.e.organizacion,
+            creada_por=self.e.admin,
+            formato=formato,
+            frecuencia="DIARIA",
+            hora=time(8, 0),
+            dia_semana=0,
+            dia_mes=1,
+            destinatarios=[self.e.admin.pk],
+            proxima_ejecucion=self.ahora - timedelta(hours=1),
+        )
+
+        with (
+            tempfile.TemporaryDirectory() as carpeta,
+            override_settings(MEDIA_ROOT=carpeta),
+            mock.patch.object(ia, "redactar", return_value="Tarea con formato."),
+        ):
+            reporte, _ = servicios.ejecutar_programacion(programacion, self.ahora)
+
+        self.assertEqual(reporte.formato_version.formato_id, formato.pk)
 
 
 class AgenteTests(PruebaBase):
@@ -1448,6 +1654,7 @@ class HerramientasAgenteTests(PruebaBase):
             area=self.e.area,
             creada_por=self.e.supervisor,
             frecuencia=ProgramacionReporte.Frecuencia.SEMANAL,
+            dia_semana=0,
             destinatarios=[self.e.supervisor.pk],
             proxima_ejecucion=self.ahora + timedelta(days=2),
         )
@@ -1548,6 +1755,17 @@ class HerramientasAgenteTests(PruebaBase):
         self._pedir(self.e.admin, "sí")
         self.assertEqual(mail.outbox[-1].to, [self.e.analista.correo])
         self.assertEqual(len(mail.outbox), 2)
+
+    def test_analista_consulta_programaciones_pero_no_las_cambia(self):
+        mensaje = "Solo ADMIN y SUPER pueden programar reportes."
+        r = self._pedir(self.e.analista, "programa un reporte semanal para mí")
+        self.assertEqual(r["codigo"], "sin_permiso")
+        self.assertEqual(r["texto"], mensaje)
+        r = self._pedir(self.e.analista, "cancela la programación")
+        self.assertEqual(r["codigo"], "sin_permiso")
+        self.assertEqual(r["texto"], mensaje)
+        r = self._pedir(self.e.analista, "¿qué reportes tengo programados?")
+        self.assertNotEqual(r.get("codigo"), "sin_permiso")
 
     def test_operador_no_envia_ni_programa(self):
         self.e.operador.acceso_agente = True

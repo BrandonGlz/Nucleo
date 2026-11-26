@@ -11,6 +11,7 @@ import { MenuAcciones } from '../../components/MenuAcciones'
 import { Modal } from '../../components/Modal'
 import { DashboardReporte, ListaTarjetas } from './DashboardReporte'
 import { MigracionFormatos } from './MigracionFormatos'
+import { Programaciones } from './Programaciones'
 import { useEdicion } from './personalizacion'
 import { Pantalla } from '../../components/Pantalla'
 import { useDatos } from '../../hooks/useDatos'
@@ -20,8 +21,6 @@ import * as organizacionesApi from '../../services/organizaciones'
 import * as reportesApi from '../../services/reportes'
 import { pagina } from '../../utils/convertir'
 import { fechaLarga, periodo } from '../../utils/formato'
-
-const FRECUENCIA = { DIARIA: 'Cada día 08:00', SEMANAL: 'Cada lunes 08:00', MENSUAL: 'Día 1 de cada mes' }
 
 async function cargar() {
   const [r, p, a] = await Promise.all([reportesApi.lista(), reportesApi.programaciones(), organizacionesApi.areas()])
@@ -202,7 +201,6 @@ export function ReportesPage() {
   const puedeEditar = rol === 'ADMIN' || rol === 'SUPER'
   // Mientras se crea un formato en el modal, la página de fondo sigue en vista normal.
   const edPagina = ed.modo === 'nuevo' ? { ...ed, editando: false } : ed
-  const nombreArea = (n) => datos?.areas.find((a) => a.num === n)?.nombre ?? 'Todas las áreas'
 
   const accionFormato = async (accion) => {
     try {
@@ -419,29 +417,13 @@ export function ReportesPage() {
                       </Button>
                     </div>
                   )}
-                  <span className="ui-eyebrow" style={{ padding: '12px 12px 6px' }}>
-                    Programados por correo
-                  </span>
-                  {datos.programaciones.map((p) => (
-                    <div key={p.num} className="ui-item" style={{ alignItems: 'flex-start', gap: 12, padding: 12 }}>
-                      <IconCircle name="calendar-clock" size="sm" />
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div className="ui-titulo-fila">
-                          <strong style={{ fontSize: 14, lineHeight: '20px' }}>
-                            Resumen {p.frecuencia.toLowerCase()} · {nombreArea(p.area)}
-                          </strong>
-                          <span style={{ fontSize: 12, lineHeight: '16px' }}>
-                            {FRECUENCIA[p.frecuencia]} · a {p.destinatarios.length} responsables
-                          </span>
-                        </div>
-                        <div>
-                          <Badge tone="neutral" icon="calendar-clock">
-                            Próximo {fechaLarga(p.proxima_ejecucion)}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  <Programaciones
+                    programaciones={datos.programaciones}
+                    areas={datos.areas}
+                    formatos={ed.formatos}
+                    puedeEditar={puedeEditar}
+                    onCambio={recargar}
+                  />
                 </div>
               </Card>
             )}
