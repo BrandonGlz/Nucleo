@@ -24,3 +24,18 @@ def periodo_texto(inicio, fin, corto=False):
     """«15/11/2026 al 21/11/2026» (o «15/11 al 21/11/2026» con ``corto``)."""
     a, b = dias_periodo(inicio, fin)
     return f"{a:%d/%m}{'' if corto else a.strftime('/%Y')} al {b:%d/%m/%Y}"
+
+MESES = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+
+
+def periodo_titulo(inicio, fin):
+    """«1–25 nov 2026» o «28 dic 2025 – 4 ene 2026», con el fin exclusivo.
+
+    Es el mismo formato que ``periodo()`` de la web; se usa en el título del reporte.
+    """
+    a, b = dias_periodo(inicio, fin)
+    if a.year != b.year:
+        return f"{a.day} {MESES[a.month - 1]} {a.year} – {b.day} {MESES[b.month - 1]} {b.year}"
+    if a.month == b.month:
+        return f"{a.day}–{b.day} {MESES[b.month - 1]} {b.year}"
+    return f"{a.day} {MESES[a.month - 1]} – {b.day} {MESES[b.month - 1]} {b.year}"

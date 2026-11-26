@@ -77,6 +77,7 @@ function Formulario({ programacion, areas, formatos, usuarios, guardar, cerrar }
   return (
     <Modal
       titulo={programacion ? 'Editar programación' : 'Nueva programación'}
+      tamano="mediano"
       sub="Elige cuándo se genera el reporte y quién lo recibe."
       cerrar={cerrar}
       acciones={
@@ -214,18 +215,16 @@ export function Programaciones({ programaciones, areas, formatos, puedeEditar, o
 
   return (
     <>
-      <span className="ui-eyebrow" style={{ padding: '12px 12px 6px' }}>
-        Programados por correo
-      </span>
-      {puedeEditar && (
-        <div style={{ padding: '0 12px 8px' }}>
+      <div className="ui-programados__cabeza">
+        <span className="ui-eyebrow">Programados por correo</span>
+        {puedeEditar && (
           <Button size="sm" icon="plus" onClick={() => setModal({})}>
             Nueva programación
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       {(mensaje || error) && (
-        <div style={{ padding: '0 12px 8px' }}>
+        <div className="ui-programados__aviso">
           <span
             className={`ui-aviso ui-aviso--bloque ${error ? 'ui-aviso--danger' : 'ui-aviso--success'}`}
             role="status"
@@ -235,37 +234,19 @@ export function Programaciones({ programaciones, areas, formatos, puedeEditar, o
         </div>
       )}
       {programaciones.length === 0 && (
-        <p className="ui-muted" style={{ padding: '0 12px 12px' }}>
-          No hay programaciones por correo.
-        </p>
+        <div className="ui-programados__vacio">
+          <IconCircle name="calendar-clock" size="lg" />
+          <p className="ui-muted">No hay programaciones por correo.</p>
+        </div>
       )}
       {programaciones.map((p) => (
-        <div key={p.num} className="ui-item" style={{ alignItems: 'flex-start', gap: 12, padding: 12 }}>
+        <div key={p.num} className="ui-item ui-programacion">
           <IconCircle name="calendar-clock" size="sm" />
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div className="ui-programacion__cabeza">
-              <div className="ui-titulo-fila">
-                <strong style={{ fontSize: 14, lineHeight: '20px' }}>{textoFrecuencia(p)}</strong>
-                <span style={{ fontSize: 12, lineHeight: '16px' }}>
-                  {nombreArea(areas, p.area)} · {p.formato_nombre || 'Predeterminado'} ·{' '}
-                  {p.destinatarios.length} {p.destinatarios.length === 1 ? 'destinatario' : 'destinatarios'}
-                </span>
-              </div>
-              {puedeEditar && (
-                <MenuAcciones
-                  items={[
-                    { label: 'Editar', icon: 'pencil', onClick: () => setModal(p) },
-                    {
-                      label: p.activa ? 'Pausar' : 'Reanudar',
-                      icon: p.activa ? 'circle-x' : 'circle-check',
-                      onClick: () => alternar(p),
-                    },
-                    { label: 'Enviar prueba ahora', icon: 'send', onClick: () => probar(p) },
-                  ]}
-                />
-              )}
+          <div className="ui-reportes__item-texto">
+            <div className="ui-titulo-fila">
+              <strong>{textoFrecuencia(p)}</strong>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+            <div className="ui-reportes__item-meta">
               {p.activa ? (
                 <Badge tone="neutral" icon="calendar-clock">
                   Próximo {fechaLarga(p.proxima_ejecucion)}
@@ -273,8 +254,28 @@ export function Programaciones({ programaciones, areas, formatos, puedeEditar, o
               ) : (
                 <Badge tone="warning">Pausada</Badge>
               )}
+              <span className="ui-muted">
+                {nombreArea(areas, p.area)} · {p.formato_nombre || 'Predeterminado'} ·{' '}
+                {p.destinatarios.length}{' '}
+                {p.destinatarios.length === 1 ? 'destinatario' : 'destinatarios'}
+              </span>
             </div>
           </div>
+          {puedeEditar && (
+            <span className="ui-reportes__item-menu">
+              <MenuAcciones
+                items={[
+                  { label: 'Editar', icon: 'pencil', onClick: () => setModal(p) },
+                  {
+                    label: p.activa ? 'Pausar' : 'Reanudar',
+                    icon: p.activa ? 'circle-x' : 'circle-check',
+                    onClick: () => alternar(p),
+                  },
+                  { label: 'Enviar prueba ahora', icon: 'send', onClick: () => probar(p) },
+                ]}
+              />
+            </span>
+          )}
         </div>
       ))}
       {modal && (

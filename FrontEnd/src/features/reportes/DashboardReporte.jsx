@@ -1,10 +1,11 @@
-import { useLayoutEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Check, Eye, EyeOff, GripVertical, Plus, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
-import { BarChart, Badge, Icon, Logo, TrendChart } from '../../design-system/componentes/index.js'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ArrowDown, ArrowUp, Check, Eye, EyeOff, GripVertical, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { BarChart, Badge, Icon, Logo, Tabs, TrendChart } from '../../design-system/componentes/index.js'
 import { UNIDAD, VARIABLE } from '../../utils/convertir'
 import { ANCHO, esquema, FUENTES, FUENTES_CON_FILTRO, NOTA_MAX, opcionesDe, opcionesNuevas, tarjeta, TITULO_MAX } from './personalizacion'
 import { fechaLarga, hora, mesAnio, miles, periodo } from '../../utils/formato'
 import { logoDe } from '../../utils/foto'
+import { medidaHoja } from './medidas'
 import { ProveedorZoom, useZoomHoja, VisorHoja } from './VisorHoja'
 
 const ORIGEN = {
@@ -377,7 +378,7 @@ function Cumplimiento({ c, op }) {
     const datos = op.datos ?? ['pct', 'fuera']
     return (
       <div className="ui-tabla-scroll">
-        <table className="nc-table" style={{ width: '100%' }}>
+        <table className="nc-table ui-tabla-cumplimiento" style={{ width: '100%' }}>
           <thead>
             <tr>
               <th>Variable</th>
@@ -470,7 +471,7 @@ function Comparativo({ c, op }) {
   return (
     <div className="ui-comparativo">
       <div className="ui-tabla-scroll">
-        <table className="nc-table" style={{ width: '100%' }}>
+        <table className="nc-table ui-tabla-comparativo" style={{ width: '100%' }}>
           <thead>
             <tr>
               <th>Variable</th>
@@ -522,21 +523,27 @@ function Dispositivos({ c, op, areas }) {
     return <p className="ui-muted">{porArea.length || dispositivos.length ? SIN_DATOS_FILTRO : SIN_DATOS_PERIODO}</p>
   }
   const datos = op.datos ?? ['minimo', 'promedio', 'maximo', 'area']
-  const campos = [
-    ['minimo', 'Mín.'],
-    ['promedio', 'Prom.'],
-    ['maximo', 'Máx.'],
-  ].filter(([clave]) => datos.includes(clave))
+  const conMin = datos.includes('minimo')
+  const conProm = datos.includes('promedio')
+  const conMax = datos.includes('maximo')
+  const compacta = Number(op.ancho) <= 6
+  const cortaVariable = { TEMP: 'Temp.', HUM: 'Hum.', AIRE: 'Aire' }
   const variables = ['TEMP', 'HUM', 'AIRE'].filter((codigo) => filas.some((fila) => fila[codigo]))
   return (
     <div className="ui-tabla-scroll">
-      <table className="nc-table" style={{ width: '100%' }}>
+      <table className="nc-table ui-tabla-dispositivos" style={{ width: '100%' }}>
         <thead>
           <tr>
-            <th>Dispositivo</th>
+            <th>{compacta ? <abbr title="Dispositivo">Disp.</abbr> : 'Dispositivo'}</th>
             {datos.includes('area') && <th>Área</th>}
             {variables.map((codigo) => (
-              <th key={codigo}>{nombreVariable(codigo)}</th>
+              <th key={codigo}>
+                {compacta ? (
+                  <abbr title={nombreVariable(codigo)}>{cortaVariable[codigo]}</abbr>
+                ) : (
+                  nombreVariable(codigo)
+                )}
+              </th>
             ))}
           </tr>
         </thead>
@@ -549,9 +556,33 @@ function Dispositivos({ c, op, areas }) {
                 const info = fila[codigo]
                 if (!info) return <td key={codigo}>—</td>
                 const dec = decimalesDe(op, VARIABLE[codigo]?.decimales ?? 1)
+                const f = (valor) => Number(valor).toFixed(dec)
+                const principal = conProm
+                  ? f(info.promedio)
+                  : conMin
+                    ? `Mín ${f(info.minimo)}`
+                    : conMax
+                      ? `Máx ${f(info.maximo)}`
+                      : '—'
+                const rango =
+                  conProm && conMin && conMax
+                    ? `${f(info.minimo)}–${f(info.maximo)}`
+                    : conProm && conMin
+                      ? `Mín ${f(info.minimo)}`
+                      : conProm && conMax
+                        ? `Máx ${f(info.maximo)}`
+                        : ''
                 return (
-                  <td key={codigo} className="ui-num">
-                    {campos.map(([clave]) => Number(info[clave]).toFixed(dec)).join(' / ')}
+                  <td key={codigo} className="ui-num ui-dispositivo__valor">
+                    <span className="ui-dispositivo__principal">{principal}</span>
+                    {rango && (
+                      <span
+                        className="ui-dispositivo__rango"
+                        title={`Mínimo ${f(info.minimo)} · Máximo ${f(info.maximo)}`}
+                      >
+                        {rango}
+                      </span>
+                    )}
                   </td>
                 )
               })}
@@ -1054,11 +1085,150 @@ function CampoHoja({ clave, etiqueta, valores, porOmision, hoja, cambiarHoja }) 
   )
 }
 
-// Lista de tarjetas con sus opciones; ocupa el lugar de la lista de reportes mientras se edita.
-export function ListaTarjetas({ ed, areas = [], r = null }) {
-  const { borrador, abierta, setAbierta, arrastre, mover, alternar, opcion, agregar, quitar, cambiarHoja } = ed
-  const [nueva, setNueva] = useState(false)
-  const hoja = borrador.hoja ?? {}
+// Opciones de la tarjeta elegida en la hoja.
+function OpcionesTarjeta({ ed, id, w, op, areas, opcionesDispositivos }) {
+  const { borrador, opcion } = ed
+  return (
+    <div className="ui-editor__opciones" draggable onDragStart={(e) => e.preventDefault()}>
+      {esquema(borrador, id).map((o) => (
+        <fieldset key={o.clave}>
+          <legend>{o.etiqueta}</legend>
+          <div className="ui-editor__chips">
+            {o.valores.map(([valor, etiqueta]) => {
+              const activo = o.tipo === 'uno' ? op[o.clave] === valor : op[o.clave].includes(valor)
+              return (
+                <button
+                  key={valor}
+                  type="button"
+                  role={o.tipo === 'uno' ? 'radio' : 'checkbox'}
+                  aria-checked={activo}
+                  className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
+                  onClick={() =>
+                    opcion(
+                      id,
+                      o.clave,
+                      o.tipo === 'uno'
+                        ? valor
+                        : activo
+                          ? op[o.clave].filter((x) => x !== valor)
+                          : [...op[o.clave], valor],
+                    )
+                  }
+                >
+                  {activo && o.tipo === 'varios' && <Check size={13} />}
+                  {etiqueta}
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
+      ))}
+      <label className="ui-editor__campo">
+        <span>Título propio</span>
+        <input
+          value={op.titulo ?? ''}
+          maxLength={TITULO_MAX}
+          placeholder={w.nombre}
+          onChange={(e) => opcion(id, 'titulo', e.target.value)}
+        />
+      </label>
+      <label className="ui-editor__campo">
+        <span>Nota al pie</span>
+        <textarea
+          value={op.nota ?? ''}
+          maxLength={NOTA_MAX}
+          rows={2}
+          onChange={(e) => opcion(id, 'nota', e.target.value)}
+        />
+      </label>
+      <fieldset>
+        <legend>Decimales</legend>
+        <div className="ui-editor__chips">
+          {[0, 1, 2].map((n) => (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={op.decimales === n}
+              className={`ui-editor__chip${op.decimales === n ? ' is-activo' : ''}`}
+              onClick={() => opcion(id, 'decimales', n)}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      {w.fuente && FUENTES_CON_FILTRO.has(w.fuente) && (
+        <fieldset>
+          <legend>Filtro de la tarjeta</legend>
+          <p className="ui-muted" style={{ margin: '0 0 6px', fontSize: 12 }}>
+            Solo esta tarjeta usa la parte elegida del alcance.
+          </p>
+          <div className="ui-editor__chips">
+            {areas.map((a) => {
+              const activo = op.filtro?.areas?.includes(a.num)
+              return (
+                <button
+                  key={`area-${a.num}`}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={Boolean(activo)}
+                  className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
+                  onClick={() => {
+                    const actuales = op.filtro?.areas ?? []
+                    const siguientes = activo
+                      ? actuales.filter((x) => x !== a.num)
+                      : [...actuales, a.num]
+                    opcion(id, 'filtro', siguientes.length ? { areas: siguientes } : undefined)
+                  }}
+                >
+                  {activo && <Check size={13} />}
+                  {a.nombre}
+                </button>
+              )
+            })}
+          </div>
+          <div className="ui-editor__chips" style={{ marginTop: 6 }}>
+            {opcionesDispositivos.map((d) => {
+              const activo = op.filtro?.dispositivos?.includes(d.codigo)
+              return (
+                <button
+                  key={`disp-${d.codigo}`}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={Boolean(activo)}
+                  className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
+                  onClick={() => {
+                    const actuales = op.filtro?.dispositivos ?? []
+                    const siguientes = activo
+                      ? actuales.filter((x) => x !== d.codigo)
+                      : [...actuales, d.codigo]
+                    opcion(id, 'filtro', siguientes.length ? { dispositivos: siguientes } : undefined)
+                  }}
+                >
+                  {activo && <Check size={13} />}
+                  {d.nombre}
+                </button>
+              )
+            })}
+          </div>
+          {op.filtro && (
+            <button type="button" className="ui-editor__chip" onClick={() => opcion(id, 'filtro', undefined)}>
+              <RotateCcw size={13} /> Quitar filtro
+            </button>
+          )}
+        </fieldset>
+      )}
+      {op.alto && (
+        <button type="button" className="ui-editor__chip" onClick={() => opcion(id, 'alto', undefined)}>
+          <RotateCcw size={13} /> Alto automático
+        </button>
+      )}
+    </div>
+  )
+}
+
+function HojaEditor({ hoja, cambiarHoja }) {
   const firmas = hoja.firmas ?? {}
   const cambiarFirma = (campo, clave, valor) =>
     cambiarHoja({
@@ -1067,6 +1237,93 @@ export function ListaTarjetas({ ed, areas = [], r = null }) {
         [campo]: { ...(firmas[campo] ?? {}), [clave]: valor },
       },
     })
+  return (
+    <fieldset className="ui-editor__hoja">
+      <legend className="ui-sr-only">Hoja</legend>
+      <CampoHoja
+        clave="tamano"
+        etiqueta="Tamaño"
+        valores={[['carta', 'Carta'], ['a4', 'A4']]}
+        porOmision="carta"
+        hoja={hoja}
+        cambiarHoja={cambiarHoja}
+      />
+      <CampoHoja
+        clave="orientacion"
+        etiqueta="Orientación"
+        valores={[['vertical', 'Vertical'], ['horizontal', 'Horizontal']]}
+        porOmision="vertical"
+        hoja={hoja}
+        cambiarHoja={cambiarHoja}
+      />
+      <CampoHoja
+        clave="analisis_largo"
+        etiqueta="Largo del análisis"
+        valores={[['breve', 'Breve'], ['normal', 'Normal'], ['detallado', 'Detallado']]}
+        porOmision="normal"
+        hoja={hoja}
+        cambiarHoja={cambiarHoja}
+      />
+      <label className="ui-editor__casilla">
+        <input
+          type="checkbox"
+          checked={hoja.portada ?? false}
+          onChange={(e) => cambiarHoja({ portada: e.target.checked })}
+        />
+        <span>Portada con logo, alcance y periodo</span>
+      </label>
+      <div className="ui-editor__firmas">
+        {[
+          ['elaboro', 'Elaboró'],
+          ['reviso', 'Revisó'],
+        ].map(([campo, etiqueta]) => (
+          <div key={campo}>
+            <strong>{etiqueta}</strong>
+            <input
+              value={firmas[campo]?.nombre ?? ''}
+              placeholder="Nombre"
+              aria-label={`Nombre de ${etiqueta}`}
+              onChange={(e) => cambiarFirma(campo, 'nombre', e.target.value)}
+            />
+            <input
+              value={firmas[campo]?.cargo ?? ''}
+              placeholder="Cargo"
+              aria-label={`Cargo de ${etiqueta}`}
+              onChange={(e) => cambiarFirma(campo, 'cargo', e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+      <label className="ui-editor__casilla">
+        <input
+          type="checkbox"
+          checked={hoja.adjuntar_csv ?? false}
+          onChange={(e) => cambiarHoja({ adjuntar_csv: e.target.checked })}
+        />
+        <span>Adjuntar CSV de lecturas al correo</span>
+      </label>
+    </fieldset>
+  )
+}
+
+// Lista de tarjetas con sus opciones; ocupa el lugar de la lista de reportes mientras se edita.
+// Sin selección muestra las pestañas Hoja y Tarjetas; al elegir una tarjeta (en la hoja o en la
+// lista) la columna muestra solo sus opciones.
+export function ListaTarjetas({ ed, areas = [], r = null }) {
+  const { borrador, abierta, setAbierta, arrastre, mover, alternar, agregar, quitar, cambiarHoja } = ed
+  const [nueva, setNueva] = useState(false)
+  const [pestana, setPestana] = useState('hoja')
+  const hoja = borrador.hoja ?? {}
+
+  useEffect(() => {
+    if (!abierta) return undefined
+    const alEscape = (e) => {
+      if (e.key === 'Escape') setAbierta(null)
+    }
+    window.addEventListener('keydown', alEscape)
+    return () => window.removeEventListener('keydown', alEscape)
+  }, [abierta, setAbierta])
+
   const equipos = new Map()
   for (const fila of r?.cifras?.por_dispositivo ?? []) {
     equipos.set(fila.codigo, fila.nombre || fila.codigo)
@@ -1075,283 +1332,154 @@ export function ListaTarjetas({ ed, areas = [], r = null }) {
     equipos.set(codigo, info.nombre || codigo)
   }
   const opcionesDispositivos = [...equipos].map(([codigo, nombre]) => ({ codigo, nombre }))
-  return (
-    <div className="ui-editor__lista nc-scroll">
-      <span className="ui-eyebrow">Tarjetas</span>
-      <p className="ui-muted" style={{ margin: 0, fontSize: 13, lineHeight: '18px' }}>
-        Arrastra para ordenar, usa el ojo para mostrar u ocultar y el ajuste para elegir la gráfica y la información.
-      </p>
-      <fieldset className="ui-editor__hoja">
-        <legend>Hoja</legend>
-        <CampoHoja clave="tamano" etiqueta="Tamaño" valores={[['carta', 'Carta'], ['a4', 'A4']]} porOmision="carta" hoja={hoja} cambiarHoja={cambiarHoja} />
-        <CampoHoja
-          clave="orientacion"
-          etiqueta="Orientación"
-          valores={[['vertical', 'Vertical'], ['horizontal', 'Horizontal']]}
-          porOmision="vertical"
-          hoja={hoja}
-          cambiarHoja={cambiarHoja}
-        />
-        <CampoHoja
-          clave="analisis_largo"
-          etiqueta="Largo del análisis"
-          valores={[['breve', 'Breve'], ['normal', 'Normal'], ['detallado', 'Detallado']]}
-          porOmision="normal"
-          hoja={hoja}
-          cambiarHoja={cambiarHoja}
-        />
-        <label className="ui-editor__casilla">
-          <input
-            type="checkbox"
-            checked={hoja.portada ?? false}
-            onChange={(e) => cambiarHoja({ portada: e.target.checked })}
-          />
-          <span>Portada con logo, alcance y periodo</span>
-        </label>
-        <div className="ui-editor__firmas">
-          {[
-            ['elaboro', 'Elaboró'],
-            ['reviso', 'Revisó'],
-          ].map(([campo, etiqueta]) => (
-            <div key={campo}>
-              <strong>{etiqueta}</strong>
-              <input
-                value={firmas[campo]?.nombre ?? ''}
-                placeholder="Nombre"
-                onChange={(e) => cambiarFirma(campo, 'nombre', e.target.value)}
-              />
-              <input
-                value={firmas[campo]?.cargo ?? ''}
-                placeholder="Cargo"
-                onChange={(e) => cambiarFirma(campo, 'cargo', e.target.value)}
-              />
-            </div>
-          ))}
-        </div>
-      </fieldset>
-      <label className="ui-editor__casilla">
-        <input
-          type="checkbox"
-          checked={borrador.hoja?.adjuntar_csv ?? false}
-          onChange={(e) => cambiarHoja({ adjuntar_csv: e.target.checked })}
-        />
-        <span>Adjuntar CSV de lecturas al correo</span>
-      </label>
-      <ol>
-        {borrador.orden.map((id, i) => {
-          const w = tarjeta(borrador, id)
-          const oculto = borrador.ocultos.includes(id)
-          const { className, ...props } = arrastre(id, 'y')
-          const op = opcionesDe(borrador, id)
-          const abiertaAqui = abierta === id
-          return (
-            <li
-              key={id}
-              className={`ui-editor__item${oculto ? ' is-oculto' : ''}${abiertaAqui ? ' is-abierta' : ''} ${className}`}
-              {...props}
-            >
-              <div className="ui-editor__fila">
-                <GripVertical size={16} className="ui-editor__asa" aria-hidden />
-                <span className="ui-editor__nombre">{w.nombre}</span>
-                <button
-                  type="button"
-                  aria-label={`Opciones de ${w.nombre}`}
-                  aria-expanded={abiertaAqui}
-                  className={abiertaAqui ? 'is-activo' : undefined}
-                  onClick={() => setAbierta(abiertaAqui ? null : id)}
-                >
-                  <SlidersHorizontal size={15} />
-                </button>
-                <button type="button" aria-label={`Subir ${w.nombre}`} disabled={i === 0} onClick={() => mover(id, -1)}>
-                  <ArrowUp size={15} />
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Bajar ${w.nombre}`}
-                  disabled={i === borrador.orden.length - 1}
-                  onClick={() => mover(id, 1)}
-                >
-                  <ArrowDown size={15} />
-                </button>
-                <button
-                  type="button"
-                  aria-label={oculto ? `Mostrar ${w.nombre}` : `Ocultar ${w.nombre}`}
-                  aria-pressed={!oculto}
-                  onClick={() => alternar(id)}
-                >
-                  {oculto ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-              {abiertaAqui && (
-                <div className="ui-editor__opciones" draggable onDragStart={(e) => e.preventDefault()}>
-                  {esquema(borrador, id).map((o) => (
-                    <fieldset key={o.clave}>
-                      <legend>{o.etiqueta}</legend>
-                      <div className="ui-editor__chips">
-                        {o.valores.map(([valor, etiqueta]) => {
-                          const activo = o.tipo === 'uno' ? op[o.clave] === valor : op[o.clave].includes(valor)
-                          return (
-                            <button
-                              key={valor}
-                              type="button"
-                              role={o.tipo === 'uno' ? 'radio' : 'checkbox'}
-                              aria-checked={activo}
-                              className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
-                              onClick={() =>
-                                opcion(
-                                  id,
-                                  o.clave,
-                                  o.tipo === 'uno'
-                                    ? valor
-                                    : activo
-                                      ? op[o.clave].filter((x) => x !== valor)
-                                      : [...op[o.clave], valor],
-                                )
-                              }
-                            >
-                              {activo && o.tipo === 'varios' && <Check size={13} />}
-                              {etiqueta}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </fieldset>
-                  ))}
-                  <label className="ui-editor__campo">
-                    <span>Título</span>
-                    <input
-                      value={op.titulo ?? ''}
-                      maxLength={TITULO_MAX}
-                      placeholder={w.nombre}
-                      onChange={(e) => opcion(id, 'titulo', e.target.value)}
-                    />
-                  </label>
-                  <label className="ui-editor__campo">
-                    <span>Nota al pie</span>
-                    <textarea
-                      value={op.nota ?? ''}
-                      maxLength={NOTA_MAX}
-                      rows={2}
-                      onChange={(e) => opcion(id, 'nota', e.target.value)}
-                    />
-                  </label>
-                  <fieldset>
-                    <legend>Decimales</legend>
-                    <div className="ui-editor__chips">
-                      {[0, 1, 2].map((n) => (
-                        <button
-                          key={n}
-                          type="button"
-                          role="radio"
-                          aria-checked={op.decimales === n}
-                          className={`ui-editor__chip${op.decimales === n ? ' is-activo' : ''}`}
-                          onClick={() => opcion(id, 'decimales', n)}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-                  {w.fuente && FUENTES_CON_FILTRO.has(w.fuente) && (
-                    <fieldset>
-                      <legend>Filtro de la tarjeta</legend>
-                      <p className="ui-muted" style={{ margin: '0 0 6px', fontSize: 12 }}>
-                        Solo esta tarjeta usa la parte elegida del alcance.
-                      </p>
-                      <div className="ui-editor__chips">
-                        {areas.map((a) => {
-                          const activo = op.filtro?.areas?.includes(a.num)
-                          return (
-                            <button
-                              key={`area-${a.num}`}
-                              type="button"
-                              role="checkbox"
-                              aria-checked={Boolean(activo)}
-                              className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
-                              onClick={() => {
-                                const actuales = op.filtro?.areas ?? []
-                                const siguientes = activo
-                                  ? actuales.filter((x) => x !== a.num)
-                                  : [...actuales, a.num]
-                                opcion(id, 'filtro', siguientes.length ? { areas: siguientes } : undefined)
-                              }}
-                            >
-                              {activo && <Check size={13} />}
-                              {a.nombre}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <div className="ui-editor__chips" style={{ marginTop: 6 }}>
-                        {opcionesDispositivos.map((d) => {
-                          const activo = op.filtro?.dispositivos?.includes(d.codigo)
-                          return (
-                            <button
-                              key={`disp-${d.codigo}`}
-                              type="button"
-                              role="checkbox"
-                              aria-checked={Boolean(activo)}
-                              className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
-                              onClick={() => {
-                                const actuales = op.filtro?.dispositivos ?? []
-                                const siguientes = activo
-                                  ? actuales.filter((x) => x !== d.codigo)
-                                  : [...actuales, d.codigo]
-                                opcion(
-                                  id,
-                                  'filtro',
-                                  siguientes.length ? { dispositivos: siguientes } : undefined,
-                                )
-                              }}
-                            >
-                              {activo && <Check size={13} />}
-                              {d.nombre}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      {op.filtro && (
-                        <button type="button" className="ui-editor__chip" onClick={() => opcion(id, 'filtro', undefined)}>
-                          <RotateCcw size={13} /> Quitar filtro
-                        </button>
-                      )}
-                    </fieldset>
-                  )}
-                  {op.alto && (
-                    <button type="button" className="ui-editor__chip" onClick={() => opcion(id, 'alto', undefined)}>
-                      <RotateCcw size={13} /> Alto automático
-                    </button>
-                  )}
-                  {w.fuente && (
-                    <button type="button" className="ui-editor__quitar" onClick={() => quitar(id)}>
-                      <Trash2 size={14} /> Eliminar tarjeta
-                    </button>
-                  )}
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ol>
-      {nueva ? (
-        <NuevaTarjeta agregar={agregar} cerrar={() => setNueva(false)} />
-      ) : (
-        <button type="button" className="ui-editor__anadir" onClick={() => setNueva(true)}>
-          <Plus size={16} /> Añadir tarjeta
+
+  if (abierta) {
+    const w = tarjeta(borrador, abierta)
+    const op = opcionesDe(borrador, abierta)
+    const indice = borrador.orden.indexOf(abierta)
+    const oculto = borrador.ocultos.includes(abierta)
+    const personalizada = (borrador.personalizadas ?? []).some((x) => x.id === abierta)
+    if (!w) return null
+    return (
+      <div className="ui-editor__lista ui-editor__lista--detalle">
+        <button type="button" className="ui-editor__volver" onClick={() => setAbierta(null)}>
+          ‹ Volver a todo
         </button>
+        <div className="ui-editor__detalle-cabeza">
+          <span className="ui-eyebrow">Tarjeta</span>
+          <strong>{w.nombre}</strong>
+        </div>
+        <div className="ui-editor__detalle-acciones">
+          <button type="button" disabled={indice <= 0} onClick={() => mover(abierta, -1)}>
+            <ArrowUp size={15} /> Subir
+          </button>
+          <button
+            type="button"
+            disabled={indice === borrador.orden.length - 1}
+            onClick={() => mover(abierta, 1)}
+          >
+            <ArrowDown size={15} /> Bajar
+          </button>
+          <button type="button" onClick={() => alternar(abierta)}>
+            {oculto ? <Eye size={15} /> : <EyeOff size={15} />} {oculto ? 'Mostrar' : 'Ocultar'}
+          </button>
+          {personalizada && (
+            <button
+              type="button"
+              className="ui-editor__quitar"
+              onClick={() => {
+                quitar(abierta)
+                setAbierta(null)
+              }}
+            >
+              <Trash2 size={15} /> Quitar
+            </button>
+          )}
+        </div>
+        <OpcionesTarjeta
+          ed={ed}
+          id={abierta}
+          w={w}
+          op={op}
+          areas={areas}
+          opcionesDispositivos={opcionesDispositivos}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="ui-editor__lista">
+      <Tabs
+        className="ui-editor__tabs"
+        items={[
+          { id: 'hoja', label: 'Hoja' },
+          { id: 'tarjetas', label: 'Tarjetas' },
+        ]}
+        value={pestana}
+        onChange={setPestana}
+      />
+      {pestana === 'hoja' ? (
+        <HojaEditor hoja={hoja} cambiarHoja={cambiarHoja} />
+      ) : (
+        <div className="ui-editor__tarjetas">
+          <p className="ui-muted ui-editor__ayuda">
+            Arrastra para ordenar; usa ↑ ↓ y el ojo. Toca una tarjeta para editar sus opciones.
+          </p>
+          <ol>
+            {borrador.orden.map((id, i) => {
+              const w = tarjeta(borrador, id)
+              const oculto = borrador.ocultos.includes(id)
+              const { className, ...props } = arrastre(id, 'y')
+              if (!w) return null
+              const alternarAqui = (e) => {
+                e.stopPropagation()
+                alternar(id)
+              }
+              return (
+                <li
+                  key={id}
+                  role="button"
+                  tabIndex={0}
+                  className={`ui-editor__item${oculto ? ' is-oculto' : ''} ${className}`}
+                  onClick={() => setAbierta(id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setAbierta(id)
+                    }
+                  }}
+                  {...props}
+                >
+                  <div className="ui-editor__fila">
+                    <GripVertical size={16} className="ui-editor__asa" aria-hidden />
+                    <span className="ui-editor__nombre">{w.nombre}</span>
+                    <button
+                      type="button"
+                      aria-label={`Subir ${w.nombre}`}
+                      disabled={i === 0}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        mover(id, -1)
+                      }}
+                    >
+                      <ArrowUp size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Bajar ${w.nombre}`}
+                      disabled={i === borrador.orden.length - 1}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        mover(id, 1)
+                      }}
+                    >
+                      <ArrowDown size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={oculto ? `Mostrar ${w.nombre}` : `Ocultar ${w.nombre}`}
+                      aria-pressed={!oculto}
+                      onClick={alternarAqui}
+                    >
+                      {oculto ? <Eye size={15} /> : <EyeOff size={15} />}
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+          {nueva ? (
+            <NuevaTarjeta agregar={agregar} cerrar={() => setNueva(false)} />
+          ) : (
+            <button type="button" className="ui-editor__anadir" onClick={() => setNueva(true)}>
+              <Plus size={16} /> Añadir tarjeta
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
-}
-
-// Medidas de las hojas a 96 ppp: carta (8.5 × 11 in) y A4 (210 × 297 mm), en píxeles.
-const MEDIDAS = {
-  carta: { vertical: [816, 1056], horizontal: [1056, 816] },
-  a4: { vertical: [794, 1123], horizontal: [1123, 794] },
-}
-function medidaHoja(hoja = {}) {
-  const [ancho, alto] = MEDIDAS[hoja.tamano]?.[hoja.orientacion] ?? MEDIDAS.carta.vertical
-  return { ancho, alto, margenY: 56, pie: 28, separacion: 16 }
 }
 
 // Agrupa las tarjetas en filas de 12 columnas según su ancho, como las acomoda la hoja.
@@ -1552,6 +1680,7 @@ function bloquesEdicion(r, ed, areas) {
 // arrastrar y elegir; la elección vale para todos los reportes en este navegador.
 export function DashboardReporte({ r, areas, ed }) {
   const c = r.cifras
+  const titulo = r.titulo || c.titulo
   const origen = ORIGEN[r.origen] ?? ORIGEN.MANUAL
   const area =
     areas.find((a) => a.num === r.area)?.nombre ?? c.alcance ?? 'Todas las áreas'
@@ -1588,7 +1717,7 @@ export function DashboardReporte({ r, areas, ed }) {
         <span>{r.num ? `Folio R-${String(r.num).padStart(4, '0')}` : 'Vista previa'}</span>
       </div>
       <div>
-        <h2>{c.titulo}</h2>
+        <h2>{titulo}</h2>
         <p className="ui-hoja__subtitulo">Periodo de {mesAnio(r.periodo_inicio)}</p>
       </div>
       <dl className="ui-hoja__ficha">
@@ -1623,7 +1752,7 @@ export function DashboardReporte({ r, areas, ed }) {
       </div>
       <div className="ui-hoja__portada-cuerpo">
         <span className="ui-eyebrow">Reporte de monitoreo ambiental</span>
-        <h2>{c.titulo}</h2>
+        <h2>{titulo}</h2>
         <span className="ui-hoja__portada-linea" />
         <dl>
           <div>

@@ -2,6 +2,7 @@
 // Los errores llevan `status` como ApiError de services/api/client.js.
 import { ApiError } from '../api/client'
 import { cifrasHoja } from '../cifrasReporte'
+import { periodo } from '../../utils/formato'
 import { PLATAFORMA } from './consola'
 import * as db from './datos'
 import { formatos as formatosDatos, formatoPredeterminado } from './formatos'
@@ -434,8 +435,12 @@ const prepararReporte = (r) => {
     })
   }
   const org = db.organizaciones.find((o) => o.num === r.organizacion) ?? db.organizaciones[0]
+  const area = db.areas.find((a) => a.num === r.area)
+  const formato = r.formato_nombre || formatoDe(r.formato)?.nombre || 'Reporte'
+  const lugar = area?.nombre || 'Toda la organización'
   return copia({
     ...r,
+    titulo: `${formato} · ${lugar} · ${periodo(r.periodo_inicio, r.periodo_fin)}`,
     estado: r.estado ?? 'LISTO',
     error: r.error ?? null,
     archivado: r.archivado ?? false,
@@ -481,11 +486,24 @@ export async function desarchivarReporte(num) {
   return prepararReporte(r)
 }
 
-// Como el procesador del servidor: el reporte nace GENERANDO y queda LISTO unos segundos después.
+// Como el procesador del servidor: el reporte nace GENERANDO, avanza el paso cada 1.5 s y
+// queda LISTO a los 6 s.
 const procesarEnCola = (reporte) => {
+  const actual = () => db.reportes.find((x) => x.num === reporte.num)
+  const r = actual()
+  if (r) r.paso = 1
+  ;[2, 3, 4].forEach((paso, i) => {
+    setTimeout(() => {
+      const enCurso = actual()
+      if (enCurso && enCurso.estado === 'GENERANDO') enCurso.paso = paso
+    }, (i + 1) * 1500)
+  })
   setTimeout(() => {
-    const r = db.reportes.find((x) => x.num === reporte.num)
-    if (r && r.estado === 'GENERANDO') r.estado = 'LISTO'
+    const enCurso = actual()
+    if (enCurso && enCurso.estado === 'GENERANDO') {
+      enCurso.estado = 'LISTO'
+      enCurso.paso = null
+    }
   }, 6000)
 }
 
@@ -498,6 +516,7 @@ export async function repetirReporte(num, datos) {
     periodo_inicio: datos.periodo_inicio,
     periodo_fin: datos.periodo_fin,
     estado: 'GENERANDO',
+    paso: 1,
     error: null,
     archivado: false,
     fecha_generacion: new Date().toISOString(),
@@ -786,11 +805,11 @@ export async function crearReporte({ area, areas = [], formato, periodo_inicio, 
     cifras: cifrasHoja(cifras, { area: cifras.alcance, nombres }),
     contenido: base.contenido,
     formato: elegido.num, formato_nombre: elegido.nombre, formato_version: elegido.version, formato_conf: elegido.conf,
-    estado: 'GENERANDO', error: null, archivado: false,
+    estado: 'GENERANDO', paso: 1, error: null, archivado: false,
   }
   db.reportes.unshift(nuevo)
   procesarEnCola(nuevo)
-  return copia(nuevo)
+  return prepararReporte(nuevo)
 }
 export async function cambiarFormatoReporte(num, formato) {
   await esperar()

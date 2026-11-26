@@ -16,7 +16,7 @@ import { avisoUltima, haceCuanto, hora, num, puntoSerie } from '../../utils/form
 
 const LIMITES = ['peligro_min', 'advertencia_min', 'advertencia_max', 'peligro_max']
 const ETIQUETA = { peligro_min: 'Peligro mín', advertencia_min: 'Advertencia mín', advertencia_max: 'Advertencia máx', peligro_max: 'Peligro máx' }
-const ESCALA = { TEMP: [0, 40, 0.5], HUM: [0, 100, 1], AIRE: [0, 2000, 50] }
+const ESCALA = { TEMP: [0, 40, 0.5], HUM: [0, 100, 1], AIRE: [0, 3000, 50] }
 
 async function cargar(disp, rol) {
   const [umb, lecturas, serie] = await Promise.all([

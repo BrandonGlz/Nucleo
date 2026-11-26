@@ -16,6 +16,7 @@ import {
   ESTADO_ALERTA, limiteAlerta, NIVEL_ALERTA, nombreCorto, pagina, puedeEditar, tituloAlerta, valorAlerta, VARIABLE,
 } from '../../utils/convertir'
 import { esHoy, fechaCorta, hora, horaSeg } from '../../utils/formato'
+import { aviso } from '../../components/confirmacion'
 
 const PESTANAS = [
   ['PENDIENTE', 'Pendientes'],
@@ -238,7 +239,7 @@ export function AlertasPage() {
     try {
       await seguridad.descargarCsv(ALERTAS_EXPORTAR, { estado: pestana === 'todas' ? '' : pestana })
     } catch {
-      window.alert('No se pudo exportar. Intenta de nuevo.')
+      aviso('No se pudo exportar. Intenta de nuevo.', { tipo: 'error' })
     } finally {
       setExportando(false)
     }

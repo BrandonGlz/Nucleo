@@ -24,6 +24,7 @@ from apps.reportes.models import (
     RespuestaAprendida,
     VersionFormato,
 )
+from apps.reportes.titulos import titulo_reporte
 from common.testing import Escenario, PruebaBase, PruebaTransaccional, cliente_de
 
 
@@ -2068,6 +2069,51 @@ class HerramientasAgenteTests(PruebaBase):
         self.assertEqual(r["accion"]["areas"], [self.e.area.pk, self.e.otra_area.pk])
         self.assertIsNone(r["accion"]["area"])
         self.assertIsNotNone(r["accion"]["formato"])
+
+
+class TituloReporteTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        self.formato = FormatoReporte.objects.create(
+            organizacion=self.e.organizacion, nombre="Operativo detallado"
+        )
+        self.version = VersionFormato.objects.create(
+            formato=self.formato, numero=1, conf=formatos.CONF_OPERATIVO
+        )
+        self.inicio = timezone.make_aware(datetime(2026, 11, 1, 0, 0))
+        self.fin = timezone.make_aware(datetime(2026, 11, 26, 0, 0))
+
+    def _reporte(self, **extra):
+        datos = {
+            "organizacion": self.e.organizacion,
+            "area": self.e.area,
+            "formato_version": self.version,
+            "origen": Reporte.Origen.MANUAL,
+            "periodo_inicio": self.inicio,
+            "periodo_fin": self.fin,
+            "contenido": "Texto",
+            "estado": Reporte.Estado.LISTO,
+        }
+        datos.update(extra)
+        return Reporte.objects.create(**datos)
+
+    def test_titulo_con_area(self):
+        self.assertEqual(
+            titulo_reporte(self._reporte()),
+            "Operativo detallado · Área a · 1–25 nov 2026",
+        )
+
+    def test_titulo_con_toda_la_organizacion(self):
+        self.assertEqual(
+            titulo_reporte(self._reporte(area=None)),
+            "Operativo detallado · Toda la organización · 1–25 nov 2026",
+        )
+
+    def test_sin_formato_usa_reporte(self):
+        self.assertEqual(
+            titulo_reporte(self._reporte(formato_version=None)),
+            "Reporte · Área a · 1–25 nov 2026",
+        )
 
 
 class ReporteListaTests(PruebaBase):

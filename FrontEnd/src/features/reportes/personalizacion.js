@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { aviso } from '../../components/confirmacion'
 import * as formatosApi from '../../services/formatos'
 import * as reportesApi from '../../services/reportes'
 
@@ -543,10 +544,15 @@ export function useEdicion(reporte) {
   }, [])
   useEffect(() => {
     if (!editando) return undefined
-    const tecla = (e) => e.key === 'Escape' && cancelar()
+    const tecla = (e) => {
+      if (e.key !== 'Escape') return
+      // Con una tarjeta elegida, Escape solo quita la selección; el editor sigue abierto.
+      if (abierta) return
+      cancelar()
+    }
     document.addEventListener('keydown', tecla)
     return () => document.removeEventListener('keydown', tecla)
-  }, [editando, cancelar])
+  }, [editando, cancelar, abierta])
 
   const alternar = (id) =>
     setBorrador((b) => ({
@@ -642,7 +648,7 @@ export function useEdicion(reporte) {
       cancelar()
       if (informe?.num) window.dispatchEvent(new Event('nucleo:reporte'))
     } catch {
-      window.alert('No se pudo guardar el formato. Intenta de nuevo.')
+      aviso('No se pudo guardar el formato. Intenta de nuevo.', { tipo: 'error' })
     }
   }
 
@@ -652,7 +658,7 @@ export function useEdicion(reporte) {
       setActivo(String(id))
       window.dispatchEvent(new Event('nucleo:reporte'))
     } catch {
-      window.alert('No se pudo cambiar el formato del reporte.')
+      aviso('No se pudo cambiar el formato del reporte.', { tipo: 'error' })
     }
   }
 
@@ -672,7 +678,7 @@ export function useEdicion(reporte) {
       setBorrador(nueva.conf)
       return nueva
     } catch {
-      window.alert('No se pudo duplicar el formato. Intenta de nuevo.')
+      aviso('No se pudo duplicar el formato. Intenta de nuevo.', { tipo: 'error' })
       return null
     }
   }
@@ -722,7 +728,7 @@ export function useEdicion(reporte) {
         if (informe?.num) window.dispatchEvent(new Event('nucleo:reporte'))
         return creado.id
       } catch {
-        window.alert('No se pudo crear el formato. Intenta de nuevo.')
+        aviso('No se pudo crear el formato. Intenta de nuevo.', { tipo: 'error' })
         return null
       }
     },

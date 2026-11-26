@@ -48,6 +48,7 @@ function EditarOrganizacion({ org, cerrar, guardada }) {
   return (
     <Modal
       titulo={org ? `Editar ${org.nombre}` : 'Nueva organización'}
+      tamano="mediano"
       sub={org ? 'Datos de contacto de la empresa cliente.' : 'Se da de alta activa; después se crea su primer administrador.'}
       cerrar={cerrar}
       acciones={
@@ -89,6 +90,7 @@ function PrimerAdministrador({ org, cerrar, creado }) {
   return (
     <Modal
       titulo={`Primer administrador de ${org.nombre}`}
+      tamano="mediano"
       sub="Entra con este correo y contraseña; desde Usuarios crea a supervisores, analistas y operadores."
       cerrar={cerrar}
       acciones={
@@ -139,6 +141,7 @@ function CambiarEstado({ org, estado, cerrar, cambiado }) {
   return (
     <Modal
       titulo={`${accion} ${org.nombre}`}
+      tamano="chico"
       sub={detalle}
       cerrar={cerrar}
       acciones={

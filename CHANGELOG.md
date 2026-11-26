@@ -44,6 +44,12 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Etapa 8 de ajustes finos: hojas que acomodan tablas y tarjetas sin encimarse; títulos
+  «formato · lugar · periodo»; edición del formato por clic en la hoja con pestañas Hoja/Tarjetas;
+  Reportes/Programados a todo el ancho; espera de «Generando» con hoja esqueleto y pasos reales;
+  confirmaciones y avisos con el diseño de Núcleo; estándar de formularios en modal; Temperatura
+  a la mitad del Panel; barra sin título, hoja más ancha al abrir y lista de reportes en dos
+  renglones.
 - Reportes rediseñado: la hoja se ajusta completa en un visor con zoom (`−`, porcentaje,
   `+`, «Ajustar» y Ctrl + rueda), las acciones viven en una barra sobre la vista y la lista
   tiene pestañas Reportes/Programados, buscador, filtros por panel y chips, archivado y

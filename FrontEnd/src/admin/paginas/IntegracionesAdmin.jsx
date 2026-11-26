@@ -32,6 +32,7 @@ function Secreto({ titulo, sub, valor, cerrar, children }) {
     <Modal
       titulo={titulo}
       sub={sub}
+      tamano="chico"
       cerrar={cerrar}
       acciones={
         <Button icon="circle-check" onClick={cerrar}>
@@ -70,6 +71,7 @@ function NuevoToken({ organizacion, cerrar, creado }) {
   return (
     <Modal
       titulo="Nuevo token de API"
+      tamano="mediano"
       sub="De solo lectura: consulta dispositivos, sensores, lecturas y alertas de esta organización."
       cerrar={cerrar}
       acciones={
@@ -78,7 +80,7 @@ function NuevoToken({ organizacion, cerrar, creado }) {
         </Button>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="ui-grid-2">
         <Input label="Nombre" placeholder="Por ejemplo: ERP de mantenimiento" value={nombre} error={aviso} onChange={(e) => setNombre(e.target.value)} />
         <Input
           label="Caduca en (días)"
@@ -109,6 +111,7 @@ function NuevoWebhook({ organizacion, cerrar, creado }) {
   return (
     <Modal
       titulo="Nuevo webhook"
+      tamano="mediano"
       sub="Núcleo mandará un POST firmado a esta dirección HTTPS en cada evento elegido."
       cerrar={cerrar}
       acciones={
@@ -117,12 +120,16 @@ function NuevoWebhook({ organizacion, cerrar, creado }) {
         </Button>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="ui-grid-2">
         <Input label="Nombre" value={datos.nombre} onChange={(e) => setDatos({ ...datos, nombre: e.target.value })} />
-        <Input label="URL (https)" value={datos.url} error={aviso} onChange={(e) => setDatos({ ...datos, url: e.target.value })} />
-        {EVENTOS.map(([id, label]) => (
-          <Toggle key={id} label={label} checked={datos.eventos.includes(id)} onChange={() => alternar(id)} />
-        ))}
+        <div className="ui-form-ancho">
+          <Input label="URL (https)" value={datos.url} error={aviso} onChange={(e) => setDatos({ ...datos, url: e.target.value })} />
+        </div>
+        <div className="ui-form-ancho">
+          {EVENTOS.map(([id, label]) => (
+            <Toggle key={id} label={label} checked={datos.eventos.includes(id)} onChange={() => alternar(id)} />
+          ))}
+        </div>
       </div>
     </Modal>
   )

@@ -23,6 +23,7 @@ from reportlab.pdfgen import canvas as lienzo
 from reportlab.platypus import Paragraph
 
 from apps.reportes import formatos
+from apps.reportes.titulos import titulo_reporte
 from common.fechas import dias_periodo
 
 TINTA = colors.HexColor("#121413")
@@ -181,8 +182,7 @@ def datos_hoja(reporte):
     area = reporte.area.nombre if reporte.area_id else None
     info = variables.get(principal)
     alcance = c.get("alcance") or area or "Todas las áreas"
-    lugar = "todas las áreas" if alcance == "Toda la organización" else alcance
-    titulo = f"{_sin_parentesis(info['nombre'])} en {lugar}" if info else f"Monitoreo en {lugar}"
+    titulo = titulo_reporte(reporte)
     nombres = {
         codigo: (nombre, area_nombre, area_num)
         for codigo, nombre, area_nombre, area_num in Dispositivo.objects.filter(

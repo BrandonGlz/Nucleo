@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { RotateCcw } from 'lucide-react'
 import {
-  Badge, Button, Card, IconCircle, Skeleton, Tabs,
+  Badge, Button, Card, Skeleton, Tabs,
 } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
+import { aviso, confirmar } from '../../components/confirmacion'
 import { Desplegable } from '../../components/Desplegable'
 import { EstadoError } from '../../components/EstadoError'
 import { MenuAcciones } from '../../components/MenuAcciones'
@@ -14,6 +15,7 @@ import { useEsMovil } from '../../hooks/useMenuMovil'
 import { useDatos } from '../../hooks/useDatos'
 import { AsistenteReporte } from './AsistenteReporte'
 import { DashboardReporte, ListaTarjetas } from './DashboardReporte'
+import { EsperaReporte } from './EsperaReporte'
 import { MigracionFormatos } from './MigracionFormatos'
 import { Programaciones } from './Programaciones'
 import { etiquetaFormato, useEdicion } from './personalizacion'
@@ -48,7 +50,8 @@ const ESTADO_REPORTE = {
   FALLO: { tone: 'danger', label: 'Falló', icon: 'triangle-alert' },
 }
 const estadoDe = (r) => ESTADO_REPORTE[r.estado] ?? ESTADO_REPORTE.LISTO
-const tituloDe = (r) => r?.cifras?.titulo || `Reporte R-${String(r?.num ?? 0).padStart(4, '0')}`
+const tituloDe = (r) =>
+  r?.titulo || r?.cifras?.titulo || `Reporte R-${String(r?.num ?? 0).padStart(4, '0')}`
 const PESTANAS = [
   { id: 'reportes', label: 'Reportes' },
   { id: 'programados', label: 'Programados' },
@@ -133,6 +136,18 @@ export function ReportesPage() {
   const puedeEditar = rol === 'ADMIN' || rol === 'SUPER'
   const edPagina = ed.modo === 'nuevo' ? { ...ed, editando: false } : ed
   const generando = reportes.some((r) => r.estado === 'GENERANDO')
+  const [entrando, setEntrando] = useState(false)
+  const estadoPrevio = useRef(actual?.estado)
+  useEffect(() => {
+    const previo = estadoPrevio.current
+    estadoPrevio.current = actual?.estado
+    if (previo === 'GENERANDO' && ['LISTO', 'ENVIADO'].includes(actual?.estado)) {
+      setEntrando(true)
+      const timer = setTimeout(() => setEntrando(false), 500)
+      return () => clearTimeout(timer)
+    }
+    return undefined
+  }, [actual?.estado])
   const activos = [
     filtros.area && { clave: 'area', texto: datos?.areas.find((a) => String(a.num) === filtros.area)?.nombre || `Área ${filtros.area}` },
     filtros.formato && { clave: 'formato', texto: ed.formatos.find((f) => String(f.num) === filtros.formato)?.nombre || `Formato ${filtros.formato}` },
@@ -174,12 +189,18 @@ export function ReportesPage() {
       await ed.recargar()
       recargar()
     } catch {
-      window.alert('No se pudo actualizar el formato. Intenta de nuevo.')
+      aviso('No se pudo actualizar el formato. Intenta de nuevo.', { tipo: 'error' })
     }
   }
   const hacerPredeterminado = () => accionFormato(() => formatosApi.predeterminado(ed.formato.num))
-  const archivarFormato = () => {
-    if (!window.confirm(`¿Archivar el formato «${ed.formato.nombre}»? Los reportes ya generados no cambian.`)) return
+  const archivarFormato = async () => {
+    const ok = await confirmar({
+      titulo: 'Archivar formato',
+      mensaje: `¿Archivar el formato «${ed.formato.nombre}»? Los reportes ya generados no cambian.`,
+      confirmar: 'Archivar',
+      peligro: true,
+    })
+    if (!ok) return
     accionFormato(() => formatosApi.archivar(ed.formato.num))
   }
   const abrirAreas = () => {
@@ -201,12 +222,18 @@ export function ReportesPage() {
   }
   const archivarReporte = async (r) => {
     const texto = r.archivado ? 'Desarchivar' : 'Archivar'
-    if (!window.confirm(`¿${texto} el reporte R-${String(r.num).padStart(4, '0')}?`)) return
+    const ok = await confirmar({
+      titulo: `${texto} reporte`,
+      mensaje: `¿${texto} el reporte R-${String(r.num).padStart(4, '0')}?`,
+      confirmar: texto,
+      peligro: !r.archivado,
+    })
+    if (!ok) return
     try {
       await (r.archivado ? reportesApi.desarchivar(r.num) : reportesApi.archivar(r.num))
       recargar()
     } catch {
-      window.alert('No se pudo archivar el reporte. Intenta de nuevo.')
+      aviso('No se pudo archivar el reporte. Intenta de nuevo.', { tipo: 'error' })
     }
   }
   const repetir = (r) => {
@@ -227,30 +254,46 @@ export function ReportesPage() {
   }, [recargar])
 
   const barra = (
-    <div className={`ui-reportes__barra${movil ? ' ui-reportes__barra--movil' : ''}`}>
+    <div className={`ui-reportes__barra${movil ? ' ui-reportes__barra--movil' : ''}${edPagina.editando ? ' ui-reportes__barra--edicion' : ''}`}>
       {movil && (
         <Button variant="ghost" size="sm" icon="arrow-left" onClick={() => setVistaAbierta(false)}>
           Volver
         </Button>
       )}
-      <div className="ui-reportes__barra-titulo">
-        {edPagina.editando ? (
-          <>
-            <span className="ui-eyebrow">Personalizando el formato</span>
-            <strong>{ed.formato.nombre}</strong>
-          </>
-        ) : actual ? (
-          <>
-            <strong>{tituloDe(actual)}</strong>
-            <div className="ui-reportes__barra-estado">
-              <Badge tone={estadoDe(actual).tone} icon={estadoDe(actual).icon}>
-                {estadoDe(actual).label}
-              </Badge>
-              {actual.archivado && <Badge tone="neutral" icon="circle-x">Archivado</Badge>}
-            </div>
-          </>
-        ) : null}
-      </div>
+      {movil ? (
+        <div className="ui-reportes__barra-titulo">
+          {edPagina.editando ? (
+            <>
+              <span className="ui-eyebrow">Personalizando el formato</span>
+              <strong>{ed.formato.nombre}</strong>
+            </>
+          ) : actual ? (
+            <>
+              <strong>{tituloDe(actual)}</strong>
+              <div className="ui-reportes__barra-estado">
+                <Badge tone={estadoDe(actual).tone} icon={estadoDe(actual).icon}>
+                  {estadoDe(actual).label}
+                </Badge>
+                {actual.archivado && <Badge tone="neutral" icon="circle-x">Archivado</Badge>}
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : edPagina.editando ? (
+        <div className="ui-reportes__barra-titulo">
+          <span className="ui-eyebrow">Personalizando el formato</span>
+          <strong>{ed.formato.nombre}</strong>
+        </div>
+      ) : actual ? (
+        <div className="ui-reportes__barra-estado ui-reportes__barra-estado--inicio">
+          <Badge
+            tone={actual.archivado ? 'neutral' : estadoDe(actual).tone}
+            icon={actual.archivado ? 'circle-x' : estadoDe(actual).icon}
+          >
+            {actual.archivado ? 'Archivado' : estadoDe(actual).label}
+          </Badge>
+        </div>
+      ) : null}
       {edPagina.editando ? (
         <div className="ui-reportes__barra-acciones">
           <Button variant="ghost" size="sm" onClick={ed.restablecer}>
@@ -258,7 +301,7 @@ export function ReportesPage() {
           </Button>
           <Button variant="secondary" size="sm" onClick={ed.cancelar}>Cancelar</Button>
           <Button size="sm" icon="circle-check" onClick={ed.guardar}>Guardar</Button>
-          <ControlZoom compacto={movil} />
+          <ControlZoom compacto />
         </div>
       ) : actual ? (
         <>
@@ -268,7 +311,7 @@ export function ReportesPage() {
               icon="file-text"
               value={ed.formato.id}
               onChange={async (v) => ed.asignar(actual.num, v)}
-              options={ed.formatos.map((f) => ({ value: f.id, label: etiquetaFormato(f) }))}
+              options={ed.formatos.map((f) => ({ value: f.id, label: f.nombre }))}
             />
             {ed.formato.esPlantilla && <Badge tone="neutral">Plantilla</Badge>}
             {ed.formato.predeterminado && <Badge tone="success">Predeterminado</Badge>}
@@ -297,9 +340,12 @@ export function ReportesPage() {
                 variant="secondary"
                 size="sm"
                 icon={ed.formato.esPlantilla ? 'copy' : 'sliders-horizontal'}
+                aria-label={ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar'}
                 onClick={ed.formato.esPlantilla ? ed.duplicar : ed.abrir}
               >
-                {ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar'}
+                <span className="ui-reportes__personalizar-texto">
+                  {ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar'}
+                </span>
               </Button>
             )}
             <Button
@@ -308,11 +354,11 @@ export function ReportesPage() {
               disabled={!['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO')}
               onClick={() =>
                 reportesApi
-                  .descargarArchivo(actual.num, `${tituloDe(actual)} · ${actual.formato_nombre ?? ed.formato.nombre}`)
-                  .catch(() => window.alert('No se pudo descargar el PDF. Intenta de nuevo.'))
+                  .descargarArchivo(actual.num, tituloDe(actual))
+                  .catch(() => aviso('No se pudo descargar el PDF. Intenta de nuevo.', { tipo: 'error' }))
               }
             >
-              Descargar PDF
+              PDF
             </Button>
             <MenuAcciones
               label="Más acciones del reporte"
@@ -326,8 +372,8 @@ export function ReportesPage() {
                   disabled: !['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO'),
                   onClick: () =>
                     reportesApi
-                      .descargarCsv(actual.num, `${tituloDe(actual)} · ${actual.formato_nombre ?? ed.formato.nombre}`)
-                      .catch(() => window.alert('No se pudo descargar el CSV. Intenta de nuevo.')),
+                      .descargarCsv(actual.num, tituloDe(actual))
+                      .catch(() => aviso('No se pudo descargar el CSV. Intenta de nuevo.', { tipo: 'error' })),
                 },
                 { label: 'Generar de nuevo', icon: 'refresh-cw', onClick: () => repetir(actual) },
                 {
@@ -338,7 +384,7 @@ export function ReportesPage() {
                 },
               ]}
             />
-            <ControlZoom compacto={movil} />
+            <ControlZoom compacto />
           </div>
         </>
       ) : null}
@@ -380,7 +426,7 @@ export function ReportesPage() {
                 <ListaTarjetas ed={edPagina} areas={datos.areas} r={actual} />
               ) : (
                 <>
-              <Tabs items={PESTANAS} value={pestana} onChange={setPestana} />
+              <Tabs className="ui-reportes__tabs" items={PESTANAS} value={pestana} onChange={setPestana} />
               {pestana === 'programados' ? (
                 <div className="ui-reportes__programados nc-scroll">
                   <Programaciones
@@ -433,45 +479,50 @@ export function ReportesPage() {
                   <div className="ui-reportes__items nc-scroll">
                     {reportes.length === 0 ? (
                       <p className="ui-muted" style={{ padding: 12 }}>No hay reportes con esos filtros.</p>
-                    ) : reportes.map((r) => (
-                      <div
-                        key={r.num}
-                        role="button"
-                        tabIndex={0}
-                        className={`ui-item ui-item--boton ui-reciente${actual?.num === r.num ? ' is-selected' : ''}`}
-                        onClick={() => abrirReporte(r)}
-                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && abrirReporte(r)}
-                      >
-                        <IconCircle name="file-text" size="sm" />
-                        <div className="ui-reportes__item-texto">
-                          <div className="ui-titulo-fila">
-                            <strong>{tituloDe(r).replace(/ en /, ' · ')}</strong>
-                            <span>{periodo(r.periodo_inicio, r.periodo_fin)}</span>
+                    ) : reportes.map((r) => {
+                      const partes = tituloDe(r).split(' · ')
+                      const formatoLugar = partes.length >= 3 ? `${partes[0]} · ${partes[1]}` : tituloDe(r)
+                      const estado = estadoDe(r)
+                      return (
+                        <div
+                          key={r.num}
+                          role="button"
+                          tabIndex={0}
+                          className={`ui-item ui-item--boton ui-reciente ui-reciente--compacta${actual?.num === r.num ? ' is-selected' : ''}`}
+                          onClick={() => abrirReporte(r)}
+                          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && abrirReporte(r)}
+                        >
+                          <div className="ui-reportes__item-texto">
+                            <strong className="ui-reciente__formato">{formatoLugar}</strong>
+                            <div className="ui-reciente__meta">
+                              <span className="ui-reciente__periodo">
+                                {periodo(r.periodo_inicio, r.periodo_fin)}
+                              </span>
+                              <Badge
+                                tone={r.archivado ? 'neutral' : estado.tone}
+                                icon={r.archivado ? 'circle-x' : estado.icon}
+                              >
+                                {r.archivado ? 'Archivado' : estado.label}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="ui-reportes__item-meta">
-                            <Badge tone={estadoDe(r).tone} icon={estadoDe(r).icon}>
-                              {estadoDe(r).label}
-                            </Badge>
-                            {r.archivado && <Badge tone="neutral" icon="circle-x">Archivado</Badge>}
-                            <span className="ui-muted">Formato: {r.formato_nombre ?? ed.formatoDe(r.num).nombre}</span>
-                          </div>
+                          <span className="ui-reportes__item-menu" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                            <MenuAcciones
+                              label={`Opciones del reporte R-${String(r.num).padStart(4, '0')}`}
+                              items={[
+                                { label: 'Generar de nuevo', icon: 'refresh-cw', onClick: () => repetir(r) },
+                                {
+                                  label: r.archivado ? 'Desarchivar' : 'Archivar',
+                                  icon: 'circle-x',
+                                  peligro: !r.archivado,
+                                  onClick: () => archivarReporte(r),
+                                },
+                              ]}
+                            />
+                          </span>
                         </div>
-                        <span className="ui-reportes__item-menu" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                          <MenuAcciones
-                            label={`Opciones del reporte R-${String(r.num).padStart(4, '0')}`}
-                            items={[
-                              { label: 'Generar de nuevo', icon: 'refresh-cw', onClick: () => repetir(r) },
-                              {
-                                label: r.archivado ? 'Desarchivar' : 'Archivar',
-                                icon: 'circle-x',
-                                peligro: !r.archivado,
-                                onClick: () => archivarReporte(r),
-                              },
-                            ]}
-                          />
-                        </span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </>
               )}
@@ -483,17 +534,17 @@ export function ReportesPage() {
             <ProveedorZoom>
               {barra}
               {actual && ['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO') ? (
-                <DashboardReporte r={actual} areas={datos.areas} ed={edPagina} />
+                <div className={`ui-reportes__hoja${entrando ? ' is-entrando' : ''}`}>
+                  <DashboardReporte r={actual} areas={datos.areas} ed={edPagina} />
+                </div>
+              ) : actual && ['GENERANDO', 'FALLO'].includes(actual.estado ?? '') ? (
+                <EsperaReporte reporte={actual} onRepetir={() => repetir(actual)} />
               ) : actual ? (
                 <Card className="ui-reportes__pendiente">
                   <Badge tone={estadoDe(actual).tone} icon={estadoDe(actual).icon}>
                     {estadoDe(actual).label}
                   </Badge>
-                  <p className="ui-muted">
-                    {actual.estado === 'FALLO'
-                      ? actual.error || 'El reporte no se pudo generar.'
-                      : 'El reporte aparece aquí cuando termine de generarse.'}
-                  </p>
+                  <p className="ui-muted">El reporte aparece aquí cuando termine de generarse.</p>
                 </Card>
               ) : (
                 <Card className="ui-reportes__pendiente">
@@ -527,6 +578,7 @@ export function ReportesPage() {
       {modalFormato === 'areas' && datos && (
         <Modal
           titulo="Predeterminado de áreas"
+          tamano="mediano"
           sub={`Elige en qué áreas se usará «${ed.formato.nombre}» por omisión.`}
           cerrar={() => setModalFormato(null)}
           acciones={<Button onClick={guardarAreas}>Guardar áreas</Button>}
@@ -554,27 +606,38 @@ export function ReportesPage() {
       {modalFormatoReporte && actual && (
         <Modal
           titulo="Formato del reporte"
+          tamano="chico"
           sub={tituloDe(actual)}
           cerrar={() => setModalFormatoReporte(false)}
           acciones={null}
         >
-          <div className="ui-formato-modal">
-            <Desplegable
-              label="Formato"
-              icon="file-text"
-              value={ed.formato.id}
-              onChange={async (v) => {
-                await ed.asignar(actual.num, v)
-                setModalFormatoReporte(false)
-              }}
-              options={ed.formatos.map((f) => ({ value: f.id, label: etiquetaFormato(f) }))}
-            />
+          <div className="ui-formato-lista" role="listbox" aria-label="Formato">
+            {ed.formatos.map((f) => {
+              const activo = String(f.id) === String(ed.formato.id)
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="option"
+                  aria-selected={activo}
+                  className={`ui-formato-opcion${activo ? ' is-activo' : ''}`}
+                  onClick={async () => {
+                    await ed.asignar(actual.num, f.id)
+                    setModalFormatoReporte(false)
+                  }}
+                >
+                  <span>{etiquetaFormato(f)}</span>
+                  {activo && <span aria-hidden>✓</span>}
+                </button>
+              )
+            })}
           </div>
         </Modal>
       )}
       {modalFormato === 'versiones' && (
         <Modal
           titulo="Versiones del formato"
+          tamano="mediano"
           sub={ed.formato.nombre}
           cerrar={() => setModalFormato(null)}
           acciones={null}

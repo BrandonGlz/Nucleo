@@ -288,7 +288,7 @@ class ReporteTests(PruebaBase):
             pdf._periodo(reporte.periodo_inicio, reporte.periodo_fin), "15–21 nov 2026"
         )
         reportes.enviar_reporte(reporte, [self.e.analista.pk])
-        self.assertIn("15/11/2026 al 21/11/2026", mail.outbox[-1].subject)
+        self.assertIn("15–21 nov 2026", mail.outbox[-1].subject)
         # Un fin a media tarde (no medianoche) cuenta ese día; un periodo dentro del día, uno solo.
         tarde = datetime(2026, 11, 22, 18, 30, tzinfo=UTC)  # 22/11 10:30 en Tijuana
         self.assertEqual(periodo_texto(inicio, tarde), "15/11/2026 al 22/11/2026")

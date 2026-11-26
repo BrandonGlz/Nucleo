@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Card, Input, Select } from '../../design-system/c
 import { Pantalla } from '../../components/Pantalla'
 import { useSesion } from '../../context/SesionContext'
 import * as solicitudes from '../../services/solicitudes'
+import { confirmar } from '../../components/confirmacion'
 
 const ESTADO = {
   PENDIENTE: { texto: 'Pendiente', tono: 'warning' },
@@ -76,7 +77,13 @@ export function SolicitudPage() {
   }
 
   const rechazar = async () => {
-    if (!window.confirm(`¿Rechazar la solicitud de ${s.nombre}? Nico le avisará por correo.`)) return
+    const ok = await confirmar({
+      titulo: 'Rechazar solicitud',
+      mensaje: `¿Rechazar la solicitud de ${s.nombre}? Nico le avisará por correo.`,
+      confirmar: 'Rechazar',
+      peligro: true,
+    })
+    if (!ok) return
     setEnviando(true)
     try {
       setS(await solicitudes.rechazar(num))

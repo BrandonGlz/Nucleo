@@ -16,7 +16,7 @@ const ZoomContext = createContext(null)
 
 // Estado compartido por la barra de acciones y el visor. El visor mide su caja y la hoja; la
 // barra usa `ControlZoom`, que lee el mismo contexto.
-export function ProveedorZoom({ children, zoomInicial = null, alAjustar }) {
+export function ProveedorZoom({ children, zoomInicial = null, alAjustar, ajusteAncho = true }) {
   const [manual, setManual] = useState(zoomInicial)
   const [ajuste, setAjuste] = useState(1)
   const [medida, setMedida] = useState({ ancho: 816, alto: 1056 })
@@ -30,10 +30,19 @@ export function ProveedorZoom({ children, zoomInicial = null, alAjustar }) {
     if (!visor) return
     const ancho = Math.max(1, visor.clientWidth - MARGEN * 2)
     const alto = Math.max(1, visor.clientHeight - MARGEN * 2)
-    const siguiente = Math.min(ancho / medida.ancho, alto / medida.alto)
+    const completo = Math.min(ancho / medida.ancho, alto / medida.alto)
+    let siguiente = completo
+    if (ajusteAncho) {
+      // Deja la hoja a la mitad de los márgenes laterales del ajuste completo, sin pasar del
+      // ancho disponible. Puede quedar más alta que el visor y desplazarse en vertical.
+      const anchoAjustePagina = medida.ancho * completo
+      const margenLateral = Math.max(0, (visor.clientWidth - anchoAjustePagina) / 2)
+      const objetivo = Math.min(anchoAjustePagina + margenLateral, ancho)
+      siguiente = objetivo / medida.ancho
+    }
     const valor = Math.max(0.01, Number(siguiente.toFixed(4)))
     setAjuste((previo) => (Math.abs(previo - valor) < 0.0001 ? previo : valor))
-  }, [medida])
+  }, [ajusteAncho, medida])
 
   useLayoutEffect(() => {
     calcular()

@@ -2,6 +2,7 @@ import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
+import { ProveedorConfirmacion } from './components/Confirmar'
 import { SesionProvider } from './context/SesionContext'
 import './design-system/estilos/index.css'
 import './styles/fluido.css'
@@ -23,13 +24,15 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <SesionProvider>
-        {consola ? (
-          <Suspense fallback={null}>
-            <consola.App />
-          </Suspense>
-        ) : (
-          <App />
-        )}
+        <ProveedorConfirmacion>
+          {consola ? (
+            <Suspense fallback={null}>
+              <consola.App />
+            </Suspense>
+          ) : (
+            <App />
+          )}
+        </ProveedorConfirmacion>
       </SesionProvider>
     </BrowserRouter>
   </StrictMode>,

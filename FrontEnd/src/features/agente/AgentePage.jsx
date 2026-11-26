@@ -31,6 +31,7 @@ import { aplicar, interpretar, plantillas } from './edicion'
 import { Archivos, Comparativa, Edicion, ElegirPlantilla, GraficaChat } from './Piezas'
 import { periodo } from '../../utils/formato'
 import caraNico from '../../assets/nico/nico-cara.webp'
+import { aviso } from '../../components/confirmacion'
 
 const SUGERENCIAS = [
   { icono: 'droplets', titulo: 'Picos de humedad', texto: '¿A qué hora hubo picos de humedad esta semana en Sala limpia?' },
@@ -200,7 +201,7 @@ function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
           onClick={() =>
             reportesApi
               .descargarArchivo(resumen.num, `${nombreReporte(resumen)} · ${ed.formato.nombre}`)
-              .catch(() => window.alert('No se pudo descargar el PDF. Intenta de nuevo.'))
+              .catch(() => aviso('No se pudo descargar el PDF. Intenta de nuevo.', { tipo: 'error' }))
           }
         >
           Descargar como PDF

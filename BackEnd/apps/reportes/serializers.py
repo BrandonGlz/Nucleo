@@ -4,8 +4,9 @@ from django.db.models import Q
 from rest_framework import serializers
 
 from apps.organizaciones import logos
-from apps.reportes import formatos, servicios
+from apps.reportes import formatos, progreso, servicios
 from apps.reportes.models import FormatoReporte, ProgramacionReporte, Reporte, VersionFormato
+from apps.reportes.titulos import titulo_reporte
 from apps.usuarios.models import Usuario
 from common import roles
 from common.scoping import areas_visibles
@@ -91,6 +92,8 @@ class ReporteSerializer(serializers.ModelSerializer):
     organizacion_nombre = serializers.SerializerMethodField()
     organizacion_logo_url = serializers.SerializerMethodField()
     organizacion_color = serializers.SerializerMethodField()
+    titulo = serializers.SerializerMethodField()
+    paso = serializers.SerializerMethodField()
 
     class Meta:
         model = Reporte
@@ -109,6 +112,8 @@ class ReporteSerializer(serializers.ModelSerializer):
             "archivado",
             "periodo_inicio",
             "periodo_fin",
+            "titulo",
+            "paso",
             "cifras",
             "contenido",
             "archivo_pdf",
@@ -128,6 +133,14 @@ class ReporteSerializer(serializers.ModelSerializer):
 
     def get_organizacion_color(self, reporte):
         return reporte.organizacion.color_reporte if reporte.organizacion_id else None
+
+    def get_titulo(self, reporte):
+        return titulo_reporte(reporte)
+
+    def get_paso(self, reporte):
+        if reporte.estado not in (Reporte.Estado.GENERANDO, Reporte.Estado.FALLO):
+            return None
+        return progreso.leer_paso(reporte)
 
     def _resolver(self, reporte):
         """Formato y versión del reporte; los viejos usan la plantilla Operativo detallado."""

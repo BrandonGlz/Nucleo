@@ -44,6 +44,7 @@ export function Confirmar({ titulo, mensaje, boton, icono = 'circle-check', peli
     <Modal
       titulo={titulo}
       sub={mensaje}
+      tamano="chico"
       cerrar={cerrar}
       acciones={
         <Button icon={icono} className={peligro ? 'ui-admin-peligro' : undefined} disabled={enviando} onClick={aceptar}>

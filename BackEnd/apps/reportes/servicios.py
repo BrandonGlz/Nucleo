@@ -18,8 +18,9 @@ from apps.catalogos.models import VariableAmbiental
 from apps.dispositivos.models import Sensor
 from apps.mediciones.models import Lectura
 from apps.organizaciones.models import Area
-from apps.reportes import calculos, formatos, ia, pdf
+from apps.reportes import calculos, formatos, ia, pdf, progreso
 from apps.reportes.models import ProgramacionReporte, Reporte
+from apps.reportes.titulos import titulo_reporte
 from apps.usuarios.models import Usuario
 from common import correo, roles
 from common.fechas import periodo_texto
@@ -47,7 +48,9 @@ def texto_alcance(organizacion, area, areas):
     return area.nombre if area is not None else "Toda la organización"
 
 
-def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=None):
+def calcular_cifras(
+    organizacion, area, inicio, fin, dispositivo=None, areas=None, al_calcular=None
+):
     """Promedios, máximos, mínimos, picos y alertas del periodo.
 
     Las lecturas se consultan en TimescaleDB y las alertas en PostgreSQL; la IA no calcula
@@ -81,6 +84,9 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=Non
         fecha_hora__lt=fin,
         estabilizada=True,
     )
+
+    if al_calcular is not None:
+        al_calcular()
 
     variables = {}
     for fila in lecturas.values("variable_codigo").annotate(
@@ -332,18 +338,22 @@ def procesar_reporte(reporte):
 
 def _completar_reporte(reporte):
     """Cifras, IA, PDF y, si es programado, el correo; las excepciones las maneja quien llama."""
+    progreso.guardar_paso(reporte, 1)
     cifras = calcular_cifras(
         reporte.organizacion,
         reporte.area,
         reporte.periodo_inicio,
         reporte.periodo_fin,
         areas=reporte.areas,
+        al_calcular=lambda: progreso.guardar_paso(reporte, 2),
     )
     version = reporte.formato_version
+    progreso.guardar_paso(reporte, 3)
     contenido = ia.redactar(cifras, largo=formatos.largo_analisis(version))
     reporte.cifras = cifras
     reporte.contenido = contenido
     reporte.error = None
+    progreso.guardar_paso(reporte, 4)
     reporte.archivo_pdf = pdf.guardar(reporte)
     if reporte.origen == Reporte.Origen.PROGRAMADO:
         reporte.estado = Reporte.Estado.ENVIADO
@@ -510,6 +520,7 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
             reporte.area.nombre if reporte.area_id else "Todas las áreas"
         )
         periodo = periodo_texto(reporte.periodo_inicio, reporte.periodo_fin)
+        titulo = titulo_reporte(reporte)
         adjuntos = [
             (f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf"),
         ]
@@ -520,13 +531,13 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
             adjuntos.append(adjunto_csv(reporte))
         correo.enviar(
             correos,
-            asunto or f"Reporte de {org} · {periodo}",
-            titulo=f"Reporte de {org}",
+            asunto or titulo,
+            titulo=titulo,
             icono="file-text",
             etiqueta="Reporte",
             intro=(
-                "Le escribe Nico. Preparé el reporte de monitoreo ambiental de este "
-                "periodo; el documento completo va adjunto en PDF."
+                f"Le escribe Nico. Preparé el reporte «{titulo}»; el documento completo "
+                "va adjunto en PDF."
             ),
             filas=[("Organización", org), ("Alcance", alcance), ("Periodo", periodo)],
             parrafos=[reporte.contenido],

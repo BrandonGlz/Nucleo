@@ -14,6 +14,7 @@ import { LECTURAS_EXPORTAR } from '../../api'
 import { nivelLectura, pagina, rangoUmbral, UNIDAD, VARIABLE } from '../../utils/convertir'
 import { avisoUltima, fechaCorta, horaSeg, miles, num, puntoSerie } from '../../utils/formato'
 import { useSesion } from '../../context/SesionContext'
+import { aviso } from '../../components/confirmacion'
 
 // El estado usa los códigos de la API; el selector del encabezado habla con sus etiquetas.
 const PERIODO = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }
@@ -113,7 +114,7 @@ export function MedicionesPage() {
       const { desde } = lecturasApi.rangoPeriodo(periodo)
       await seguridad.descargarCsv(LECTURAS_EXPORTAR, { dispositivo: disp, variable, desde })
     } catch {
-      window.alert('No se pudo exportar. Intenta de nuevo.')
+      aviso('No se pudo exportar. Intenta de nuevo.', { tipo: 'error' })
     } finally {
       setExportando(false)
     }
@@ -129,7 +130,7 @@ export function MedicionesPage() {
         d === base ? { ...d, lecturas: [...d.lecturas, ...pagina(r)], siguiente: paginaSiguiente(r) } : d,
       )
     } catch {
-      window.alert('No se pudieron cargar más lecturas. Intenta de nuevo.')
+      aviso('No se pudieron cargar más lecturas. Intenta de nuevo.', { tipo: 'error' })
     } finally {
       setCargandoMas(false)
     }

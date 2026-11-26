@@ -69,6 +69,7 @@ function AltaUsuario({ organizaciones, cerrar, creado }) {
   return (
     <Modal
       titulo="Agregar usuario"
+      tamano="mediano"
       sub="Comparte con la persona su contraseña inicial; podrá cambiarla desde su perfil."
       cerrar={cerrar}
       acciones={
@@ -154,6 +155,7 @@ function EditarUsuario({ usuario, organizaciones, propio, cerrar, guardado }) {
   return (
     <Modal
       titulo={`Editar a ${usuario.nombre_completo}`}
+      tamano="mediano"
       sub={`${usuario.correo} · ${usuario.organizacion?.nombre ?? 'Plataforma'}. Los cambios aplican desde su siguiente acción.`}
       cerrar={cerrar}
       acciones={

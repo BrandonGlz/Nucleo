@@ -57,24 +57,32 @@ function EditarEmpresa({ org, cerrar, guardado, actualizarOrg, avisar }) {
       titulo="Datos de la empresa"
       sub="Aparecen en los reportes y en los correos de alerta."
       cerrar={cerrar}
+      tamano="grande"
       acciones={
         <Button icon="circle-check" disabled={!f.nombre.trim() || enviando} onClick={enviar}>
           Guardar
         </Button>
       }
     >
-      <Input label="Nombre de la empresa" icon="building-2" value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} error={error ?? undefined} />
-      <div className="ui-grid-2">
-        {CAMPOS_EMPRESA.slice(1).map(([k, label]) => (
-          <Input key={k} label={label} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
-        ))}
+      <div className="ui-empresa-form">
+        <div className="ui-empresa-form__datos">
+          <Input
+            label="Nombre de la empresa"
+            icon="building-2"
+            value={f.nombre}
+            onChange={(e) => setF({ ...f, nombre: e.target.value })}
+            error={error ?? undefined}
+          />
+          <div className="ui-grid-2">
+            {CAMPOS_EMPRESA.slice(1).map(([k, label]) => (
+              <Input key={k} label={label} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
+            ))}
+          </div>
+        </div>
+        <div className="ui-empresa-form__marca">
+          <MarcaReportes org={org} editable avisar={avisar} guardada={actualizarOrg} />
+        </div>
       </div>
-      <MarcaReportes
-        org={org}
-        editable
-        avisar={avisar}
-        guardada={actualizarOrg}
-      />
     </Modal>
   )
 }
@@ -98,19 +106,22 @@ function EditarArea({ area, cerrar, guardada }) {
       titulo={area ? `Editar ${area.nombre}` : 'Agregar área'}
       sub="Cada dispositivo pertenece a un área; sus supervisores reciben las alertas por correo."
       cerrar={cerrar}
+      tamano="mediano"
       acciones={
         <Button icon={area ? 'circle-check' : 'plus'} disabled={!f.nombre.trim() || enviando} onClick={enviar}>
           {area ? 'Guardar' : 'Agregar área'}
         </Button>
       }
     >
-      <Input label="Nombre" icon="map-pin" value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} error={error ?? undefined} />
-      <Input
-        label="Descripción"
-        placeholder="Zonas que cubre, separadas por ·"
-        value={f.descripcion}
-        onChange={(e) => setF({ ...f, descripcion: e.target.value })}
-      />
+      <div className="ui-grid-2">
+        <Input label="Nombre" icon="map-pin" value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} error={error ?? undefined} />
+        <Input
+          label="Descripción"
+          placeholder="Zonas que cubre, separadas por ·"
+          value={f.descripcion}
+          onChange={(e) => setF({ ...f, descripcion: e.target.value })}
+        />
+      </div>
     </Modal>
   )
 }
@@ -133,6 +144,7 @@ function EliminarArea({ area, cerrar, eliminada }) {
       titulo={`¿Eliminar ${area.nombre}?`}
       sub="Esta acción no se puede deshacer."
       cerrar={cerrar}
+      tamano="chico"
       acciones={
         <Button variant="destructive" icon="trash-2" disabled={enviando} onClick={enviar}>
           Eliminar área
@@ -375,13 +387,13 @@ function MarcaReportes({ org, editable, guardada, avisar }) {
       />
       {editable ? (
         <div className="ui-marca__acciones">
-          <button type="button" className="ui-link" disabled={ocupado} onClick={() => entrada.current?.click()}>
+          <Button variant="secondary" size="sm" icon="image" disabled={ocupado} onClick={() => entrada.current?.click()}>
             {estado === 'logo' ? 'Subiendo…' : org.logo_url ? 'Cambiar logo' : 'Subir logo'}
-          </button>
+          </Button>
           {org.logo_url && (
-            <button type="button" className="ui-link ui-marca__quitar" disabled={ocupado} onClick={quitar}>
+            <Button variant="ghost" size="sm" icon="trash-2" disabled={ocupado} onClick={quitar}>
               {estado === 'quitar' ? 'Quitando…' : 'Quitar logo'}
-            </button>
+            </Button>
           )}
         </div>
       ) : (

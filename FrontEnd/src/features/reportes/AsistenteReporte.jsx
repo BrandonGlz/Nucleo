@@ -206,7 +206,7 @@ export function AsistenteReporte({ areas, reportes, ed, puedeEditar, muestra: el
             <div style={{ flex: 1, minWidth: 0 }}>
               <h2>Nuevo formato</h2>
               <p className="ui-muted" style={{ margin: '4px 0 0', fontSize: 14 }}>
-                Elige las tarjetas, sus gráficas y sus datos. La hoja de la derecha usa los datos de «{muestra?.cifras.titulo}» como
+                Elige las tarjetas, sus gráficas y sus datos. La hoja de la derecha usa los datos de «{muestra?.titulo ?? muestra?.cifras?.titulo}» como
                 muestra.
               </p>
             </div>
@@ -452,7 +452,7 @@ export function AsistenteReporte({ areas, reportes, ed, puedeEditar, muestra: el
           </div>
 
           {paso === 3 && (
-            <ProveedorZoom>
+            <ProveedorZoom ajusteAncho={false}>
               <div className="ui-asistente__vista">
                 <div className="ui-asistente__vista-cabeza">
                   <span className="ui-eyebrow">Vista previa</span>

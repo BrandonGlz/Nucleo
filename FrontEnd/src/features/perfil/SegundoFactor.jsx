@@ -19,6 +19,7 @@ function Codigos({ codigos, cerrar }) {
   return (
     <Modal
       titulo="Guarda tus códigos de recuperación"
+      tamano="mediano"
       sub="Cada uno sirve una sola vez para entrar si no tienes el teléfono. No se volverán a mostrar."
       cerrar={cerrar}
       acciones={
@@ -61,6 +62,7 @@ function Confirmar({ titulo, sub, conPassword, boton, peligro, accion, cerrar })
     <Modal
       titulo={titulo}
       sub={sub}
+      tamano="chico"
       cerrar={cerrar}
       acciones={
         <Button variant={peligro ? 'destructive' : 'primary'} disabled={enviando || !codigo || (conPassword && !password)} onClick={enviar}>

@@ -1355,9 +1355,9 @@ button.ui-menuitem:hover {
   opacity: 0.9;
 }
 
-/* Panel: temperatura grande a la izquierda; humedad y calidad del aire se reparten la columna */
+/* Panel: temperatura a la mitad del ancho; humedad y calidad del aire se apilan a la derecha. */
 .ui-panel-graficas {
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 .ui-panel-graficas > .ui-col > .ui-panel-grafica {
   flex: 1 1 0;
@@ -1956,7 +1956,8 @@ article.ui-hoja,
   gap: 6px;
 }
 .ui-editor__item .ui-editor__chip,
-.ui-editor__hoja .ui-editor__chip {
+.ui-editor__hoja .ui-editor__chip,
+.ui-editor__opciones .ui-editor__chip {
   background: var(--surface);
   color: var(--text-secondary);
   cursor: pointer;
@@ -1970,7 +1971,8 @@ article.ui-hoja,
   font-weight: 600;
 }
 .ui-editor__item .ui-editor__chip.is-activo,
-.ui-editor__hoja .ui-editor__chip.is-activo {
+.ui-editor__hoja .ui-editor__chip.is-activo,
+.ui-editor__opciones .ui-editor__chip.is-activo {
   border-color: var(--text-primary);
   background: var(--text-primary);
   color: var(--surface);
@@ -5662,10 +5664,13 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
 .ui-hoja .ui-tabla-scroll .nc-table td {
   padding-inline: 6px;
   white-space: normal;
-  overflow-wrap: normal;
 }
 .ui-hoja .ui-tabla-scroll .nc-table th {
+  overflow-wrap: normal;
   letter-spacing: 0.04em;
+}
+.ui-hoja .ui-tabla-scroll .nc-table td {
+  overflow-wrap: anywhere;
 }
 .ui-observacion__texto {
   overflow-wrap: anywhere;
@@ -5685,7 +5690,7 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
 /* Observaciones: la tabla no se desplaza, el texto largo se ajusta a la celda. */
 .ui-tabla-observaciones > .nc-table {
   min-width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 /* Hoja del reporte: portada, firmas y controles del editor. */
@@ -5814,7 +5819,7 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
 
 /* En papel no hay scroll horizontal de tablas: el ancho se reparte y el texto se ajusta. */
 .ui-hoja .ui-tabla-scroll { overflow: visible; }
-.ui-hoja .ui-tabla-scroll > .nc-table { table-layout: fixed; }
+.ui-hoja .ui-tabla-scroll > .nc-table { table-layout: auto; }
 .ui-hoja .ui-tabla-scroll .nc-table th { white-space: normal; }
 .ui-hoja .ui-tabla-scroll .nc-table td.ui-num { white-space: nowrap; }
 .ui-hoja .ui-dash__widget[data-ancho="4"] .nc-table th,
@@ -5971,7 +5976,7 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
 }
 .ui-reportes__panel-filtros.is-saliendo { animation: ui-sale-menu 180ms var(--ease-standard) forwards; }
 .ui-reportes__panel-filtros { animation: ui-sube var(--duration-base) var(--ease-standard) backwards; }
-.ui-hoja .nc-table { width: 100%; table-layout: fixed; }
+.ui-hoja .nc-table { width: 100%; table-layout: auto; }
 .ui-hoja .nc-table th { white-space: normal; }
 .ui-hoja .nc-table td.ui-num { white-space: nowrap; }
 
@@ -6049,4 +6054,707 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
     bottom: calc(100% + 6px);
     transform-origin: bottom center;
   }
+}
+
+/* 8.1 · La hoja se acomoda en todos los formatos: columnas por contenido, textos que
+   envuelven y tarjetas cortas alineadas arriba, sin estirar su contenido. */
+.ui-hoja .ui-dash__rejilla { align-items: flex-start; }
+.ui-hoja .ui-tabla-scroll,
+.ui-hoja .ui-tabla-scroll > .nc-table { min-width: 0; }
+.ui-hoja .ui-tabla-scroll .ui-tabla-dispositivos th {
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+}
+.ui-hoja .ui-tabla-scroll .ui-tabla-dispositivos th,
+.ui-hoja .ui-tabla-scroll .ui-tabla-dispositivos td { padding-inline: 4px; }
+.ui-hoja .ui-tabla-scroll .ui-tabla-dispositivos td:first-child,
+.ui-hoja .ui-tabla-scroll .ui-tabla-dispositivos td:nth-child(2) { overflow-wrap: anywhere; }
+.ui-dispositivo__principal { display: block; font-weight: 600; }
+.ui-dispositivo__rango {
+  display: block;
+  font-size: 9.5px;
+  line-height: 1.25;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.ui-hoja .ui-tabla-observaciones .nc-table th {
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+}
+.ui-hoja .ui-tabla-observaciones .nc-table th,
+.ui-hoja .ui-tabla-observaciones .nc-table td { padding-inline: 4px; }
+.ui-hoja .ui-tabla-observaciones .nc-table td { overflow-wrap: anywhere; }
+.ui-hoja .ui-dash__lista li,
+.ui-hoja .ui-dash__lista li > * { min-width: 0; }
+.ui-hoja .ui-dash__lista li > * { white-space: normal; }
+.ui-hoja .ui-dash__lista li > .nc-badge,
+.ui-hoja .ui-dash__lista li > .ui-num { white-space: nowrap; }
+.ui-hoja .ui-dash__texto p { overflow-wrap: anywhere; }
+/* La dona se dimensiona por el ancho de la tarjeta, no por el alto de la fila. */
+.ui-hoja .ui-dash__dona .ui-dona {
+  width: min(52cqw, 140px);
+  height: auto;
+  aspect-ratio: 1;
+}
+.ui-hoja .ui-dash__dona { flex-wrap: wrap; row-gap: 8px; }
+
+/* Tablas de media fila: letra y relleno más compactos para que quepan sin scroll. */
+.ui-hoja .ui-tabla-scroll .ui-tabla-cumplimiento th,
+.ui-hoja .ui-tabla-scroll .ui-tabla-cumplimiento td,
+.ui-hoja .ui-tabla-scroll .ui-tabla-comparativo th,
+.ui-hoja .ui-tabla-scroll .ui-tabla-comparativo td { padding-inline: 4px; }
+.ui-hoja .ui-tabla-scroll .ui-tabla-cumplimiento th,
+.ui-hoja .ui-tabla-scroll .ui-tabla-comparativo th {
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+}
+.ui-hoja .ui-tabla-scroll .ui-tabla-comparativo td { font-size: 10.5px; }
+.ui-hoja .ui-dash__cifras--tarjeta { gap: 8px; }
+.ui-hoja .ui-dash__cifras--tarjeta .ui-eyebrow {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+}
+.ui-hoja .ui-tabla-dispositivos abbr { text-decoration: none; }
+
+/* 8.2 · El título del reporte lleva formato, lugar y periodo; en escritorio puede ocupar
+   dos renglones para que el periodo no se pierda en la barra. */
+@media (min-width: 901px) {
+  .ui-reportes__barra-titulo strong {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+/* 8.3 · Editor por selección: pestañas Hoja/Tarjetas, detalle de la tarjeta elegida y
+   barra de edición con el radio de tarjeta del sistema. */
+.ui-editor__lista {
+  min-height: 0;
+  padding: 4px;
+}
+.ui-editor__tabs {
+  display: flex;
+  width: 100%;
+  flex: none;
+}
+.ui-editor__tabs .nc-tab {
+  flex: 1;
+  justify-content: center;
+}
+.ui-editor__tarjetas {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ui-editor__tarjetas > ol {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ui-editor__ayuda {
+  margin: 0;
+  font-size: 12px;
+  line-height: 17px;
+}
+.ui-editor__lista .ui-editor__item {
+  cursor: pointer;
+}
+.ui-editor__lista .ui-editor__item .ui-editor__fila {
+  width: 100%;
+}
+.ui-editor__volver {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ui-editor__volver:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+.ui-editor__detalle-cabeza {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ui-editor__detalle-cabeza strong {
+  font-size: 16px;
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+.ui-editor__detalle-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.ui-editor__detalle-acciones button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ui-editor__detalle-acciones button:hover:not(:disabled) {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+.ui-editor__detalle-acciones button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ui-editor__detalle-acciones .ui-editor__quitar {
+  margin-left: auto;
+  border-color: var(--danger-soft, var(--border));
+  color: var(--danger);
+}
+/* Las firmas van en una fila por firma: Nombre | Cargo. */
+.ui-editor__firmas > div {
+  grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr);
+}
+.ui-editor__firmas strong {
+  grid-row: auto;
+}
+.ui-editor__hoja {
+  flex: none;
+}
+.ui-reportes__barra--edicion {
+  border-radius: var(--radius-md);
+}
+.ui-reportes__barra--edicion .nc-btn {
+  border-radius: var(--radius-md);
+}
+
+/* 8.4 · Pestañas de Reportes a todo el ancho, Programados y espera de generación. */
+.ui-reportes__tabs {
+  display: flex;
+  width: 100%;
+  flex: none;
+}
+.ui-reportes__tabs .nc-tab {
+  flex: 1;
+  justify-content: center;
+}
+.ui-reportes__tabs .nc-tab:focus:not(:focus-visible) {
+  outline: none;
+}
+.ui-programados__cabeza {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+}
+.ui-programados__aviso {
+  padding: 0 12px 8px;
+}
+.ui-programados__vacio {
+  flex: 1;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+}
+.ui-programados__vacio p {
+  margin: 0;
+}
+.ui-programacion {
+  align-items: flex-start;
+}
+.ui-programacion .ui-reportes__item-texto {
+  padding-top: 2px;
+}
+.ui-programacion .ui-reportes__item-meta {
+  align-items: flex-start;
+}
+
+/* La hoja real entra con un fundido suave al terminar de generarse. */
+.ui-reportes__hoja {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ui-reportes__hoja > .ui-visor-hoja {
+  flex: 1;
+  min-height: 0;
+}
+.ui-reportes__hoja.is-entrando {
+  animation: ui-hoja-entra 420ms var(--ease-standard);
+}
+@keyframes ui-hoja-entra {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Espera: hoja esqueleto y pasos reales debajo. */
+.ui-espera {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ui-espera__visor {
+  flex: 1;
+  min-height: 0;
+}
+.ui-espera__pie {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  padding: 0 4px 2px;
+}
+.ui-espera__pasos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--text-muted);
+}
+.ui-espera__pasos li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ui-espera__pasos li.is-hecho {
+  color: var(--text-secondary);
+}
+.ui-espera__pasos li.is-actual {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.ui-espera__marca {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--accent-secondary);
+}
+.ui-espera__spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-secondary);
+  border-radius: 50%;
+  animation: ui-gira 800ms linear infinite;
+}
+@keyframes ui-gira {
+  to { transform: rotate(360deg); }
+}
+.ui-espera__fallo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  text-align: center;
+}
+.ui-espera__fallo p {
+  margin: 0;
+  max-width: 620px;
+}
+.ui-hoja--espera {
+  gap: 14px;
+  overflow: hidden;
+}
+.ui-esqueleto__membrete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.ui-esqueleto__titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ui-esqueleto__ficha {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+.ui-esqueleto__cifras {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.ui-esqueleto__cifra {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+.ui-esqueleto__cifra + .ui-esqueleto__cifra {
+  border-left: 1px solid var(--border);
+}
+.ui-esqueleto__rejilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ui-esqueleto__tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.ui-esqueleto__tarjeta:last-child {
+  grid-column: 1 / -1;
+}
+.ui-esqueleto__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.ui-esqueleto__bloque {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #e6e9e2;
+}
+.ui-esqueleto__bloque::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: translateX(-100%);
+  animation: ui-esqueleto-brillo 1.4s linear infinite;
+}
+@keyframes ui-esqueleto-brillo {
+  to { transform: translateX(100%); }
+}
+.ui-espera.is-fallo .ui-esqueleto__bloque::after {
+  animation: none;
+  opacity: 0;
+}
+.ui-espera.is-fallo .ui-espera__spinner {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-esqueleto__bloque::after,
+  .ui-espera__spinner,
+  .ui-reportes__hoja.is-entrando {
+    animation: none;
+  }
+  .ui-esqueleto__bloque::after {
+    opacity: 0;
+  }
+}
+
+/* 8.5 · Avisos con el Toast del sistema, apilados abajo a la derecha. */
+.ui-toasts {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+}
+@media (max-width: 900px) {
+  .ui-toasts {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+  }
+  .ui-toasts .nc-toast {
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+/* 8.6 · Estándar de formularios en modal: tres anchos, cuerpo con scroll y cabecera/pie fijos. */
+.ui-modal__caja {
+  width: 640px;
+  max-height: calc(100dvh - 64px);
+  gap: 0;
+  overflow: hidden;
+}
+.ui-modal__caja--chico { width: 420px; }
+.ui-modal__caja--mediano { width: 640px; }
+.ui-modal__caja--grande { width: 880px; }
+.ui-modal__cabeza {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ui-modal__cabeza p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+}
+.ui-modal__cuerpo {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+  overscroll-behavior: contain;
+}
+.ui-modal__acciones {
+  flex: none;
+  padding-top: 0;
+}
+/* En formularios anchos los campos cortos se emparejan; los largos llevan .ui-form-ancho. */
+.ui-form-ancho { grid-column: 1 / -1; }
+@media (max-width: 900px) {
+  .ui-modal__caja {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 16px);
+    overflow: hidden;
+  }
+  .ui-modal__cuerpo { overflow: auto; }
+  .ui-modal__caja .ui-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* 8.6 · «Datos de la empresa»: datos a la izquierda en dos columnas y marca a la derecha. */
+.ui-empresa-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.75fr);
+  gap: 24px;
+  align-items: start;
+}
+.ui-empresa-form__datos { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.ui-empresa-form__marca { min-width: 0; }
+.ui-empresa-form__marca .ui-marca {
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+}
+.ui-empresa-form__marca .ui-marca__acciones { gap: 8px; }
+@media (max-width: 900px) {
+  .ui-empresa-form { grid-template-columns: 1fr; }
+}
+
+/* Selector de formato en el modal móvil: lista, sin desplegable que se salga del cuerpo. */
+.ui-formato-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ui-formato-opcion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.ui-formato-opcion:hover { background: var(--surface-muted); }
+.ui-formato-opcion.is-activo {
+  border-color: var(--accent-secondary);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+/* 8.8 · Barra normal sin título: estado, formato y acciones en un solo renglón. */
+@media (min-width: 901px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) {
+    flex-wrap: nowrap;
+    gap: 6px 8px;
+    padding: 6px 8px;
+  }
+  .ui-reportes__barra-estado--inicio {
+    flex: none;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato {
+    flex: 1 1 240px;
+    min-width: 180px;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
+    flex: 1;
+    min-width: 0;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones {
+    flex: none;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn {
+    padding-inline: 10px;
+  }
+}
+@media (min-width: 901px) and (max-width: 1500px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato .nc-badge {
+    display: none;
+  }
+  .ui-reportes__personalizar-texto {
+    display: none;
+  }
+}
+
+/* 8.8 · Lista de reportes en dos renglones: formato · lugar / periodo + estado. */
+.ui-item.ui-reciente--compacta {
+  padding: 7px 10px;
+  gap: 8px;
+}
+.ui-reciente--compacta .ui-reportes__item-texto {
+  gap: 1px;
+}
+.ui-reciente__formato {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-reciente__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.ui-reciente__periodo {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-reciente--compacta .nc-badge {
+  flex: none;
+  height: 20px;
+  padding: 0 7px;
+  font-size: 10.5px;
+  line-height: 18px;
+}
+.ui-reciente--compacta .ui-reportes__item-menu {
+  align-self: center;
+}
+@media (min-width: 901px) and (max-width: 1500px) {
+  /* El icono decorativo del selector se va para que el nombre completo quepa. */
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato .ui-desplegable__boton > .nc-icon:first-child {
+    display: none;
+  }
+}
+@media (min-width: 901px) and (max-width: 1500px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-estado--inicio .nc-badge {
+    padding-inline: 6px;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato .ui-desplegable__boton {
+    padding-inline: 10px 8px;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn--sm {
+    padding-inline: 6px;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .ui-menu-acciones > button {
+    width: 34px;
+    min-width: 34px;
+    padding: 0;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .ui-zoom--compacto {
+    gap: 1px;
+    padding: 1px;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .ui-zoom--compacto .ui-zoom__ajustar {
+    padding: 4px 4px;
+    font-size: 10.5px;
+  }
+}
+@media (min-width: 901px) and (max-width: 1500px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato .ui-desplegable__valor {
+    font-size: 13px;
+  }
+}
+
+/* Los modales especiales del asistente conservan su ancho; el estándar de 640/880 es para
+   los formularios de Modal. */
+.ui-modal__caja.ui-modal__caja--asistente {
+  width: min(1480px, 96vw);
+  height: min(calc(100dvh - 48px), 1100px);
+  max-height: calc(100dvh - 48px);
+  gap: 16px;
+  padding: 24px;
+  overflow: hidden;
+}
+.ui-modal__caja.ui-modal__caja--editor {
+  width: min(1480px, 95vw);
+  height: 92vh;
+  max-height: 92vh;
+  gap: 16px;
+  padding: 24px;
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .ui-modal__caja.ui-modal__caja--asistente {
+    width: calc(100vw - 16px);
+    height: 94dvh;
+    max-height: 94dvh;
+    padding: 16px;
+    gap: 12px;
+  }
+}
+.ui-hoja .ui-dash__cifras--tarjeta .ui-eyebrow {
+  font-size: 9.2px;
+  letter-spacing: 0.02em;
 }
