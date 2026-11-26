@@ -7,6 +7,7 @@ import * as reportesApi from '../../services/reportes'
 import * as usuariosApi from '../../services/usuarios'
 import { pagina } from '../../utils/convertir'
 import { fechaLarga } from '../../utils/formato'
+import { etiquetaFormato } from './personalizacion'
 
 const FRECUENCIAS = [
   { value: 'DIARIA', label: 'Diaria' },
@@ -31,9 +32,6 @@ function textoFrecuencia(p) {
   if (p.frecuencia === 'MENSUAL') return `Día ${p.dia_mes ?? 1} de cada mes ${horaDe(p)}`
   return `Cada día ${horaDe(p)}`
 }
-
-const etiquetaFormato = (f) =>
-  `${f.nombre}${f.predeterminado ? ' (predeterminado)' : ''}${f.esPlantilla ? ' · Plantilla' : ''}`
 
 const nombreArea = (areas, num) =>
   areas.find((a) => a.num === Number(num))?.nombre ?? 'Toda la organización'

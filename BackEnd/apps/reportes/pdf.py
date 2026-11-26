@@ -128,7 +128,8 @@ def datos_hoja(reporte):
     principal = max(codigos, key=lambda v: por_variable.get(v, 0), default="TEMP")
     area = reporte.area.nombre if reporte.area_id else None
     info = variables.get(principal)
-    lugar = area or "todas las áreas"
+    alcance = c.get("alcance") or area or "Todas las áreas"
+    lugar = "todas las áreas" if alcance == "Toda la organización" else alcance
     titulo = f"{_sin_parentesis(info['nombre'])} en {lugar}" if info else f"Monitoreo en {lugar}"
     nombres = dict(
         Dispositivo.objects.filter(
@@ -143,7 +144,7 @@ def datos_hoja(reporte):
     tramo = "día" if por_dia else "hora"
     return {
         "titulo": titulo,
-        "area": area or "Todas las áreas",
+        "area": alcance,
         "dispositivos": [nombres.get(k, k) for k in (c.get("dispositivos") or {})],
         "lecturas": sum(variables[v].get("muestras") or 0 for v in codigos),
         "contenido": reporte.contenido or "",

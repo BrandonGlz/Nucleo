@@ -1,6 +1,7 @@
 // Reportes (ADMIN, SUPER y ANALISTA)
-export const REPORTES = '/reportes/' // GET; POST {area?, formato?, periodo_inicio, periodo_fin}
+export const REPORTES = '/reportes/' // GET; POST {area?, areas?, formato?, periodo_inicio, periodo_fin}
 export const REPORTE = (num) => `/reportes/${num}/` // GET
+export const REPORTE_VISTA_PREVIA = '/reportes/vista-previa/' // GET ?areas=1,2&desde=…&hasta=…
 export const REPORTE_PDF = (num) => `/reportes/${num}/pdf/` // GET: descarga en PDF
 export const REPORTE_FORMATO = (num) => `/reportes/${num}/formato/` // POST {formato}: cambia el formato y regenera el PDF
 export const PROGRAMACIONES_REPORTE = '/programaciones-reporte/' // GET, POST

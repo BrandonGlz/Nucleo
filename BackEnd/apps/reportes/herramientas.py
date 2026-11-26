@@ -917,9 +917,11 @@ def _programaciones_de(usuario):
 
 
 def _describir_programacion(p):
+    from . import servicios
+
     return (
         f"#{p.num} {p.get_frecuencia_display().lower()} de "
-        f"{p.area.nombre if p.area else 'toda la organización'}"
+        f"{servicios.texto_alcance(p.organizacion, p.area, p.areas)}"
     )
 
 

@@ -125,15 +125,17 @@ version_formato
                fecha
                UNIQUE (formato_num, numero)
 programacion_reporte
-               num, organizacion_num, area_num (opcional), creada_por, formato_num (opcional),
-               frecuencia, hora (def. 08:00), dia_semana (0–6, semanal), dia_mes (1–28, mensual),
-               destinatarios (INTEGER[]), activa (def. TRUE), proxima_ejecucion,
-               ultima_ejecucion, fecha_creacion
+               num, organizacion_num, area_num (opcional), areas (INTEGER[], vacío = toda la
+               organización; varias áreas dejan area_num nula), creada_por, formato_num
+               (opcional), frecuencia, hora (def. 08:00), dia_semana (0–6, semanal),
+               dia_mes (1–28, mensual), destinatarios (INTEGER[]), activa (def. TRUE),
+               proxima_ejecucion, ultima_ejecucion, fecha_creacion
                CHECK frecuencia en DIARIA, SEMANAL, MENSUAL; CHECK cardinality(destinatarios) > 0;
                CHECK hora en punto o y media; CHECK día de semana 0–6; CHECK día del mes 1–28;
                semanal exige dia_semana y mensual exige dia_mes
                ÍNDICE (activa, proxima_ejecucion)
-reporte        num, organizacion_num, area_num (opcional), generado_por (opcional),
+reporte        num, organizacion_num, area_num (opcional), areas (INTEGER[], vacío = toda la
+               organización; varias áreas dejan area_num nula), generado_por (opcional),
                formato_version_num (opcional, PROTECT: versión con la que se generó),
                origen, periodo_inicio, periodo_fin, cifras JSONB, contenido, archivo_pdf,
                fecha_generacion

@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import time, timedelta
 
 from django.db.models import Q
 from rest_framework import serializers
@@ -94,6 +94,7 @@ class ReporteSerializer(serializers.ModelSerializer):
             "num",
             "organizacion",
             "area",
+            "areas",
             "generado_por",
             "origen",
             "periodo_inicio",
@@ -141,6 +142,9 @@ class ReporteSerializer(serializers.ModelSerializer):
 
 class SolicitudReporteSerializer(serializers.Serializer):
     area = serializers.IntegerField(required=False, allow_null=True)
+    areas = serializers.ListField(
+        child=serializers.IntegerField(), required=False, allow_empty=True
+    )
     formato = serializers.IntegerField(required=False, allow_null=True)
     periodo_inicio = serializers.DateTimeField()
     periodo_fin = serializers.DateTimeField()
@@ -150,6 +154,43 @@ class SolicitudReporteSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"periodo_inicio": "Debe ser anterior al fin del periodo."}
             )
+        if datos["periodo_fin"] - datos["periodo_inicio"] > timedelta(days=31):
+            raise serializers.ValidationError(
+                {"periodo_fin": "El periodo no puede durar más de 31 días."}
+            )
+        if datos.get("area") is not None and datos.get("areas"):
+            raise serializers.ValidationError(
+                {"areas": "Elige un área o varias, no ambas."}
+            )
+        datos["areas"] = sorted(set(datos.get("areas") or []))
+        return datos
+
+
+class SolicitudVistaPreviaSerializer(serializers.Serializer):
+    """Cifras de la vista previa del asistente; no genera ni guarda un reporte."""
+
+    areas = serializers.CharField(required=False, allow_blank=True, default="")
+    desde = serializers.DateTimeField()
+    hasta = serializers.DateTimeField()
+
+    def validate_areas(self, valor):
+        if not valor.strip():
+            return []
+        try:
+            numeros = {int(part.strip()) for part in valor.split(",") if part.strip()}
+        except ValueError as error:
+            raise serializers.ValidationError(
+                "Las áreas deben ser números separados por comas."
+            ) from error
+        return sorted(numeros)
+
+    def validate(self, datos):
+        if datos["desde"] >= datos["hasta"]:
+            raise serializers.ValidationError({"desde": "Debe ser anterior al fin del periodo."})
+        if datos["hasta"] - datos["desde"] > timedelta(days=31):
+            raise serializers.ValidationError(
+                {"hasta": "El periodo no puede durar más de 31 días."}
+            )
         return datos
 
 
@@ -157,6 +198,9 @@ class ProgramacionReporteSerializer(serializers.ModelSerializer):
     """Programación periódica; sin ``proxima_ejecucion`` se calcula con hora y día."""
 
     destinatarios = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    areas = serializers.ListField(
+        child=serializers.IntegerField(), required=False, allow_empty=True
+    )
     proxima_ejecucion = serializers.DateTimeField(required=False)
     formato_nombre = serializers.SerializerMethodField()
 
@@ -166,6 +210,7 @@ class ProgramacionReporteSerializer(serializers.ModelSerializer):
             "num",
             "organizacion",
             "area",
+            "areas",
             "creada_por",
             "formato",
             "formato_nombre",
@@ -211,6 +256,17 @@ class ProgramacionReporteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("El formato no existe o no está a su alcance.")
         return formato
 
+    def validate_areas(self, numeros):
+        if not numeros:
+            return []
+        actor = self.context["request"].user
+        visibles = set(
+            areas_visibles(actor).filter(pk__in=numeros).values_list("pk", flat=True)
+        )
+        if visibles != set(numeros):
+            raise serializers.ValidationError("Hay áreas que no existen o no están a su alcance.")
+        return sorted(visibles)
+
     def validate_destinatarios(self, numeros):
         organizacion = self.context["request"].user.organizacion_id
         validos = set(
@@ -226,9 +282,17 @@ class ProgramacionReporteSerializer(serializers.ModelSerializer):
 
     def validate(self, datos):
         actor = self.context["request"].user
+        if datos.get("area") is not None and datos.get("areas"):
+            raise serializers.ValidationError({"areas": "Elige un área o varias, no ambas."})
         if actor.rol_id != roles.ADMIN and actor.area_id:
             # Supervisor y analista con área solo programan reportes de su área.
             datos["area"] = areas_visibles(actor).filter(pk=actor.area_id).first()
+            datos["areas"] = []
+        areas = datos.get("areas") or []
+        if len(areas) == 1:
+            # Una sola área marcada en «varias áreas» es una programación de esa área.
+            datos["area"] = areas_visibles(actor).filter(pk=areas[0]).first()
+            datos["areas"] = []
 
         frecuencia = datos.get("frecuencia", getattr(self.instance, "frecuencia", None))
         hora = datos.get("hora", getattr(self.instance, "hora", time(8, 0)))

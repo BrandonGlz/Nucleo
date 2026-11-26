@@ -44,6 +44,9 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Reportes con alcance flexible (un área, varias áreas o toda la organización), periodo
+  personalizado de hasta 31 días y un asistente de tres pasos con vista previa de las cifras
+  reales sin llamar a la IA. «Uno por cada área» conserva el comportamiento anterior.
 - Programaciones de reportes administrables desde la web: crear, editar, pausar, reanudar y
   «Enviar prueba ahora» (solo a quien la pide, sin mover las fechas). Se elige la hora, el día de
   la semana o del mes (1–28) y el formato. Solo ADMIN y SUPER las administran; ANALISTA las

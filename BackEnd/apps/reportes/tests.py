@@ -13,6 +13,7 @@ from django.test import override_settings
 from django.utils import timezone
 
 from apps.alertas.models import Alerta
+from apps.dispositivos.models import Dispositivo, Sensor
 from apps.mediciones.models import Lectura
 from apps.reportes import agente, aprendizaje, carga, formatos, herramientas, ia, puente, servicios
 from apps.reportes.models import (
@@ -115,6 +116,193 @@ class ReporteTests(PruebaBase):
         )
         self.assertEqual(de_otra_area["variables"], {})
 
+    def _lectura_en_otra_area(self, valor=40):
+        """Segundo dispositivo de la organización, en otra área, con una lectura de TEMP."""
+        self.e.area.nombre = "Laboratorio"
+        self.e.area.save(update_fields=["nombre"])
+        self.e.otra_area.nombre = "Moldeo"
+        self.e.otra_area.save(update_fields=["nombre"])
+        dispositivo = Dispositivo.objects.create(
+            area=self.e.otra_area,
+            nombre="Nodo Moldeo",
+            codigo_mqtt="NUC-MOLDEO",
+            operador=self.e.operador,
+            registrado_por=self.e.admin,
+        )
+        sensor = Sensor.objects.create(dispositivo=dispositivo, modelo="DHT22")
+        Lectura.objects.create(
+            sensor_num=sensor.pk,
+            variable_codigo="TEMP",
+            valor=valor,
+            fecha_hora=self.ahora - timedelta(hours=1),
+        )
+        return dispositivo
+
+    def test_varias_areas_suman_en_un_solo_reporte(self):
+        otro = self._lectura_en_otra_area()
+        with (
+            tempfile.TemporaryDirectory() as carpeta,
+            override_settings(MEDIA_ROOT=carpeta),
+            mock.patch.object(ia, "redactar", return_value="Reporte de dos áreas."),
+        ):
+            r = cliente_de(self.e.admin).post(
+                "/api/v1/reportes/",
+                {
+                    **self.solicitud,
+                    "areas": [self.e.area.pk, self.e.otra_area.pk],
+                },
+                format="json",
+            )
+
+        self.assertEqual(r.status_code, 201, r.content)
+        cuerpo = r.json()
+        self.assertIsNone(cuerpo["area"])
+        self.assertEqual(cuerpo["areas"], [self.e.area.pk, self.e.otra_area.pk])
+        self.assertEqual(cuerpo["cifras"]["alcance"], "Laboratorio y Moldeo")
+        temperatura = cuerpo["cifras"]["variables"]["TEMP"]
+        self.assertEqual(temperatura["muestras"], 4)
+        self.assertEqual(temperatura["promedio"], 28.5)
+        self.assertEqual(temperatura["maximo"], 40.0)
+        self.assertIn(otro.codigo_mqtt, cuerpo["cifras"]["dispositivos"])
+
+    def test_varias_areas_con_una_sola_se_guarda_como_area(self):
+        with (
+            tempfile.TemporaryDirectory() as carpeta,
+            override_settings(MEDIA_ROOT=carpeta),
+            mock.patch.object(ia, "redactar", return_value="Reporte de un área."),
+        ):
+            r = cliente_de(self.e.admin).post(
+                "/api/v1/reportes/",
+                {**self.solicitud, "areas": [self.e.area.pk]},
+                format="json",
+            )
+
+        self.assertEqual(r.status_code, 201, r.content)
+        cuerpo = r.json()
+        self.assertEqual(cuerpo["area"], self.e.area.pk)
+        self.assertEqual(cuerpo["areas"], [])
+        self.assertEqual(cuerpo["cifras"]["alcance"], self.e.area.nombre)
+
+    def test_toda_la_organizacion_en_un_solo_reporte(self):
+        otro = self._lectura_en_otra_area()
+        with (
+            tempfile.TemporaryDirectory() as carpeta,
+            override_settings(MEDIA_ROOT=carpeta),
+            mock.patch.object(ia, "redactar", return_value="Reporte de toda la organización."),
+        ):
+            r = cliente_de(self.e.admin).post(
+                "/api/v1/reportes/", self.solicitud, format="json"
+            )
+
+        self.assertEqual(r.status_code, 201, r.content)
+        cuerpo = r.json()
+        self.assertIsNone(cuerpo["area"])
+        self.assertEqual(cuerpo["areas"], [])
+        self.assertEqual(cuerpo["cifras"]["alcance"], "Toda la organización")
+        self.assertEqual(cuerpo["cifras"]["variables"]["TEMP"]["muestras"], 4)
+        self.assertIn(otro.codigo_mqtt, cuerpo["cifras"]["dispositivos"])
+
+    def test_el_periodo_personalizado_no_pasa_de_31_dias(self):
+        r = cliente_de(self.e.admin).post(
+            "/api/v1/reportes/",
+            {
+                "periodo_inicio": (self.ahora - timedelta(days=31, minutes=1)).isoformat(),
+                "periodo_fin": self.ahora.isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("31", r.json()["periodo_fin"][0])
+
+    def test_el_area_ajena_se_rechaza(self):
+        otro = Escenario("b")
+        cliente = cliente_de(self.e.admin)
+        r = cliente.post(
+            "/api/v1/reportes/", {**self.solicitud, "area": otro.area.pk}, format="json"
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("area", r.json())
+        r = cliente.post(
+            "/api/v1/reportes/", {**self.solicitud, "areas": [otro.area.pk]}, format="json"
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("areas", r.json())
+
+    def test_el_supervisor_solo_pide_sus_areas(self):
+        cliente = cliente_de(self.e.supervisor)
+        r = cliente.post(
+            "/api/v1/reportes/",
+            {**self.solicitud, "area": self.e.otra_area.pk},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        r = cliente.post(
+            "/api/v1/reportes/",
+            {**self.solicitud, "areas": [self.e.otra_area.pk]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+
+        with (
+            tempfile.TemporaryDirectory() as carpeta,
+            override_settings(MEDIA_ROOT=carpeta),
+            mock.patch.object(ia, "redactar", return_value="Reporte del área."),
+        ):
+            r = cliente.post("/api/v1/reportes/", self.solicitud, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.json()["area"], self.e.area.pk)
+
+    def test_vista_previa_calcula_las_cifras_sin_guardar(self):
+        self._lectura_en_otra_area()
+        with override_settings(IA_PROVEEDOR=""):
+            r = cliente_de(self.e.admin).get(
+                "/api/v1/reportes/vista-previa/",
+                {
+                    "areas": f"{self.e.area.pk},{self.e.otra_area.pk}",
+                    "desde": self.inicio.isoformat(),
+                    "hasta": self.ahora.isoformat(),
+                },
+            )
+
+        self.assertEqual(r.status_code, 200, r.content)
+        cuerpo = r.json()
+        self.assertEqual(cuerpo["areas"], [self.e.area.pk, self.e.otra_area.pk])
+        self.assertEqual(cuerpo["cifras"]["alcance"], "Laboratorio y Moldeo")
+        self.assertEqual(cuerpo["cifras"]["variables"]["TEMP"]["muestras"], 4)
+        self.assertFalse(Reporte.objects.exists())
+
+    def test_vista_previa_de_un_area_respeta_el_alcance_del_usuario(self):
+        self._lectura_en_otra_area()
+        cliente = cliente_de(self.e.analista)
+        r = cliente.get(
+            "/api/v1/reportes/vista-previa/",
+            {"desde": self.inicio.isoformat(), "hasta": self.ahora.isoformat()},
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["areas"], [self.e.area.pk])
+        self.assertEqual(r.json()["cifras"]["alcance"], "Laboratorio")
+
+        r = cliente.get(
+            "/api/v1/reportes/vista-previa/",
+            {
+                "areas": str(self.e.otra_area.pk),
+                "desde": self.inicio.isoformat(),
+                "hasta": self.ahora.isoformat(),
+            },
+        )
+        self.assertEqual(r.status_code, 400)
+
+    def test_vista_previa_valida_el_periodo(self):
+        r = cliente_de(self.e.admin).get(
+            "/api/v1/reportes/vista-previa/",
+            {
+                "desde": (self.ahora - timedelta(days=32)).isoformat(),
+                "hasta": self.ahora.isoformat(),
+            },
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("hasta", r.json())
+
     @override_settings(IA_PROVEEDOR="")
     def test_sin_servicio_de_ia_responde_503_y_no_guarda_nada(self):
         r = cliente_de(self.e.analista).post("/api/v1/reportes/", self.solicitud, format="json")
@@ -197,6 +385,16 @@ class ProgramacionTests(PruebaBase):
         )
         self.assertEqual(r.status_code, 201, r.content)
         self.assertIsNone(r.json()["area"])
+
+    def test_varias_areas_con_una_sola_se_guarda_como_area(self):
+        r = cliente_de(self.e.admin).post(
+            "/api/v1/programaciones-reporte/",
+            self.datos(areas=[self.e.area.pk]),
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.json()["area"], self.e.area.pk)
+        self.assertEqual(r.json()["areas"], [])
 
     def test_los_destinatarios_deben_ser_de_la_misma_organizacion(self):
         otro = Escenario("b")

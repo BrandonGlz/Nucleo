@@ -226,6 +226,9 @@ const BASE = { orden: WIDGETS.map((w) => w.id), ocultos: [], opciones: {}, perso
 const VACIO = { orden: [], ocultos: [], opciones: {}, personalizadas: [], base: false }
 // Se conserva para que el chat de Nico AI compile hasta la tarea 1.5.
 export const ESTANDAR = 'estandar'
+// Nombre de un formato en los selectores: marca el predeterminado y las plantillas.
+export const etiquetaFormato = (f) =>
+  `${f.nombre}${f.predeterminado ? ' (predeterminado)' : ''}${f.esPlantilla ? ' · Plantilla' : ''}`
 
 // Completa una configuración guardada: quita tarjetas que ya no existen y añade las nuevas.
 function normalizar(g) {

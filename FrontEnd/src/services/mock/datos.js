@@ -212,10 +212,10 @@ export const avisos = [
 
 export const reportes = [
   {
-    num: 31, organizacion: 1, area: 1, generado_por: 2, origen: 'MANUAL',
+    num: 31, organizacion: 1, area: 1, areas: [], generado_por: 2, origen: 'MANUAL',
     periodo_inicio: '2026-10-01T07:00:00Z', periodo_fin: '2026-10-23T07:00:00Z',
     cifras: {
-      titulo: 'Calidad del aire en Moldeo', lecturas: 8640, dispositivos: ['Núcleo T-01', 'Núcleo T-02', 'Núcleo T-03', 'Núcleo T-04'],
+      titulo: 'Calidad del aire en Moldeo', alcance: 'Moldeo', lecturas: 8640, dispositivos: ['Núcleo T-01', 'Núcleo T-02', 'Núcleo T-03', 'Núcleo T-04'],
       variables: [
         { variable: 'TEMP', minimo: 20.8, promedio: 24.6, maximo: 28.4, alertas: 6 },
         { variable: 'HUM', minimo: 38.2, promedio: 47.9, maximo: 58.1, alertas: 1 },
@@ -228,10 +228,10 @@ export const reportes = [
     archivo_pdf: '/media/reportes/31.pdf', fecha_generacion: hace(6 * HORA),
   },
   {
-    num: 30, organizacion: 1, area: 3, generado_por: null, origen: 'PROGRAMADO',
+    num: 30, organizacion: 1, area: 3, areas: [], generado_por: null, origen: 'PROGRAMADO',
     periodo_inicio: '2026-10-19T07:00:00Z', periodo_fin: '2026-10-24T07:00:00Z',
     cifras: {
-      titulo: 'Temperatura en Guardería', lecturas: 2880, dispositivos: ['Núcleo E-03', 'Núcleo E-04', 'Núcleo E-05', 'Núcleo E-06'],
+      titulo: 'Temperatura en Guardería', alcance: 'Guardería', lecturas: 2880, dispositivos: ['Núcleo E-03', 'Núcleo E-04', 'Núcleo E-05', 'Núcleo E-06'],
       variables: [
         { variable: 'TEMP', minimo: 19.6, promedio: 22.7, maximo: 25.1, alertas: 0 },
         { variable: 'HUM', minimo: 40.3, promedio: 45.2, maximo: 58.9, alertas: 1 },
@@ -243,10 +243,10 @@ export const reportes = [
     archivo_pdf: '/media/reportes/30.pdf', fecha_generacion: hace(2 * DIA),
   },
   {
-    num: 29, organizacion: 1, area: 2, generado_por: null, origen: 'PROGRAMADO',
+    num: 29, organizacion: 1, area: 2, areas: [], generado_por: null, origen: 'PROGRAMADO',
     periodo_inicio: '2026-10-12T07:00:00Z', periodo_fin: '2026-10-19T07:00:00Z',
     cifras: {
-      titulo: 'Humedad en Laboratorio', lecturas: 4032, dispositivos: ['Núcleo L-07', 'Núcleo L-08', 'Núcleo L-09', 'Núcleo L-10'],
+      titulo: 'Humedad en Laboratorio', alcance: 'Laboratorio', lecturas: 4032, dispositivos: ['Núcleo L-07', 'Núcleo L-08', 'Núcleo L-09', 'Núcleo L-10'],
       variables: [
         { variable: 'TEMP', minimo: 18.4, promedio: 20.3, maximo: 23.2, alertas: 0 },
         { variable: 'HUM', minimo: 39.0, promedio: 49.6, maximo: 66.1, alertas: 3 },
@@ -261,14 +261,14 @@ export const reportes = [
 
 export const programaciones = [
   {
-    num: 4, organizacion: 1, area: 2, creada_por: 2, frecuencia: 'SEMANAL',
+    num: 4, organizacion: 1, area: 2, areas: [], creada_por: 2, frecuencia: 'SEMANAL',
     formato: 5, formato_nombre: 'Formato de la organización', hora: '08:00:00',
     dia_semana: 0, dia_mes: null, destinatarios: [2, 5, 1],
     activa: true, proxima_ejecucion: proximaEjecucion({ diaSemana: 0 }),
     ultima_ejecucion: hace(7 * DIA), fecha_creacion: '2026-09-01T16:00:00Z',
   },
   {
-    num: 5, organizacion: 1, area: null, creada_por: 1, frecuencia: 'MENSUAL',
+    num: 5, organizacion: 1, area: null, areas: [], creada_por: 1, frecuencia: 'MENSUAL',
     formato: null, formato_nombre: '', hora: '08:00:00',
     dia_semana: null, dia_mes: 1, destinatarios: [1, 2, 3, 4, 5],
     activa: true, proxima_ejecucion: proximaEjecucion({ diaMes: 1 }),

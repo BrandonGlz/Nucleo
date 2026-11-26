@@ -1,6 +1,7 @@
 // Imitan cada endpoint con un retraso de 300–600 ms y devuelven la forma del contrato.
 // Los errores llevan `status` como ApiError de services/api/client.js.
 import { ApiError } from '../api/client'
+import { cifrasHoja } from '../cifrasReporte'
 import { PLATAFORMA } from './consola'
 import * as db from './datos'
 import { formatos as formatosDatos, formatoPredeterminado } from './formatos'
@@ -32,6 +33,7 @@ function iniciarVivo() {
 
 const rolMock = () => import.meta.env.VITE_MOCK_ROL || 'SUPER'
 const USUARIO_POR_ROL = { ADMIN: 1, SUPER: 2, ANALISTA: 5, OPER: 7 }
+const PUEDEN_REPORTES = ['ADMIN', 'SUPER', 'ANALISTA']
 
 // Acceso: se entra con el correo de cualquier cuenta de datos.js (cualquier contraseña).
 // Un correo desconocido entra con la cuenta del rol de VITE_MOCK_ROL; error@nucleo.mx
@@ -398,6 +400,7 @@ export async function crearProgramacion(datos) {
     num: Math.max(...db.programaciones.map((p) => p.num)) + 1,
     organizacion: 1,
     area: datos.area ? Number(datos.area) : null,
+    areas: [],
     creada_por: USUARIO_POR_ROL[rolMock()] ?? 2,
     formato: formato?.num ?? null,
     formato_nombre: formato?.nombre ?? '',
@@ -443,6 +446,7 @@ export async function probarProgramacion(num) {
     ...base,
     num: Math.max(...db.reportes.map((r) => r.num)) + 1,
     area: p.area,
+    areas: [],
     origen: 'PROGRAMADO',
     formato: formato.num,
     formato_nombre: formato.nombre,
@@ -454,13 +458,84 @@ export async function probarProgramacion(num) {
   })
 }
 
-export async function crearReporte({ area, formato, periodo_inicio, periodo_fin }) {
+// Título del alcance con las mismas reglas que servicios.texto_alcance.
+function nombreAlcance(numeros) {
+  const lista = [...new Set(numeros.map(Number))]
+  if (!lista.length) return 'Toda la organización'
+  const nombres = db.areas
+    .filter((a) => lista.includes(a.num))
+    .map((a) => a.nombre)
+    .sort((a, b) => a.localeCompare(b, 'es'))
+  if (nombres.length > 3) return `${nombres.length} áreas`
+  if (nombres.length === 3) return `${nombres[0]}, ${nombres[1]} y ${nombres[2]}`
+  if (nombres.length === 2) return `${nombres[0]} y ${nombres[1]}`
+  return nombres[0]
+}
+
+function cifrasDeVista(numeros, desde, hasta) {
+  const dias = Math.max(1, Math.round((new Date(hasta) - new Date(desde)) / 86400000))
+  const fin = new Date(hasta)
+  fin.setDate(fin.getDate() - 1)
+  const cifras = cifrasSimuladas(dias, 0, fin)
+  const dispositivos = db.dispositivos.filter((d) => !numeros.length || numeros.includes(d.area))
+  cifras.alcance = nombreAlcance(numeros)
+  cifras.periodo = { inicio: desde, fin: hasta }
+  cifras.dispositivos = Object.fromEntries(dispositivos.map((d) => [d.codigo_mqtt, {}]))
+  return cifras
+}
+
+export async function vistaPreviaReporte({ areas = [], desde, hasta }) {
   await esperar()
-  const base = db.reportes.find((r) => r.area === Number(area)) ?? db.reportes[0]
+  if (!PUEDEN_REPORTES.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const inicio = new Date(desde)
+  const final = new Date(hasta)
+  const dias = (final - inicio) / 86400000
+  if (!(dias > 0)) {
+    throw new ApiError('La API respondió con el estado 400.', 400, {
+      desde: ['Debe ser anterior al fin del periodo.'],
+    })
+  }
+  if (dias > 31) {
+    throw new ApiError('La API respondió con el estado 400.', 400, {
+      hasta: ['El periodo no puede durar más de 31 días.'],
+    })
+  }
+  const numeros = [...new Set(areas.map(Number))]
+  if (numeros.some((num) => !db.areas.some((a) => a.num === num))) {
+    throw new ApiError('La API respondió con el estado 400.', 400, {
+      areas: ['Hay áreas que no existen o no están a su alcance.'],
+    })
+  }
+  const alcance = numeros.length
+    ? numeros
+    : rolMock() !== 'ADMIN' && cuentaDeSesion().area
+      ? [cuentaDeSesion().area]
+      : []
+  return { cifras: cifrasDeVista(alcance, desde, hasta), areas: alcance }
+}
+
+export async function crearReporte({ area, areas = [], formato, periodo_inicio, periodo_fin }) {
+  await esperar()
+  if (!PUEDEN_REPORTES.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const pedidas = areas.length ? areas.map(Number) : area ? [Number(area)] : []
+  // Como la API: sin alcance explícito, un usuario con área reporta solo su área.
+  const numeros = pedidas.length
+    ? pedidas
+    : rolMock() !== 'ADMIN' && cuentaDeSesion().area
+      ? [cuentaDeSesion().area]
+      : []
+  const base = db.reportes.find((r) => r.area === numeros[0]) ?? db.reportes[0]
   const elegido = formatoDe(formato ?? formatoPredeterminado().num)
+  // Las mismas cifras que muestra la vista previa para este alcance y periodo.
+  const cifras = cifrasDeVista(numeros, periodo_inicio, periodo_fin)
+  const nombres = Object.fromEntries(db.dispositivos.map((d) => [d.codigo_mqtt, d.nombre]))
   const nuevo = {
-    ...copia(base), num: Math.max(...db.reportes.map((r) => r.num)) + 1, area: area ? Number(area) : null,
+    ...copia(base), num: Math.max(...db.reportes.map((r) => r.num)) + 1,
+    area: numeros.length === 1 ? numeros[0] : null,
+    areas: numeros.length > 1 ? numeros : [],
     generado_por: 2, origen: 'MANUAL', periodo_inicio, periodo_fin, fecha_generacion: new Date().toISOString(),
+    cifras: cifrasHoja(cifras, { area: cifras.alcance, nombres }),
+    contenido: base.contenido,
     formato: elegido.num, formato_nombre: elegido.nombre, formato_version: elegido.version, formato_conf: elegido.conf,
   }
   db.reportes.unshift(nuevo)
@@ -633,9 +708,9 @@ const UNIDAD_VAR = { TEMP: '°C', HUM: '%HR', AIRE: 'ppm' }
 
 // Cifras con la misma forma que las de la API (servicios.calcular_cifras) para las gráficas
 // sueltas y comparativas de Nico AI.
-function cifrasSimuladas(dias, desfase = 0) {
+function cifrasSimuladas(dias, desfase = 0, fin = new Date()) {
   const base = { TEMP: [24.5, '°C', 'Temperatura'], HUM: [55, '%HR', 'Humedad relativa'], AIRE: [540, 'ppm', 'Calidad del aire (eCO2)'] }
-  const hoy = new Date()
+  const hoy = fin
   const variables = {}
   const series = {}
   for (const [v, [b, unidad, nombre]] of Object.entries(base)) {

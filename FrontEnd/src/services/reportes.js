@@ -7,62 +7,26 @@ import {
   REPORTE,
   REPORTE_FORMATO,
   REPORTE_PDF,
+  REPORTE_VISTA_PREVIA,
   REPORTES,
 } from '../api'
 import { API_BASE_URL, OPCIONES_SESION } from './api/client'
 import { pagina } from '../utils/convertir'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
+import { cifrasHoja } from './cifrasReporte'
 
-const ORDEN = ['TEMP', 'HUM', 'AIRE']
-const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+export { cifrasHoja } from './cifrasReporte'
 
 // La API guarda las cifras tal como las calcula (variables y series por código, dispositivos
 // por código MQTT). La hoja del reporte usa una forma resumida: título, total de lecturas,
 // nombres de los dispositivos, una fila por variable y la serie de la variable principal.
 function adaptar(r, areas, nombres) {
   if (Array.isArray(r.cifras?.variables)) return r
-  const area = areas.find((a) => a.num === r.area)?.nombre ?? 'todas las áreas'
+  const area =
+    r.cifras?.alcance ??
+    (areas.find((a) => a.num === r.area)?.nombre ?? 'todas las áreas')
   return { ...r, cifras: cifrasHoja(r.cifras ?? {}, { area, nombres }) }
-}
-
-// Cifras de la API en la forma de la hoja. `variable` elige la de la gráfica del periodo; sin
-// ella se usa la variable con más alertas. Nico AI la usa para mostrar una sola gráfica.
-export function cifrasHoja(c, { area = 'todas las áreas', nombres = {}, variable } = {}) {
-  const porVariable = c.alertas?.por_variable ?? {}
-  const codigos = ORDEN.filter((v) => c.variables?.[v])
-  const principal =
-    (variable && c.variables?.[variable] ? variable : null) ??
-    [...codigos].sort((a, b) => (porVariable[b] ?? 0) - (porVariable[a] ?? 0))[0] ??
-    'TEMP'
-  const info = c.variables?.[principal]
-  const porDia = c.intervalo_serie !== 'hora'
-  const puntos = (c.series?.[principal] ?? []).map((p) => {
-    const f = new Date(p.t)
-    const etiqueta = porDia
-      ? (c.series[principal].length <= 7 ? DIAS[f.getDay()] : `${f.getDate()}/${f.getMonth() + 1}`)
-      : `${String(f.getHours()).padStart(2, '0')}:00`
-    return [etiqueta, p.promedio]
-  })
-  return {
-    titulo: info ? `${info.nombre.replace(/ \(.*\)$/, '')} en ${area}` : `Monitoreo en ${area}`,
-    lecturas: codigos.reduce((s, v) => s + (c.variables[v].muestras ?? 0), 0),
-    dispositivos: Object.keys(c.dispositivos ?? {}).map((codigo) => nombres[codigo] ?? codigo),
-    variables: codigos.map((v) => ({
-      variable: v,
-      minimo: c.variables[v].minimo,
-      promedio: c.variables[v].promedio,
-      maximo: c.variables[v].maximo,
-      alertas: porVariable[v] ?? 0,
-    })),
-    serie: puntos.length
-      ? {
-          variable: principal,
-          etiqueta: `${info.nombre.replace(/ \(.*\)$/, '')} promedio por ${porDia ? 'día' : 'hora'}`,
-          puntos,
-        }
-      : null,
-  }
 }
 
 async function contexto() {
@@ -95,6 +59,29 @@ export async function crear(datos) {
   if (USAR_MOCKS) return mock.crearReporte(datos)
   const [r, [areas, nombres]] = await Promise.all([pedir(REPORTES, { metodo: 'POST', cuerpo: datos }), contexto()])
   return adaptar(r, areas, nombres)
+}
+
+// Cifras del paso «¿Cómo?» del asistente: sin IA y sin guardar nada.
+export async function vistaPrevia({ areas = [], desde, hasta }) {
+  const nombres = (lista) => Object.fromEntries(pagina(lista).map((d) => [d.codigo_mqtt, d.nombre]))
+  if (USAR_MOCKS) {
+    const [datos, dispositivos] = await Promise.all([
+      mock.vistaPreviaReporte({ areas, desde, hasta }),
+      mock.dispositivos(),
+    ])
+    return {
+      ...datos,
+      cifras: cifrasHoja(datos.cifras ?? {}, { area: datos.cifras?.alcance ?? 'todas las áreas', nombres: nombres(dispositivos) }),
+    }
+  }
+  const [datos, [, porCodigo]] = await Promise.all([
+    pedir(REPORTE_VISTA_PREVIA, { params: { areas: areas.join(','), desde, hasta } }),
+    contexto(),
+  ])
+  return {
+    ...datos,
+    cifras: cifrasHoja(datos.cifras ?? {}, { area: datos.cifras?.alcance ?? 'todas las áreas', nombres: porCodigo }),
+  }
 }
 
 // Cambia el formato del reporte: la API usa su versión actual y regenera el PDF sin IA.

@@ -14,6 +14,7 @@ from apps.avisos import servicios as avisos
 from apps.catalogos.models import VariableAmbiental
 from apps.dispositivos.models import Sensor
 from apps.mediciones.models import Lectura
+from apps.organizaciones.models import Area
 from apps.reportes import formatos, ia, pdf
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.usuarios.models import Usuario
@@ -25,20 +26,42 @@ def _numero(valor):
     return None if valor is None else float(Decimal(valor).quantize(Decimal("0.01")))
 
 
-def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None):
+def texto_alcance(organizacion, area, areas):
+    """Texto del alcance: área, lista de áreas, «4 áreas» o toda la organización."""
+    if areas:
+        nombres = list(
+            Area.objects.filter(organizacion=organizacion, num__in=areas)
+            .order_by("nombre")
+            .values_list("nombre", flat=True)
+        )
+        if len(nombres) > 3:
+            return f"{len(nombres)} áreas"
+        if len(nombres) == 2:
+            return f"{nombres[0]} y {nombres[1]}"
+        if len(nombres) == 3:
+            return f"{nombres[0]}, {nombres[1]} y {nombres[2]}"
+        return nombres[0] if nombres else "Toda la organización"
+    return area.nombre if area is not None else "Toda la organización"
+
+
+def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=None):
     """Promedios, máximos, mínimos, picos y alertas del periodo.
 
     Las lecturas se consultan en TimescaleDB y las alertas en PostgreSQL; la IA no calcula
     ni inventa valores. Las lecturas del calentamiento del CCS811 (no estabilizadas) no
-    entran en las cifras.
+    entran en las cifras. ``areas`` filtra varias áreas; ``area`` se usa para una sola.
     """
+    areas = list(areas or [])
     sensores = Sensor.objects.filter(dispositivo__area__organizacion=organizacion)
     alertas = Alerta.objects.filter(
         umbral__dispositivo__area__organizacion=organizacion,
         lectura_fecha_hora__gte=inicio,
         lectura_fecha_hora__lt=fin,
     )
-    if area is not None:
+    if areas:
+        sensores = sensores.filter(dispositivo__area__in=areas)
+        alertas = alertas.filter(umbral__dispositivo__area__in=areas)
+    elif area is not None:
         sensores = sensores.filter(dispositivo__area=area)
         alertas = alertas.filter(umbral__dispositivo__area=area)
     if dispositivo is not None:  # gráficas que pide un operador: solo su dispositivo
@@ -118,6 +141,7 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None):
         }
 
     return {
+        "alcance": texto_alcance(organizacion, area, areas),
         "periodo": {"inicio": inicio.isoformat(), "fin": fin.isoformat()},
         "variables": variables,
         "intervalo_serie": "hora" if por_hora else "dia",
@@ -135,21 +159,41 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None):
     }
 
 
-def generar_reporte(organizacion, area, inicio, fin, origen, usuario=None, formato=None):
+def generar_reporte(
+    organizacion,
+    area,
+    inicio,
+    fin,
+    origen,
+    usuario=None,
+    formato=None,
+    areas=None,
+):
     """Calcula las cifras, pide el texto a la IA y guarda el reporte con su PDF.
 
     Sin ``formato`` usa el predeterminado del área, el de la organización o la plantilla
-    Operativo detallado. Lanza ``ia.IANoDisponible`` si el servicio de IA falla; en ese
-    caso no se guarda nada.
+    Operativo detallado. ``areas`` sirve para varias áreas; en ese caso ``area`` queda nula.
+    Lanza ``ia.IANoDisponible`` si el servicio de IA falla; en ese caso no se guarda nada.
     """
+    areas = list(dict.fromkeys(areas or []))
+    if len(areas) == 1:
+        # «Varias áreas» con una sola marcada es un reporte de esa área: así aplica su
+        # formato predeterminado y la lista por área lo muestra.
+        unica = Area.objects.filter(organizacion=organizacion, pk=areas[0]).first()
+        if unica is not None:
+            area = unica
+            areas = []
+    elif areas:
+        area = None
     formato = formatos.formato_para(organizacion, area, formato)
     version = formato.version_actual() if formato is not None else None
-    cifras = calcular_cifras(organizacion, area, inicio, fin)
+    cifras = calcular_cifras(organizacion, area, inicio, fin, areas=areas)
     contenido = ia.redactar(cifras)
     with transaction.atomic():
         reporte = Reporte.objects.create(
             organizacion=organizacion,
             area=area,
+            areas=areas,
             generado_por=usuario,
             origen=origen,
             formato_version=version,
@@ -248,7 +292,9 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
     )
     if correos:
         org = reporte.organizacion.nombre
-        alcance = reporte.area.nombre if reporte.area_id else "Todas las áreas"
+        alcance = (reporte.cifras or {}).get("alcance") or (
+            reporte.area.nombre if reporte.area_id else "Todas las áreas"
+        )
         periodo = periodo_texto(reporte.periodo_inicio, reporte.periodo_fin)
         correo.enviar(
             correos,
@@ -295,6 +341,7 @@ def ejecutar_programacion(programacion, ahora):
         Reporte.Origen.PROGRAMADO,
         usuario=programacion.creada_por,
         formato=programacion.formato,
+        areas=programacion.areas,
     )
     correos = enviar_reporte(
         reporte,

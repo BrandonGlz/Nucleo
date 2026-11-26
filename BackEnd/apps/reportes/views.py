@@ -49,6 +49,7 @@ from apps.reportes.serializers import (
     SolicitudDuplicarFormatoSerializer,
     SolicitudFormatoSerializer,
     SolicitudReporteSerializer,
+    SolicitudVistaPreviaSerializer,
     VersionFormatoSerializer,
 )
 from common import roles
@@ -89,14 +90,29 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
         entrada.is_valid(raise_exception=True)
         datos = entrada.validated_data
 
-        areas = areas_visibles(request.user)
+        visibles = areas_visibles(request.user)
+        elegidas = datos.get("areas") or []
         area = None
-        if datos.get("area") is not None:
-            area = areas.filter(pk=datos["area"]).first()
+        if elegidas:
+            validas = set(visibles.filter(pk__in=elegidas).values_list("pk", flat=True))
+            if validas != set(elegidas):
+                raise ValidationError(
+                    {"areas": "Hay áreas que no existen o no están a su alcance."}
+                )
+            if request.user.rol_id != roles.ADMIN and request.user.area_id:
+                # Un SUPER con área no puede ampliar el alcance a otras áreas.
+                elegidas = []
+                area = visibles.filter(pk=request.user.area_id).first()
+            elif len(elegidas) == 1:
+                # Una sola área marcada en «varias áreas» se guarda como área normal.
+                area = visibles.filter(pk=elegidas[0]).first()
+                elegidas = []
+        elif datos.get("area") is not None:
+            area = visibles.filter(pk=datos["area"]).first()
             if area is None:
                 raise ValidationError({"area": "El área no existe o no está a su alcance."})
         elif request.user.rol_id != roles.ADMIN and request.user.area_id:
-            area = areas.filter(pk=request.user.area_id).first()
+            area = visibles.filter(pk=request.user.area_id).first()
 
         formato = None
         if datos.get("formato") is not None:
@@ -111,10 +127,36 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
                 Reporte.Origen.MANUAL,
                 usuario=request.user,
                 formato=formato,
+                areas=elegidas,
             )
         except ia.IANoDisponible as error:
             return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response(self.get_serializer(reporte).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["get"], url_path="vista-previa")
+    def vista_previa(self, request):
+        """Cifras para el paso «¿Cómo?» del asistente, sin IA y sin guardar nada."""
+        entrada = SolicitudVistaPreviaSerializer(data=request.query_params)
+        entrada.is_valid(raise_exception=True)
+        datos = entrada.validated_data
+        visibles = areas_visibles(request.user)
+        numeros = datos.get("areas") or []
+        if numeros:
+            validas = set(visibles.filter(pk__in=numeros).values_list("pk", flat=True))
+            if validas != set(numeros):
+                raise ValidationError(
+                    {"areas": "Hay áreas que no existen o no están a su alcance."}
+                )
+        elif request.user.rol_id != roles.ADMIN and request.user.area_id:
+            numeros = [request.user.area_id]
+        cifras = servicios.calcular_cifras(
+            request.user.organizacion,
+            None,
+            datos["desde"],
+            datos["hasta"],
+            areas=numeros,
+        )
+        return Response({"cifras": cifras, "areas": numeros})
 
     @action(detail=True, methods=["get"], url_path="pdf")
     def descargar_pdf(self, request, pk=None):
@@ -365,6 +407,7 @@ class ProgramacionReporteViewSet(viewsets.ModelViewSet):
                 Reporte.Origen.PROGRAMADO,
                 usuario=request.user,
                 formato=programacion.formato,
+                areas=programacion.areas,
             )
         except ia.IANoDisponible as error:
             return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)

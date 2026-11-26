@@ -844,7 +844,8 @@ function bloquesEdicion(r, ed) {
 export function DashboardReporte({ r, areas, ed, zoom, alEscalar }) {
   const c = r.cifras
   const origen = ORIGEN[r.origen] ?? ORIGEN.MANUAL
-  const area = areas.find((a) => a.num === r.area)?.nombre ?? 'Todas las áreas'
+  const area =
+    areas.find((a) => a.num === r.area)?.nombre ?? c.alcance ?? 'Todas las áreas'
   const bloques = ed.editando
     ? bloquesEdicion(r, ed)
     : ed.conf.orden
@@ -860,7 +861,7 @@ export function DashboardReporte({ r, areas, ed, zoom, alEscalar }) {
       <div className="ui-hoja__membrete">
         <Logo size={18} />
         <span>Reporte de monitoreo ambiental</span>
-        <span>Folio R-{String(r.num).padStart(4, '0')}</span>
+        <span>{r.num ? `Folio R-${String(r.num).padStart(4, '0')}` : 'Vista previa'}</span>
       </div>
       <div>
         <h2>{c.titulo}</h2>

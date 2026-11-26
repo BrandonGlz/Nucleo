@@ -147,6 +147,8 @@ class Reporte(models.Model):
         null=True,
         blank=True,
     )
+    # Varias áreas: area queda nula y aquí van sus nums. Vacío = toda la organización.
+    areas = ArrayField(models.IntegerField(), default=list, blank=True)
     generado_por = models.ForeignKey(
         "usuarios.Usuario",
         on_delete=models.PROTECT,
@@ -219,6 +221,8 @@ class ProgramacionReporte(models.Model):
         null=True,
         blank=True,
     )
+    # Varias áreas: area queda nula y aquí van sus nums. Vacío = toda la organización.
+    areas = ArrayField(models.IntegerField(), default=list, blank=True)
     creada_por = models.ForeignKey(
         "usuarios.Usuario",
         on_delete=models.PROTECT,

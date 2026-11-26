@@ -252,12 +252,18 @@ Formatos de reporte (ADMIN, SUPER y ANALISTA leen; ADMIN y SUPER escriben)
 └── GET /formatos-reporte/{num}/versiones/  [{numero, fecha, creada_por_nombre}]
 
 Reportes (ADMIN, SUPER y ANALISTA)
-├── GET /reportes/                          Lista y detalle; incluye formato (num), formato_nombre,
-│                                           formato_version y formato_conf. Sin versión, se usa la
-│                                           plantilla Operativo detallado
-├── POST /reportes/                         {"area"?, "formato"?, "periodo_inicio", "periodo_fin"};
-│                                           sin formato usa el predeterminado del área o el de la
-│                                           organización
+├── GET /reportes/                          Lista y detalle; incluye area, areas, formato (num),
+│                                           formato_nombre, formato_version y formato_conf. Sin
+│                                           versión, se usa la plantilla Operativo detallado
+├── POST /reportes/                         {"area"?, "areas"?, "formato"?, "periodo_inicio",
+│                                           "periodo_fin"}; un área con "area", varias con
+│                                           "areas" [num de área] y toda la organización sin
+│                                           ninguna. El periodo dura hasta 31 días y las áreas
+│                                           deben ser visibles para el usuario; sin formato usa
+│                                           el predeterminado del área o el de la organización
+├── GET /reportes/vista-previa/             ?areas=1,2&desde=…&hasta=… → {cifras, areas} para el
+│                                           asistente; sin IA y sin guardar, hasta 31 días y solo
+│                                           áreas visibles. Sin areas, el área del usuario
 ├── GET /reportes/{num}/pdf/                Descarga en PDF; el texto lo redacta IA_PROVEEDOR
 │                                           (local: plantillas con las cifras); sin proveedor, 503
 ├── POST /reportes/{num}/formato/           {"formato": num} → usa la versión actual de ese formato
@@ -265,10 +271,12 @@ Reportes (ADMIN, SUPER y ANALISTA)
 ├── /programaciones-reporte/                Reportes periódicos: {"frecuencia" DIARIA|SEMANAL|MENSUAL,
 │                                           "hora" "HH:MM" en punto o y media, "dia_semana" 0–6
 │                                           (semanal), "dia_mes" 1–28 (mensual), "formato"?,
-│                                           "destinatarios" [num de usuario], "area"?, "activa"?};
-│                                           destinatarios de la misma organización; crear y editar
-│                                           son ADMIN y SUPER; DELETE responde 405 y pausar/reanudar
-│                                           se hace con PATCH {"activa"}
+│                                           "destinatarios" [num de usuario], "area"?,
+│                                           "areas"?, "activa"?}; "areas" sirve para varias
+│                                           áreas y deja "area" nula. Destinatarios de la misma
+│                                           organización; crear y editar son ADMIN y SUPER;
+│                                           DELETE responde 405 y pausar/reanudar se hace con
+│                                           PATCH {"activa"}
 └── POST /programaciones-reporte/{num}/probar/
                                             Genera el periodo actual y lo envía solo a quien lo pide
                                             con el asunto «[Prueba]»; no mueve las fechas
