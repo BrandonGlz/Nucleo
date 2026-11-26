@@ -213,7 +213,7 @@ def dims(cam):
             cota3d(cam, (W, 0, H), (W, D, H), (12, 0, 6), cm(D)) + cota3d(cam, (0, 0, H), (W, 0, H), (0, 0, 12), cm(W)) +
             cota3d(cam, (m.TX0, m.TY0, m.TZ1), (m.TX1, m.TY0, m.TZ1), (0, 0, 16), cm(m.TX1 - m.TX0)))
 o = hoja(1400, 1240, 'Núcleo · exterior', 'Medidas en cm · cuerpo 11 × 5.5 × 8 · cámara de sensores 2.8 × 5.1 × 7.2, separada 0.6 cm y unida por el puente de cables')
-vista(o, 0, 80, 700, 580, 32, 22, '1 · Frente y lado derecho', 'Pantalla, anillo RGB, LED de Wi-Fi, buzzer, USB del ESP y USB-C de carga', extra=dims, margen=95, piezas=False)
+vista(o, 0, 80, 700, 580, 32, 22, '1 · Frente y lado derecho', 'Pantalla, anillo RGB, buzzer, USB del ESP y USB-C de carga', extra=dims, margen=95, piezas=False)
 vista(o, 700, 80, 700, 580, -38, 22, '2 · Frente y lado izquierdo', 'Rejillas de la cámara de sensores', piezas=False)
 vista(o, 0, 660, 700, 580, 205, 22, '3 · Parte trasera', 'Rejilla del ventilador y ranuras para colgar', piezas=False)
 vista(o, 700, 660, 700, 580, 28, -34, '4 · Por debajo', 'Ranura de la microSD', piezas=False)
@@ -261,7 +261,7 @@ filas_esq = [('Cuerpo (exterior)', '11 × 5.5 × 8'), ('Paredes', '0.25'), ('Cá
              ('Pasacables del tabique', '1.4 × 0.8, x 8.6–10.0, z 2.6–3.4'), ('Postes de la placa', '0.3 × 0.34 × 0.3, en x 1.7/9.0 y z 2.4/6.9'),
              ('Tope de la batería', '5 × 0.25 × 0.75, a 4.6 del frente'), ('Marco del ventilador', '3 × 3, x 3.0–6.0, z 4.4–7.4, contra la pared trasera'),
              ('Ventana de la pantalla', '2.4 × 1.4, x 1.1–3.5, z 5.0–6.4'), ('Anillo RGB', 'Ø 2.2, centro x 8.65, z 5.45'),
-             ('Rejilla del buzzer', '4 × 4 orificios Ø 0.2, centro x 8.65, z 2.25'), ('LED de Wi-Fi', 'Ø 0.5, centro x 1.55, z 3.65'),
+             ('Rejilla del buzzer', '4 × 4 orificios Ø 0.2, centro x 8.65, z 2.25'),
              ('Abajo: ranura microSD', '1.6 × 0.22, x 5.0–6.6'), ('Lado derecho: USB del ESP', '0.7 × 0.8, y 1.6–2.3, z 4.7–5.5'),
              ('Lado derecho: USB-C de carga', '0.5 × 0.9, y 3.95–4.45, z 5.45–6.35'), ('Atrás: rejilla del ventilador', 'Ø 2.8, centro x 4.5, z 5.9')]
 for i, (a1, b1) in enumerate(filas_esq):
@@ -293,12 +293,12 @@ c1 = vista(o, 0, 80, 1400, 800, 30, 25, '1 · Todo armado, corte desde el frente
 o += marcas(c1)
 c2 = vista(o, 0, 880, 1400, 800, 30, 25, '2 · Cableado (las piezas del frente en transparente)', 'Cada cable va derecho del pin del componente al pin de la placa de expansión; los de los sensores cruzan por el puente', escala=5.6, cables=True, esqueleto=True, fantasma_frente=True, quitar=('frente', 'techo', 'derecha'))
 o += marcas(c2, [p.nombre for p in PIEZAS if p.zona != 'frente'])
-c3 = vista(o, 0, 1680, 700, 560, -150, 25, '3 · Energía, desde atrás', 'Módulo de carga UNIT (arriba), batería LiPo, ventilador y MOSFET', cables=True, esqueleto=True, quitar=('atras', 'techo', 'izquierda'))
+c3 = vista(o, 0, 1680, 700, 560, -150, 25, '3 · Energía, desde atrás', 'Módulo de carga UNIT (arriba), batería LiPo y ventilador', cables=True, esqueleto=True, quitar=('atras', 'techo', 'izquierda'))
 o += marcas(c3, [p.nombre for p in PIEZAS if p.zona == 'energia'])
 c4 = vista(o, 700, 1680, 700, 560, 18, 60, '4 · Desde arriba', 'Sin techo: el cableado pasa sobre el tabique y por el pasacables', cables=True, esqueleto=True, quitar=('techo',))
 leyenda(o, 40, 2280, 1320, columnas=4)
 o.append('<text x="40" y="2510" font-size="16" font-weight="700" fill="#0f172a">Colores de los cables</text>')
-for k, (c, t) in enumerate(((m.ROJO, '3V3 / +'), (m.NARANJA, '5V'), (m.NEGRO, 'GND / −'), (m.VERDE, 'SDA'), (m.AZUL, 'SCL'), (m.AMARILLO, 'datos / LED'), ('#7c3aed', 'ventilador'), ('#0e7490', 'microSD'))):
+for k, (c, t) in enumerate(((m.ROJO, '3V3 / +'), (m.NARANJA, '5V'), (m.NEGRO, 'GND / −'), (m.VERDE, 'SDA'), (m.AZUL, 'SCL'), (m.AMARILLO, 'datos / LED'), ('#0e7490', 'microSD'))):
     x = 40 + (k % 4) * 330; y = 2540 + (k // 4) * 30
     o.append(f'<line x1="{x}" y1="{y}" x2="{x+40}" y2="{y}" stroke="{c}" stroke-width="5" stroke-linecap="round"/><text x="{x+52}" y="{y+5}" font-size="13" fill="#334155">{t}</text>')
 guardar(o, 'interior.svg')

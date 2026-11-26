@@ -57,7 +57,7 @@ sí. Las medidas van en **centímetros**.
   1.2 × 1.2 cm por donde pasan los cables de los dos. Rejillas al frente, a la izquierda, atrás y
   arriba.
 - **Tres capas de fondo**, de adelante hacia atrás:
-  1. **Frente** (0.25–1.1 cm): pantalla, LED de Wi-Fi, LED RGB, buzzer y lector microSD, pegados
+  1. **Frente** (0.25–1.1 cm): pantalla, LED RGB, buzzer y lector microSD, pegados
      a la tapa.
   2. **Centro** (1.1–3.6 cm): plano de cables a 1.2 cm, los conectores dupont, el ESP32 y la
      **placa de expansión** atornillada con 4 postes al tabique. Cada GPIO de la placa tiene un pin
@@ -67,12 +67,13 @@ sí. Las medidas van en **centímetros**.
      UNIT LiPo Boost & I2C** (cargador, elevador a 5 V y MAX17048 en una placa, sobre una repisa),
      con su **USB-C de carga por el lado derecho**; abajo a la izquierda la **batería LiPo de
      1000 mAh** (5 × 3.4 × 0.6 cm) de pie contra su tope; arriba al centro el **ventilador de
-     3 cm** contra la pared trasera, y el MOSFET que lo enciende. El tabique tiene rejilla arriba
+     3 cm** contra la pared trasera, conectado a la salida STEP del módulo. El tabique tiene rejilla arriba
      (el ventilador saca ese aire por atrás) y un pasacables abajo a la derecha.
 - **Jumpers cortos:** la pantalla, el LED RGB, el lector microSD y el buzzer usan jumpers dupont
   de **10 cm**. Sus recorridos miden menos de 7 cm; lo que sobra se dobla en el canal libre que
   queda arriba de la fila superior (o abajo de la inferior) de la placa de expansión.
-- Sin interruptor aparte: la batería va en el conector JST del módulo de carga.
+- Solo lleva las piezas del prototipo armado: sin LED de Wi-Fi, sin MOSFET (el ventilador gira
+  siempre que hay 5 V) y sin interruptor aparte (la batería va en el JST del módulo de carga).
 
 ## Piezas
 
@@ -85,20 +86,18 @@ ventilador y el módulo de carga van con medidas estimadas: confírmalas antes d
 | 1 | CCS811 | Cámara de sensores | 0.2 × 2.1 × 1.5 | -1.2 · 3 · 5 |
 | 2 | DHT22 | Cámara de sensores | 0.8 × 1.6 × 2.6 | -1.8 · 1.7 · 0.8 |
 | 3 | Pantalla OLED | Frente | 2.7 × 0.4 × 2.7 | 0.9 · 0.25 · 4.4 |
-| 4 | LED de Wi-Fi | Frente | 0.5 × 0.65 × 0.5 | 1.3 · 0.25 · 3.4 |
-| 5 | LED RGB KY-016 | Frente | 1.9 × 0.2 × 1.5 | 7.7 · 0.55 · 4.7 |
-| 6 | Buzzer KY-012 | Frente | 1.9 × 0.15 × 1.5 | 7.7 · 0.95 · 1.5 |
-| 7 | Lector microSD HW-125 | Frente | 2.4 × 0.6 × 4.2 | 4.6 · 0.4 · 0.25 |
-| 8 | Placa de expansión | Centro | 8 × 0.16 × 5.2 | 1.5 · 3.1 · 2.2 |
-| 9 | ESP32-S3 (girado) | Centro | 6.9 × 0.5 × 2.6 | 2 · 1.75 · 3.5 |
-| 10 | Módulo de carga UNIT | Energía | 4.2 × 0.35 × 2.6 | 6.4 · 4 · 4.6 |
-| 11 | Batería LiPo | Energía | 5 × 0.6 × 3.4 | 0.6 · 4 · 0.25 |
-| 12 | Ventilador 5 V | Energía | 3 × 1 × 3 | 3 · 4.25 · 4.4 |
-| 13 | Módulo MOSFET | Energía | 1.1 × 0.2 × 1.1 | 9 · 4 · 3.3 |
+| 4 | LED RGB KY-016 | Frente | 1.9 × 0.2 × 1.5 | 7.7 · 0.55 · 4.7 |
+| 5 | Buzzer KY-012 | Frente | 1.9 × 0.15 × 1.5 | 7.7 · 0.95 · 1.5 |
+| 6 | Lector microSD HW-125 | Frente | 2.4 × 0.6 × 4.2 | 4.6 · 0.4 · 0.25 |
+| 7 | Placa de expansión | Centro | 8 × 0.16 × 5.2 | 1.5 · 3.1 · 2.2 |
+| 8 | ESP32-S3 (girado) | Centro | 6.9 × 0.5 × 2.6 | 2 · 1.75 · 3.5 |
+| 9 | Módulo de carga UNIT | Energía | 4.2 × 0.35 × 2.6 | 6.4 · 4 · 4.6 |
+| 10 | Batería LiPo | Energía | 5 × 0.6 × 3.4 | 0.6 · 4 · 0.25 |
+| 11 | Ventilador 5 V | Energía | 3 × 1 × 3 | 3 · 4.25 · 4.4 |
 
 ## Cables
 
-37 cables. Se revisaron con el modelo:
+32 cables. Se revisaron con el modelo:
 
 - **Continuidad:** cada cable sale del pin de su componente y llega a su pin, sin cortes.
 - **Sin choques:** ningún cable atraviesa otra pieza ni una pared; solo cruzan por el puente, el
@@ -121,8 +120,6 @@ pines hembra. El largo de los demás es aproximado (por el recorrido); deja 2 o 
 | Pantalla OLED | VCC | **3V3** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 1 cm) |
 | Pantalla OLED | SCL | **GPIO 42** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 3 cm) |
 | Pantalla OLED | SDA | **GPIO 2** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 2 cm) |
-| LED de Wi-Fi | cátodo | **G** (placa de expansión, fila superior, pin hembra) | directo | 4 cm |
-| LED de Wi-Fi | ánodo + 220 Ω | **GPIO 41** (placa de expansión, fila superior, pin hembra) | directo | 6 cm |
 | LED RGB KY-016 | R | **GPIO 38** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 5 cm) |
 | LED RGB KY-016 | G | **GPIO 39** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 6 cm) |
 | LED RGB KY-016 | B | **GPIO 40** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 6 cm) |
@@ -140,11 +137,8 @@ pines hembra. El largo de los demás es aproximado (por el recorrido); deja 2 o 
 | Módulo de carga UNIT | SCL | **GPIO 21** (placa de expansión, fila superior, pin macho) | sobre el tabique | 5 cm |
 | Módulo de carga UNIT | STEP + | 5V de la placa | pasacables del tabique, detrás de la placa | 4 cm |
 | Módulo de carga UNIT | STEP − | GND de la placa | pasacables del tabique, detrás de la placa | 4 cm |
-| Módulo MOSFET | VIN+ | STEP + del módulo de carga | directo | 1 cm |
-| Módulo MOSFET | VIN− | STEP − del módulo de carga | directo | 1 cm |
-| Módulo MOSFET | SIG | **GPIO 9** (placa de expansión, fila inferior, pin macho) | pasacables del tabique, detrás de la placa | 8 cm |
-| Ventilador 5 V | + | MOSFET OUT+ | directo | 4 cm |
-| Ventilador 5 V | − | MOSFET OUT− | directo | 5 cm |
+| Ventilador 5 V | + | STEP + del módulo de carga | directo | 5 cm |
+| Ventilador 5 V | − | STEP − del módulo de carga | directo | 6 cm |
 | Batería LiPo | + | JST + del módulo de carga | directo | 2 cm |
 | Batería LiPo | − | JST − del módulo de carga | directo | 2 cm |
 

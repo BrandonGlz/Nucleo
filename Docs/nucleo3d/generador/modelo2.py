@@ -19,7 +19,6 @@ VENT = (30, 42.5, 44, 60, 52.5, 74)         # ventilador 3010 contra la pared tr
 VENT_C = ((VENT[0] + VENT[3]) / 2, (VENT[2] + VENT[5]) / 2)
 UNIT = (64, 40, 46, 106, 43.5, 72)          # módulo de carga UNIT LiPo Boost & I2C, arriba a la derecha
 USB_CARGA = (39.5, 54.5, 44.5, 63.5)        # hueco en la pared derecha (y0, z0, y1, z1)
-MOSFET = (90, 40, 33, 101, 42, 44)
 
 # ── Filas de la placa de expansión ─────────────────────────────────────
 ARRIBA = ['G', 'TX', 'RX', '1', '2', '42', '41', '40', '39', '38', '37', '36', '35', '0', '45', '48', '47', '21', '20', '19', 'G', 'G']
@@ -44,8 +43,7 @@ def frente_tapa(w, h):
          '<circle cx="86.5" cy="25.5" r="11" fill="none" stroke="#22c55e" stroke-width="2.6"/>',
          '<circle cx="86.5" cy="25.5" r="12.6" fill="none" stroke="#22c55e" stroke-opacity="0.35" stroke-width="1.6"/>',
          '<circle cx="86.5" cy="25.5" r="8.5" fill="#e5e7eb" stroke="#94a3b8" stroke-width="0.4"/>',
-         '<circle cx="15.5" cy="43.5" r="2.5" fill="#38bdf8" stroke="#0369a1" stroke-width="0.4"/>',
-         '<text x="19.5" y="44.6" font-size="3" fill="#475569" font-weight="600">Wi-Fi</text>']
+         ]
     for i in range(4):
         for j in range(4):
             s.append(f'<circle cx="{81.1+i*3.6:.1f}" cy="{52.1+j*3.6:.1f}" r="1" fill="#475569"/>')
@@ -169,7 +167,6 @@ def piezas():
     L.append(Pieza('CCS811', 'sensores', [Caja(-12, 30, 50, -10, 51, 65, '#6d28d9', {'left': ccs_cara})], 'Arriba (lado 19-21); su calor sube y no llega al DHT22'))
     L.append(Pieza('DHT22', 'sensores', [Caja(-18, 17, 8, -10, 33, 34, '#f1f5f9', {'left': dht_cara})], 'Abajo, con los pines hacia arriba; frente a las rejillas'))
     L.append(Pieza('Pantalla OLED', 'frente', [Caja(9, P, 44, 36, P + 4, 71, '#1e3a8a', {'front': oled_frente})], 'Pegada a la ventana de la tapa; jumpers de 10 cm'))
-    L.append(Pieza('LED de Wi-Fi', 'frente', [Caja(13, P, 34, 18, 9, 39, '#38bdf8')], 'LED de 5 mm con resistencia de 220 Ω en el ánodo'))
     L.append(Pieza('LED RGB KY-016', 'frente', [Caja(77, P + 3, 47, 96, P + 5, 62, '#18181b', {'front': pcb('KY-016')}), Caja(83.5, P, 51.5, 89.5, P + 3, 57.5, '#f8fafc')], 'Detrás del anillo de luz; jumpers de 10 cm'))
     L.append(Pieza('Buzzer KY-012', 'frente', [Caja(77, 9.5, 15, 96, 11, 30, '#18181b', {'front': pcb('KY-012')}),
               Caja(80.5, P, 16.5, 92.5, 9.5, 28.5, '#111827', {'front': lambda w, h: f'<circle cx="{w/2}" cy="{h/2}" r="{w/2-0.6}" fill="#1f2937" stroke="#4b5563" stroke-width="0.6"/>'})], 'Detrás de la rejilla del buzzer; jumpers de 10 cm'))
@@ -184,8 +181,7 @@ def piezas():
     L.append(Pieza('ESP32-S3 (girado)', 'centro', [Caja(*ESP, '#111111', {'front': esp_frente})], 'Antena a la izquierda, USB a la derecha; pines 19-21 arriba'))
     L.append(Pieza('Módulo de carga UNIT', 'energia', [Caja(*UNIT, '#18181b', {'back': unit_cara, 'front': pcb('UNIT LiPo Boost · I2C', tam=2.6)})], 'Arriba (lado 19-21); USB-C de carga por el lado derecho'))
     L.append(Pieza('Batería LiPo', 'energia', [Caja(*BATERIA, '#c9ced6', {'front': bateria_frente, 'back': bateria_frente})], '1000 mAh; de pie detrás del tabique, sujeta por el tope'))
-    L.append(Pieza('Ventilador 5 V', 'energia', [Caja(*VENT, '#111827', {'front': ventilador_cara, 'back': ventilador_cara})], '3 cm; saca el aire caliente por la rejilla trasera'))
-    L.append(Pieza('Módulo MOSFET', 'energia', [Caja(*MOSFET, '#0f766e', {'front': pcb('MOSFET', tam=2), 'back': pcb('MOSFET', tam=2)})], 'Enciende el ventilador desde el GPIO 9'))
+    L.append(Pieza('Ventilador 5 V', 'energia', [Caja(*VENT, '#111827', {'front': ventilador_cara, 'back': ventilador_cara})], '3 cm, a STEP ± del módulo de carga; saca el aire por atrás'))
     for k, p in enumerate(L): p.num = k + 1
     return L
 
@@ -259,11 +255,6 @@ def cables():
         x0 = 18.7 + 2.54 * i; zl = 70 + 0.8 * i
         t = pin('sup', k, 'macho')
         h('Pantalla OLED', p_, dest, color, [(x0, 11, 69), (x0, YC, 69), (x0, YC, zl), (t[0], YC, zl), (t[0], YC, t[2]), t])
-    # LED de Wi-Fi → fila superior, hembra, desde abajo
-    for i, (p_, dest, color, k) in enumerate((('cátodo', 'G', NEGRO, k_de('sup', 'G')), ('ánodo + 220 Ω', 'GPIO 41', AMARILLO, k_de('sup', '41')))):
-        x0 = 14.23 + 2.54 * i; zl = 58.5 + 1.0 * i
-        t = pin('sup', k, 'hembra')
-        h('LED de Wi-Fi', p_, dest, color, [(x0, 9, 36.5), (x0, YC, 36.5), (x0, YC, zl), (t[0], YC, zl), (t[0], YC, t[2]), t])
     # LED RGB → R, G, B a la fila superior (macho, desde abajo); − a G (hembra)
     for i, (p_, dest, color, k) in enumerate((('R', 'GPIO 38', ROJO, k_de('sup', '38')), ('G', 'GPIO 39', VERDE, k_de('sup', '39')), ('B', 'GPIO 40', AZUL, k_de('sup', '40')))):
         x0 = 80 + 2.54 * i; zl = 56 - 0.9 * i; xv = 55 + 0.9 * (2 - i)
@@ -295,14 +286,9 @@ def cables():
     # STEP + / STEP − (salida a 5.0 V) → pasacables → pads 5V y GND de la placa
     for i, (p_, dest, color, xu, zz, zp, xp) in enumerate((('STEP +', '5V de la placa', NARANJA, 96, 31, 26, 85.5), ('STEP −', 'GND de la placa', NEGRO, 98, 29.8, 24.5, 87.1))):
         h('Módulo de carga UNIT', p_, dest, color, [(xu, 40, UNIT[2]), (xu, YE, UNIT[2]), (xu, YE, zz), (xu, 34, zz), (xu, 30, zz), (xu, 30, zp), (xp, 30, zp), (xp, 31, zp)])
-    # MOSFET: VIN desde STEP ± (segundo cable en el mismo pad); SIG → pasacables → GPIO 9 (fila inferior, macho, desde abajo)
-    h('Módulo MOSFET', 'VIN+', 'STEP + del módulo de carga', NARANJA, [(96, 40, MOSFET[5]), (96, YE, MOSFET[5]), (96, YE, UNIT[2]), (96, 40, UNIT[2])])
-    h('Módulo MOSFET', 'VIN−', 'STEP − del módulo de carga', NEGRO, [(98, 40, MOSFET[5]), (98, YE, MOSFET[5]), (98, YE, UNIT[2]), (98, 40, UNIT[2])])
-    t = pin('inf', k_de('inf', '9'), 'macho')
-    h('Módulo MOSFET', 'SIG', 'GPIO 9', '#7c3aed', [(92, 40, MOSFET[2]), (92, YE, MOSFET[2]), (92, YE, 28), (88, YE, 28), (88, 34, 28), (88, 34, 20), (88, YC, 20), (t[0], YC, 20), (t[0], YC, t[2]), t])
-    # Ventilador → salidas del MOSFET, por debajo del ventilador y encima de la batería
-    for i, (p_, dest, color, xv, zc, yc) in enumerate((('+', 'MOSFET OUT+', NARANJA, 57, 40, 46), ('−', 'MOSFET OUT−', NEGRO, 55, 38.5, 47.5))):
-        h('Ventilador 5 V', p_, dest, color, [(xv, yc, VENT[2]), (xv, yc, zc), (MOSFET[0] - 1, yc, zc), (MOSFET[0] - 1, 41, zc), (MOSFET[0], 41, zc)])
+    # Ventilador → STEP + / STEP − del módulo de carga (segundo cable en el mismo pad), por debajo de la repisa
+    for i, (p_, dest, color, xv, zc, yc, xu) in enumerate((('+', 'STEP + del módulo de carga', NARANJA, 57, 40, 46, 96), ('−', 'STEP − del módulo de carga', NEGRO, 55, 38.5, 47.5, 98))):
+        h('Ventilador 5 V', p_, dest, color, [(xv, yc, VENT[2]), (xv, yc, zc), (xu, yc, zc), (xu, 41, zc), (xu, 41, UNIT[2])])
     # Batería → conector JST del módulo de carga
     for i, (p_, dest, color, xb, zc, xj) in enumerate((('+', 'JST + del módulo de carga', ROJO, 51, 42, 66), ('−', 'JST − del módulo de carga', NEGRO, 53, 41, 68))):
         h('Batería LiPo', p_, dest, color, [(xb, 43, BATERIA[5]), (xb, 43, zc), (xj, 43, zc), (xj, 43, UNIT[2])])
