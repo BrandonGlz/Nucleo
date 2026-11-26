@@ -358,8 +358,24 @@ export function ReportesPage() {
                   .catch(() => aviso('No se pudo descargar el PDF. Intenta de nuevo.', { tipo: 'error' }))
               }
             >
-              PDF
+              {movil ? 'PDF' : <><span className="ui-reportes__texto-descargar">Descargar </span>PDF</>}
             </Button>
+            {!movil && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon="download"
+                className="ui-reportes__csv"
+                disabled={!['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO')}
+                onClick={() =>
+                  reportesApi
+                    .descargarCsv(actual.num, tituloDe(actual))
+                    .catch(() => aviso('No se pudo descargar el CSV. Intenta de nuevo.', { tipo: 'error' }))
+                }
+              >
+                CSV
+              </Button>
+            )}
             <MenuAcciones
               label="Más acciones del reporte"
               items={[

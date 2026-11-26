@@ -6758,3 +6758,55 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   font-size: 9.2px;
   letter-spacing: 0.02em;
 }
+
+/* Barra de acciones: el selector de formato toma el ancho de su contenido y el espacio libre
+   va a las opciones con texto; el zoom queda pegado a la derecha. Según el ancho real de la
+   barra (no de la ventana) las opciones se compactan para quedar siempre en un renglón. */
+@media (min-width: 901px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) {
+    flex-wrap: nowrap;
+    container: barra-reporte / inline-size;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 140px;
+    max-width: 260px;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones > :last-child {
+    margin-left: auto;
+  }
+  .ui-reportes__personalizar-texto { display: inline; }
+  .ui-reportes__barra-formato .nc-badge { display: inline-flex; }
+}
+@container barra-reporte (max-width: 1000px) {
+  .ui-reportes__barra-formato .nc-badge { display: none; }
+}
+@container barra-reporte (max-width: 860px) {
+  .ui-reportes__personalizar-texto { display: none; }
+}
+@container barra-reporte (max-width: 760px) {
+  .ui-reportes__csv { display: none; }
+}
+@container barra-reporte (max-width: 700px) {
+  .ui-reportes__texto-descargar { display: none; }
+  .ui-reportes__barra-formato > .ui-desplegable { max-width: 190px; }
+  /* «Ajustar» solo aparece cuando hay zoom manual que deshacer. */
+  .ui-reportes__barra .ui-zoom__ajustar.is-activo { display: none; }
+}
+@container barra-reporte (max-width: 540px) {
+  .ui-reportes__barra-formato > .ui-desplegable { min-width: 120px; max-width: 150px; }
+}
+/* Ventanas angostas de escritorio: la barra no alcanza; las acciones bajan a un segundo renglón. */
+@media (min-width: 901px) and (max-width: 1150px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) { flex-wrap: wrap; }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones { flex-basis: 100%; }
+}
