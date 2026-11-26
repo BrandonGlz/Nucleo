@@ -35,7 +35,7 @@ export const modulos = [
   { ruta: '/agente', titulo: 'Nico AI', Pagina: AgentePage, seccion: 'Análisis', icono: 'sparkles' },
   { ruta: '/umbrales', titulo: 'Umbrales', Pagina: UmbralesPage, seccion: 'Configuración', icono: 'sliders-horizontal' },
   { ruta: '/usuarios', titulo: 'Usuarios', Pagina: UsuariosPage, seccion: 'Configuración', icono: 'users', roles: ['ADMIN', 'SUPER'] },
-  { ruta: '/areas', titulo: 'Empresa y áreas', Pagina: AreasPage, seccion: 'Áreas', icono: 'map-pin', roles: ['ADMIN', 'SUPER'] },
+  { ruta: '/areas', titulo: 'Empresa y áreas', Pagina: AreasPage, seccion: 'Áreas', icono: 'map-pin', roles: ['ADMIN', 'SUPER', 'ANALISTA', 'OPER'] },
   // Alta a partir de una solicitud de acceso (enlace del correo que Nico manda a los administradores).
   { ruta: '/solicitudes/:num', titulo: 'Solicitud de acceso', Pagina: SolicitudPage, roles: ['ADMIN', 'ADMINPLAT'] },
   { ruta: '/perfil', titulo: 'Mi perfil', Pagina: PerfilPage },

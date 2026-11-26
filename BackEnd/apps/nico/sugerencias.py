@@ -18,8 +18,10 @@ from django.core.cache import cache
 from django.db.models import Count, Max, Q
 from django.utils import timezone
 
+from apps.alertas.models import Alerta
+from apps.dispositivos.models import Dispositivo
 from apps.reportes import aprendizaje, herramientas
-from apps.reportes.models import PreguntaAgente, RespuestaAprendida
+from apps.reportes.models import PreguntaAgente, Reporte, RespuestaAprendida
 
 from . import configuracion, conocimiento
 from .models import AjusteSugerencias
@@ -86,6 +88,134 @@ def candidatas(usuario, organizacion_id, ajuste):
     if ajuste.usar_frecuentes:
         lista += [(t, "frecuente") for t in _frecuentes(organizacion_id)]
     return lista
+
+
+MESES = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
+
+def inicio_para(usuario, dispositivo):
+    """Las 4 sugerencias del estado vacío, con datos reales de su área y dispositivo.
+
+    Prioridad: alertas sin atender, equipo sin conexión, variable con más alertas del mes y
+    el reporte del mes. Si un dato no existe, la sugerencia usa una pregunta general del
+    área o del dispositivo, sin inventar nombres de otras organizaciones.
+    """
+    area = dispositivo.area
+    nombre_area = area.nombre if area is not None else "tu área"
+    ahora = timezone.localtime()
+    inicio_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    fin_mes = (inicio_mes + timedelta(days=32)).replace(day=1)
+    alertas = Alerta.objects.filter(
+        umbral__dispositivo__area=area,
+        estado=Alerta.Estado.PENDIENTE,
+    )
+    pendientes = alertas.count()
+    sugerencias = []
+
+    if pendientes:
+        sugerencias.append(
+            {
+                "icono": "bell",
+                "titulo": "Alertas pendientes",
+                "texto": (
+                    f"{'Queda' if pendientes == 1 else 'Quedan'} {pendientes} "
+                    f"alerta{'s' if pendientes != 1 else ''} sin atender en {nombre_area}"
+                ),
+            }
+        )
+    else:
+        sugerencias.append(
+            {
+                "icono": "bell",
+                "titulo": "Alertas del área",
+                "texto": f"¿Hubo alertas este mes en {nombre_area}?",
+            }
+        )
+
+    sin_conexion = (
+        Dispositivo.objects.filter(area=area)
+        .exclude(estado_dispositivo_id="LINEA")
+        .order_by("nombre")
+        .first()
+    )
+    if sin_conexion is not None:
+        sugerencias.append(
+            {
+                "icono": "wifi-off",
+                "titulo": "Equipo sin conexión",
+                "texto": f"¿Desde cuándo {sin_conexion.nombre} está sin conexión?",
+            }
+        )
+    else:
+        sugerencias.append(
+            {
+                "icono": "signal",
+                "titulo": "Conexión del área",
+                "texto": f"¿Qué dispositivos están en línea en {nombre_area}?",
+            }
+        )
+
+    variable = (
+        alertas.filter(fecha_hora__gte=inicio_mes, fecha_hora__lt=fin_mes)
+        .values("umbral__variable__nombre")
+        .annotate(total=Count("num"))
+        .order_by("-total")
+        .first()
+    )
+    if variable and variable["umbral__variable__nombre"]:
+        nombre = variable["umbral__variable__nombre"].split(" (")[0].lower()
+        sugerencias.append(
+            {
+                "icono": "activity",
+                "titulo": "Variable con más alertas",
+                "texto": f"¿Cuántas alertas de {nombre} hubo este mes en {nombre_area}?",
+            }
+        )
+    else:
+        sugerencias.append(
+            {
+                "icono": "activity",
+                "titulo": "Lecturas del área",
+                "texto": f"¿Cómo estuvo la temperatura este mes en {nombre_area}?",
+            }
+        )
+
+    reporte = (
+        Reporte.objects.filter(
+            organizacion_id=dispositivo.area.organizacion_id,
+            area=area,
+            periodo_inicio__lt=fin_mes,
+            periodo_fin__gt=inicio_mes,
+        )
+        .order_by("-fecha_generacion")
+        .first()
+    )
+    mes = MESES[inicio_mes.month - 1]
+    sugerencias.append(
+        {
+            "icono": "file-text",
+            "titulo": "Reporte del mes",
+            "texto": (
+                f"¿Cómo salió el reporte de {mes} de {nombre_area}?"
+                if reporte is not None
+                else f"Genera el reporte de este mes de {nombre_area}"
+            ),
+        }
+    )
+    return sugerencias[:4]
 
 
 def para(usuario, dispositivo):

@@ -44,6 +44,19 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Etapa 9 de Reportes y Nico AI: las cuatro plantillas se acomodan en una sola hoja (filas sin
+  huecos, altos parejos, tablas sin palabras partidas y listas de dos renglones en media fila),
+  con topes de 5 incidentes, 4 observaciones y 8 dispositivos, duraciones legibles, serie en línea
+  con más de 8 puntos y barra por grupos con divisores; historial de envíos y filtro por periodo;
+  Nico AI estrena cabecera con estado, aviso del puente, sugerencias reales, resumen del equipo,
+  fuente de las respuestas, acciones, historial con buscador y atajos «/», y atención de alertas
+  desde el chat. Se agregó el reporte de estrés R-0099 al mock y su caso equivalente a las pruebas
+  del PDF. En la revisión se corrigieron la disponibilidad en tarjetas angostas, los altos
+  parejos (con medición de filas), la barra en un solo renglón, el prefetch de envíos, el
+  selector de dispositivo de Nico, la concordancia «Queda/Quedan» y las filas de fuente y
+  acciones de las respuestas. La 9.9 agregó el ESP de Nico por área (`puente_nico`), su
+  selector en Empresa y áreas, el alcance Dispositivo/Área/Toda la organización en Nico y
+  respuestas agregadas por área y organización.
 - Etapa 8 de ajustes finos: hojas que acomodan tablas y tarjetas sin encimarse; títulos
   «formato · lugar · periodo»; edición del formato por clic en la hoja con pestañas Hoja/Tarjetas;
   Reportes/Programados a todo el ancho; espera de «Generando» con hoja esqueleto y pasos reales;

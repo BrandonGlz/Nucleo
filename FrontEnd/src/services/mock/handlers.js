@@ -215,7 +215,7 @@ export async function crearArea(datos) {
   if (!nombre || db.areas.some((a) => a.nombre.toLowerCase() === nombre.toLowerCase())) {
     throw new ApiError('La API respondió con el estado 400.', 400)
   }
-  const nueva = { num: Math.max(0, ...db.areas.map((a) => a.num)) + 1, organizacion: 1, nombre, descripcion: datos.descripcion ?? '' }
+  const nueva = { num: Math.max(0, ...db.areas.map((a) => a.num)) + 1, organizacion: 1, nombre, descripcion: datos.descripcion ?? '', puente_nico: null, puente_nico_nombre: '' }
   db.areas.push(nueva)
   return copia(nueva)
 }
@@ -226,8 +226,21 @@ export async function actualizarArea(num, cambios) {
   if (cambios.nombre != null && (!nombre || db.areas.some((x) => x.num !== a.num && x.nombre.toLowerCase() === nombre.toLowerCase()))) {
     throw new ApiError('La API respondió con el estado 400.', 400)
   }
+  if (cambios.puente_nico != null) {
+    const dispositivo = db.dispositivos.find((d) => d.num === Number(cambios.puente_nico))
+    if (!dispositivo) {
+      throw new ApiError('La API respondió con el estado 400.', 400, {
+        puente_nico: ['El dispositivo no existe.'],
+      })
+    }
+    if (!dispositivo.puente_ia) {
+      throw new ApiError('La API respondió con el estado 400.', 400, {
+        puente_nico: ['El dispositivo no está marcado como puente de Nico.'],
+      })
+    }
+  }
   Object.assign(a, cambios, nombre ? { nombre } : {})
-  return copia(a)
+  return copia({ ...a, puente_nico_nombre: db.dispositivos.find((d) => d.num === a.puente_nico)?.nombre ?? '' })
 }
 // Un área con dispositivos o usuarios no se puede borrar (409), como en la API.
 export async function eliminarArea(num) {
@@ -440,13 +453,14 @@ const prepararReporte = (r) => {
   const lugar = area?.nombre || 'Toda la organización'
   return copia({
     ...r,
-    titulo: `${formato} · ${lugar} · ${periodo(r.periodo_inicio, r.periodo_fin)}`,
+    titulo: r.titulo || `${formato} · ${lugar} · ${periodo(r.periodo_inicio, r.periodo_fin)}`,
     estado: r.estado ?? 'LISTO',
     error: r.error ?? null,
     archivado: r.archivado ?? false,
     organizacion_nombre: org?.nombre ?? '',
     organizacion_logo_url: org?.logo_url ?? null,
     organizacion_color: org?.color_reporte ?? null,
+    envios: r.envios ?? [],
   })
 }
 
@@ -467,8 +481,9 @@ export async function reportes(params = {}) {
   if (params.formato) lista = lista.filter((r) => r.formato === Number(params.formato))
   if (params.origen) lista = lista.filter((r) => r.origen === params.origen)
   if (params.estado) lista = lista.filter((r) => r.estado === params.estado)
-  if (params.desde) lista = lista.filter((r) => r.fecha_generacion >= params.desde)
-  if (params.hasta) lista = lista.filter((r) => r.fecha_generacion <= params.hasta)
+  // Solapamiento con el periodo del reporte; `hasta` es exclusivo, como en el backend.
+  if (params.desde) lista = lista.filter((r) => r.periodo_fin > params.desde)
+  if (params.hasta) lista = lista.filter((r) => r.periodo_inicio < params.hasta)
   return pagina(lista)
 }
 
@@ -951,15 +966,119 @@ export async function versionesFormato(num) {
   return copia(f.versiones)
 }
 
-// Agente IA: hay un agente por dispositivo (cada ESP32). La respuesta se arma con los datos del
-// dispositivo elegido. Con ?agente=caido en la URL responde 503.
-export async function preguntarAgente(pregunta, dispositivo) {
+// Sugerencias del chat: las de escritura (vacías en el mock) y las 4 del inicio, con los
+// datos reales del dispositivo y su área.
+export async function sugerenciasAgente(dispositivo) {
+  await esperar()
+  const d = db.dispositivos.find((x) => x.num === Number(dispositivo)) ?? db.dispositivos[0]
+  const area = db.areas.find((a) => a.num === d.area)
+  const nombreArea = area?.nombre ?? 'tu área'
+  const equipos = db.dispositivos.filter((x) => x.area === d.area)
+  const alertas = db.alertas.filter((a) => equipos.some((e) => e.num === a.dispositivo))
+  const pendientes = alertas.filter((a) => a.estado === 'PENDIENTE').length
+  const inicio = []
+  inicio.push(
+    pendientes
+      ? {
+          icono: 'bell',
+          titulo: 'Alertas pendientes',
+          texto: `${pendientes === 1 ? 'Queda' : 'Quedan'} ${pendientes} alerta${pendientes === 1 ? '' : 's'} sin atender en ${nombreArea}`,
+        }
+      : { icono: 'bell', titulo: 'Alertas del área', texto: `¿Hubo alertas este mes en ${nombreArea}?` },
+  )
+  const sinConexion = equipos.find((e) => e.estado_dispositivo !== 'LINEA')
+  inicio.push(
+    sinConexion
+      ? { icono: 'wifi-off', titulo: 'Equipo sin conexión', texto: `¿Desde cuándo ${sinConexion.nombre} está sin conexión?` }
+      : { icono: 'signal', titulo: 'Conexión del área', texto: `¿Qué dispositivos están en línea en ${nombreArea}?` },
+  )
+  const porVariable = alertas.reduce((total, a) => ({ ...total, [a.variable]: (total[a.variable] ?? 0) + 1 }), {})
+  const variable = Object.entries(porVariable).sort((a, b) => b[1] - a[1])[0]?.[0]
+  inicio.push(
+    variable
+      ? {
+          icono: 'activity',
+          titulo: 'Variable con más alertas',
+          texto: `¿Cuántas alertas de ${NOMBRES_VARIABLE[variable]?.toLowerCase() ?? variable} hubo este mes en ${nombreArea}?`,
+        }
+      : { icono: 'activity', titulo: 'Lecturas del área', texto: `¿Cómo estuvo la temperatura este mes en ${nombreArea}?` },
+  )
+  const mes = new Date().getMonth()
+  const reporte = db.reportes.find(
+    (r) => r.area === d.area && new Date(r.periodo_inicio).getMonth() === mes,
+  )
+  inicio.push({
+    icono: 'file-text',
+    titulo: 'Reporte del mes',
+    texto: reporte ? `¿Cómo salió el reporte de este mes de ${nombreArea}?` : `Genera el reporte de este mes de ${nombreArea}`,
+  })
+  return { activas: false, maximo: 6, sugerencias: [], inicio }
+}
+// Estado del alcance de Nico en el mock: el ESP de Nico del área y su conexión.
+export async function estadoAgente({ alcance = 'DISPOSITIVO', area = null } = {}) {
+  await esperar()
+  const base = { puente: false, activos: [], disponibles: [], exige_puente: false }
+  if (alcance === 'DISPOSITIVO') return base
+  if (['ADMIN', 'ADMINPLAT'].includes(rolMock())) return { ...base, disponible: true, motivo: '' }
+  const areas = alcance === 'ORGANIZACION' ? db.areas : db.areas.filter((a) => a.num === Number(area))
+  if (alcance === 'AREA' && !areas.length) return { ...base, disponible: false, motivo: 'El área no existe.' }
+  const candidatas = areas.map((a) => ({ area: a, dispositivo: db.dispositivos.find((d) => d.num === a.puente_nico) }))
+  const activa = candidatas.find((c) => c.dispositivo?.puente_ia && c.dispositivo.estado_dispositivo === 'LINEA')
+  if (activa) return { ...base, disponible: true, motivo: '' }
+  const primera = candidatas[0]
+  const motivo = primera?.dispositivo?.puente_ia
+    ? `El ESP de Nico de ${primera.area.nombre} está sin conexión.`
+    : `Esta área no tiene un ESP de Nico asignado. Pídele a un administrador que lo elija en Empresa y áreas.`
+  return { ...base, disponible: false, motivo }
+}
+
+export async function preguntarAgente(pregunta, dispositivo, { alcance = 'DISPOSITIVO', area = null } = {}) {
   await esperar()
   if (new URLSearchParams(window.location.search).get('agente') === 'caido') {
     throw new ApiError('La API respondió con el estado 503.', 503)
   }
   const d = db.dispositivos.find((x) => x.num === Number(dispositivo)) ?? db.dispositivos[4]
   const t = pregunta.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  if (alcance === 'AREA' || alcance === 'ORGANIZACION') {
+    const equipos = alcance === 'AREA'
+      ? db.dispositivos.filter((x) => x.area === Number(area))
+      : db.dispositivos
+    const areaAlcance = db.areas.find((a) => a.num === Number(area))
+    const nombreAlcance = alcance === 'AREA' ? areaAlcance?.nombre ?? 'tu área' : 'Toda la organización'
+    const codigo = /temperatura/.test(t) ? 'TEMP' : /aire/.test(t) ? 'AIRE' : 'HUM'
+    const lecturas = equipos.flatMap((e) => db.ultimas[e.num] ?? []).filter((l) => l.variable === codigo)
+    const promedio = lecturas.reduce((total, l) => total + Number(l.valor), 0) / (lecturas.length || 1)
+    const unidad = UNIDAD_VAR[codigo]
+    return {
+      texto: `Esta semana, la ${codigo === 'TEMP' ? 'temperatura' : codigo === 'AIRE' ? 'calidad del aire' : 'humedad'} de ${nombreAlcance} promedió ${promedio.toFixed(codigo === 'AIRE' ? 0 : 1)} ${unidad}.`,
+      fuente: {
+        lecturas: lecturas.length * 120,
+        desde: db.hace(7 * 86400),
+        hasta: new Date().toISOString(),
+        dispositivo: null,
+        area: alcance === 'AREA' ? Number(area) : null,
+        alcance: nombreAlcance,
+      },
+    }
+  }
+  if (/(alertas?|avisos?) pendientes|que alertas|alertas tengo|hay alertas/.test(t)) {
+    const pendientes = db.alertas.filter((a) => a.estado === 'PENDIENTE')
+    return {
+      texto: pendientes.length
+        ? `Hay ${pendientes.length} alerta${pendientes.length === 1 ? '' : 's'} pendiente${pendientes.length === 1 ? '' : 's'}. Las más recientes: ${pendientes.map((a) => `${a.nivel.toLowerCase()} por ${NOMBRES_VARIABLE[a.variable]?.toLowerCase() ?? a.variable} en ${a.dispositivo_nombre}`).join('; ')}.`
+        : 'No hay alertas pendientes.',
+      alertas: pendientes.map((a) => ({
+        num: a.num,
+        nivel: a.nivel,
+        variable: NOMBRES_VARIABLE[a.variable] ?? a.variable,
+        dispositivo: a.dispositivo_nombre,
+        area: db.areas.find((x) => x.num === db.dispositivos.find((e) => e.num === a.dispositivo)?.area)?.nombre ?? '',
+        fecha: a.fecha_hora,
+        valor: Number(a.lectura_valor),
+        unidad: a.unidad,
+      })),
+    }
+  }
   if (/(compara|comparativ|cooperativa|versus|contra)/.test(t)) return comparativaSimulada(d, t)
   if (/(grafica|grafico|diagrama|dashboard|tablero)/.test(t)) return graficaSimulada(d, t)
   const fuera = !/humedad|temperatura|aire|sensor|alerta|dispositivo|reporte|pico|área|area|bater|conex/i.test(pregunta)
@@ -982,6 +1101,13 @@ export async function preguntarAgente(pregunta, dispositivo) {
     serie: [base, picos[2].valor, base - paso, base + paso, picos[1].valor, base, base + paso * 2, picos[0].valor, base + paso * 3, base + paso],
     unidad: UNIDAD_VAR[variable],
     maximo,
+    fuente: {
+      lecturas: 1234,
+      desde: db.hace(7 * 86400),
+      hasta: new Date().toISOString(),
+      dispositivo: d.num,
+      dispositivo_nombre: d.nombre,
+    },
   }
 }
 const UNIDAD_VAR = { TEMP: '°C', HUM: '%HR', AIRE: 'ppm' }

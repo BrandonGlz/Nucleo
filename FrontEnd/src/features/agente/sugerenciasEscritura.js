@@ -48,3 +48,45 @@ export function resaltar(texto, escrito) {
   }
   return partes.filter((x) => x.texto)
 }
+
+// Atajos de «/»: al escribir la barra se ofrece la lista; al elegir se envía la pregunta
+// equivalente que Nico ya entiende.
+export const ATAJOS = [
+  {
+    texto: '/reporte',
+    titulo: '/reporte',
+    pregunta: 'Genera el reporte de este mes',
+    etiqueta: 'Genera el reporte de este mes',
+    tipo: 'atajo',
+  },
+  {
+    texto: '/alertas',
+    titulo: '/alertas',
+    pregunta: '¿Qué alertas tengo pendientes?',
+    etiqueta: 'Consulta las alertas pendientes',
+    tipo: 'atajo',
+  },
+  {
+    texto: '/umbrales',
+    titulo: '/umbrales',
+    pregunta: '¿Cuáles son los umbrales?',
+    etiqueta: 'Muestra los umbrales configurados',
+    tipo: 'atajo',
+  },
+  {
+    texto: '/estado',
+    titulo: '/estado',
+    pregunta: '¿Cómo está el dispositivo?',
+    etiqueta: 'Revisa el estado del dispositivo',
+    tipo: 'atajo',
+  },
+]
+
+export function filtrarAtajos(escrito) {
+  if (!String(escrito).startsWith('/')) return []
+  const q = normalizar(escrito)
+  return ATAJOS.filter((a) => !q || normalizar(a.texto).startsWith(q)).map((a) => ({
+    ...a,
+    normal: normalizar(a.texto),
+  }))
+}

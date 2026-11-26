@@ -10,6 +10,7 @@ from django.core import mail
 from django.core.management import call_command
 from django.db import IntegrityError, connections, transaction
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.alertas.models import Alerta
@@ -17,6 +18,7 @@ from apps.dispositivos.models import Dispositivo, Sensor
 from apps.mediciones.models import Lectura
 from apps.reportes import agente, aprendizaje, carga, formatos, herramientas, ia, puente, servicios
 from apps.reportes.models import (
+    EnvioReporte,
     FormatoReporte,
     PreguntaAgente,
     ProgramacionReporte,
@@ -1073,6 +1075,8 @@ class NicoAprendeTests(PruebaBase):
                 "fisicos": [self.e.dispositivo.pk],
                 "exige_puente": True,
                 "disponibles": [],
+                "disponible": None,
+                "motivo": "",
             },
         )
 
@@ -2264,3 +2268,308 @@ class ProcesadorColaTests(PruebaTransaccional):
 
         self.assertIn(None, vistos)
         self.assertEqual([v for v in vistos if v is not None], [reporte.num])
+
+
+class EnvioReporteTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        self.ahora = timezone.now()
+        self.reporte = Reporte.objects.create(
+            organizacion=self.e.organizacion,
+            area=self.e.area,
+            generado_por=self.e.analista,
+            origen=Reporte.Origen.MANUAL,
+            periodo_inicio=self.ahora - timedelta(days=7),
+            periodo_fin=self.ahora,
+            cifras={"alcance": "Laboratorio", "titulo": "Reporte de prueba"},
+            contenido="Análisis",
+        )
+
+    def test_un_envio_correcto_queda_en_el_historial(self):
+        with mock.patch("apps.reportes.servicios.correo.enviar", return_value=1):
+            correos = servicios.enviar_reporte(self.reporte, [self.e.analista.pk])
+
+        self.assertEqual(correos, [self.e.analista.correo])
+        envio = EnvioReporte.objects.get(reporte=self.reporte)
+        self.assertEqual(envio.resultado, EnvioReporte.Resultado.OK)
+        self.assertEqual(envio.origen, EnvioReporte.Origen.MANUAL)
+        self.assertEqual(envio.enviado_por, self.e.analista)
+        self.assertEqual(
+            envio.destinatarios,
+            [{"num": self.e.analista.pk, "nombre": self.e.analista.get_full_name()}],
+        )
+        self.assertIsNone(envio.error)
+
+    def test_un_envio_fallido_guarda_el_error(self):
+        with mock.patch(
+            "apps.reportes.servicios.correo.enviar",
+            side_effect=RuntimeError("SMTP sin respuesta"),
+        ):
+            with self.assertRaisesMessage(RuntimeError, "SMTP sin respuesta"):
+                servicios.enviar_reporte(self.reporte, [self.e.analista.pk])
+
+        envio = EnvioReporte.objects.get(reporte=self.reporte)
+        self.assertEqual(envio.resultado, EnvioReporte.Resultado.FALLO)
+        self.assertIn("SMTP sin respuesta", envio.error)
+
+    def test_el_serializer_devuelve_los_envios_mas_recientes(self):
+        for _numero in range(12):
+            EnvioReporte.objects.create(
+                reporte=self.reporte,
+                origen=EnvioReporte.Origen.MANUAL,
+                destinatarios=[{"num": self.e.analista.pk, "nombre": "Analista"}],
+                resultado=EnvioReporte.Resultado.OK,
+            )
+        respuesta = cliente_de(self.e.admin).get(f"/api/v1/reportes/{self.reporte.num}/")
+
+        self.assertEqual(respuesta.status_code, 200, respuesta.content)
+        self.assertEqual(len(respuesta.json()["envios"]), 10)
+
+    def test_la_lista_no_hace_una_consulta_de_envios_por_reporte(self):
+        cliente = cliente_de(self.e.admin)
+        for _numero in range(2):
+            EnvioReporte.objects.create(
+                reporte=self.reporte,
+                origen=EnvioReporte.Origen.MANUAL,
+                destinatarios=[],
+                resultado=EnvioReporte.Resultado.OK,
+            )
+        with CaptureQueriesContext(connections["default"]) as uno:
+            self.assertEqual(cliente.get("/api/v1/reportes/").status_code, 200)
+        for numero in range(4):
+            reporte = Reporte.objects.create(
+                organizacion=self.e.organizacion,
+                area=self.e.area,
+                generado_por=self.e.analista,
+                origen=Reporte.Origen.MANUAL,
+                periodo_inicio=self.ahora - timedelta(days=7),
+                periodo_fin=self.ahora,
+                cifras={"titulo": f"Reporte {numero}"},
+                contenido="",
+            )
+            for _envio in range(2):
+                EnvioReporte.objects.create(
+                    reporte=reporte,
+                    origen=EnvioReporte.Origen.MANUAL,
+                    destinatarios=[],
+                    resultado=EnvioReporte.Resultado.OK,
+                )
+        with CaptureQueriesContext(connections["default"]) as cinco:
+            self.assertEqual(cliente.get("/api/v1/reportes/").status_code, 200)
+        self.assertLessEqual(len(cinco), len(uno))
+        with self.assertNumQueries(len(cinco)):
+            self.assertEqual(cliente.get("/api/v1/reportes/").status_code, 200)
+
+
+class FiltroPeriodoTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        self.ahora = timezone.now()
+
+    def _reporte(self, inicio, fin, titulo):
+        return Reporte.objects.create(
+            organizacion=self.e.organizacion,
+            area=self.e.area,
+            generado_por=self.e.analista,
+            origen=Reporte.Origen.MANUAL,
+            periodo_inicio=inicio,
+            periodo_fin=fin,
+            cifras={"titulo": titulo},
+            contenido="",
+        )
+
+    def test_el_filtro_por_periodo_usa_solapamiento_y_fin_exclusivo(self):
+        hoy = timezone.localtime(self.ahora).replace(hour=0, minute=0, second=0, microsecond=0)
+        inicio_mes = hoy.replace(day=1)
+        inicio_anterior = (inicio_mes - timedelta(days=1)).replace(day=1)
+        anterior = self._reporte(inicio_anterior, inicio_mes, "Mes anterior")
+        actual = self._reporte(inicio_mes, inicio_mes + timedelta(days=10), "Este mes")
+        self._reporte(
+            inicio_anterior - timedelta(days=40),
+            inicio_anterior - timedelta(days=20),
+            "Viejo",
+        )
+
+        respuesta = cliente_de(self.e.admin).get(
+            "/api/v1/reportes/",
+            {"desde": inicio_anterior.isoformat(), "hasta": inicio_mes.isoformat()},
+        )
+
+        self.assertEqual(respuesta.status_code, 200, respuesta.content)
+        numeros = [fila["num"] for fila in respuesta.json()["results"]]
+        self.assertIn(anterior.num, numeros)
+        self.assertNotIn(actual.num, numeros)
+        self.assertEqual(len(numeros), 1)
+
+    def test_el_filtro_incluye_un_reporte_que_empieza_el_mismo_dia_del_limite(self):
+        inicio = timezone.localtime(self.ahora).replace(hour=0, minute=0, second=0, microsecond=0)
+        reporte = self._reporte(inicio, inicio + timedelta(days=1), "Del día")
+
+        respuesta = cliente_de(self.e.admin).get(
+            "/api/v1/reportes/",
+            {
+                "desde": (inicio + timedelta(days=1)).isoformat(),
+                "hasta": (inicio + timedelta(days=2)).isoformat(),
+            },
+        )
+
+        numeros = [fila["num"] for fila in respuesta.json()["results"]]
+        self.assertNotIn(reporte.num, numeros)
+
+
+class SugerenciasInicioTests(PruebaBase):
+    def test_las_sugerencias_no_nombran_areas_de_otra_organizacion(self):
+        e = Escenario()
+        Escenario("b")
+        respuesta = cliente_de(e.supervisor).get(
+            "/api/v1/agente/sugerencias/",
+            {"dispositivo": e.dispositivo.pk},
+        )
+
+        self.assertEqual(respuesta.status_code, 200, respuesta.content)
+        inicio = respuesta.json()["inicio"]
+        self.assertEqual(len(inicio), 4)
+        textos = " ".join(s["texto"] for s in inicio)
+        self.assertIn(e.area.nombre, textos)
+        self.assertNotIn("Área b", textos)
+        self.assertNotIn("Otra b", textos)
+        for sugerencia in inicio:
+            self.assertTrue(sugerencia["icono"])
+            self.assertTrue(sugerencia["titulo"])
+            self.assertTrue(sugerencia["texto"])
+
+
+class AlcanceNicoTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        self.ahora = timezone.now()
+        self.e.dispositivo.puente_ia = True
+        self.e.dispositivo.save(update_fields=["puente_ia"])
+        self.e.area.puente_nico = self.e.dispositivo
+        self.e.area.save(update_fields=["puente_nico"])
+        self.cliente = cliente_de(self.e.supervisor)
+        puente.cola().olvidar(self.e.dispositivo.codigo_mqtt)
+
+    def _lecturas(self):
+        for valor in (20.0, 24.0, 28.0):
+            Lectura.objects.create(
+                sensor_num=self.e.dht22.pk,
+                variable_codigo="TEMP",
+                valor=valor,
+                fecha_hora=self.ahora - timedelta(hours=1),
+            )
+
+    def _preguntar(self, cliente, **datos):
+        return cliente.post(
+            "/api/v1/agente/",
+            {
+                "pregunta": "¿Cuál fue la temperatura promedio esta semana?",
+                **datos,
+            },
+            format="json",
+        )
+
+    def test_asignar_un_esp_valido(self):
+        r = cliente_de(self.e.admin).patch(
+            f"/api/v1/areas/{self.e.area.pk}/",
+            {"puente_nico": self.e.dispositivo.pk},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["puente_nico"], self.e.dispositivo.pk)
+        self.assertEqual(r.json()["puente_nico_nombre"], self.e.dispositivo.nombre)
+
+    def test_rechaza_un_esp_sin_puente_ia_o_de_otra_organizacion(self):
+        self.e.dispositivo.puente_ia = False
+        self.e.dispositivo.save(update_fields=["puente_ia"])
+        r = cliente_de(self.e.admin).patch(
+            f"/api/v1/areas/{self.e.area.pk}/",
+            {"puente_nico": self.e.dispositivo.pk},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        ajeno = Escenario("b").dispositivo
+        ajeno.puente_ia = True
+        ajeno.save(update_fields=["puente_ia"])
+        r = cliente_de(self.e.admin).patch(
+            f"/api/v1/areas/{self.e.area.pk}/",
+            {"puente_nico": ajeno.pk},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+
+    def test_supervisor_asigna_en_su_area_pero_no_en_otra(self):
+        r = cliente_de(self.e.supervisor).patch(
+            f"/api/v1/areas/{self.e.area.pk}/",
+            {"puente_nico": self.e.dispositivo.pk},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        r = cliente_de(self.e.supervisor).patch(
+            f"/api/v1/areas/{self.e.otra_area.pk}/",
+            {"puente_nico": self.e.dispositivo.pk},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 404, r.content)
+
+    def test_analista_no_puede_asignar_el_esp(self):
+        r = cliente_de(self.e.analista).patch(
+            f"/api/v1/areas/{self.e.area.pk}/",
+            {"puente_nico": self.e.dispositivo.pk},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_promedio_por_area_responde_con_la_cifra_y_la_fuente(self):
+        self._lecturas()
+        r = self._preguntar(self.cliente, alcance="AREA", area=self.e.area.pk)
+        self.assertEqual(r.status_code, 200, r.content)
+        cuerpo = r.json()
+        self.assertIn("promedió", cuerpo["texto"])
+        self.assertIn(self.e.area.nombre, cuerpo["texto"])
+        self.assertEqual(cuerpo["fuente"]["lecturas"], 3)
+        self.assertEqual(cuerpo["fuente"]["area"], self.e.area.pk)
+
+    def test_area_sin_esp_asignado_no_responde(self):
+        self.e.area.puente_nico = None
+        self.e.area.save(update_fields=["puente_nico"])
+        r = self._preguntar(cliente_de(self.e.analista), alcance="AREA", area=self.e.area.pk)
+        self.assertEqual(r.status_code, 503, r.content)
+        self.assertIn("no tiene un ESP de Nico asignado", r.json()["detail"])
+
+    @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k")
+    def test_area_con_esp_desconectado_no_responde(self):
+        r = self._preguntar(cliente_de(self.e.analista), alcance="AREA", area=self.e.area.pk)
+        self.assertEqual(r.status_code, 503, r.content)
+        self.assertIn("está sin conexión", r.json()["detail"])
+        estado = cliente_de(self.e.analista).get(
+            "/api/v1/agente/estado/", {"area": self.e.area.pk}
+        )
+        self.assertEqual(estado.status_code, 200, estado.content)
+        self.assertFalse(estado.json()["disponible"])
+        self.assertIn("está sin conexión", estado.json()["motivo"])
+
+    def test_admin_por_organizacion_responde_sin_esp(self):
+        self._lecturas()
+        self.e.area.puente_nico = None
+        self.e.area.save(update_fields=["puente_nico"])
+        r = self._preguntar(cliente_de(self.e.admin), alcance="ORGANIZACION")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn("Toda la organización", r.json()["texto"])
+
+    def test_supervisor_por_organizacion_exige_alguna_area_con_esp(self):
+        self._lecturas()
+        r = self._preguntar(self.cliente, alcance="ORGANIZACION")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.e.area.puente_nico = None
+        self.e.area.save(update_fields=["puente_nico"])
+        r = self._preguntar(self.cliente, alcance="ORGANIZACION")
+        self.assertEqual(r.status_code, 503, r.content)
+        self.assertIn("no tiene un ESP de Nico asignado", r.json()["detail"])
+
+    def test_promedio_por_organizacion_responde_con_la_cifra(self):
+        self._lecturas()
+        r = self._preguntar(cliente_de(self.e.admin), alcance="ORGANIZACION")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn("promedió", r.json()["texto"])
+        self.assertEqual(r.json()["fuente"]["alcance"], "Toda la organización")

@@ -68,6 +68,23 @@ export const periodo = (inicio, fin) => {
 export const num = (v, decimales = 1) => (v == null || v === '' ? '—' : Number(v).toFixed(decimales))
 export const miles = (n) => Number(n).toLocaleString('es-MX').replace(/,/g, ' ')
 
+// Duración legible y sin decimales, igual que duracion_legible() del backend:
+// menos de 1 h en minutos; menos de 1 día en horas y minutos; más, en días y horas.
+export const duracionLegible = (minutos) => {
+  if (minutos == null || minutos === '') return '—'
+  const total = Math.max(0, Math.round(Number(minutos)))
+  if (total < 60) return `${total} min`
+  if (total < 1440) {
+    const horas = Math.floor(total / 60)
+    const resto = total % 60
+    return resto ? `${horas} h ${resto} min` : `${horas} h`
+  }
+  const dias = Math.floor(total / 1440)
+  const horas = Math.floor((total % 1440) / 60)
+  return horas ? `${dias} d ${horas} h` : `${dias} d`
+}
+
+
 // Aviso cuando la gráfica muestra las últimas lecturas guardadas en lugar del periodo actual.
 export const avisoUltima = (ultima) => (ultima ? `Sin lecturas recientes · se muestran hasta el ${fechaCorta(ultima)}, ${hora(ultima)}` : '')
 

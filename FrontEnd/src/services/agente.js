@@ -11,9 +11,13 @@ export function usarConsola() {
 
 // Hay un agente por dispositivo: la pregunta va al del dispositivo elegido.
 // `anterior`: la pregunta previa de la conversación, para seguimientos («¿y la gráfica?»).
-export async function preguntar(pregunta, dispositivo, anterior = '', precarga = false) {
-  if (USAR_MOCKS) return mock.preguntarAgente(anterior ? `${anterior} ${pregunta}` : pregunta, dispositivo)
-  return pedir(rutas.preguntar, { metodo: 'POST', cuerpo: { pregunta, dispositivo, anterior, precarga } })
+// `alcance`: DISPOSITIVO, AREA u ORGANIZACION; en AREA se manda el número del área.
+export async function preguntar(pregunta, dispositivo, anterior = '', precarga = false, alcance = 'DISPOSITIVO', area = null) {
+  if (USAR_MOCKS) return mock.preguntarAgente(anterior ? `${anterior} ${pregunta}` : pregunta, dispositivo, { alcance, area })
+  return pedir(rutas.preguntar, {
+    metodo: 'POST',
+    cuerpo: { pregunta, dispositivo, anterior, precarga, alcance, area },
+  })
 }
 
 // Reacción a una respuesta registrada en el servidor (la mejora de Nico AI se basa en ellas).
@@ -24,13 +28,14 @@ export async function calificar(registro, voto) {
 
 // Agentes activos (su ESP32 puente está conectado) y `disponibles`: los que este usuario puede
 // usar ahora (el administrador, aunque el ESP32 esté sin conexión; `exige_puente` es falso).
-export async function estado() {
-  if (USAR_MOCKS) return { puente: false, activos: [], disponibles: [], exige_puente: false }
-  return pedir(rutas.estado)
+export async function estado({ alcance = 'DISPOSITIVO', area = null } = {}) {
+  if (USAR_MOCKS) return mock.estadoAgente({ alcance, area })
+  const params = alcance === 'AREA' ? { area } : alcance === 'ORGANIZACION' ? { organizacion: 1 } : undefined
+  return pedir(rutas.estado, { params })
 }
 
 // Sugerencias para filtrar mientras se escribe (se piden una vez por dispositivo).
 export async function sugerenciasEscritura(dispositivo) {
-  if (USAR_MOCKS) return { activas: false, maximo: 6, sugerencias: [] }
+  if (USAR_MOCKS) return mock.sugerenciasAgente(dispositivo)
   return pedir(rutas.sugerencias, { params: { dispositivo } })
 }

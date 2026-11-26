@@ -94,6 +94,7 @@ class ReporteSerializer(serializers.ModelSerializer):
     organizacion_color = serializers.SerializerMethodField()
     titulo = serializers.SerializerMethodField()
     paso = serializers.SerializerMethodField()
+    envios = serializers.SerializerMethodField()
 
     class Meta:
         model = Reporte
@@ -122,6 +123,7 @@ class ReporteSerializer(serializers.ModelSerializer):
             "formato_nombre",
             "formato_version",
             "formato_conf",
+            "envios",
         ]
         read_only_fields = fields
 
@@ -141,6 +143,26 @@ class ReporteSerializer(serializers.ModelSerializer):
         if reporte.estado not in (Reporte.Estado.GENERANDO, Reporte.Estado.FALLO):
             return None
         return progreso.leer_paso(reporte)
+
+    def get_envios(self, reporte):
+        """Los 10 intentos de envío más recientes, con los nombres congelados al enviar."""
+        envios = getattr(reporte, "_envios_recientes", None)
+        if envios is None:
+            envios = reporte.envios.select_related("enviado_por")[:10]
+        return [
+            {
+                "num": envio.num,
+                "fecha": envio.fecha,
+                "origen": envio.origen,
+                "enviado_por_nombre": (
+                    envio.enviado_por.get_full_name() if envio.enviado_por_id else ""
+                ),
+                "destinatarios": envio.destinatarios or [],
+                "resultado": envio.resultado,
+                "error": envio.error or "",
+            }
+            for envio in envios[:10]
+        ]
 
     def _resolver(self, reporte):
         """Formato y versión del reporte; los viejos usan la plantilla Operativo detallado."""

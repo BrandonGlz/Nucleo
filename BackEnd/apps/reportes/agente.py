@@ -123,6 +123,17 @@ def _franja(horas):
     return "por la noche"
 
 
+def _fuente_lecturas(dispositivo, desde, hasta, lecturas):
+    """Procedencia de una respuesta que usó lecturas: cuántas y en qué rango."""
+    return {
+        "lecturas": int(lecturas),
+        "desde": desde.isoformat() if hasattr(desde, "isoformat") else desde,
+        "hasta": hasta.isoformat() if hasattr(hasta, "isoformat") else hasta,
+        "dispositivo": dispositivo.num,
+        "dispositivo_nombre": dispositivo.nombre,
+    }
+
+
 def _conexion(dispositivo):
     estado = dispositivo.estado_dispositivo.nombre.lower()
     ultima = dispositivo.ultima_conexion
@@ -215,12 +226,23 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
     )
     if hasta is not None:
         lecturas = lecturas.filter(fecha_hora__lt=hasta)
-    resumen = lecturas.aggregate(promedio=Avg("valor"), minimo=Min("valor"), maximo=Max("valor"))
+    resumen = lecturas.aggregate(
+        promedio=Avg("valor"),
+        minimo=Min("valor"),
+        maximo=Max("valor"),
+        muestras=Count("num"),
+    )
     nombre = variable.nombre.lower()
     if resumen["promedio"] is None:
         return _sin_lecturas(
             dispositivo, nombre, descripcion, sensores, codigo, hasta or timezone.now()
         )
+    fuente = _fuente_lecturas(
+        dispositivo,
+        desde,
+        hasta or timezone.now(),
+        resumen["muestras"] or 0,
+    )
 
     unidad = variable.unidad
     ultima = lecturas.order_by("-fecha_hora").first()
@@ -251,14 +273,18 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
             f"La {palabra} de {nombre} {_en(descripcion)} fue {_fmt(extremo.valor, unidad)}, "
             f"el {_cuando(extremo.fecha_hora)}."
         )
-        return {"texto": f"{directo} {base}"}
+        return {"texto": f"{directo} {base}", "fuente": fuente}
     if pide == "promedio":
         return {
             "texto": f"{_En(descripcion)}, la {nombre} de {dispositivo.nombre} promedió "
-            f"{_fmt(resumen['promedio'], unidad)}. {ahora}"
+            f"{_fmt(resumen['promedio'], unidad)}. {ahora}",
+            "fuente": fuente,
         }
     if umbral is None:
-        return {"texto": f"{base} Este dispositivo no tiene umbral de {nombre} configurado."}
+        return {
+            "texto": f"{base} Este dispositivo no tiene umbral de {nombre} configurado.",
+            "fuente": fuente,
+        }
 
     limite = umbral.advertencia_max
     picos = []
@@ -275,7 +301,8 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
     if not picos:
         return {
             "texto": f"La {nombre} de {dispositivo.nombre} se mantuvo dentro del rango "
-            f"({float(umbral.advertencia_min):g}–{float(limite):g} {unidad}). {base}"
+            f"({float(umbral.advertencia_min):g}–{float(limite):g} {unidad}). {base}",
+            "fuente": fuente,
         }
     franja = _franja([timezone.localtime(p.fecha_hora).hour for p in picos])
     return {
@@ -291,6 +318,7 @@ def _variable(dispositivo, codigo, desde, hasta=None, descripcion="los últimos 
         "etiquetas": [DIAS[timezone.localtime(d["dia"]).weekday()] for d in por_dia],
         "unidad": unidad,
         "maximo": float(limite),
+        "fuente": fuente,
     }
 
 
@@ -746,6 +774,7 @@ def resumen_general(dispositivo, desde, hasta, descripcion, pide=None):
     """Sin variable nombrada («medidas del sensor»): las tres variables en un solo texto."""
     sensores = list(dispositivo.sensores.values_list("num", flat=True))
     partes = []
+    total_lecturas = 0
     for codigo in ORDEN_VARIABLES:
         lecturas = Lectura.objects.filter(
             sensor_num__in=sensores,
@@ -755,9 +784,15 @@ def resumen_general(dispositivo, desde, hasta, descripcion, pide=None):
         )
         if hasta is not None:
             lecturas = lecturas.filter(fecha_hora__lt=hasta)
-        r = lecturas.aggregate(promedio=Avg("valor"), minimo=Min("valor"), maximo=Max("valor"))
+        r = lecturas.aggregate(
+            promedio=Avg("valor"),
+            minimo=Min("valor"),
+            maximo=Max("valor"),
+            muestras=Count("num"),
+        )
         if r["promedio"] is None:
             continue
+        total_lecturas += r["muestras"] or 0
         variable = VariableAmbiental.objects.get(pk=codigo)
         nombre, unidad = variable.nombre.lower(), variable.unidad
         if pide in ("maximo", "minimo"):
@@ -772,13 +807,23 @@ def resumen_general(dispositivo, desde, hasta, descripcion, pide=None):
             )
     if not partes:
         return {"texto": f"{dispositivo.nombre} no tiene lecturas {_en(descripcion)}."}
+    fuente = _fuente_lecturas(
+        dispositivo,
+        desde,
+        hasta or timezone.now(),
+        total_lecturas,
+    )
     lista = "; ".join(partes)
     titulo = {"maximo": "Máximas", "minimo": "Mínimas", "promedio": "Promedios"}.get(pide)
     if titulo:
-        return {"texto": f"{titulo} de {dispositivo.nombre} {_en(descripcion)}: {lista}."}
+        return {
+            "texto": f"{titulo} de {dispositivo.nombre} {_en(descripcion)}: {lista}.",
+            "fuente": fuente,
+        }
     return {
         "texto": f"{_En(descripcion)}, {dispositivo.nombre}: {lista}. Pregúntame por una "
-        "variable para ver su detalle, picos y gráfica."
+        "variable para ver su detalle, picos y gráfica.",
+        "fuente": fuente,
     }
 
 
@@ -887,6 +932,19 @@ def pide_ultima(pregunta):
     return bool(ULTIMA.search(_normalizar(pregunta)))
 
 
+def _fuente_ultimas(dispositivo, codigos):
+    """Fuente de «la última medición»: todas las lecturas de esas variables."""
+    sensores = list(dispositivo.sensores.values_list("num", flat=True))
+    resumen = Lectura.objects.filter(
+        sensor_num__in=sensores,
+        variable_codigo__in=list(codigos),
+        estabilizada=True,
+    ).aggregate(total=Count("num"), desde=Min("fecha_hora"), hasta=Max("fecha_hora"))
+    if not resumen["total"]:
+        return None
+    return _fuente_lecturas(dispositivo, resumen["desde"], resumen["hasta"], resumen["total"])
+
+
 def ultima_medicion(dispositivo, codigos):
     """Texto con la última lectura de cada variable pedida (y si está en rango) o ``None``."""
     sensores = list(dispositivo.sensores.values_list("num", flat=True))
@@ -925,6 +983,113 @@ def ultima_medicion(dispositivo, codigos):
     )
 
 
+def responder_alcance(usuario, areas, alcance_texto, pregunta):
+    """Respuesta de cifras para un área o toda la organización, sumando sus dispositivos.
+
+    Usa ``servicios.calcular_cifras`` (que a su vez reutiliza ``calculos.py``) una sola vez
+    para todo el alcance; no consulta dispositivo por dispositivo.
+    """
+    from apps.reportes import servicios
+
+    tema = _tema(pregunta)
+    desde, hasta, descripcion = periodo_de(pregunta)
+    numeros = [area.pk for area in areas]
+    organizacion = areas[0].organizacion if areas else usuario.organizacion
+    if tema in (*ORDEN_VARIABLES, "GENERICA"):
+        cifras = servicios.calcular_cifras(
+            organizacion, None, desde, hasta, areas=numeros
+        )
+        variables = cifras.get("variables") or {}
+        if not variables:
+            return {"texto": f"{alcance_texto} no tiene lecturas {_en(descripcion)}."}
+        if tema in ORDEN_VARIABLES:
+            info = variables.get(tema)
+            if info is None:
+                return {
+                    "texto": (
+                        f"{alcance_texto} no tiene lecturas de "
+                        f"{VariableAmbiental.objects.get(pk=tema).nombre.lower()} "
+                        f"{_en(descripcion)}."
+                    )
+                }
+            variable = VariableAmbiental.objects.get(pk=tema)
+            unidad = variable.unidad
+            pide = _dato_pedido(pregunta)
+            if pide == "maximo":
+                texto = (
+                    f"La máxima de {variable.nombre.lower()} en {alcance_texto} "
+                    f"{_en(descripcion)} fue {_fmt(info['maximo'], unidad)}."
+                )
+            elif pide == "minimo":
+                texto = (
+                    f"La mínima de {variable.nombre.lower()} en {alcance_texto} "
+                    f"{_en(descripcion)} fue {_fmt(info['minimo'], unidad)}."
+                )
+            else:
+                texto = (
+                    f"{_En(descripcion)}, la {variable.nombre.lower()} de {alcance_texto} "
+                    f"promedió {_fmt(info['promedio'], unidad)}, con mínimo de "
+                    f"{_fmt(info['minimo'], unidad)} y máximo de "
+                    f"{_fmt(info['maximo'], unidad)}."
+                )
+            return {
+                "texto": texto,
+                "fuente": {
+                    "lecturas": int(info.get("muestras") or 0),
+                    "desde": desde.isoformat(),
+                    "hasta": hasta.isoformat(),
+                    "dispositivo": None,
+                    "area": areas[0].pk if len(areas) == 1 else None,
+                    "alcance": alcance_texto,
+                },
+            }
+        partes = []
+        for codigo in ORDEN_VARIABLES:
+            info = variables.get(codigo)
+            if info is None:
+                continue
+            unidad = VariableAmbiental.objects.get(pk=codigo).unidad
+            partes.append(
+                f"{VariableAmbiental.objects.get(pk=codigo).nombre.lower()} "
+                f"{_fmt(info['promedio'], unidad)} "
+                f"(de {_fmt(info['minimo'], unidad)} a {_fmt(info['maximo'], unidad)})"
+            )
+        if not partes:
+            return {"texto": f"{alcance_texto} no tiene lecturas {_en(descripcion)}."}
+        return {
+            "texto": f"{_En(descripcion)}, {alcance_texto}: {'; '.join(partes)}.",
+            "fuente": {
+                "lecturas": sum(int(info.get("muestras") or 0) for info in variables.values()),
+                "desde": desde.isoformat(),
+                "hasta": hasta.isoformat(),
+                "dispositivo": None,
+                "area": areas[0].pk if len(areas) == 1 else None,
+                "alcance": alcance_texto,
+            },
+        }
+    if tema == "ALERTAS":
+        alertas = Alerta.objects.filter(
+            umbral__dispositivo__area__in=areas,
+            fecha_hora__gte=desde,
+            fecha_hora__lt=hasta,
+        )
+        total = alertas.count()
+        if not total:
+            return {"texto": f"{alcance_texto} no tuvo alertas {_en(descripcion)}."}
+        por_variable = dict(
+            alertas.values_list("umbral__variable__nombre").annotate(n=Count("num"))
+        )
+        principal = max(por_variable, key=por_variable.get)
+        return {
+            "texto": (
+                f"{_En(descripcion)}, {alcance_texto} tuvo "
+                f"{_n(total, 'alerta')}. La mayoría fue de {principal.lower()} "
+                f"({por_variable[principal]})."
+            )
+        }
+    return None
+
+
 def responder(dispositivo, pregunta, usuario=None):
     """Respuesta del agente del dispositivo: ``{"texto", "picos"?, "serie"?, ...}``. Con
     ``usuario``, la conversación (saludos) lo llama por su nombre."""
@@ -937,8 +1102,11 @@ def responder(dispositivo, pregunta, usuario=None):
     desde, hasta, descripcion = periodo_de(pregunta)
     if tema is None and pide_ultima(pregunta):
         # «Dame lo último que tienes registrado»: la última medición de cada variable.
-        texto = ultima_medicion(dispositivo, list(ORDEN_VARIABLES))
-        return {"texto": texto or f"{dispositivo.nombre} todavía no tiene lecturas."}
+        codigos = list(ORDEN_VARIABLES)
+        texto = ultima_medicion(dispositivo, codigos)
+        if texto is None:
+            return {"texto": f"{dispositivo.nombre} todavía no tiene lecturas."}
+        return {"texto": texto, "fuente": _fuente_ultimas(dispositivo, codigos) or {}}
     if tema is None and es_afirmacion(pregunta):
         return {"texto": personalidad.afirmacion(dispositivo)}
     if tema is None and es_negacion(pregunta):
@@ -978,7 +1146,8 @@ def responder(dispositivo, pregunta, usuario=None):
                 else f" de {VariableAmbiental.objects.get(pk=tema).nombre.lower()}"
             )
             texto = f"{dispositivo.nombre} todavía no tiene lecturas{de}."
-        return {"texto": texto}
+            return {"texto": texto}
+        return {"texto": texto, "fuente": _fuente_ultimas(dispositivo, codigos) or {}}
     if tema == "GENERICA":
         return resumen_general(dispositivo, desde, hasta, descripcion, _dato_pedido(pregunta))
     return _variable(dispositivo, tema, desde, hasta, descripcion, pide=_dato_pedido(pregunta))

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useSesion } from './SesionContext'
 import * as agenteApi from '../services/agente'
 import * as dispositivosApi from '../services/dispositivos'
+import * as organizacionesApi from '../services/organizaciones'
 import { pagina } from '../utils/convertir'
 import { hora } from '../utils/formato'
 
@@ -35,20 +36,20 @@ function escribir(clave, valor) {
 // uno genera un archivo nuevo) ni los errores.
 const VIGENCIA = 5 * 60 * 1000
 const cache = new Map()
-const claveDe = (agente, pregunta) =>
-  `${agente}|${pregunta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9ñ ]/g, ' ').replace(/\s+/g, ' ').trim()}`
-function deCache(agente, pregunta) {
-  const e = cache.get(claveDe(agente, pregunta))
+const claveDe = (agente, pregunta, alcance = 'DISPOSITIVO', area = null) =>
+  `${agente}|${alcance}|${area ?? ''}|${pregunta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9ñ ]/g, ' ').replace(/\s+/g, ' ').trim()}`
+function deCache(agente, pregunta, alcance = 'DISPOSITIVO', area = null) {
+  const e = cache.get(claveDe(agente, pregunta, alcance, area))
   if (!e) return null
   if (Date.now() - e.t > VIGENCIA) {
-    cache.delete(claveDe(agente, pregunta))
+    cache.delete(claveDe(agente, pregunta, alcance, area))
     return null
   }
   return e.r
 }
-function guardarCache(agente, pregunta, r) {
+function guardarCache(agente, pregunta, r, alcance = 'DISPOSITIVO', area = null) {
   if (r?.reporte || /\b(reporte|informe)/i.test(pregunta)) return
-  cache.set(claveDe(agente, pregunta), { r, t: Date.now() })
+  cache.set(claveDe(agente, pregunta, alcance, area), { r, t: Date.now() })
   if (cache.size > 80) cache.delete(cache.keys().next().value)
 }
 // La misma pregunta en vuelo se pide una sola vez (precarga y clic al mismo tiempo).
@@ -56,20 +57,20 @@ const enVuelo = new Map()
 // Mismas palabras de tema que el agente del backend (agente.TEMAS).
 const TEMA = /(conex|bateri|senal|linea|desconect|apag|alerta|aviso|incidente|temperatura|calor|frio|grados|humed|aire|co2|calidad|ppm|ventila)/
 const sinTema = (t) => !TEMA.test(t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
-function consultar(pregunta, agente, anterior = '', { precarga = false, sinCache = false } = {}) {
+function consultar(pregunta, agente, anterior = '', { precarga = false, sinCache = false, alcance = 'DISPOSITIVO', area = null } = {}) {
   // Un seguimiento depende de la pregunta anterior: entra a la caché junto con ella.
   const llave = anterior ? `${anterior} ${pregunta}` : pregunta
   // Una petición repetida va al servidor: él lleva la cuenta y responde «repetiste…» u «omito…».
-  const hit = sinCache ? null : deCache(agente, llave)
+  const hit = sinCache ? null : deCache(agente, llave, alcance, area)
   if (hit) return Promise.resolve({ r: hit, cache: true })
-  const k = claveDe(agente, llave)
+  const k = claveDe(agente, llave, alcance, area)
   if (!enVuelo.has(k)) {
     enVuelo.set(
       k,
       agenteApi
-        .preguntar(pregunta, agente, anterior, precarga)
+        .preguntar(pregunta, agente, anterior, precarga, alcance, area)
         .then((r) => {
-          guardarCache(agente, llave, r)
+          guardarCache(agente, llave, r, alcance, area)
           return { r, cache: false }
         })
         .finally(() => enVuelo.delete(k)),
@@ -93,6 +94,29 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
   const { usuario } = useSesion()
   const conOrganizacion = Boolean(usuario?.organizacion)
   const conExternos = Boolean(externos)
+  const [areas, setAreas] = useState([])
+  const [alcance, setAlcanceEstado] = useState('DISPOSITIVO')
+  const [areaAlcance, setAreaAlcanceEstado] = useState(() => usuario?.area ?? null)
+  const [puente, setPuente] = useState({ puente: false, activos: [], disponibles: [] })
+
+  useEffect(() => {
+    if (!conOrganizacion || conExternos) return undefined
+    let vivo = true
+    organizacionesApi
+      .areas()
+      .then((r) => vivo && setAreas(pagina(r)))
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [conOrganizacion, conExternos])
+
+  // Si el área elegida no está en la lista, se usa la del usuario o la primera visible.
+  useEffect(() => {
+    if (!areas.length) return
+    const valida = areas.some((a) => a.num === areaAlcance)
+    if (!valida) setAreaAlcanceEstado(usuario?.area ?? areas[0].num)
+  }, [areas, areaAlcance, usuario?.area])
 
   useEffect(() => {
     if (!conOrganizacion || conExternos) return undefined
@@ -108,13 +132,12 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
 
   // Si no hay agente elegido (o ya no existe), se usa el del primer dispositivo.
   // Estado del puente: con él, solo los dispositivos con su ESP32 conectado tienen agente.
-  const [puente, setPuente] = useState({ puente: false, activos: [], disponibles: [] })
   useEffect(() => {
     if (!conOrganizacion && !conExternos) return undefined
     let vivo = true
     const leer = () =>
       agenteApi
-        .estado()
+        .estado({ alcance, area: areaAlcance })
         .then((r) => vivo && setPuente(r))
         .catch(() => {})
     leer()
@@ -123,14 +146,20 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       vivo = false
       clearInterval(t)
     }
-  }, [conOrganizacion, conExternos])
+  }, [conOrganizacion, conExternos, alcance, areaAlcance])
   const agenteValido = dispositivos.some((d) => d.num === agente) ? agente : (dispositivos[0]?.num ?? null)
   const dispositivoAgente = dispositivos.find((d) => d.num === agenteValido) ?? null
-  const agenteActivo = !puente.puente || puente.activos.includes(agenteValido)
+  const porDispositivo = alcance === 'DISPOSITIVO'
+  const agenteActivo = porDispositivo
+    ? !puente.puente || puente.activos.includes(agenteValido)
+    : puente.disponible === true
   // Lo decide el servidor: el administrador usa a Nico aunque el ESP32 esté sin conexión (modo
   // de pruebas); supervisores, analistas y operadores necesitan el ESP32 activo.
-  const agenteDisponible = agenteActivo || (puente.disponibles ?? []).includes(agenteValido)
-  const modoPruebas = agenteDisponible && !agenteActivo
+  const agenteDisponible = porDispositivo
+    ? agenteActivo || (puente.disponibles ?? []).includes(agenteValido)
+    : puente.disponible !== false
+  const modoPruebas = porDispositivo && agenteDisponible && !agenteActivo
+  const motivo = puente.motivo || ''
 
   const cambiar = useCallback((fn) => {
     setConversaciones((lista) => {
@@ -158,7 +187,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       let id = actual
       if (!id) {
         id = nuevoId('c')
-        const conv = { id, titulo: pregunta.slice(0, 60), creada: new Date().toISOString(), agente: agenteValido, mensajes: [] }
+        const conv = { id, titulo: pregunta.slice(0, 40), creada: new Date().toISOString(), agente: agenteValido, etiqueta: etiquetaAlcance(), mensajes: [] }
         cambiar((lista) => [conv, ...lista])
         setActual(id)
       }
@@ -175,10 +204,10 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       setEstado('pensando')
       const mio = ++turno.current
       // De caché, el proceso se muestra solo 1 s como máximo.
-      const yaEsta = Boolean(deCache(delAgente, pregunta)) && !anterior && !repetida
+      const yaEsta = Boolean(deCache(delAgente, pregunta, alcance, areaAlcance)) && !anterior && !repetida
       const pausa = new Promise((listo) => setTimeout(listo, yaEsta ? Math.min(minimo, 1000) : minimo))
       try {
-        const { r } = await consultar(pregunta, delAgente, anterior, { sinCache: repetida })
+        const { r } = await consultar(pregunta, delAgente, anterior, { sinCache: repetida, alcance, area: areaAlcance })
         await pausa
         if (mio !== turno.current) return
         const clave = nuevoId('r')
@@ -187,7 +216,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       } catch (e) {
         await pausa
         if (mio !== turno.current) return
-        editar(id, (ms) => [...ms, { de: 'error', caido: e.status === 503, inactivo: Boolean(e.datos?.inactivo), pregunta }])
+        editar(id, (ms) => [...ms, { de: 'error', caido: e.status === 503, inactivo: Boolean(e.datos?.inactivo), motivo: e.datos?.motivo || e.datos?.detail || '', pregunta }])
         if (e.datos?.inactivo)
           setPuente((p) => ({
             ...p,
@@ -197,7 +226,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       }
       setEstado('listo')
     },
-    [actual, agenteValido, cambiar, conversaciones, editar, estado],
+    [actual, agenteValido, cambiar, conversaciones, editar, estado, alcance, areaAlcance],
   )
 
   // Respuestas que se arman en el navegador sin ir al servidor (ediciones de plantilla, elegir
@@ -208,7 +237,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       let id = actual
       if (!id) {
         id = nuevoId('c')
-        const conv = { id, titulo: pregunta.slice(0, 60), creada: new Date().toISOString(), agente: agenteValido, mensajes: [] }
+        const conv = { id, titulo: pregunta.slice(0, 40), creada: new Date().toISOString(), agente: agenteValido, etiqueta: etiquetaAlcance(), mensajes: [] }
         cambiar((lista) => [conv, ...lista])
         setActual(id)
       }
@@ -226,7 +255,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
   // Precarga en segundo plano las preguntas sugeridas (sin reportes), de una en una.
   const precargar = useCallback(
     async (preguntas) => {
-      if (!agenteValido) return
+      if (!agenteValido || alcance !== 'DISPOSITIVO') return
       for (const p of preguntas) {
         if (/\b(reporte|informe)/i.test(p) || deCache(agenteValido, p)) continue
         try {
@@ -236,13 +265,27 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
         }
       }
     },
-    [agenteValido],
+    [agenteValido, alcance],
   )
 
   const nueva = useCallback(() => {
     detener()
     setActual(null)
   }, [detener])
+
+  // Respuesta del agente que no viene de una pregunta (p. ej. confirmar una alerta atendida).
+  const agregarRespuesta = useCallback(
+    (respuesta) => {
+      if (!actual) return
+      const clave = nuevoId('r')
+      setAnimada(clave)
+      editar(actual, (ms) => [
+        ...ms,
+        { de: 'agente', hora: hora(new Date().toISOString()), clave, ...respuesta },
+      ])
+    },
+    [actual, editar],
+  )
 
   // Elegir otro agente abre una conversación nueva con él.
   const setAgente = useCallback(
@@ -278,6 +321,30 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
     [actual, cambiar, nueva],
   )
 
+  // Nombre que se guarda con la conversación cuando el alcance no es un dispositivo.
+  const etiquetaAlcance = () =>
+    alcance === 'AREA'
+      ? areas.find((a) => a.num === areaAlcance)?.nombre ?? null
+      : alcance === 'ORGANIZACION'
+        ? 'Toda la organización'
+        : null
+
+  const setAlcance = useCallback((valor) => {
+    setAlcanceEstado(valor)
+  }, [])
+  const setAreaAlcance = useCallback((valor) => {
+    setAreaAlcanceEstado(valor ? Number(valor) : null)
+  }, [])
+
+  const renombrar = useCallback(
+    (id, titulo) => {
+      const limpio = String(titulo ?? '').trim().slice(0, 80)
+      if (!limpio) return
+      cambiar((lista) => lista.map((c) => (c.id === id ? { ...c, titulo: limpio } : c)))
+    },
+    [cambiar],
+  )
+
   const valor = useMemo(() => {
     const conv = conversaciones.find((c) => c.id === actual) ?? null
     return {
@@ -288,6 +355,12 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       pensando: estado === 'pensando',
       animada,
       dispositivos,
+      areas,
+      alcance,
+      setAlcance,
+      areaAlcance,
+      setAreaAlcance,
+      motivo,
       agente: agenteValido,
       dispositivoAgente,
       nombreAgente: (num) => dispositivos.find((d) => d.num === num)?.nombre ?? 'Nico AI',
@@ -301,10 +374,12 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       nueva,
       abrir,
       borrar,
+      renombrar,
       editar,
+      agregarRespuesta,
       setAgente,
     }
-  }, [conversaciones, actual, estado, animada, dispositivos, agenteValido, dispositivoAgente, preguntar, responderLocal, precargar, agenteActivo, agenteDisponible, modoPruebas, detener, nueva, abrir, borrar, editar, setAgente])
+  }, [conversaciones, actual, estado, animada, dispositivos, areas, alcance, setAlcance, areaAlcance, setAreaAlcance, motivo, agenteValido, dispositivoAgente, preguntar, responderLocal, precargar, agenteActivo, agenteDisponible, modoPruebas, detener, nueva, abrir, borrar, renombrar, editar, agregarRespuesta, setAgente])
 
   return <AgenteContext.Provider value={valor}>{children}</AgenteContext.Provider>
 }

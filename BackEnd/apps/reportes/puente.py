@@ -298,6 +298,41 @@ def disponible(dispositivo, usuario):
     return activo(dispositivo) or not exige_puente(usuario)
 
 
+def motivo_area(area):
+    """Aviso exacto cuando el área no puede usar a Nico por su ESP."""
+    if area.puente_nico_id is None:
+        return (
+            "Esta área no tiene un ESP de Nico asignado. Pídele a un administrador "
+            "que lo elija en Empresa y áreas."
+        )
+    return f"El ESP de Nico de {area.nombre} está sin conexión."
+
+
+def revisar_alcance(usuario, area=None, organizacion=False):
+    """``None`` si el alcance puede usar a Nico; si no, el motivo para la web.
+
+    ADMIN y ADMINPLAT no exigen ESP. Para un área se usa su ``puente_nico``; para toda la
+    organización, al menos un área visible debe tener su puente asignado y en línea.
+    """
+    if not exige_puente(usuario):
+        return None
+    from common.scoping import areas_visibles
+
+    if organizacion:
+        areas = list(areas_visibles(usuario))
+        if not areas:
+            return "No hay áreas visibles para este alcance."
+        for candidata in areas:
+            if candidata.puente_nico_id and activo(candidata.puente_nico):
+                return None
+        return motivo_area(areas[0])
+    if area is None:
+        return "No se indicó el área del alcance."
+    if area.puente_nico_id and activo(area.puente_nico):
+        return None
+    return motivo_area(area)
+
+
 @contextmanager
 def peticion():
     """Delimita una petición al agente: el modo de pruebas que active dura solo en ella."""

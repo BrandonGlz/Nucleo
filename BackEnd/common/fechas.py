@@ -39,3 +39,22 @@ def periodo_titulo(inicio, fin):
     if a.month == b.month:
         return f"{a.day}–{b.day} {MESES[b.month - 1]} {b.year}"
     return f"{a.day} {MESES[a.month - 1]} – {b.day} {MESES[b.month - 1]} {b.year}"
+
+
+def duracion_legible(minutos):
+    """Duración sin decimales y en la unidad que se lee mejor.
+
+    Menos de una hora en minutos («3 min»); menos de un día en horas y minutos
+    («3 h 11 min»); más, en días y horas («7 d 21 h»). ``None`` se muestra como «—».
+    """
+    if minutos is None:
+        return "—"
+    total = max(0, int(round(float(minutos))))
+    if total < 60:
+        return f"{total} min"
+    if total < 1440:
+        horas, resto = divmod(total, 60)
+        return f"{horas} h {resto} min" if resto else f"{horas} h"
+    dias, resto = divmod(total, 1440)
+    horas = resto // 60
+    return f"{dias} d {horas} h" if horas else f"{dias} d"

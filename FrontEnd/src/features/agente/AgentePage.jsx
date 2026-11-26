@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowUp,
@@ -11,7 +11,6 @@ import {
   SquarePen,
   ThumbsDown,
   ThumbsUp,
-  Trash2,
 } from 'lucide-react'
 import { Button, Icon, Skeleton, TrendChart } from '../../design-system/componentes/index.js'
 import { Desplegable } from '../../components/Desplegable'
@@ -25,23 +24,55 @@ import { ControlZoom, ProveedorZoom } from '../reportes/VisorHoja'
 import { asignarFormato, useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
 import * as agenteApi from '../../services/agente'
+import * as alertasApi from '../../services/alertas'
+import * as dispositivosApi from '../../services/dispositivos'
 import { esReporte, planDe, respuestaRapida, siguientes } from './proceso'
-import { filtrar, normalizar, resaltar } from './sugerenciasEscritura'
+import { filtrar, filtrarAtajos, normalizar, resaltar } from './sugerenciasEscritura'
 import { aplicar, interpretar, plantillas } from './edicion'
 import { Archivos, Comparativa, Edicion, ElegirPlantilla, GraficaChat } from './Piezas'
-import { periodo } from '../../utils/formato'
+import { periodo, hora, fechaCorta, miles } from '../../utils/formato'
+import { UNIDAD, VARIABLE } from '../../utils/convertir'
 import caraNico from '../../assets/nico/nico-cara.webp'
-import { aviso } from '../../components/confirmacion'
+import { MenuAcciones } from '../../components/MenuAcciones'
+import { aviso, confirmar } from '../../components/confirmacion'
 
-const SUGERENCIAS = [
-  { icono: 'droplets', titulo: 'Picos de humedad', texto: '¿A qué hora hubo picos de humedad esta semana en Sala limpia?' },
-  { icono: 'bell', titulo: 'Alertas del mes', texto: '¿Qué dispositivo tuvo más alertas este mes?' },
-  { icono: 'thermometer', titulo: 'Temperatura', texto: '¿Cómo estuvo la temperatura en Moldeo esta semana?' },
-  { icono: 'wifi-off', titulo: 'Conexión', texto: '¿Qué sensores perdieron conexión en los últimos 7 días?' },
+// Sugerencias de respaldo mientras llegan las del backend: usan solo el dispositivo elegido.
+const SUGERENCIAS_BASE = [
+  { icono: 'activity', titulo: 'Últimas lecturas', texto: '¿Cómo está el dispositivo?' },
+  { icono: 'bell', titulo: 'Alertas', texto: '¿Qué alertas tengo pendientes?' },
+  { icono: 'thermometer', titulo: 'Temperatura', texto: '¿Cómo estuvo la temperatura esta semana?' },
+  { icono: 'file-text', titulo: 'Reporte del mes', texto: 'Genera el reporte de este mes' },
 ]
-// Quienes generan reportes pueden pedírselos al agente; para ellos sustituye a la de conexión.
-const SUGERENCIA_REPORTE = { icono: 'file-text', titulo: 'Reporte del mes', texto: 'Genera el reporte de este mes' }
 const ROLES_REPORTE = ['ADMIN', 'SUPER', 'ANALISTA']
+// Agrupa las conversaciones guardadas por cercanía y filtra por título o texto.
+function gruposConversaciones(conversaciones, busqueda) {
+  const q = normalizar(busqueda)
+  const visibles = conversaciones.filter((c) => {
+    if (!q) return true
+    const texto = [c.titulo, ...(c.mensajes ?? []).map((m) => m.texto)].join(' ')
+    return normalizar(texto).includes(q)
+  })
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const ayer = new Date(hoy)
+  ayer.setDate(ayer.getDate() - 1)
+  const semana = new Date(hoy)
+  semana.setDate(semana.getDate() - 6)
+  const grupos = [
+    { id: 'hoy', label: 'Hoy', items: [] },
+    { id: 'ayer', label: 'Ayer', items: [] },
+    { id: 'semana', label: 'Esta semana', items: [] },
+    { id: 'anteriores', label: 'Anteriores', items: [] },
+  ]
+  for (const c of visibles) {
+    const fecha = c.creada ? new Date(c.creada) : new Date(0)
+    if (fecha >= hoy) grupos[0].items.push(c)
+    else if (fecha >= ayer) grupos[1].items.push(c)
+    else if (fecha >= semana) grupos[2].items.push(c)
+    else grupos[3].items.push(c)
+  }
+  return grupos.filter((g) => g.items.length)
+}
 // Pasos que se muestran mientras el agente prepara la respuesta.
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
 const sinMovimiento = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -274,10 +305,34 @@ function Hallazgos({ m }) {
   )
 }
 
-function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto, alTerminar, elegirPlantilla, deshacer }) {
+function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar, visorAbierto, alTerminar, elegirPlantilla, deshacer, puedeAtender, resolverAlerta }) {
   const navegar = useNavigate()
   const [completa, setCompleta] = useState(!animar)
   const [copiado, setCopiado] = useState(false)
+  const [resolviendo, setResolviendo] = useState(null)
+  const [observaciones, setObservaciones] = useState('')
+  const [errorResolucion, setErrorResolucion] = useState('')
+  const [enviandoResolucion, setEnviandoResolucion] = useState(false)
+  const confirmarResolucion = async () => {
+    const nota = observaciones.trim()
+    if (nota.length < 5) {
+      setErrorResolucion('Describe con al menos 5 caracteres.')
+      return
+    }
+    if (nota.length > 500) {
+      setErrorResolucion('La nota no puede pasar de 500 caracteres.')
+      return
+    }
+    setEnviandoResolucion(true)
+    setErrorResolucion('')
+    const error = await resolverAlerta(resolviendo.alerta, resolviendo.accion, nota)
+    setEnviandoResolucion(false)
+    if (error) setErrorResolucion(error)
+    else {
+      setResolviendo(null)
+      setObservaciones('')
+    }
+  }
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(m.texto)
@@ -300,6 +355,83 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             alTerminar?.()
           }}
         />
+        {completa && m.alertas?.length > 0 && (
+          <div className="ui-ia-alertas">
+            {m.alertas.map((alerta) => (
+              <div key={alerta.num} className="ui-ia-alerta">
+                <span className={`ui-ia-alerta__nivel is-${alerta.nivel.toLowerCase()}`}>{alerta.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia'}</span>
+                <span className="ui-ia-alerta__texto">
+                  <strong>{alerta.variable}</strong> · {alerta.dispositivo} · {alerta.area}
+                  <small>
+                    {fechaCorta(alerta.fecha)} {hora(alerta.fecha)} · {Number(alerta.valor).toFixed(1)} {alerta.unidad}
+                  </small>
+                </span>
+                {puedeAtender && (
+                  <span className="ui-ia-alerta__acciones">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setObservaciones('')
+                        setErrorResolucion('')
+                        setResolviendo({ alerta, accion: 'atender' })
+                      }}
+                    >
+                      Atender
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setObservaciones('')
+                        setErrorResolucion('')
+                        setResolviendo({ alerta, accion: 'descartar' })
+                      }}
+                    >
+                      Descartar
+                    </button>
+                  </span>
+                )}
+              </div>
+            ))}
+            {resolviendo && (
+              <div className="ui-ia-resolver">
+                <strong>
+                  {resolviendo.accion === 'atender' ? 'Atender' : 'Descartar'} alerta de {resolviendo.alerta.variable} en {resolviendo.alerta.dispositivo}
+                </strong>
+                <label>
+                  <span>Observaciones</span>
+                  <textarea
+                    rows={2}
+                    maxLength={500}
+                    value={observaciones}
+                    placeholder={
+                      resolviendo.accion === 'atender'
+                        ? 'Escribe qué se hizo para atender la alerta.'
+                        : 'Escribe por qué se descarta la alerta.'
+                    }
+                    onChange={(e) => setObservaciones(e.target.value)}
+                  />
+                </label>
+                {errorResolucion && <span className="ui-ia-resolver__error">{errorResolucion}</span>}
+                <div className="ui-ia-resolver__acciones">
+                  <button
+                    type="button"
+                    className="ui-ia-resolver__cancelar"
+                    onClick={() => {
+                      setResolviendo(null)
+                      setObservaciones('')
+                      setErrorResolucion('')
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="button" className="ui-ia-resolver__confirmar" disabled={enviandoResolucion} onClick={confirmarResolucion}>
+                    {enviandoResolucion ? 'Guardando…' : 'Confirmar'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {completa && m.reporte && (
           <div className="ui-ia-aparece">
             {m.reporte.variables ? (
@@ -342,19 +474,7 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
         {completa && m.picos && (
           <div className="ui-ia-aparece">
             <Hallazgos m={m} />
-            <div className="ui-ia-fuentes">
-              <span className="ui-muted">Basado en</span>
-              <span className="ui-ia-fuente">
-                <Icon name="activity" size={13} /> {m.serie.length} {m.etiquetas ? 'máximos diarios' : 'promedios del periodo'}
-              </span>
-              <span className="ui-ia-fuente">
-                <Icon name="sliders-horizontal" size={13} /> Umbral máx {m.maximo} {m.unidad}
-              </span>
-            </div>
             <div className="ui-ia-siguientes">
-              <Button variant="secondary" size="sm" icon="history" onClick={() => navegar('/mediciones')}>
-                Ver en histórico
-              </Button>
               <Button variant="ghost" size="sm" icon="file-text" onClick={() => navegar('/reportes')}>
                 Generar reporte
               </Button>
@@ -372,23 +492,61 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             </ol>
           </details>
         )}
+        {completa && (m.fuente || m.picos) && (
+          <div className="ui-ia-fuentes ui-ia-fuentes--respuesta">
+            <span className="ui-muted">Basado en</span>
+            <span className="ui-ia-fuente-sep" aria-hidden>·</span>
+            {m.fuente &&
+              (m.fuente.dispositivo ? (
+                <button
+                  type="button"
+                  className="ui-ia-fuente"
+                  title="Ver estas lecturas en el Histórico"
+                  onClick={() =>
+                    navegar(
+                      `/mediciones?dispositivo=${m.fuente.dispositivo}&desde=${encodeURIComponent(m.fuente.desde)}&hasta=${encodeURIComponent(m.fuente.hasta)}`,
+                    )
+                  }
+                >
+                  <Icon name="activity" size={13} /> {miles(m.fuente.lecturas)} lecturas · {periodo(m.fuente.desde, m.fuente.hasta)}
+                </button>
+              ) : (
+                <span className="ui-ia-fuente">
+                  <Icon name="activity" size={13} /> {miles(m.fuente.lecturas)} lecturas · {periodo(m.fuente.desde, m.fuente.hasta)}
+                  {m.fuente.alcance ? ` · ${m.fuente.alcance}` : ''}
+                </span>
+              ))}
+            {m.picos && (
+              <>
+                <span className="ui-ia-fuente-sep" aria-hidden>·</span>
+                <span className="ui-ia-fuente">
+                  <Icon name="activity" size={13} /> {m.serie.length} {m.etiquetas ? 'máximos diarios' : 'promedios'}
+                </span>
+                <span className="ui-ia-fuente-sep" aria-hidden>·</span>
+                <span className="ui-ia-fuente">
+                  <Icon name="sliders-horizontal" size={13} /> Umbral máx {m.maximo} {m.unidad}
+                </span>
+              </>
+            )}
+          </div>
+        )}
         {completa && (
-          <div className={`ui-ia-acciones${animar ? ' ui-ia-acciones--llega' : ''}`}>
+          <div className={`ui-ia-acciones-contenedor${animar ? ' ui-ia-acciones--llega' : ''}`}>
+          <div className="ui-ia-acciones">
             <button type="button" aria-label={copiado ? 'Copiado' : 'Copiar respuesta'} title="Copiar" onClick={copiar}>
               {copiado ? <Check size={16} /> : <Copy size={16} />}
             </button>
-            {ultima && (
-              <button type="button" aria-label="Regenerar respuesta" title="Regenerar" onClick={regenerar}>
-                <RotateCcw size={16} />
-              </button>
-            )}
+            <button type="button" aria-label="Regenerar respuesta" title="Regenerar" onClick={regenerar}>
+              <RotateCcw size={16} />
+            </button>
             <button
               type="button"
               aria-label="Buena respuesta"
               title="Buena respuesta"
               aria-pressed={m.voto === 'si'}
               className={m.voto === 'si' ? 'is-activo' : ''}
-              onClick={() => calificar(m.voto === 'si' ? null : 'si')}
+              disabled={Boolean(m.voto)}
+              onClick={() => calificar('si')}
             >
               <ThumbsUp size={16} />
             </button>
@@ -398,18 +556,34 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
               title="Mala respuesta"
               aria-pressed={m.voto === 'no'}
               className={m.voto === 'no' ? 'is-activo' : ''}
-              onClick={() => calificar(m.voto === 'no' ? null : 'no')}
+              disabled={Boolean(m.voto)}
+              onClick={() => calificar('no')}
             >
               <ThumbsDown size={16} />
             </button>
+            {m.fuente?.dispositivo && (
+              <>
+                <span className="ui-ia-acciones__divisor" aria-hidden />
+                <button
+                  type="button"
+                  className="ui-ia-accion-texto"
+                  onClick={() =>
+                    navegar(
+                      `/mediciones?dispositivo=${m.fuente.dispositivo}&desde=${encodeURIComponent(m.fuente.desde)}&hasta=${encodeURIComponent(m.fuente.hasta)}`,
+                    )
+                  }
+                >
+                  <Icon name="history" size={15} /> Ver en Histórico
+                </button>
+              </>
+            )}
             {m.via === 'IA' && <span className="ui-ia-via">Redactada con IA</span>}
             {m.via === 'BANCO' && <span className="ui-ia-via">Aprendida de tus reacciones</span>}
             {m.via === 'ENRUTADA' && <span className="ui-ia-via">Interpretada con IA</span>}
-            {ultima && (
-              <span className="ui-ia-nota">
-                {m.voto ? '¡Gracias! Nico AI mejora con tus reacciones.' : 'La mejora de Nico AI se basa en tus reacciones.'}
-              </span>
-            )}
+          </div>
+          {m.voto && (
+            <span className="ui-ia-nota ui-ia-nota--calificado">La mejora de Nico AI se basa en tus reacciones.</span>
+          )}
           </div>
         )}
       </div>
@@ -432,7 +606,7 @@ function SugerenciasEscritura({ lista, escrito, elegida, elegir, resaltarEn }) {
             onMouseEnter={() => resaltarEn(i)}
             onClick={() => elegir(s)}
           >
-            <Icon name={s.tipo === 'consulta' ? 'activity' : s.tipo === 'frecuente' ? 'history' : 'message-square-text'} size={15} />
+            <Icon name={s.tipo === 'atajo' ? 'list' : s.tipo === 'consulta' ? 'activity' : s.tipo === 'frecuente' ? 'history' : 'message-square-text'} size={15} />
             <span className="ui-ia-sugiere__texto">
               {resaltar(s.texto, escrito).map((p, j) => (p.marca ? <strong key={j}>{p.texto}</strong> : <span key={j}>{p.texto}</span>))}
             </span>
@@ -449,7 +623,12 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
   const area = useRef(null)
   const [elegida, setElegida] = useState(-1)
   const [cerradaEn, setCerradaEn] = useState(null)
-  const lista = sugerencias?.activas && cerradaEn !== valor && !pensando ? filtrar(sugerencias.lista, valor, sugerencias.maximo) : []
+  const atajos = filtrarAtajos(valor)
+  const lista = atajos.length
+    ? atajos
+    : sugerencias?.activas && cerradaEn !== valor && !pensando
+      ? filtrar(sugerencias.lista, valor, sugerencias.maximo)
+      : []
   const abierta = lista.length > 0
   // Al cambiar lo escrito, ninguna queda elegida.
   const [escritoAntes, setEscritoAntes] = useState(valor)
@@ -459,7 +638,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
   }
   const elegir = (s) => {
     setCerradaEn(s.texto)
-    enviar(s.texto)
+    enviar(s.pregunta ?? s.texto)
   }
   useLayoutEffect(() => {
     const el = area.current
@@ -506,7 +685,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
           if (abierta && e.key === 'Tab' && !e.shiftKey && elegida >= 0) {
             e.preventDefault()
             setCerradaEn(lista[elegida].texto)
-            cambiar(lista[elegida].texto)
+            cambiar(lista[elegida].pregunta ?? lista[elegida].texto)
             return
           }
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -518,7 +697,7 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
       />
       <div className="ui-ia-compositor__barra">
         <span className="ui-ia-alcance">
-          <Icon name="cpu" size={14} /> <span className="ui-ia-alcance__texto" title={alcance}>{alcance}</span>
+          <Icon name={alcance.startsWith('Dispositivo') ? 'cpu' : 'map-pin'} size={14} /> <span className="ui-ia-alcance__texto" title={alcance}>{alcance}</span>
         </span>
         <span className="ui-ia-compositor__botones">
         {pensando ? (
@@ -548,6 +727,9 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   // En el celular las conversaciones se abren encima del chat, así que empiezan ocultas.
   const movil = useEsMovil()
   const [panel, setPanel] = useState(() => !window.matchMedia?.(CONSULTA_MOVIL).matches)
+  const [busquedaConv, setBusquedaConv] = useState('')
+  const [renombrando, setRenombrando] = useState(null)
+  const [tituloEdit, setTituloEdit] = useState('')
   // Sugerencias mientras se escribe: se piden una vez por dispositivo y se filtran aquí.
   const [escritura, setEscritura] = useState(null)
   const numAgente = dispositivoAgente?.num
@@ -556,7 +738,7 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     let vivo = true
     agenteApi
       .sugerenciasEscritura(numAgente)
-      .then((r) => vivo && setEscritura({ activas: r.activas, maximo: r.maximo, lista: r.sugerencias.map((x) => ({ ...x, normal: normalizar(x.texto) })), num: numAgente }))
+      .then((r) => vivo && setEscritura({ activas: r.activas, maximo: r.maximo, lista: r.sugerencias.map((x) => ({ ...x, normal: normalizar(x.texto) })), inicio: r.inicio ?? [], num: numAgente }))
       .catch(() => vivo && setEscritura(null))
     return () => {
       vivo = false
@@ -592,6 +774,39 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   const mensajes = conv?.mensajes ?? []
   const enHilo = mensajes.length > 0 || pensando
   const nombreAgente = dispositivoAgente?.nombre ?? 'tu dispositivo'
+  const areaAlcance = ag.areas?.find((a) => a.num === ag.areaAlcance) ?? null
+  const nombreArea = areaAlcance?.nombre ?? 'tu área'
+  const puedeOrganizacion = ['ADMIN', 'SUPER'].includes(usuario?.rol)
+  const alcanceTexto =
+    ag.alcance === 'AREA'
+      ? `Área: ${nombreArea}`
+      : ag.alcance === 'ORGANIZACION'
+        ? 'Toda la organización'
+        : `Dispositivo: ${nombreAgente}`
+
+  // Resumen del equipo en el estado vacío: últimas lecturas, alertas pendientes y conexión.
+  // Usa los endpoints que ya existen; no calcula cifras nuevas.
+  const [resumen, setResumen] = useState(null)
+  useEffect(() => {
+    if (enHilo || !dispositivoAgente) {
+      setResumen(null)
+      return undefined
+    }
+    let vivo = true
+    Promise.all([dispositivosApi.ultimasLecturas(dispositivoAgente.num), alertasApi.lista()])
+      .then(([lecturas, alertas]) => {
+        if (!vivo) return
+        const pendientes = (alertas?.results ?? []).filter(
+          (a) => a.dispositivo === dispositivoAgente.num && a.estado === 'PENDIENTE',
+        ).length
+        const estado = { LINEA: 'En línea', SINCONEX: 'Sin conexión', CALENT: 'Calentando' }[dispositivoAgente.estado_dispositivo] ?? 'Sin conexión'
+        setResumen({ lecturas, pendientes, estado })
+      })
+      .catch(() => vivo && setResumen(null))
+    return () => {
+      vivo = false
+    }
+  }, [enHilo, dispositivoAgente])
 
   useEffect(() => {
     const el = hilo.current
@@ -667,16 +882,47 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     for (const m of delHilo ?? []) if (m.reporte?.num && m.formato) asignarFormato(m.reporte.num, m.formato)
   }, [delHilo])
   const descargarReporte = (r) => reportesApi.descargarArchivo(r.num, nombreReporte(r)).catch(() => {})
+  const resolverAlerta = useCallback(
+    async (alerta, accion, observaciones) => {
+      try {
+        await (accion === 'atender' ? alertasApi.atender : alertasApi.descartar)(alerta.num, observaciones)
+        ag.agregarRespuesta({
+          texto: `Listo, la alerta de ${alerta.variable} en ${alerta.dispositivo} quedó ${
+            accion === 'atender' ? 'atendida' : 'descartada'
+          }.`,
+        })
+        return null
+      } catch (e) {
+        return e.datos?.observaciones?.[0] ?? e.message ?? 'No se pudo resolver la alerta. Intenta de nuevo.'
+      }
+    },
+    [ag],
+  )
   const detener = () => ag.detener()
   const nueva = () => {
     ag.nueva()
     setTexto('')
   }
-  const regenerar = () => {
-    const i = mensajes.findLastIndex((m) => m.de === 'yo')
+  const regenerarMensaje = (indice) => {
+    const i = mensajes.slice(0, indice).findLastIndex((m) => m.de === 'yo')
     if (i >= 0) preguntar(mensajes[i].texto, mensajes.slice(0, i + 1))
   }
   const borrar = ag.borrar
+  const grupos = useMemo(() => gruposConversaciones(conversaciones, busquedaConv), [conversaciones, busquedaConv])
+  const borrarConversacion = async (c) => {
+    const ok = await confirmar({
+      titulo: 'Borrar conversación',
+      mensaje: `¿Borrar «${c.titulo}»? Esta acción no se puede deshacer.`,
+      confirmar: 'Borrar',
+      peligro: true,
+    })
+    if (ok) borrar(c.id)
+  }
+  const guardarTitulo = (id) => {
+    ag.renombrar(id, tituloEdit)
+    setRenombrando(null)
+    setTituloEdit('')
+  }
   // Banco de preguntas sugeridas, justo arriba de la caja de texto: aparece cuando la última
   // respuesta termina de escribirse y cambia según su tema. Todas responden al instante.
   const [terminada, setTerminada] = useState(null)
@@ -713,13 +959,22 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     return () => clearTimeout(t)
   }, [textosSugeridos, precargar, conAccion])
 
-  // El punto es el estado del ESP32: gris si está sin conexión, aunque el administrador pueda
-  // seguir usando a Nico en modo de pruebas.
-  const estadoPunto = ag.agenteActivo
-    ? 'Nico AI en línea'
-    : ag.modoPruebas
-      ? 'ESP32 sin conexión: Nico AI en modo de pruebas del administrador'
-      : 'Nico AI sin conexión'
+  // Estado con texto en la cabecera; el punto se conserva como señal visual.
+  const estadoTexto = ag.agenteActivo ? 'En línea' : ag.modoPruebas ? 'Modo de pruebas' : 'Sin conexión'
+  const avisoPuente = !ag.agenteActivo
+    ? ag.motivo ||
+      (usuario?.rol === 'ADMIN'
+        ? 'El equipo puente está desconectado. Como administrador puedes probar a Nico; los demás usuarios no podrán usarlo hasta que vuelva.'
+        : `Nico AI no está disponible: ${nombreAgente} no está activo (su ESP32 no está conectado).`)
+    : null
+  const horaActual = new Date().getHours()
+  const saludo = `${
+    horaActual < 12 ? 'Buenos días' : horaActual < 19 ? 'Buenas tardes' : 'Buenas noches'
+  }, ${usuario?.nombre?.split(' ')[0] ?? 'equipo'}`
+  const sugerenciasInicio =
+    escritura && escritura.num === numAgente && escritura.inicio?.length
+      ? escritura.inicio
+      : SUGERENCIAS_BASE.map((s) => ({ ...s, texto: s.texto.replace('el dispositivo', nombreAgente) }))
   const compositor = (
     <Compositor
       valor={texto}
@@ -729,9 +984,9 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
       sugerencias={escritura?.num === numAgente ? escritura : null}
       pensando={pensando}
       enfocar={actual}
-      alcance={ag.modoPruebas ? 'ESP32 sin conexión · modo de pruebas del administrador' : `Sensores de ${nombreAgente}`}
+      alcance={alcanceTexto}
       deshabilitado={!dispositivoAgente || !ag.agenteDisponible}
-      aviso={dispositivoAgente && !ag.agenteDisponible ? `Nico AI no disponible: ${nombreAgente} no está activo (su ESP32 no está conectado)` : undefined}
+      aviso={dispositivoAgente && !ag.agenteDisponible ? `Nico AI no disponible: ${nombreAgente} no está activo` : undefined}
     />
   )
 
@@ -751,32 +1006,84 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
               <SquarePen size={16} /> Nueva conversación
             </button>
             <span className="ui-eyebrow ui-ia-panel__titulo">Recientes</span>
+            <label className="ui-ia-buscador">
+              <Icon name="search" size={14} />
+              <input
+                type="search"
+                value={busquedaConv}
+                placeholder="Buscar conversaciones…"
+                aria-label="Buscar conversaciones"
+                onChange={(e) => setBusquedaConv(e.target.value)}
+              />
+            </label>
             <div className="ui-ia-historial nc-scroll">
               {conversaciones.length === 0 && <p className="ui-muted ui-ia-panel__vacio">Tus conversaciones aparecerán aquí.</p>}
-              {conversaciones.map((c) => (
-                <div key={c.id} className={`ui-ia-conv${c.id === actual ? ' is-actual' : ''}`}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      ag.abrir(c.id)
-                      if (movil) setPanel(false)
-                    }}
-                    title={c.titulo}
-                  >
-                    <MessageSquare size={14} />
-                    <span className="ui-ia-conv__texto">
-                      <span>{c.titulo}</span>
-                      {c.agente && <small>{ag.nombreAgente(c.agente)}</small>}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="ui-ia-conv__borrar"
-                    aria-label={`Borrar «${c.titulo}»`}
-                    onClick={() => borrar(c.id)}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+              {conversaciones.length > 0 && grupos.length === 0 && (
+                <p className="ui-muted ui-ia-panel__vacio">No hay conversaciones que coincidan.</p>
+              )}
+              {grupos.map((grupo) => (
+                <div key={grupo.id} className="ui-ia-grupo">
+                  <span className="ui-eyebrow">{grupo.label}</span>
+                  {grupo.items.map((c) => (
+                    <div key={c.id} className={`ui-ia-conv${c.id === actual ? ' is-actual' : ''}`}>
+                      {renombrando === c.id ? (
+                        <input
+                          className="ui-ia-conv__titulo-input"
+                          value={tituloEdit}
+                          autoFocus
+                          aria-label={`Nuevo título de ${c.titulo}`}
+                          onChange={(e) => setTituloEdit(e.target.value)}
+                          onBlur={() => guardarTitulo(c.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              guardarTitulo(c.id)
+                            }
+                            if (e.key === 'Escape') {
+                              setRenombrando(null)
+                              setTituloEdit('')
+                            }
+                          }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            ag.abrir(c.id)
+                            if (movil) setPanel(false)
+                          }}
+                          title={c.titulo}
+                        >
+                          <MessageSquare size={14} />
+                          <span className="ui-ia-conv__texto">
+                            <span>{c.titulo}</span>
+                            {(c.etiqueta || c.agente) && <small>{c.etiqueta ?? ag.nombreAgente(c.agente)}</small>}
+                          </span>
+                        </button>
+                      )}
+                      <span className="ui-ia-conv__menu" onClick={(e) => e.stopPropagation()}>
+                        <MenuAcciones
+                          label={`Opciones de ${c.titulo}`}
+                          items={[
+                            {
+                              label: 'Renombrar',
+                              icon: 'pencil',
+                              onClick: () => {
+                                setRenombrando(c.id)
+                                setTituloEdit(c.titulo)
+                              },
+                            },
+                            {
+                              label: 'Borrar',
+                              icon: 'trash-2',
+                              peligro: true,
+                              onClick: () => borrarConversacion(c),
+                            },
+                          ]}
+                        />
+                      </span>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -793,43 +1100,92 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
               <PanelLeft size={18} />
             </button>
             <span className="ui-ia-barra__titulo">{conv?.titulo ?? 'Nueva conversación'}</span>
+            <span className="ui-ia-divisor" aria-hidden />
             <Archivos reportes={reportes} visualizar={setVisor} descargar={descargarReporte} />
+            <span className="ui-ia-divisor" aria-hidden />
             <div className="ui-ia-agente">
-              <span
-                className={`ui-ia-estado__punto${ag.agenteActivo ? ' is-activo' : ''}`}
-                role="img"
-                aria-label={estadoPunto}
-                title={estadoPunto}
-              />
+              <span className={`ui-ia-estado${ag.agenteActivo ? ' is-activo' : ''}`}>
+                <span className="ui-ia-estado__punto" aria-hidden />
+                {estadoTexto}
+              </span>
+              {/* Un solo selector de alcance: dispositivos, áreas visibles y, para ADMIN y SUPER, toda la organización. */}
               <Desplegable
-                icon="cpu"
-                value={ag.agente ?? ''}
-                onChange={ag.setAgente}
+                icon={ag.alcance === 'DISPOSITIVO' ? 'cpu' : 'map-pin'}
+                value={ag.alcance === 'DISPOSITIVO' ? `d:${ag.agente ?? ''}` : ag.alcance === 'AREA' ? `a:${ag.areaAlcance ?? ''}` : 'org'}
+                onChange={(valor) => {
+                  const [tipo, num] = String(valor).split(':')
+                  if (tipo === 'd') {
+                    ag.setAlcance('DISPOSITIVO')
+                    ag.setAgente(Number(num))
+                  } else if (tipo === 'a') {
+                    ag.setAreaAlcance(num)
+                    ag.setAlcance('AREA')
+                  } else {
+                    ag.setAlcance('ORGANIZACION')
+                  }
+                }}
                 placeholder="Sin dispositivos"
-                disabled={!dispositivos.length}
-                options={dispositivos.map((d) => ({ value: d.num, label: `Nico AI · ${d.nombre}` }))}
+                disabled={!dispositivos.length && !ag.areas?.length}
+                options={[
+                  ...dispositivos.map((d) => ({ value: `d:${d.num}`, label: `Dispositivo: ${d.nombre}` })),
+                  ...(ag.areas ?? []).map((a) => ({ value: `a:${a.num}`, label: `Área: ${a.nombre}` })),
+                  ...(puedeOrganizacion ? [{ value: 'org', label: 'Toda la organización' }] : []),
+                ]}
               />
             </div>
           </div>
+          {avisoPuente && (
+            <div className="ui-ia-aviso-puente" role="status">
+              <Icon name="triangle-alert" size={16} />
+              <span>{avisoPuente}</span>
+            </div>
+          )}
 
           {mensajes.length === 0 && !pensando ? (
             <div className="ui-ia-inicio">
               <Marca grande />
-              <h2>
-                {consola ? (
-                  <>
-                    Hola, soy <span>Nico</span>
-                  </>
-                ) : (
-                  <>
-                    Hola, <span>{usuario?.nombre ?? 'equipo'}</span>
-                  </>
-                )}
-              </h2>
-              <p className="ui-muted">¿Qué quieres saber hoy de {nombreAgente}?</p>
+              <h2>{consola ? <>Hola, soy <span>Nico</span></> : saludo}</h2>
+              <p className="ui-muted">
+                Pregunta sobre lecturas, alertas y reportes de{' '}
+                {ag.alcance === 'AREA' ? nombreArea : ag.alcance === 'ORGANIZACION' ? 'toda la organización' : nombreAgente}
+              </p>
+              {/* El resumen es del dispositivo elegido; con alcance de área u organización no aplica. */}
+              {ag.alcance === 'DISPOSITIVO' && (
+              <div className="ui-ia-resumen" aria-label="Resumen del equipo">
+                <div className="ui-ia-resumen__bloque">
+                  <span className="ui-eyebrow">Últimas lecturas</span>
+                  {resumen?.lecturas?.length ? (
+                    <span className="ui-ia-resumen__variable">
+                      {['TEMP', 'HUM', 'AIRE'].map((codigo) => {
+                        const lectura = resumen.lecturas.find((l) => l.variable === codigo)
+                        if (!lectura) return null
+                        return (
+                          <span key={codigo} className="ui-ia-resumen__dato">
+                            <strong className="ui-num">
+                              {Number(lectura.valor).toFixed(VARIABLE[codigo].decimales)} {UNIDAD[codigo]}
+                            </strong>
+                            <small>{hora(lectura.fecha_hora)}</small>
+                          </span>
+                        )
+                      })}
+                    </span>
+                  ) : (
+                    <strong className="ui-muted">Sin lecturas recientes</strong>
+                  )}
+                </div>
+                <div className="ui-ia-resumen__bloque">
+                  <span className="ui-eyebrow">Pendientes · este dispositivo</span>
+                  <strong className="ui-num">{resumen?.pendientes ?? 0}</strong>
+                </div>
+                <div className="ui-ia-resumen__bloque">
+                  <span className="ui-eyebrow">Conexión</span>
+                  <strong>{resumen?.estado ?? 'Sin conexión'}</strong>
+                </div>
+              </div>
+              )}
               <div className="ui-ia-inicio__compositor">{compositor}</div>
               <div className="ui-ia-sugerencias">
-                {(ROLES_REPORTE.includes(usuario?.rol) ? [...SUGERENCIAS.slice(0, 3), SUGERENCIA_REPORTE] : SUGERENCIAS).map((s) => (
+                {sugerenciasInicio.map((s) => (
                   <button key={s.texto} type="button" onClick={() => preguntar(s.texto)}>
                     <span className="ui-ia-sugerencias__icono">
                       <Icon name={s.icono} size={16} />
@@ -854,11 +1210,12 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
                         <Marca />
                         <div className="ui-ia-cuerpo ui-ia-error">
                           <strong>
-                            {m.inactivo
-                              ? `Nico AI no está disponible: ${nombreAgente} no está activo`
-                              : m.caido
-                                ? 'Nico AI no está disponible por ahora'
-                                : 'No se pudo obtener la respuesta'}
+                            {m.motivo ||
+                              (m.inactivo
+                                ? `Nico AI no está disponible: ${nombreAgente} no está activo`
+                                : m.caido
+                                  ? 'Nico AI no está disponible por ahora'
+                                  : 'No se pudo obtener la respuesta')}
                           </strong>
                           <span className="ui-muted">
                             {m.inactivo
@@ -881,10 +1238,10 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
                       <Respuesta
                         key={m.clave ?? i}
                         m={m}
-                        autor={`Nico AI · ${ag.nombreAgente(conv?.agente)}`}
+                        autor={`Nico AI · ${conv?.etiqueta ?? ag.nombreAgente(conv?.agente)}`}
                         ultima={i === mensajes.length - 1 && !pensando}
                         animar={m.clave === animada}
-                        regenerar={regenerar}
+                        regenerar={() => regenerarMensaje(i)}
                         calificar={(voto) => {
                           ag.editar(actual, (ms) => ms.map((x, j) => (j === i ? { ...x, voto } : x)))
                           if (m.registro) agenteApi.calificar(m.registro, voto).catch(() => {})
@@ -894,6 +1251,8 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
                         alTerminar={() => setTerminada(m.clave)}
                         elegirPlantilla={elegirPlantilla}
                         deshacer={() => preguntar('Deshaz el último cambio')}
+                        puedeAtender={['ADMIN', 'SUPER'].includes(usuario?.rol)}
+                        resolverAlerta={resolverAlerta}
                       />
                     ),
                   )}

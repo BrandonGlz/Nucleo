@@ -112,6 +112,7 @@ export const ANCHO = {
   tipo: 'uno',
   etiqueta: 'Ancho',
   valores: [
+    ['3', 'Un cuarto'],
     ['4', 'Un tercio'],
     ['6', 'Mitad'],
     ['8', 'Dos tercios'],
@@ -255,6 +256,7 @@ export const FUENTES = {
         etiqueta: 'Tipo de gráfica',
         valores: [
           ['tabla', 'Tabla'],
+          ['lista', 'Lista'],
           ['cifra', 'Cifras'],
         ],
       },
@@ -386,6 +388,8 @@ export const opcionesDe = (conf, id) => ({
   ...valoresBase(esquema(conf, id)),
   ancho: String(tarjeta(conf, id)?.ancho ?? 6),
   ...conf.opciones?.[id],
+  // Marca si la persona eligió la gráfica: con más de 8 puntos solo se respeta si es explícita.
+  elegida: conf.opciones?.[id]?.grafica,
 })
 // Cifras clave y Análisis ocupan todo el ancho; lo demás empieza a la mitad.
 export const opcionesNuevas = (fuente) => ({

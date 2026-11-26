@@ -171,6 +171,11 @@ function TrendChart(p) {
   }, h('svg', {
     width: W,
     height: H,
+    viewBox: '0 0 ' + W + ' ' + H,
+    style: {
+      width: '100%',
+      height: H
+    },
     onMouseMove: interactivo ? onMove : undefined,
     onMouseLeave: interactivo ? function () {
       hover[1](null);

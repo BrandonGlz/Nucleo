@@ -24,7 +24,7 @@ from reportlab.platypus import Paragraph
 
 from apps.reportes import formatos
 from apps.reportes.titulos import titulo_reporte
-from common.fechas import dias_periodo
+from common.fechas import dias_periodo, duracion_legible
 
 TINTA = colors.HexColor("#121413")
 SECUNDARIO = colors.HexColor("#4A4F4B")
@@ -67,7 +67,7 @@ MARGEN_X = 45
 MARGEN_Y = 42
 PIE = 30
 UTIL = ANCHO - 2 * MARGEN_X
-SEPARACION = 12
+SEPARACION = 8
 HUECO = 11
 # Medidas de la hoja del reporte; se ajustan al tamaño y la orientación del formato.
 _PAGINA = ContextVar("pagina_pdf", default=(ANCHO, ALTO))
@@ -238,7 +238,10 @@ def datos_hoja(reporte):
         "gestion_alertas": c.get("gestion_alertas"),
         "disponibilidad": c.get("disponibilidad"),
         "incidentes": c.get("incidentes"),
+        "incidentes_total": c.get("incidentes_total"),
         "observaciones": c.get("observaciones"),
+        "observaciones_total": c.get("observaciones_total"),
+        "dispositivos_total": c.get("dispositivos_total"),
     }
 
 
@@ -386,40 +389,26 @@ def _cabeza(c, reporte, hoja):
     c.setFont("Helvetica-Bold", 15)
     c.setFillColor(TINTA)
     c.drawString(MARGEN_X, y, hoja["titulo"])
-    y -= 13
-    inicio = _local(reporte.periodo_inicio)
-    c.setFont("Helvetica", 8.5)
-    c.setFillColor(TENUE)
-    c.drawString(MARGEN_X, y, f"Periodo de {MESES_LARGOS[inicio.month - 1]} {inicio.year}")
-
-    y -= 22
+    # El periodo ya va en el título y en la ficha: no se repite como subtítulo.
+    y -= 20
     generado = _local(reporte.fecha_generacion or timezone.now())
     filas = [
+        ("Área", hoja["area"]),
+        ("Periodo", _periodo(reporte.periodo_inicio, reporte.periodo_fin)),
+        ("Dispositivos", ", ".join(hoja["dispositivos"]) or "—"),
         (
-            ("Área", hoja["area"]),
-            ("Periodo", _periodo(reporte.periodo_inicio, reporte.periodo_fin)),
-        ),
-        (
-            ("Dispositivos", ", ".join(hoja["dispositivos"]) or "—"),
-            (
-                "Generado",
-                f"{_fecha(generado)}, {generado:%H:%M} · {ORIGEN.get(reporte.origen, 'Manual')}",
-            ),
+            "Generado",
+            f"{_fecha(generado)}, {generado:%H:%M} · {ORIGEN.get(reporte.origen, 'Manual')}",
         ),
     ]
-    columna = _util() / 2 + 10
-    for fila in filas:
-        alto_fila = 0
-        for i, (etiqueta, valor) in enumerate(fila):
-            x = MARGEN_X + i * columna
-            etiqueta_ancho = 84 if i == 0 else 66
-            _mayus(c, x, y, etiqueta, 6.5, TENUE)
-            parrafo = Paragraph(escape(valor), FICHA)
-            _, alto = parrafo.wrap(columna - etiqueta_ancho - 24, 100)
-            parrafo.drawOn(c, x + etiqueta_ancho, y - alto + 8.5)
-            alto_fila = max(alto_fila, alto)
-        y -= alto_fila + 6
-    y -= 4
+    etiqueta_ancho = 78
+    for etiqueta, valor in filas:
+        _mayus(c, MARGEN_X, y, etiqueta, 6.5, TENUE)
+        parrafo = Paragraph(escape(valor), FICHA)
+        _, alto = parrafo.wrap(max(80, _util() - etiqueta_ancho - 6), 100)
+        parrafo.drawOn(c, MARGEN_X + etiqueta_ancho, y - alto + 8.5)
+        y -= alto + 3
+    y -= 3
     c.setStrokeColor(TINTA)
     c.setLineWidth(1)
     c.line(MARGEN_X, y, _ancho() - MARGEN_X, y)
@@ -695,6 +684,25 @@ def _recortar_texto(texto, ancho, fuente="Helvetica", tam=7):
     return texto + puntos
 
 
+def _lineas(texto, ancho, fuente="Helvetica", tam=7, maximo=2):
+    """Parte un texto por palabras en renglones que quepan; nunca corta una palabra."""
+    palabras = str(texto).split()
+    lineas = []
+    actual = ""
+    for palabra in palabras:
+        candidato = f"{actual} {palabra}".strip()
+        if actual and stringWidth(candidato, fuente, tam) > ancho:
+            lineas.append(actual)
+            actual = palabra
+            if len(lineas) == maximo:
+                return lineas
+        else:
+            actual = candidato
+    if actual and len(lineas) < maximo:
+        lineas.append(actual)
+    return lineas[:maximo] or [""]
+
+
 def _anchos_tabla(c, encabezado, filas, disponible, tam=7, recortar=()):
     """Reparte el ancho según el contenido y recorta solo las columnas de texto."""
     naturales = []
@@ -771,6 +779,46 @@ def _alto_tabla(n):
     return max(100, 34 + 16 * (n + 1))
 
 
+def _angosta(ancho):
+    """Media fila o menos: la tabla pasa a lista de dos renglones, como en la web."""
+    return ancho <= _util() / 2 + 1
+
+
+def _lista_dos_renglones(c, x, y, ancho, alto, filas, con_separador=False):
+    """Filas de dos renglones: nombre arriba y cifras abajo en una línea.
+
+    ``filas`` son ``(nombre, detalle)``. Devuelve el alto usado. Se usa en tarjetas de
+    media fila o menos para que ninguna columna se parta ni se salga.
+    """
+    cursor = y - 30
+    limite = y - alto + 8
+    usado = 0
+    for i, (nombre, detalle) in enumerate(filas):
+        if cursor - 20 < limite:
+            break
+        if con_separador and i:
+            c.setStrokeColor(BORDE)
+            c.setLineWidth(0.4)
+            c.line(x + 11, cursor + 8, x + ancho - 11, cursor + 8)
+        c.setFont("Helvetica-Bold", 7.5)
+        c.setFillColor(TINTA)
+        c.drawString(
+            x + 11,
+            cursor,
+            _recortar_texto(nombre, ancho - 22, "Helvetica-Bold", 7.5),
+        )
+        c.setFont("Helvetica", 7)
+        c.setFillColor(SECUNDARIO)
+        c.drawString(
+            x + 11,
+            cursor - 10,
+            _recortar_texto(detalle, ancho - 22),
+        )
+        cursor -= 24
+        usado += 24
+    return usado
+
+
 def _tabla_simple(c, x, y, ancho, alto, encabezado, filas):
     """Tabla de borde fino; la primera fila es el encabezado."""
     columnas = len(encabezado)
@@ -805,11 +853,16 @@ def _alto_serie_carta(hoja, opciones):
     puntos = hoja["serie"]["puntos"] if hoja.get("serie") else []
     n = len(puntos)
     grafica = opciones.get("grafica", "horizontal")
+    if n > 8 and grafica in ("horizontal", "barras", "columnas"):
+        grafica = "linea"
     if grafica in ("horizontal", "barras"):
         return _alto_serie(n)
     if grafica == "tabla":
         return _alto_tabla(n)
-    if grafica in ("columnas", "linea"):
+    if grafica == "linea":
+        # Tarjeta mediana: el mismo alto fijo con muchos puntos, como en la web.
+        return 112 if n > 8 else max(120, _alto_serie(n))
+    if grafica == "columnas":
         return max(150, _alto_serie(n))
     return max(120, _alto_serie(n))
 
@@ -829,6 +882,9 @@ def _dibujar_serie(c, x, y, ancho, alto, hoja, opciones):
         return alto
     info = VARIABLE[serie["variable"]]
     puntos = serie["puntos"]
+    # Con más de 8 puntos, las barras se convierten en línea (alto fijo de tarjeta mediana).
+    if len(puntos) > 8 and grafica in ("horizontal", "barras", "columnas"):
+        grafica = "linea"
     if grafica == "tabla":
         _mayus(
             c,
@@ -964,7 +1020,7 @@ def _dibujar_serie(c, x, y, ancho, alto, hoja, opciones):
 def _alto_alertas(hoja, opciones):
     grafica = opciones.get("grafica", "barras")
     if grafica in ("barras", "horizontal"):
-        n = len(hoja["serie"]["puntos"]) if hoja.get("serie") else 0
+        n = len(hoja["variables"])
         return _alto_serie(n)
     if grafica == "tabla":
         return _alto_tabla(len(hoja["variables"]))
@@ -1068,7 +1124,8 @@ def _dibujar_alertas(c, x, y, ancho, alto, hoja, opciones):
     if grafica == "dona":
         radio = min(48, (alto - 64) / 2, ancho / 4)
         cx = x + ancho / 2
-        cy = y - 36 - radio
+        # La dona se centra en el espacio libre cuando la fila estira la tarjeta.
+        cy = (y - 30 + (y - alto + 10)) / 2
         angulo = 90
         for _, color, grados in segmentos_dona(variables, total):
             c.setFillColor(color)
@@ -1201,11 +1258,13 @@ def _mensaje_tarjeta(c, x, y, ancho, alto, titulo, texto, color=TENUE):
     return alto
 
 
-def _alto_cumplimiento(hoja, opciones):
+def _alto_cumplimiento(hoja, opciones, ancho=None):
     datos = hoja.get("cumplimiento")
     if not datos:
         return 68
     if opciones.get("grafica") == "tabla":
+        if ancho is not None and _angosta(ancho):
+            return max(76, 36 + 24 * len(datos))
         return max(100, 34 + 16 * (len(datos) + 1))
     if opciones.get("grafica") == "cifra":
         return 96
@@ -1226,23 +1285,36 @@ def _dibujar_cumplimiento(c, x, y, ancho, alto, hoja, opciones):
     grafica = opciones.get("grafica", "barras")
     seleccion = _datos(opciones, ("pct", "fuera"))
     if grafica == "tabla":
+        _tarjeta(c, x, y, ancho, alto)
+        _mayus(c, x + 11, y - 18, _titulo(opciones, "Cumplimiento"), 6.5, _color_marca())
+        if _angosta(ancho):
+            # Media fila o menos: nombre arriba y cifras en un solo renglón.
+            lista = []
+            for codigo, info in filas:
+                cifras = []
+                if "pct" in seleccion:
+                    cifras.append(f"{info['dentro_pct']:.{_decimales(opciones, 1)}f} %")
+                if "fuera" in seleccion:
+                    cifras.append(f"{duracion_legible(info['fuera_min'])} fuera")
+                cifras.append(f"{_miles(info['lecturas'])} lect.")
+                lista.append((VARIABLE[codigo]["corta"], " · ".join(cifras)))
+            _lista_dos_renglones(c, x, y, ancho, alto, lista)
+            return alto
         encabezado = ["Variable"]
         if "pct" in seleccion:
-            encabezado.append("Cumplimiento")
+            encabezado.append("Cumpl.")
         if "fuera" in seleccion:
             encabezado.append("Fuera")
-        encabezado.append("Lecturas")
+        encabezado.append("Lect.")
         cuerpo = []
         for codigo, info in filas:
             fila = [VARIABLE[codigo]["corta"]]
             if "pct" in seleccion:
                 fila.append(f"{info['dentro_pct']:.{_decimales(opciones, 1)}f} %")
             if "fuera" in seleccion:
-                fila.append(f"{info['fuera_min']:.{_decimales(opciones, 1)}f} min")
+                fila.append(duracion_legible(info["fuera_min"]))
             fila.append(_miles(info["lecturas"]))
             cuerpo.append(fila)
-        _tarjeta(c, x, y, ancho, alto)
-        _mayus(c, x + 11, y - 18, _titulo(opciones, "Cumplimiento"), 6.5, _color_marca())
         _tabla_compacta(c, x, y - 26, ancho, alto - 30, encabezado, cuerpo, recortar=(0,))
         return alto
     if grafica == "cifra":
@@ -1259,7 +1331,7 @@ def _dibujar_cumplimiento(c, x, y, ancho, alto, hoja, opciones):
                 c.setFont("Helvetica", 7)
                 c.setFillColor(TENUE)
                 c.drawString(
-                    ix, y - 68, f"{info['fuera_min']:.{_decimales(opciones, 1)}f} min fuera"
+                    ix, y - 68, f"{duracion_legible(info['fuera_min'])} fuera"
                 )
         return alto
     _tarjeta(c, x, y, ancho, alto)
@@ -1281,13 +1353,16 @@ def _dibujar_cumplimiento(c, x, y, ancho, alto, hoja, opciones):
     return alto
 
 
-def _alto_comparativo(hoja, opciones):
+def _alto_comparativo(hoja, opciones, ancho=None):
     datos = hoja.get("comparativo")
     if not datos or datos.get("sin_datos_previos"):
         return 68
     if opciones.get("grafica") == "cifra":
         return 100
-    return max(100, 42 + 18 * len(datos.get("variables") or []))
+    filas = datos.get("variables") or []
+    if ancho is not None and _angosta(ancho):
+        return max(90, 36 + 26 * len(filas) + (14 if datos.get("alertas") else 0))
+    return max(100, 42 + 18 * len(filas))
 
 
 def _signo(valor, decimales=1, unidad=""):
@@ -1369,11 +1444,47 @@ def _dibujar_comparativo(c, x, y, ancho, alto, hoja, opciones):
             )
         return alto
 
+    if _angosta(ancho):
+        # Media fila o menos: variable arriba y cifras en un renglón, sin tabla ancha.
+        lista = []
+        for fila in filas:
+            partes = []
+            if "promedio" in seleccion:
+                partes.append(
+                    f"{_num(fila.get('promedio') or 0, dec)} {fila.get('unidad', '')}".strip()
+                )
+            if "extremos" in seleccion:
+                partes.append(
+                    f"Mín {_num(fila.get('minimo') or 0, dec)} · "
+                    f"Máx {_num(fila.get('maximo') or 0, dec)}"
+                )
+            partes.append(
+                f"{_signo(fila.get('dif_promedio'), dec, fila.get('unidad', ''))}"
+                f"{_signo_pct(fila.get('dif_promedio_pct'))}"
+            )
+            lista.append(
+                (
+                    VARIABLE.get(fila["variable"], {}).get("corta", fila["variable"]),
+                    " · ".join(partes),
+                )
+            )
+        _lista_dos_renglones(c, x, y, ancho, alto, lista)
+        if "alertas" in seleccion and datos.get("alertas"):
+            alertas = datos["alertas"]
+            c.setFont("Helvetica", 6.5)
+            c.setFillColor(TENUE)
+            c.drawString(
+                x + 11,
+                y - alto + 10,
+                f"Alertas: {alertas['total']} contra {alertas['total_previo']}",
+            )
+        return alto
+
     encabezado = ["Variable"]
     if "promedio" in seleccion:
         encabezado.append("Promedio")
     if "extremos" in seleccion:
-        encabezado.append("Mín. / Máx.")
+        encabezado.append("Mín.–máx.")
     encabezado.append("Cambio")
     filas_tabla = []
     colores = []
@@ -1422,11 +1533,14 @@ def _dibujar_comparativo(c, x, y, ancho, alto, hoja, opciones):
     return alto
 
 
-def _alto_dispositivos(hoja, opciones):
+def _alto_dispositivos(hoja, opciones, ancho=None):
     filas = _filas_filtradas(opciones, hoja.get("por_dispositivo") or [])
     if not filas:
         return 68
-    return max(100, 34 + 16 * (len(filas) + 1))
+    extra = 14 if (hoja.get("dispositivos_total") or len(filas)) > len(filas) else 0
+    if ancho is not None and _angosta(ancho):
+        return max(90, 36 + 24 * len(filas) + extra)
+    return max(100, 34 + 16 * (len(filas) + 1) + extra)
 
 
 def _dibujar_dispositivos(c, x, y, ancho, alto, hoja, opciones):
@@ -1442,6 +1556,31 @@ def _dibujar_dispositivos(c, x, y, ancho, alto, hoja, opciones):
         return _mensaje_tarjeta(c, x, y, ancho, alto, _titulo(opciones, "Dispositivos"), mensaje)
     seleccion = _datos(opciones, ("minimo", "promedio", "maximo", "area"))
     variables = [codigo for codigo in ORDEN if any(codigo in fila for fila in filas)]
+    total = hoja.get("dispositivos_total") or len(filas)
+    restantes = max(0, total - len(filas))
+    _tarjeta(c, x, y, ancho, alto)
+    _mayus(c, x + 11, y - 18, _titulo(opciones, "Dispositivos"), 6.5, _color_marca())
+    if _angosta(ancho):
+        lista = []
+        for fila in filas:
+            partes = []
+            if "area" in seleccion and fila.get("area"):
+                partes.append(fila["area"])
+            for codigo in variables:
+                info = fila.get(codigo)
+                if not info or info.get("promedio") is None:
+                    continue
+                decimales = _decimales(opciones, VARIABLE[codigo]["decimales"])
+                partes.append(
+                    f"{_num(info['promedio'], decimales)} {VARIABLE[codigo]['unidad']}"
+                )
+            lista.append((fila.get("nombre") or fila.get("codigo", ""), " · ".join(partes)))
+        _lista_dos_renglones(c, x, y, ancho, alto, lista)
+        if restantes:
+            c.setFont("Helvetica", 6.5)
+            c.setFillColor(TENUE)
+            c.drawString(x + 11, y - alto + 9, f"y {restantes} más")
+        return alto
     encabezado = ["Dispositivo"]
     if "area" in seleccion:
         encabezado.append("Área")
@@ -1459,8 +1598,6 @@ def _dibujar_dispositivos(c, x, y, ancho, alto, hoja, opciones):
                 decimales = _decimales(opciones, VARIABLE[codigo]["decimales"])
                 datos.append(f"{_num(info['promedio'], decimales)} {VARIABLE[codigo]['unidad']}")
         cuerpo.append(datos)
-    _tarjeta(c, x, y, ancho, alto)
-    _mayus(c, x + 11, y - 18, _titulo(opciones, "Dispositivos"), 6.5, _color_marca())
     _tabla_compacta(
         c,
         x,
@@ -1472,6 +1609,10 @@ def _dibujar_dispositivos(c, x, y, ancho, alto, hoja, opciones):
         tam=6,
         recortar=(0,),
     )
+    if restantes:
+        c.setFont("Helvetica", 6.5)
+        c.setFillColor(TENUE)
+        c.drawString(x + 11, y - alto + 9, f"y {restantes} más")
     return alto
 
 
@@ -1513,7 +1654,8 @@ def _dibujar_gestion(c, x, y, ancho, alto, hoja, opciones):
         radio = min(42, (alto - 62) / 2, ancho / 4, (ancho - 22 - 10 - ancho_leyenda) / 2)
         radio = max(radio, 14)
         grupo = 2 * radio + 10 + ancho_leyenda
-        cx, cy = x + max(11, (ancho - grupo) / 2) + radio, y - 36 - radio
+        cx = x + max(11, (ancho - grupo) / 2) + radio
+        cy = (y - 30 + (y - alto + 10)) / 2
         angulo = 90
         for i, (_, valor) in enumerate(puntos):
             grados = 360 * valor / total
@@ -1586,12 +1728,17 @@ def _dibujar_gestion(c, x, y, ancho, alto, hoja, opciones):
         c.drawString(
             x + 11,
             y - alto + 14,
-            f"Tiempo medio de atención: {datos['tiempo_medio_min']:.1f} min",
+            f"Tiempo medio de atención: {duracion_legible(datos['tiempo_medio_min'])}",
         )
     return alto
 
 
-def _alto_disponibilidad(hoja, opciones):
+def _disponibilidad_nombres_arriba(ancho):
+    """Tarjetas de 4 columnas o menos: nombre arriba y barra con porcentaje abajo."""
+    return ancho <= _util() * 4 / 12 + 1
+
+
+def _alto_disponibilidad(hoja, opciones, ancho=None):
     datos = hoja.get("disponibilidad")
     if not datos:
         return 68
@@ -1603,8 +1750,19 @@ def _alto_disponibilidad(hoja, opciones):
         return 68
     # El pie «N huecos registrados» necesita su propio renglón debajo de las filas.
     pie = 14 if "huecos" in _datos(opciones, ("pct", "huecos")) else 0
+    if opciones.get("grafica") == "tabla" and ancho is not None and _angosta(ancho):
+        return max(90, 36 + 24 * len(filas) + pie)
     if opciones.get("grafica") == "tabla":
         return max(100, 34 + 16 * (len(filas) + 1) + pie)
+    if ancho is not None and _disponibilidad_nombres_arriba(ancho):
+        usado = 34
+        for info in filas:
+            lineas = _lineas(info.get("nombre") or "", ancho - 22, "Helvetica", 7)
+            usado += 9 * len(lineas) + 14
+        usado += 6 * max(0, len(filas) - 1)
+        if "huecos" in _datos(opciones, ("pct", "huecos")):
+            usado += pie
+        return max(100, usado)
     return max(100, 42 + 16 * len(filas) + pie)
 
 
@@ -1627,9 +1785,25 @@ def _dibujar_disponibilidad(c, x, y, ancho, alto, hoja, opciones):
     _tarjeta(c, x, y, ancho, alto)
     _mayus(c, x + 11, y - 18, _titulo(opciones, "Disponibilidad"), 6.5, _color_marca())
     if opciones.get("grafica") == "tabla":
+        if _angosta(ancho):
+            lista = []
+            for _, info in filas:
+                partes = []
+                if "pct" in seleccion:
+                    partes.append(f"{info['pct']:.{_decimales(opciones, 1)}f} %")
+                if "huecos" in seleccion:
+                    huecos = info.get("huecos") or []
+                    if huecos:
+                        detalle = f"{duracion_legible(huecos[0]['minutos'])} · {len(huecos)} huecos"
+                        partes.append(detalle)
+                    else:
+                        partes.append("Sin huecos")
+                lista.append((info.get("nombre", ""), " · ".join(partes)))
+            _lista_dos_renglones(c, x, y, ancho, alto, lista)
+            return alto
         encabezado = ["Dispositivo", "Área"]
         if "pct" in seleccion:
-            encabezado.append("Disponibilidad")
+            encabezado.append("Disp.")
         if "huecos" in seleccion:
             encabezado.append("Huecos")
         cuerpo = []
@@ -1639,12 +1813,40 @@ def _dibujar_disponibilidad(c, x, y, ancho, alto, hoja, opciones):
                 fila.append(f"{info['pct']:.{_decimales(opciones, 1)}f} %")
             if "huecos" in seleccion:
                 huecos = info.get("huecos") or []
-                fila.append(f"{huecos[0]['minutos']} min" if huecos else "—")
+                fila.append(duracion_legible(huecos[0]["minutos"]) if huecos else "—")
             cuerpo.append(fila)
         _tabla_compacta(c, x, y - 26, ancho, alto - 30, encabezado, cuerpo, tam=6, recortar=(0,))
     else:
         fila_y = y - 38
+        nombres_arriba = _disponibilidad_nombres_arriba(ancho)
         for _, info in filas:
+            if nombres_arriba:
+                lineas = _lineas(info.get("nombre") or "", ancho - 22, "Helvetica", 7)
+                c.setFont("Helvetica", 7)
+                c.setFillColor(SECUNDARIO)
+                for i, linea in enumerate(lineas):
+                    c.drawString(x + 11, fila_y - i * 9, linea)
+                barra_y = fila_y - 9 * len(lineas) - 4
+                c.setFillColor(PISTA)
+                c.rect(x + 11, barra_y, ancho - 22, 6, stroke=0, fill=1)
+                c.setFillColor(EXITO if info["pct"] >= 90 else AVISO)
+                c.rect(
+                    x + 11,
+                    barra_y,
+                    (ancho - 22) * min(100, info["pct"]) / 100,
+                    6,
+                    stroke=0,
+                    fill=1,
+                )
+                c.setFont("Helvetica-Bold", 7)
+                c.setFillColor(TINTA)
+                c.drawRightString(
+                    x + ancho - 11,
+                    barra_y - 2,
+                    f"{info['pct']:.{_decimales(opciones, 1)}f} %",
+                )
+                fila_y = barra_y - 14
+                continue
             c.setFont("Helvetica", 7)
             c.setFillColor(SECUNDARIO)
             c.drawString(x + 11, fila_y, (info.get("nombre") or "")[:34])
@@ -1685,11 +1887,16 @@ def _pico_incidente(incidente, opciones):
     return _num(valor, _decimales(opciones, info.get("decimales", 1)))
 
 
-def _alto_incidentes(hoja, opciones):
-    datos = _filas_filtradas(opciones, hoja.get("incidentes") or [], codigo="dispositivo_codigo")
+def _alto_incidentes(hoja, opciones, ancho=None):
+    datos = _filas_filtradas(
+        opciones, hoja.get("incidentes") or [], codigo="dispositivo_codigo"
+    )[:5]
     if not datos:
         return 68
-    return max(100, 34 + 16 * len(datos))
+    extra = 14 if (hoja.get("incidentes_total") or len(datos)) > len(datos) else 0
+    if opciones.get("grafica") == "tabla" and ancho is not None and _angosta(ancho):
+        return max(90, 36 + 24 * len(datos) + extra)
+    return max(100, 34 + 16 * len(datos) + extra)
 
 
 def _dibujar_incidentes(c, x, y, ancho, alto, hoja, opciones):
@@ -1703,8 +1910,31 @@ def _dibujar_incidentes(c, x, y, ancho, alto, hoja, opciones):
         areas, dispositivos = _filtro(opciones)
         mensaje = SIN_DATOS_FILTRO if areas or dispositivos else SIN_DATOS_PERIODO
         return _mensaje_tarjeta(c, x, y, ancho, alto, _titulo(opciones, "Incidentes"), mensaje)
+    # Tope de la lista: los cinco incidentes más largos (ya vienen ordenados del cálculo).
+    datos = datos[:5]
     _tarjeta(c, x, y, ancho, alto)
     _mayus(c, x + 11, y - 18, _titulo(opciones, "Incidentes"), 6.5, _color_marca())
+    total = hoja.get("incidentes_total") or len(datos)
+    if opciones.get("grafica") == "tabla" and _angosta(ancho):
+        lista = []
+        for incidente in datos:
+            variable = incidente.get("variable_nombre") or incidente.get("variable", "")
+            detalle = " · ".join(
+                [
+                    variable,
+                    _fecha_corta(_local(incidente["inicio"])),
+                    duracion_legible(incidente.get("duracion_min")),
+                    f"pico {_pico_incidente(incidente, opciones)}",
+                    incidente.get("nivel", ""),
+                ]
+            )
+            lista.append((incidente.get("dispositivo", ""), detalle))
+        _lista_dos_renglones(c, x, y, ancho, alto, lista)
+        if total > len(datos):
+            c.setFont("Helvetica", 6.5)
+            c.setFillColor(TENUE)
+            c.drawString(x + 11, y - alto + 9, f"y {total - len(datos)} más")
+        return alto
     if opciones.get("grafica") == "lista":
         fila_y = y - 36
         for incidente in datos:
@@ -1723,7 +1953,7 @@ def _dibujar_incidentes(c, x, y, ancho, alto, hoja, opciones):
                 _recortar_texto(
                     f"{incidente.get('variable_nombre') or incidente.get('variable', '')} · "
                     f"{_fecha_corta(_local(incidente['inicio']))} · "
-                    f"{incidente.get('duracion_min', 0):.1f} min · "
+                    f"{duracion_legible(incidente.get('duracion_min'))} · "
                     f"pico {_pico_incidente(incidente, opciones)}",
                     ancho - 200,
                     "Helvetica",
@@ -1733,6 +1963,10 @@ def _dibujar_incidentes(c, x, y, ancho, alto, hoja, opciones):
             c.setFillColor(AVISO if incidente.get("nivel") == "PELIGRO" else TENUE)
             c.drawRightString(x + ancho - 11, fila_y, incidente.get("nivel", ""))
             fila_y -= 16
+        if total > len(datos):
+            c.setFont("Helvetica", 6.5)
+            c.setFillColor(TENUE)
+            c.drawString(x + 11, y - alto + 9, f"y {total - len(datos)} más")
         return alto
     encabezado = ["Dispositivo", "Variable", "Inicio", "Duración", "Pico", "Nivel"]
     filas = [
@@ -1740,7 +1974,7 @@ def _dibujar_incidentes(c, x, y, ancho, alto, hoja, opciones):
             incidente.get("dispositivo", ""),
             incidente.get("variable_nombre") or incidente.get("variable", ""),
             _fecha_corta(_local(incidente["inicio"])),
-            f"{incidente.get('duracion_min', 0):.1f} min",
+            duracion_legible(incidente.get("duracion_min")),
             f"{_pico_incidente(incidente, opciones)}",
             incidente.get("nivel", ""),
         ]
@@ -1750,14 +1984,35 @@ def _dibujar_incidentes(c, x, y, ancho, alto, hoja, opciones):
     return alto
 
 
-def _alto_observaciones(hoja, opciones):
+def _alto_observaciones(hoja, opciones, ancho=None):
     datos = _filas_filtradas(opciones, hoja.get("observaciones") or [], codigo="dispositivo_codigo")
     if not datos:
         return 68
+    total = hoja.get("observaciones_total") or len(datos)
     if opciones.get("grafica") == "tabla":
-        filas = min(len(datos), 8)
-        return max(100, 34 + 14 * (filas + 1) + (16 if len(datos) > filas else 0))
-    return 220
+        filas = min(len(datos), 4)
+        return max(100, 34 + 14 * (filas + 1) + (16 if total > filas else 0))
+    if ancho is None:
+        return 226
+    datos = datos[:4]
+    if ancho >= _util() * 0.6:
+        # Dos columnas de dos, como la web en las tarjetas de 8 y 12 columnas.
+        columna = (ancho - 32) / 2
+        altos = []
+        for fila in datos:
+            texto = (fila.get("texto") or "")[:220]
+            _, alto_texto = Paragraph(escape(texto), NOTA).wrap(columna - 11, 100)
+            altos.append(16 + alto_texto + 8)
+        usado = 36
+        for i in range(0, len(altos), 2):
+            usado += max(altos[i : i + 2])
+        return max(120, usado + (14 if total > len(datos) else 0))
+    usado = 36
+    for fila in datos:
+        texto = (fila.get("texto") or "")[:220]
+        _, alto_texto = Paragraph(escape(texto), NOTA).wrap(ancho - 22, 100)
+        usado += 16 + alto_texto + 8
+    return max(120, usado + (14 if total > 4 else 0))
 
 
 def _dibujar_observaciones(c, x, y, ancho, alto, hoja, opciones):
@@ -1773,8 +2028,9 @@ def _dibujar_observaciones(c, x, y, ancho, alto, hoja, opciones):
         return _mensaje_tarjeta(c, x, y, ancho, alto, _titulo(opciones, "Observaciones"), mensaje)
     _tarjeta(c, x, y, ancho, alto)
     _mayus(c, x + 11, y - 18, _titulo(opciones, "Observaciones"), 6.5, _color_marca())
+    total = hoja.get("observaciones_total") or len(datos)
     if opciones.get("grafica") == "tabla":
-        visibles = datos[:8]
+        visibles = datos[:4]
         filas = [
             [
                 _fecha_corta(_local(fila["fecha"])),
@@ -1796,34 +2052,55 @@ def _dibujar_observaciones(c, x, y, ancho, alto, hoja, opciones):
             tam=6,
             recortar=(4,),
         )
-        if len(datos) > len(visibles):
+        if total > len(visibles):
             c.setFont("Helvetica", 6.5)
             c.setFillColor(TENUE)
             c.drawString(
                 x + 11,
                 y - alto + 8,
-                f"y {len(datos) - len(visibles)} más en el sistema",
+                f"y {total - len(visibles)} más",
             )
         return alto
     fila_y = y - 36
     limite = y - alto + 12
     mostradas = 0
+    datos = datos[:4]
+    dos_columnas = ancho >= _util() * 0.6
+    columnas = 2 if dos_columnas else 1
+    ancho_columna = ((ancho - 32) / 2) if dos_columnas else (ancho - 22)
+    alturas = {}
     for fila in datos:
         texto = (fila.get("texto") or "")[:220]
+        _, alto_texto = Paragraph(escape(texto), NOTA).wrap(ancho_columna - 11, 100)
+        alturas[id(fila)] = 16 + alto_texto + 8
+    for i, fila in enumerate(datos):
+        columna = i % columnas
+        fila_indice = i // columnas
+        x_texto = x + 11 + columna * (ancho_columna + 10)
+        if not dos_columnas:
+            fila_y = y - 36 - sum(alturas[id(f)] for f in datos[:i])
+        else:
+            fila_y = y - 36 - sum(
+                max(
+                    alturas[id(datos[j])]
+                    for j in range(k * 2, min(k * 2 + 2, len(datos)))
+                )
+                for k in range(fila_indice)
+            )
+        if fila_y - alturas[id(fila)] < limite:
+            continue
+        texto = (fila.get("texto") or "")[:220]
         parrafo = Paragraph(escape(texto), NOTA)
-        _, alto_texto = parrafo.wrap(ancho - 22, 100)
-        alto_entrada = 16 + alto_texto + 8
-        if fila_y - alto_entrada < limite:
-            break
+        _, alto_texto = parrafo.wrap(ancho_columna - 11, 100)
         c.setFont("Helvetica-Bold", 7)
         c.setFillColor(TINTA)
         c.drawString(
-            x + 11,
+            x_texto,
             fila_y,
             _recortar_texto(
                 f"{fila.get('dispositivo', '')} · "
                 f"{fila.get('variable_nombre') or fila.get('variable', '')}",
-                ancho - 22,
+                ancho_columna - 11,
                 "Helvetica-Bold",
                 7,
             ),
@@ -1831,20 +2108,19 @@ def _dibujar_observaciones(c, x, y, ancho, alto, hoja, opciones):
         c.setFont("Helvetica", 6.5)
         c.setFillColor(TENUE)
         c.drawString(
-            x + 11,
+            x_texto,
             fila_y - 10,
             f"{_fecha_corta(_local(fila['fecha']))} · {fila.get('usuario', '')}",
         )
-        parrafo.drawOn(c, x + 11, fila_y - 16 - alto_texto)
-        fila_y -= alto_entrada
+        parrafo.drawOn(c, x_texto, fila_y - 16 - alto_texto)
         mostradas += 1
-    if mostradas < len(datos):
+    if total > mostradas:
         c.setFont("Helvetica", 6.5)
         c.setFillColor(TENUE)
         c.drawString(
             x + 11,
             limite,
-            f"y {len(datos) - mostradas} más en el sistema",
+            f"y {total - mostradas} más",
         )
     return alto
 
@@ -1863,19 +2139,19 @@ def _medir(fuente, ancho, hoja, opciones):
     if fuente == "resumen":
         return _alto_resumen()
     if fuente == "cumplimiento":
-        return _alto_cumplimiento(hoja, opciones)
+        return _alto_cumplimiento(hoja, opciones, ancho)
     if fuente == "comparativo":
-        return _alto_comparativo(hoja, opciones)
+        return _alto_comparativo(hoja, opciones, ancho)
     if fuente == "dispositivos":
-        return _alto_dispositivos(hoja, opciones)
+        return _alto_dispositivos(hoja, opciones, ancho)
     if fuente == "gestion_alertas":
         return _alto_gestion(hoja, opciones)
     if fuente == "disponibilidad":
-        return _alto_disponibilidad(hoja, opciones)
+        return _alto_disponibilidad(hoja, opciones, ancho)
     if fuente == "incidentes":
-        return _alto_incidentes(hoja, opciones)
+        return _alto_incidentes(hoja, opciones, ancho)
     if fuente == "observaciones":
-        return _alto_observaciones(hoja, opciones)
+        return _alto_observaciones(hoja, opciones, ancho)
     return 100
 
 
@@ -1927,23 +2203,22 @@ def _dibujar_tarjeta_base(c, fuente, x, y, ancho, alto, hoja, opciones):
 
 
 def _posiciones_fila(spans):
-    """Posición y ancho de cada tarjeta; las filas completas respetan la rejilla de 12."""
+    """Posición y ancho de cada tarjeta: la fila siempre ocupa las 12 columnas.
+
+    Si una fila queda incompleta, el sobrante se reparte en proporción al ancho de cada
+    tarjeta, como en la web; ninguna queda sola a media fila con el resto vacío.
+    """
     n = len(spans)
-    if sum(spans) == 12:
-        disponible = _util() - HUECO * (n - 1)
-        anchos = [disponible * span / 12 for span in spans]
-        posiciones = []
-        cursor = MARGEN_X
-        for ancho in anchos:
-            posiciones.append((cursor, ancho))
-            cursor += ancho + HUECO
-        return posiciones
-    slot = _util() / 12
+    total = sum(spans)
+    if not n or total <= 0:
+        return []
+    disponible = _util() - HUECO * (n - 1)
+    anchos = [disponible * span / total for span in spans]
     posiciones = []
-    prefijo = 0
-    for span in spans:
-        posiciones.append((MARGEN_X + prefijo * slot, max(80, slot * span - HUECO)))
-        prefijo += span
+    cursor = MARGEN_X
+    for ancho in anchos:
+        posiciones.append((cursor, ancho))
+        cursor += ancho + HUECO
     return posiciones
 
 

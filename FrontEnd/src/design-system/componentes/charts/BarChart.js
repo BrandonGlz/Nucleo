@@ -34,6 +34,11 @@ function BarChart(p) {
   }, h('svg', {
     width: W,
     height: H,
+    viewBox: '0 0 ' + W + ' ' + H,
+    style: {
+      width: '100%',
+      height: H
+    },
     role: 'img',
     'aria-label': p.label || 'Gráfica de barras',
     // Al salir el mouse vuelve a la barra inicial en vez de quedarse en la última tocada

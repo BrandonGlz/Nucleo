@@ -135,6 +135,7 @@ ANCHO = {
     "tipo": "uno",
     "etiqueta": "Ancho",
     "valores": [
+        ("3", "Un cuarto"),
         ("4", "Un tercio"),
         ("6", "Mitad"),
         ("8", "Dos tercios"),
@@ -283,6 +284,7 @@ FUENTES = {
                 "etiqueta": "Tipo de gráfica",
                 "valores": [
                     ("tabla", "Tabla"),
+                    ("lista", "Lista"),
                     ("cifra", "Cifras"),
                 ],
             },
@@ -714,35 +716,58 @@ def _conf(visibles, opciones=None, personalizadas=None):
 
 # Operativo detallado = la configuración BASE de la web: las 7 tarjetas de siempre.
 CONF_OPERATIVO = _conf([w["id"] for w in WIDGETS])
+# Etapa 9: la plantilla Operativo detallado abre las tarjetas nuevas y el análisis breve.
 CONF_OPERATIVO_AMPLIADO = _conf(
-    [w["id"] for w in WIDGETS] + ["dispositivos", "gestion_alertas", "disponibilidad"],
-    {},
+    [
+        "cifras",
+        "var:TEMP",
+        "var:HUM",
+        "var:AIRE",
+        "serie",
+        "alertas",
+        "dispositivos",
+        "gestion_alertas",
+        "disponibilidad",
+        "analisis",
+    ],
+    {
+        "serie": {"grafica": "linea", "ancho": "6"},
+        "alertas": {"grafica": "barras", "ancho": "6"},
+        "dispositivos": {"grafica": "tabla", "ancho": "6"},
+        "gestion_alertas": {"grafica": "dona", "ancho": "3"},
+        "disponibilidad": {"grafica": "barras", "ancho": "3"},
+        "analisis": {"ancho": "12"},
+    },
     PERSONALIZADAS,
 )
+CONF_OPERATIVO_AMPLIADO["hoja"] = {"analisis_largo": "breve"}
 # Las demás plantillas usan las tarjetas nuevas declaradas arriba.
 CONF_EJECUTIVO = _conf(
     ["cifras", "cumplimiento", "comparativo", "serie", "analisis"],
     {
-        "cumplimiento": {"grafica": "cifra"},
-        "comparativo": {"grafica": "tabla"},
-        "serie": {"grafica": "linea"},
+        "cumplimiento": {"grafica": "cifra", "ancho": "12"},
+        "comparativo": {"grafica": "lista", "ancho": "6"},
+        "serie": {"grafica": "linea", "ancho": "6"},
+        "analisis": {"ancho": "12"},
     },
     PERSONALIZADAS,
 )
 CONF_CUMPLIMIENTO = _conf(
     [
         "cumplimiento",
+        "disponibilidad",
         "incidentes",
         "gestion_alertas",
         "observaciones",
-        "disponibilidad",
         "analisis",
     ],
     {
-        "cumplimiento": {"grafica": "tabla"},
+        "cumplimiento": {"grafica": "tabla", "ancho": "8"},
+        "disponibilidad": {"grafica": "barras", "ancho": "4"},
         "incidentes": {"grafica": "tabla", "ancho": "12"},
-        "gestion_alertas": {"grafica": "dona"},
-        "disponibilidad": {"grafica": "barras"},
+        "gestion_alertas": {"grafica": "dona", "ancho": "4"},
+        "observaciones": {"grafica": "lista", "ancho": "8"},
+        "analisis": {"ancho": "12"},
     },
     PERSONALIZADAS,
 )
@@ -750,8 +775,9 @@ CONF_INCIDENTES = _conf(
     ["incidentes", "alertas", "gestion_alertas", "observaciones"],
     {
         "incidentes": {"grafica": "tabla", "ancho": "12"},
-        "alertas": {"grafica": "barras"},
-        "gestion_alertas": {"grafica": "barras"},
+        "alertas": {"grafica": "barras", "ancho": "6"},
+        "gestion_alertas": {"grafica": "barras", "ancho": "6"},
+        "observaciones": {"grafica": "lista", "ancho": "12"},
     },
     PERSONALIZADAS,
 )

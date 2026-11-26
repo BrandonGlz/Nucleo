@@ -5,7 +5,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import FileResponse, HttpResponse, StreamingHttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -34,6 +34,7 @@ from apps.reportes import (
     social,
 )
 from apps.reportes.models import (
+    EnvioReporte,
     FormatoReporte,
     PreguntaAgente,
     ProgramacionReporte,
@@ -93,7 +94,17 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
             archivados = self.request.query_params.get("archivados", "").lower()
             if archivados not in ("1", "true"):
                 consulta = consulta.filter(archivado=False)
-        consulta = consulta.select_related("organizacion", "area", "formato_version__formato")
+        consulta = consulta.select_related(
+            "organizacion", "area", "formato_version__formato"
+        ).prefetch_related(
+            Prefetch(
+                "envios",
+                queryset=EnvioReporte.objects.select_related("enviado_por").order_by(
+                    "-fecha", "-num"
+                ),
+                to_attr="_envios_recientes",
+            )
+        )
         return self._filtrar(consulta)
 
     def _filtrar(self, consulta):
@@ -123,13 +134,14 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
             fecha = parse_datetime(desde)
             if fecha is None:
                 raise ValidationError({"desde": "La fecha no es válida."})
-            consulta = consulta.filter(fecha_generacion__gte=fecha)
+            # Solapamiento con el periodo del reporte; el fin es exclusivo.
+            consulta = consulta.filter(periodo_fin__gt=fecha)
         hasta = parametros.get("hasta", "").strip()
         if hasta:
             fecha = parse_datetime(hasta)
             if fecha is None:
                 raise ValidationError({"hasta": "La fecha no es válida."})
-            consulta = consulta.filter(fecha_generacion__lte=fecha)
+            consulta = consulta.filter(periodo_inicio__lt=fecha)
         return consulta
 
     def create(self, request):
@@ -533,13 +545,29 @@ class ProgramacionReporteViewSet(viewsets.ModelViewSet):
 
 class PreguntaAgenteSerializer(serializers.Serializer):
     pregunta = serializers.CharField(max_length=500)
-    dispositivo = serializers.IntegerField()
+    dispositivo = serializers.IntegerField(required=False)
+    alcance = serializers.ChoiceField(
+        choices=("DISPOSITIVO", "AREA", "ORGANIZACION"),
+        required=False,
+        default="DISPOSITIVO",
+    )
+    area = serializers.IntegerField(required=False, allow_null=True)
     # Pregunta anterior de la conversación, para seguimientos como «¿y la gráfica?».
     anterior = serializers.CharField(max_length=500, required=False, allow_blank=True)
     # La web precarga las sugerencias: no son peticiones del usuario ni cuentan como repetidas.
     precarga = serializers.BooleanField(required=False, default=False)
     # Confirmación explícita de una acción preparada (el id que devolvió el agente).
     accion = serializers.CharField(required=False, max_length=32)
+
+    def validate(self, datos):
+        alcance = datos.get("alcance", "DISPOSITIVO")
+        if alcance == "DISPOSITIVO" and not datos.get("dispositivo"):
+            raise serializers.ValidationError(
+                {"dispositivo": "Elige el dispositivo del alcance."}
+            )
+        if alcance == "AREA" and not datos.get("area"):
+            raise serializers.ValidationError({"area": "Elige el área del alcance."})
+        return datos
 
 
 class AgenteView(APIView):
@@ -555,11 +583,83 @@ class AgenteView(APIView):
         with puente.peticion():
             return super().dispatch(request, *args, **kwargs)
 
+    def _responder_por_alcance(self, request, datos):
+        """Pregunta de cifras para un área o toda la organización."""
+        alcance = datos.get("alcance", "DISPOSITIVO")
+        usuario = request.user
+        area = None
+        areas = []
+        if alcance == "AREA":
+            area = areas_visibles(usuario).filter(pk=datos.get("area")).first()
+            if area is None:
+                raise NotFound("El área no existe o no está a su alcance.")
+            areas = [area]
+            texto_alcance = area.nombre
+            motivo = puente.revisar_alcance(usuario, area=area)
+        else:
+            if usuario.rol_id not in (roles.ADMIN, roles.SUPERVISOR):
+                raise PermissionDenied("Este alcance no está disponible para tu rol.")
+            areas = list(areas_visibles(usuario))
+            if not areas:
+                raise NotFound("No hay áreas para este alcance.")
+            texto_alcance = (
+                "Toda la organización"
+                if usuario.rol_id == roles.ADMIN
+                else servicios.texto_alcance(usuario.organizacion, None, [a.pk for a in areas])
+            )
+            motivo = puente.revisar_alcance(usuario, organizacion=True)
+        if motivo:
+            return Response(
+                {"detail": motivo, "inactivo": True, "motivo": motivo},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        anchor = next((a.puente_nico for a in areas if a.puente_nico_id), None)
+        if anchor is None:
+            anchor = (
+                dispositivos_visibles(usuario).select_related("estado_dispositivo").first()
+            )
+        if anchor is None:
+            raise NotFound("No hay dispositivos para este alcance.")
+        original = datos["pregunta"]
+        r = agente.responder_alcance(usuario, areas, texto_alcance, original)
+        if r is None:
+            return Response(
+                {
+                    "texto": (
+                        "Con este alcance puedo responder promedios, máximos, mínimos, "
+                        "alertas y lecturas por área u organización. Elige un dispositivo "
+                        "para las demás preguntas."
+                    ),
+                    "via": PreguntaAgente.Via.PREDEFINIDA,
+                    "pasos": [],
+                }
+            )
+        registro = aprendizaje.registrar(
+            usuario,
+            anchor,
+            original,
+            PreguntaAgente.Via.PREDEFINIDA,
+            r.get("texto", ""),
+            tema=agente._tema(original) or "",
+            datos={"alcance": alcance, "area": getattr(area, "pk", None)},
+        )
+        return Response(
+            {
+                **r,
+                "registro": registro.num,
+                "via": PreguntaAgente.Via.PREDEFINIDA,
+                "pasos": [],
+            }
+        )
+
     def post(self, request):
         if request.user.rol_id not in roles.TODOS or not request.user.puede_usar_agente:
             raise PermissionDenied("No tienes acceso a Nico AI.")
         entrada = PreguntaAgenteSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
+        alcance = entrada.validated_data.get("alcance", "DISPOSITIVO")
+        if alcance != "DISPOSITIVO":
+            return self._responder_por_alcance(request, entrada.validated_data)
         dispositivo = (
             dispositivos_visibles(request.user)
             .select_related("estado_dispositivo")
@@ -1156,6 +1256,25 @@ class EstadoAgenteView(APIView):
             if puente.con_puente(d):
                 puente.calentar(d)
                 break
+        disponible = None
+        motivo = None
+        area_param = request.query_params.get("area", "").strip()
+        organizacion = request.query_params.get("organizacion", "").lower() in ("1", "true")
+        if organizacion:
+            if request.user.rol_id not in (roles.ADMIN, roles.SUPERVISOR):
+                raise PermissionDenied("Este alcance no está disponible para tu rol.")
+            motivo = puente.revisar_alcance(request.user, organizacion=True)
+            disponible = motivo is None
+        elif area_param:
+            area = (
+                areas_visibles(request.user).filter(pk=area_param).first()
+                if area_param.isdigit()
+                else None
+            )
+            if area is None:
+                raise NotFound("El área no existe o no está a su alcance.")
+            motivo = puente.revisar_alcance(request.user, area=area)
+            disponible = motivo is None
         return Response(
             {
                 "puente": puente.habilitado(),
@@ -1163,6 +1282,8 @@ class EstadoAgenteView(APIView):
                 "fisicos": [d.num for d in visibles if puente.con_puente(d)],
                 "exige_puente": exige,
                 "disponibles": [d.num for d in (activos if exige else visibles)],
+                "disponible": disponible,
+                "motivo": motivo or "",
             }
         )
 
@@ -1183,7 +1304,12 @@ class SugerenciasAgenteView(APIView):
         )
         if dispositivo is None:
             raise NotFound("Dispositivo no encontrado.")
-        return Response(sugerencias.para(request.user, dispositivo))
+        return Response(
+            {
+                **sugerencias.para(request.user, dispositivo),
+                "inicio": sugerencias.inicio_para(request.user, dispositivo),
+            }
+        )
 
 
 class _PuenteBase(APIView):

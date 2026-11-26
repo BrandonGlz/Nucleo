@@ -1,5 +1,6 @@
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
@@ -101,10 +102,21 @@ class OrganizacionViewSet(
 class AreaViewSet(viewsets.ModelViewSet):
     serializer_class = AreaSerializer
     permission_classes = [PermisoPorRol]
-    roles_escritura = (roles.ADMIN,)
+    # El supervisor solo cambia el ESP de Nico de sus áreas; crear y borrar sigue siendo del ADMIN.
+    roles_escritura = (roles.ADMIN, roles.SUPERVISOR)
 
     def get_queryset(self):
         return areas_visibles(self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(organizacion=self.request.user.organizacion)
+
+    def create(self, request, *args, **kwargs):
+        if request.user.rol_id != roles.ADMIN:
+            raise PermissionDenied("Solo el administrador agrega áreas.")
+        return super().create(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.rol_id != roles.ADMIN:
+            raise PermissionDenied("Solo el administrador elimina áreas.")
+        return super().destroy(request, *args, **kwargs)

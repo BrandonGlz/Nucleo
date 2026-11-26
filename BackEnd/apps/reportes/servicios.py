@@ -19,7 +19,7 @@ from apps.dispositivos.models import Sensor
 from apps.mediciones.models import Lectura
 from apps.organizaciones.models import Area
 from apps.reportes import calculos, formatos, ia, pdf, progreso
-from apps.reportes.models import ProgramacionReporte, Reporte
+from apps.reportes.models import EnvioReporte, ProgramacionReporte, Reporte
 from apps.reportes.titulos import titulo_reporte
 from apps.usuarios.models import Usuario
 from common import correo, roles
@@ -170,6 +170,18 @@ def calcular_cifras(
                 datos["nombre"] = info.nombre
                 datos["unidad"] = info.unidad
     total_alertas = alertas.count()
+    disponibilidad = calculos.disponibilidad(sensores, inicio, fin)
+    incidentes = calculos.incidentes(sensores, inicio, fin)
+    observaciones = calculos.observaciones(alertas)
+    # Tope de la tabla de dispositivos: los 8 con peor disponibilidad. Las listas largas
+    # muestran «y N más»; las cifras guardan el total para que la web y el PDF coincidan.
+    total_dispositivos = len(dispositivos)
+    if total_dispositivos > 8:
+        ordenados = sorted(
+            dispositivos.items(),
+            key=lambda par: (disponibilidad.get(par[0]) or {}).get("pct", 100),
+        )
+        dispositivos = dict(ordenados[:8])
 
     return {
         "alcance": texto_alcance(organizacion, area, areas),
@@ -178,12 +190,15 @@ def calcular_cifras(
         "intervalo_serie": "hora" if por_hora else "dia",
         "series": series,
         "dispositivos": dispositivos,
+        "dispositivos_total": total_dispositivos,
         "cumplimiento": calculos.cumplimiento(lecturas, sensores),
         "comparativo": calculos.comparativo(variables, total_alertas, previo, inicio, fin),
         "gestion_alertas": calculos.gestion_alertas(alertas),
-        "disponibilidad": calculos.disponibilidad(sensores, inicio, fin),
-        "incidentes": calculos.incidentes(sensores, inicio, fin),
-        "observaciones": calculos.observaciones(alertas),
+        "disponibilidad": disponibilidad,
+        "incidentes": incidentes,
+        "incidentes_total": incidentes.total,
+        "observaciones": observaciones,
+        "observaciones_total": observaciones.total,
         "alertas": {
             "total": total_alertas,
             "por_estado": dict(alertas.values_list("estado").annotate(n=Count("num"))),
@@ -506,29 +521,56 @@ def siguiente_ejecucion(
 
 
 def enviar_reporte(reporte, destinatarios, asunto=None):
-    """Envía el reporte en PDF a los usuarios activos de su organización. Devuelve los correos."""
-    correos = list(
+    """Envía el reporte en PDF a los usuarios activos de su organización. Devuelve los correos.
+
+    El intento queda en ``EnvioReporte`` salga bien o falle; es el único lugar donde sale el
+    correo, así el historial cubre manuales, programados y los que manda Nico AI.
+    """
+    usuarios = list(
         Usuario.objects.filter(
             pk__in=destinatarios,
             organizacion=reporte.organizacion,
             estado_usuario_id=roles.USUARIO_ACTIVO,
-        ).values_list("correo", flat=True)
+        )
     )
-    if correos:
-        org = reporte.organizacion.nombre
-        alcance = (reporte.cifras or {}).get("alcance") or (
-            reporte.area.nombre if reporte.area_id else "Todas las áreas"
+    correos = [usuario.correo for usuario in usuarios]
+    origen = (
+        EnvioReporte.Origen.NICO
+        if reporte.origen == Reporte.Origen.AGENTE
+        else EnvioReporte.Origen(reporte.origen)
+    )
+
+    def registrar(resultado, error=None):
+        return EnvioReporte.objects.create(
+            reporte=reporte,
+            origen=origen,
+            enviado_por=None if origen == EnvioReporte.Origen.PROGRAMADO else reporte.generado_por,
+            destinatarios=[
+                {"num": usuario.pk, "nombre": usuario.get_full_name() or usuario.correo}
+                for usuario in usuarios
+            ],
+            resultado=resultado,
+            error=error,
         )
-        periodo = periodo_texto(reporte.periodo_inicio, reporte.periodo_fin)
-        titulo = titulo_reporte(reporte)
-        adjuntos = [
-            (f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf"),
-        ]
-        conf = (
-            reporte.formato_version.conf if reporte.formato_version_id else formatos.CONF_OPERATIVO
-        )
-        if ((conf or {}).get("hoja") or {}).get("adjuntar_csv"):
-            adjuntos.append(adjunto_csv(reporte))
+
+    if not correos:
+        registrar(EnvioReporte.Resultado.FALLO, "No hay destinatarios activos.")
+        return []
+    org = reporte.organizacion.nombre
+    alcance = (reporte.cifras or {}).get("alcance") or (
+        reporte.area.nombre if reporte.area_id else "Todas las áreas"
+    )
+    periodo = periodo_texto(reporte.periodo_inicio, reporte.periodo_fin)
+    titulo = titulo_reporte(reporte)
+    adjuntos = [
+        (f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf"),
+    ]
+    conf = (
+        reporte.formato_version.conf if reporte.formato_version_id else formatos.CONF_OPERATIVO
+    )
+    if ((conf or {}).get("hoja") or {}).get("adjuntar_csv"):
+        adjuntos.append(adjunto_csv(reporte))
+    try:
         correo.enviar(
             correos,
             asunto or titulo,
@@ -545,7 +587,11 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
             motivo="Recibe este reporte porque figura entre sus destinatarios en Núcleo.",
             adjuntos=adjuntos,
         )
-        avisos.reporte_enviado(reporte, destinatarios)
+    except Exception as error:  # noqa: BLE001 - se guarda el fallo y se avisa a quien llama
+        registrar(EnvioReporte.Resultado.FALLO, str(error)[:2000])
+        raise
+    registrar(EnvioReporte.Resultado.OK)
+    avisos.reporte_enviado(reporte, destinatarios)
     return correos
 
 

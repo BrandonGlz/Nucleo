@@ -37,6 +37,12 @@ def _numero(valor):
     return None if valor is None else float(Decimal(valor).quantize(Decimal("0.01")))
 
 
+class FilasConTotal(list):
+    """Lista recortada por un tope que conserva cuántas filas había en total."""
+
+    total = 0
+
+
 def _nombre_variable(catalogo, codigo):
     info = catalogo.get(codigo)
     return info.nombre.split(" (")[0] if info is not None else codigo
@@ -343,7 +349,7 @@ def incidentes(sensores, inicio, fin):
     for num, dispositivo in sensores.values_list("num", "dispositivo_id"):
         por_dispositivo.setdefault(dispositivo, []).append(num)
     if not por_dispositivo:
-        return []
+        return FilasConTotal()
 
     umbrales = list(
         Umbral.objects.filter(
@@ -364,7 +370,7 @@ def incidentes(sensores, inicio, fin):
         )
     )
     if not umbrales:
-        return []
+        return FilasConTotal()
 
     nombres = {}
     catalogo = {v.codigo: v for v in VariableAmbiental.objects.all()}
@@ -389,7 +395,7 @@ def incidentes(sensores, inicio, fin):
                 )
             )
     if not mapeo:
-        return []
+        return FilasConTotal()
 
     valores = ", ".join(["(%s, %s, %s, %s, %s, %s, %s, %s)"] * len(mapeo))
     parametros = [dato for fila in mapeo for dato in fila]
@@ -459,7 +465,8 @@ def incidentes(sensores, inicio, fin):
                END AS pico,
                CASE WHEN peligro THEN 'PELIGRO' ELSE 'ADVERTENCIA' END AS nivel,
                EXTRACT(EPOCH FROM (fin - inicio)) + intervalo AS duracion_seg,
-               intervalo
+               intervalo,
+               COUNT(*) OVER() AS total
         FROM tramos
         ORDER BY duracion_seg DESC, inicio
         LIMIT 5
@@ -468,50 +475,70 @@ def incidentes(sensores, inicio, fin):
         cursor.execute(sql, parametros)
         filas = cursor.fetchall()
 
-    return [
-        {
-            "dispositivo": nombres[dispositivo]["nombre"],
-            "dispositivo_codigo": dispositivo,
-            "area": nombres[dispositivo]["area"],
-            "area_num": nombres[dispositivo]["area_num"],
-            "variable": variable,
-            "variable_nombre": _nombre_variable(catalogo, variable),
-            "inicio": _iso(inicio_tramo),
-            "duracion_min": _numero(float(duracion_seg) / 60),
-            "valor_pico": _numero(pico),
-            "nivel": nivel,
-        }
-        for dispositivo, variable, inicio_tramo, _, pico, nivel, duracion_seg, _ in filas
-    ]
+    resultado = FilasConTotal(
+        [
+            {
+                "dispositivo": nombres[dispositivo]["nombre"],
+                "dispositivo_codigo": dispositivo,
+                "area": nombres[dispositivo]["area"],
+                "area_num": nombres[dispositivo]["area_num"],
+                "variable": variable,
+                "variable_nombre": _nombre_variable(catalogo, variable),
+                "inicio": _iso(inicio_tramo),
+                "duracion_min": _numero(float(duracion_seg) / 60),
+                "valor_pico": _numero(pico),
+                "nivel": nivel,
+            }
+            for (
+                dispositivo,
+                variable,
+                inicio_tramo,
+                _,
+                pico,
+                nivel,
+                duracion_seg,
+                _,
+                _total,
+            ) in filas
+        ]
+    )
+    resultado.total = filas[0][-1] if filas else 0
+    return resultado
 
 
 def observaciones(alertas):
-    """Las últimas 50 observaciones escritas al atender o descartar alertas."""
+    """Las cuatro observaciones más recientes escritas al atender o descartar alertas."""
+    consulta = alertas.filter(observaciones__isnull=False).exclude(observaciones="")
+    total = consulta.count()
     filas = (
-        alertas.filter(observaciones__isnull=False)
-        .exclude(observaciones="")
-        .select_related(
+        consulta.select_related(
             "umbral__dispositivo__area",
             "umbral__variable",
             "atendida_por",
         )
-        .order_by("-fecha_hora")[:50]
+        .order_by("-fecha_hora")[:4]
     )
-    return [
-        {
-            "fecha": _iso(alerta.fecha_hora),
-            "dispositivo": alerta.umbral.dispositivo.nombre,
-            "dispositivo_codigo": alerta.umbral.dispositivo.codigo_mqtt,
-            "area": alerta.umbral.dispositivo.area.nombre,
-            "area_num": alerta.umbral.dispositivo.area_id,
-            "variable": alerta.umbral.variable.nombre,
-            "variable_codigo": alerta.umbral.variable_id,
-            "variable_nombre": alerta.umbral.variable.nombre.split(" (")[0],
-            "usuario": alerta.atendida_por.get_full_name() if alerta.atendida_por_id else "—",
-            "texto": alerta.observaciones,
-        }
-        for alerta in filas
-    ]
+    resultado = FilasConTotal(
+        [
+            {
+                "fecha": _iso(alerta.fecha_hora),
+                "dispositivo": alerta.umbral.dispositivo.nombre,
+                "dispositivo_codigo": alerta.umbral.dispositivo.codigo_mqtt,
+                "area": alerta.umbral.dispositivo.area.nombre,
+                "area_num": alerta.umbral.dispositivo.area_id,
+                "variable": alerta.umbral.variable.nombre,
+                "variable_codigo": alerta.umbral.variable_id,
+                "variable_nombre": alerta.umbral.variable.nombre.split(" (")[0],
+                "usuario": alerta.atendida_por.get_full_name()
+                if alerta.atendida_por_id
+                else "—",
+                "texto": alerta.observaciones,
+            }
+            for alerta in filas
+        ]
+    )
+    resultado.total = total
+    return resultado
 
 
 def basicas_previas(sensores, alertas_scope, inicio, fin):

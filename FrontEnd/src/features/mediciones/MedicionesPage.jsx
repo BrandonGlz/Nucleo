@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button, Card, PeriodFilter, StatusBadge } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { Select } from '../../components/Desplegable'
@@ -49,8 +50,8 @@ function paginaSiguiente(r) {
 
 // La serie solo alimenta las cifras clave (máximo, mínimo y promedio del periodo); la tabla
 // trae el histórico real del periodo por páginas («Cargar más»).
-async function cargarLecturas(disp, variable, periodo) {
-  const rango = await lecturasApi.rangoConDatos(disp, variable, periodo)
+async function cargarLecturas(disp, variable, periodo, rangoFijo = null) {
+  const rango = rangoFijo ?? (await lecturasApi.rangoConDatos(disp, variable, periodo))
   const [serie, lect, umb] = await Promise.all([
     lecturasApi.serie(disp, variable, rango),
     paginaLecturas(disp, rango, 1),
@@ -92,7 +93,14 @@ function estadoFila(fila, umbrales) {
 export function MedicionesPage() {
   const { organizacion } = useSesion()
   const cat = useDatos(cargarCatalogo, [])
-  const [elegido, setDisp] = useState('')
+  const [params] = useSearchParams()
+  // «Ver en Histórico» de Nico llega con el dispositivo y el rango exactos de la respuesta.
+  const rangoFijo = useMemo(() => {
+    const desde = params.get('desde')
+    const hasta = params.get('hasta')
+    return desde && hasta ? { intervalo: 'hora', desde, hasta } : null
+  }, [params])
+  const [elegido, setDisp] = useState(() => params.get('dispositivo') ?? '')
   const [variable, setVariable] = useState('HUM')
   const [periodo, setPeriodo] = useState('hoy')
   const [busqueda, setBusqueda] = useState('')
@@ -103,8 +111,8 @@ export function MedicionesPage() {
   // Mientras no se elige uno, se muestra el primer dispositivo del alcance del usuario.
   const disp = elegido || String(dispositivos[0]?.num ?? '')
   const lect = useDatos(
-    () => (disp ? cargarLecturas(disp, variable, periodo) : new Promise(() => {})),
-    [disp, variable, periodo],
+    () => (disp ? cargarLecturas(disp, variable, periodo, rangoFijo) : new Promise(() => {})),
+    [disp, variable, periodo, rangoFijo],
   )
 
   // CSV del dispositivo, la variable y el periodo elegidos (GET /lecturas/exportar/).
@@ -160,7 +168,7 @@ export function MedicionesPage() {
     setEstadoTabla('')
   }
 
-  const nombrePeriodo = ETIQUETA_PERIODO[periodo].toLowerCase()
+  const nombrePeriodo = rangoFijo ? 'el rango de la respuesta' : ETIQUETA_PERIODO[periodo].toLowerCase()
   const vista = useMemo(() => {
     if (!lect.datos) return null
     const serie = lect.datos.serie.map((p) => puntoSerie(p, periodo))

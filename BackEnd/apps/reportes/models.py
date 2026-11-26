@@ -211,6 +211,67 @@ class Reporte(models.Model):
         return f"Reporte {self.num} · {self.periodo_inicio:%Y-%m-%d} → {self.periodo_fin:%Y-%m-%d}"
 
 
+class EnvioReporte(models.Model):
+    """Un intento de envío del reporte, con sus destinatarios y el resultado.
+
+    Se guarda en ``enviar_reporte`` para que la web pueda mostrar el historial sin depender
+    del correo. Los destinatarios se copian con su nombre al momento de enviar.
+    """
+
+    class Origen(models.TextChoices):
+        MANUAL = "MANUAL", "Manual"
+        PROGRAMADO = "PROGRAMADO", "Programado"
+        NICO = "NICO", "Nico AI"
+
+    class Resultado(models.TextChoices):
+        OK = "OK", "Enviado"
+        FALLO = "FALLO", "Falló"
+
+    num = models.AutoField(primary_key=True)
+    reporte = models.ForeignKey(
+        Reporte,
+        on_delete=models.CASCADE,
+        db_column="reporte_num",
+        related_name="envios",
+    )
+    fecha = models.DateTimeField(db_default=Now(), editable=False)
+    origen = models.CharField(max_length=10, choices=Origen.choices)
+    enviado_por = models.ForeignKey(
+        "usuarios.Usuario",
+        on_delete=models.SET_NULL,
+        db_column="enviado_por",
+        related_name="envios_reporte",
+        null=True,
+        blank=True,
+    )
+    # [{num, nombre}] congelado al enviar: si el usuario cambia de nombre, el historial no.
+    destinatarios = models.JSONField(default=list, blank=True)
+    resultado = models.CharField(max_length=5, choices=Resultado.choices)
+    error = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = "envio_reporte"
+        ordering = ["-fecha", "-num"]
+        verbose_name = "envío de reporte"
+        verbose_name_plural = "envíos de reporte"
+        indexes = [
+            models.Index(fields=["reporte", "-fecha"], name="ix_envio_reporte_fecha"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(origen__in=["MANUAL", "PROGRAMADO", "NICO"]),
+                name="ck_envio_origen",
+            ),
+            models.CheckConstraint(
+                condition=Q(resultado__in=["OK", "FALLO"]),
+                name="ck_envio_resultado",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Envío del reporte {self.reporte_id} · {self.get_resultado_display()}"
+
+
 class ProgramacionReporte(models.Model):
     """Reporte periódico que un administrador, supervisor o analista programa.
 

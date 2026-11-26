@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { cloneElement, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Eye, EyeOff, GripVertical, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { BarChart, Badge, Icon, Logo, Tabs, TrendChart } from '../../design-system/componentes/index.js'
 import { UNIDAD, VARIABLE } from '../../utils/convertir'
 import { ANCHO, esquema, FUENTES, FUENTES_CON_FILTRO, NOTA_MAX, opcionesDe, opcionesNuevas, tarjeta, TITULO_MAX } from './personalizacion'
-import { fechaLarga, hora, mesAnio, miles, periodo } from '../../utils/formato'
+import { fechaLarga, hora, miles, periodo, duracionLegible } from '../../utils/formato'
 import { logoDe } from '../../utils/foto'
 import { medidaHoja } from './medidas'
 import { ProveedorZoom, useZoomHoja, VisorHoja } from './VisorHoja'
@@ -123,7 +123,9 @@ function Serie({ serie, op }) {
   const valores = op.datos.includes('valores')
   const resalta = op.datos.includes('maximo')
   const datos = serie.puntos.map(([label, value]) => ({ label, time: label, value }))
-  if (op.grafica === 'columnas')
+  // Con más de 8 puntos se dibuja como línea, salvo que la persona haya elegido barras.
+  const grafica = serie.puntos.length > 8 && !op.elegida ? 'linea' : op.grafica
+  if (grafica === 'columnas')
     return (
       <BarChart
         data={datos}
@@ -134,8 +136,16 @@ function Serie({ serie, op }) {
         interactivo={false}
       />
     )
-  if (op.grafica === 'linea')
-    return <TrendChart data={datos} unit={UNIDAD[v]} height={altoGrafica(op.alto)} decimals={dec} interactivo={false} />
+  if (grafica === 'linea')
+    return (
+      <TrendChart
+        data={datos}
+        unit={UNIDAD[v]}
+        height={serie.puntos.length > 8 ? 100 : altoGrafica(op.alto)}
+        decimals={dec}
+        interactivo={false}
+      />
+    )
   return (
     <div className="ui-barras">
       {serie.puntos.map(([etiqueta, x]) => (
@@ -143,7 +153,7 @@ function Serie({ serie, op }) {
           key={etiqueta}
           className={`ui-barras__fila${resalta && x === max ? ' is-max' : ''}${valores ? '' : ' ui-barras__fila--sin-valor'}`}
         >
-          <span className="ui-barras__etiqueta">{etiqueta}</span>
+          <span className="ui-barras__etiqueta" title={etiqueta}>{etiqueta}</span>
           <span className="ui-barras__pista">
             <span className="ui-barras__barra" style={{ width: `${(x / max) * 100}%` }} />
           </span>
@@ -220,7 +230,7 @@ function Alertas({ variables, op }) {
         </div>
       )}
       {op.grafica === 'dona' && (
-        <div className="ui-dash__dona">
+        <div className={`ui-dash__dona${Number(op.ancho) <= 4 ? ' ui-dash__dona--compacta' : ''}`}>
           <Dona partes={variables} total={total} />
           <ul>
             {variables.map((v, i) => (
@@ -251,7 +261,7 @@ function Alertas({ variables, op }) {
 }
 
 // Gráfica genérica para las tarjetas nuevas: `puntos` son [{ label, value }] con su unidad.
-export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto, resaltarMax = true }) {
+export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto, resaltarMax = true, compacta = false }) {
   if (!puntos.length) return <p className="ui-muted">Elige al menos un dato.</p>
   const max = Math.max(...puntos.map((x) => x.value)) || 1
   const f = (x) => Number(x).toFixed(dec)
@@ -270,7 +280,7 @@ export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto, re
   if (grafica === 'dona') {
     const total = puntos.reduce((s, x) => s + x.value, 0)
     return (
-      <div className="ui-dash__dona">
+      <div className={`ui-dash__dona${compacta ? ' ui-dash__dona--compacta' : ''}`}>
         <Dona partes={puntos.map((x) => ({ variable: x.label, alertas: x.value }))} total={total} />
         <ul>
           {puntos.map((x, i) => (
@@ -314,7 +324,7 @@ export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto, re
     <div className="ui-barras">
       {puntos.map((x) => (
         <div key={x.label} className={`ui-barras__fila ui-barras__fila--ancha${resaltarMax && x.value === max ? ' is-max' : ''}`}>
-          <span className="ui-barras__etiqueta">{x.label}</span>
+          <span className="ui-barras__etiqueta" title={x.label}>{x.label}</span>
           <span className="ui-barras__pista">
             <span
               className={`ui-barras__barra${(x.color ?? color) ? ` ui-barras__barra--${x.color ?? color}` : ''}`}
@@ -376,15 +386,34 @@ function Cumplimiento({ c, op }) {
   if (!filas.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
   if (op.grafica === 'tabla') {
     const datos = op.datos ?? ['pct', 'fuera']
+    const partes = filas.map((fila) => {
+      const cifras = []
+      if (datos.includes('pct')) cifras.push(`${Number(fila.dentro_pct).toFixed(dec)} %`)
+      if (datos.includes('fuera')) cifras.push(`${duracionLegible(fila.fuera_min)} fuera`)
+      cifras.push(`${miles(fila.lecturas)} lect.`)
+      return { nombre: nombreVariable(fila.variable), detalle: cifras.join(' · ') }
+    })
+    if (Number(op.ancho) <= 6) {
+      return (
+        <ul className="ui-dash__lista ui-lista-dos">
+          {partes.map((fila) => (
+            <li key={fila.nombre}>
+              <strong>{fila.nombre}</strong>
+              <span className="ui-lista-dos__detalle ui-num">{fila.detalle}</span>
+            </li>
+          ))}
+        </ul>
+      )
+    }
     return (
       <div className="ui-tabla-scroll">
         <table className="nc-table ui-tabla-cumplimiento" style={{ width: '100%' }}>
           <thead>
             <tr>
               <th>Variable</th>
-              {datos.includes('pct') && <th>Cumplimiento</th>}
+              {datos.includes('pct') && <th><abbr title="Cumplimiento">Cumpl.</abbr></th>}
               {datos.includes('fuera') && <th>Fuera</th>}
-              <th>Lecturas</th>
+              <th><abbr title="Lecturas">Lect.</abbr></th>
             </tr>
           </thead>
           <tbody>
@@ -392,7 +421,7 @@ function Cumplimiento({ c, op }) {
               <tr key={fila.variable}>
                 <td>{nombreVariable(fila.variable)}</td>
                 {datos.includes('pct') && <td className="ui-num">{Number(fila.dentro_pct).toFixed(dec)} %</td>}
-                {datos.includes('fuera') && <td className="ui-num">{Number(fila.fuera_min).toFixed(dec)} min</td>}
+                {datos.includes('fuera') && <td className="ui-num">{duracionLegible(fila.fuera_min)}</td>}
                 <td className="ui-num">{miles(fila.lecturas)}</td>
               </tr>
             ))}
@@ -413,7 +442,7 @@ function Cumplimiento({ c, op }) {
             </strong>
             {datos.includes('fuera') && (
               <span className="ui-muted" style={{ fontSize: 11 }}>
-                {Number(fila.fuera_min).toFixed(dec)} min fuera
+                {duracionLegible(fila.fuera_min)} fuera
               </span>
             )}
           </div>
@@ -442,6 +471,42 @@ function Comparativo({ c, op }) {
       {conPorcentaje(fila.dif_promedio_pct)}
     </span>
   )
+  if (op.grafica === 'lista' || (Number(op.ancho) <= 6 && op.grafica !== 'cifra')) {
+    return (
+      <ul className="ui-dash__lista ui-lista-dos">
+        {filas.map((fila) => {
+          const partes = []
+          if (datos.includes('promedio'))
+            partes.push(`${Number(fila.promedio ?? 0).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))} ${fila.unidad}`)
+          if (datos.includes('extremos'))
+            partes.push(
+              `Mín ${Number(fila.minimo ?? 0).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))} · Máx ${Number(fila.maximo ?? 0).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))}`,
+            )
+          return (
+            <li key={fila.variable}>
+              <strong>{nombreVariable(fila.variable)}</strong>
+              <span className="ui-lista-dos__detalle">
+                {partes.length > 0 && <span className="ui-num">{partes.join(' · ')} · </span>}
+                {cambio(fila)}
+              </span>
+            </li>
+          )
+        })}
+        {datos.includes('alertas') && alertas && (
+          <li>
+            <strong>Alertas</strong>
+            <span className="ui-lista-dos__detalle">
+              <span className="ui-num">{alertas.total} contra {alertas.total_previo} · </span>
+              <span className={`ui-comparativo__cambio ${alertas.mejora ? 'is-bueno' : 'is-aviso'}`}>
+                {conSigno(alertas.diferencia, 0)}
+                {conPorcentaje(alertas.diferencia_pct)}
+              </span>
+            </span>
+          </li>
+        )}
+      </ul>
+    )
+  }
   if (op.grafica === 'cifra') {
     return (
       <div className="ui-dash__cifras" style={{ gridTemplateColumns: `repeat(${Math.max(1, filas.length + (alertas ? 1 : 0))}, minmax(0, 1fr))` }}>
@@ -476,7 +541,7 @@ function Comparativo({ c, op }) {
             <tr>
               <th>Variable</th>
               {datos.includes('promedio') && <th>Promedio</th>}
-              {datos.includes('extremos') && <th>Mín. / Máx.</th>}
+              {datos.includes('extremos') && <th><abbr title="Mínimo y máximo">Mín.–máx.</abbr></th>}
               <th>Cambio</th>
             </tr>
           </thead>
@@ -526,70 +591,91 @@ function Dispositivos({ c, op, areas }) {
   const conMin = datos.includes('minimo')
   const conProm = datos.includes('promedio')
   const conMax = datos.includes('maximo')
-  const compacta = Number(op.ancho) <= 6
-  const cortaVariable = { TEMP: 'Temp.', HUM: 'Hum.', AIRE: 'Aire' }
   const variables = ['TEMP', 'HUM', 'AIRE'].filter((codigo) => filas.some((fila) => fila[codigo]))
-  return (
-    <div className="ui-tabla-scroll">
-      <table className="nc-table ui-tabla-dispositivos" style={{ width: '100%' }}>
-        <thead>
-          <tr>
-            <th>{compacta ? <abbr title="Dispositivo">Disp.</abbr> : 'Dispositivo'}</th>
-            {datos.includes('area') && <th>Área</th>}
-            {variables.map((codigo) => (
-              <th key={codigo}>
-                {compacta ? (
-                  <abbr title={nombreVariable(codigo)}>{cortaVariable[codigo]}</abbr>
-                ) : (
-                  nombreVariable(codigo)
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
+  const total = c.dispositivos_total ?? todas.length
+  const cortaVariable = { TEMP: 'Temp.', HUM: 'Hum.', AIRE: 'Aire' }
+  const valor = (fila, codigo) => {
+    const info = fila[codigo]
+    if (!info) return '—'
+    const dec = decimalesDe(op, VARIABLE[codigo]?.decimales ?? 1)
+    const f = (x) => Number(x).toFixed(dec)
+    if (conProm) return `${f(info.promedio)}`
+    if (conMin) return `Mín ${f(info.minimo)}`
+    if (conMax) return `Máx ${f(info.maximo)}`
+    return '—'
+  }
+  if (Number(op.ancho) <= 6) {
+    return (
+      <div>
+        <ul className="ui-dash__lista ui-lista-dos">
           {filas.map((fila) => (
-            <tr key={fila.codigo}>
-              <td>{fila.nombre || fila.codigo}</td>
-              {datos.includes('area') && <td>{fila.area || '—'}</td>}
-              {variables.map((codigo) => {
-                const info = fila[codigo]
-                if (!info) return <td key={codigo}>—</td>
-                const dec = decimalesDe(op, VARIABLE[codigo]?.decimales ?? 1)
-                const f = (valor) => Number(valor).toFixed(dec)
-                const principal = conProm
-                  ? f(info.promedio)
-                  : conMin
-                    ? `Mín ${f(info.minimo)}`
-                    : conMax
-                      ? `Máx ${f(info.maximo)}`
-                      : '—'
-                const rango =
-                  conProm && conMin && conMax
-                    ? `${f(info.minimo)}–${f(info.maximo)}`
-                    : conProm && conMin
-                      ? `Mín ${f(info.minimo)}`
-                      : conProm && conMax
-                        ? `Máx ${f(info.maximo)}`
-                        : ''
-                return (
-                  <td key={codigo} className="ui-num ui-dispositivo__valor">
-                    <span className="ui-dispositivo__principal">{principal}</span>
-                    {rango && (
-                      <span
-                        className="ui-dispositivo__rango"
-                        title={`Mínimo ${f(info.minimo)} · Máximo ${f(info.maximo)}`}
-                      >
-                        {rango}
-                      </span>
-                    )}
-                  </td>
-                )
-              })}
-            </tr>
+            <li key={fila.codigo}>
+              <strong>{fila.nombre || fila.codigo}</strong>
+              <span className="ui-lista-dos__detalle ui-num">
+                {datos.includes('area') && fila.area ? `${fila.area} · ` : ''}
+                {variables.map((codigo) => `${valor(fila, codigo)} ${UNIDAD[codigo]}`).join(' · ')}
+              </span>
+            </li>
           ))}
-        </tbody>
-      </table>
+        </ul>
+        {total > filas.length && <p className="ui-dash__mas">y {total - filas.length} más</p>}
+      </div>
+    )
+  }
+  return (
+    <div>
+      <div className="ui-tabla-scroll">
+        <table className="nc-table ui-tabla-dispositivos" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th>Dispositivo</th>
+              {datos.includes('area') && <th>Área</th>}
+              {variables.map((codigo) => (
+                <th key={codigo}>
+                  <abbr title={nombreVariable(codigo)}>{cortaVariable[codigo]}</abbr>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila) => (
+              <tr key={fila.codigo}>
+                <td>{fila.nombre || fila.codigo}</td>
+                {datos.includes('area') && <td>{fila.area || '—'}</td>}
+                {variables.map((codigo) => {
+                  const info = fila[codigo]
+                  if (!info) return <td key={codigo}>—</td>
+                  const dec = decimalesDe(op, VARIABLE[codigo]?.decimales ?? 1)
+                  const f = (x) => Number(x).toFixed(dec)
+                  const principal = valor(fila, codigo)
+                  const rango =
+                    conProm && conMin && conMax
+                      ? `${f(info.minimo)}–${f(info.maximo)}`
+                      : conProm && conMin
+                        ? `Mín ${f(info.minimo)}`
+                        : conProm && conMax
+                          ? `Máx ${f(info.maximo)}`
+                          : ''
+                  return (
+                    <td key={codigo} className="ui-num ui-dispositivo__valor">
+                      <span className="ui-dispositivo__principal">{principal}</span>
+                      {rango && (
+                        <span
+                          className="ui-dispositivo__rango"
+                          title={`Mínimo ${f(info.minimo)} · Máximo ${f(info.maximo)}`}
+                        >
+                          {rango}
+                        </span>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {total > filas.length && <p className="ui-dash__mas">y {total - filas.length} más</p>}
     </div>
   )
 }
@@ -614,7 +700,7 @@ function GestionAlertas({ c, op }) {
   if (op.grafica === 'dona') {
     const puntos = conEstados ? estados : responsables
     if (!puntos.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
-    return <GraficaLibre grafica="dona" puntos={puntos} dec={0} />
+    return <GraficaLibre grafica="dona" puntos={puntos} dec={0} compacta={Number(op.ancho) <= 4} />
   }
   if (op.grafica === 'barras') {
     const puntos = conEstados ? estados : responsables
@@ -623,7 +709,7 @@ function GestionAlertas({ c, op }) {
         {puntos.length ? <GraficaLibre grafica="barras" puntos={puntos} dec={0} /> : <p className="ui-muted">{SIN_DATOS_PERIODO}</p>}
         {conTiempo && datos.tiempo_medio_min != null && (
           <p className="ui-muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
-            Tiempo medio de atención: {Number(datos.tiempo_medio_min).toFixed(1)} min
+            Tiempo medio de atención: {duracionLegible(datos.tiempo_medio_min)}
           </p>
         )}
       </div>
@@ -660,7 +746,7 @@ function GestionAlertas({ c, op }) {
       </div>
       {conTiempo && (
         <p className="ui-muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
-          Tiempo medio de atención: {datos.tiempo_medio_min == null ? '—' : `${Number(datos.tiempo_medio_min).toFixed(1)} min`}
+          Tiempo medio de atención: {duracionLegible(datos.tiempo_medio_min)}
         </p>
       )}
     </div>
@@ -679,6 +765,37 @@ function Disponibilidad({ c, op, areas }) {
   const conHuecos = op.datos?.includes('huecos')
   if (!conPct && !conHuecos) return <p className="ui-muted">Elige al menos un dato.</p>
   if (op.grafica === 'barras') {
+    if (Number(op.ancho) <= 4) {
+      return (
+        <div>
+          <div className="ui-disp-barras">
+            {filas.map((fila) => (
+              <div key={fila.codigo} className="ui-disp-barra">
+                <strong className="ui-disp-barra__nombre" title={fila.nombre || fila.codigo}>
+                  {fila.nombre || fila.codigo}
+                </strong>
+                <span className="ui-disp-barra__pista">
+                  <span
+                    className={`ui-disp-barra__barra ${fila.pct < 90 ? 'is-aviso' : 'is-exito'}`}
+                    style={{ width: `${Math.min(100, fila.pct)}%` }}
+                  />
+                </span>
+                <span className="ui-disp-barra__pct ui-num">
+                  {Number(fila.pct).toFixed(decimalesDe(op, 1))} %
+                </span>
+              </div>
+            ))}
+          </div>
+          {conHuecos && (
+            <p className="ui-muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
+              {((total) => (total ? `${total} huecos registrados.` : 'Sin huecos en el periodo.'))(
+                filas.reduce((total, fila) => total + (fila.huecos?.length ?? 0), 0),
+              )}
+            </p>
+          )}
+        </div>
+      )
+    }
     return (
       <div>
         {conPct && (
@@ -705,33 +822,54 @@ function Disponibilidad({ c, op, areas }) {
     )
   }
   return (
-    <div className="ui-tabla-scroll">
-      <table className="nc-table" style={{ width: '100%' }}>
-        <thead>
-          <tr>
-            <th>Dispositivo</th>
-            <th>Área</th>
-            {conPct && <th>Disponibilidad</th>}
-            {conHuecos && <th>Huecos</th>}
-          </tr>
-        </thead>
-      <tbody>
-        {filas.map((fila) => (
-          <tr key={fila.codigo}>
-            <td>{fila.nombre || fila.codigo}</td>
-            <td>{fila.area || '—'}</td>
-            {conPct && <td className="ui-num">{Number(fila.pct).toFixed(decimalesDe(op, 1))} %</td>}
-            {conHuecos && (
-              <td className="ui-num">
-                {fila.huecos?.length
-                  ? `${fila.huecos[0].minutos} min (${fila.huecos.length})`
-                  : '—'}
-              </td>
-            )}
-          </tr>
-        ))}
+    <div>
+      {Number(op.ancho) <= 6 ? (
+        <ul className="ui-dash__lista ui-lista-dos">
+          {filas.map((fila) => (
+            <li key={fila.codigo}>
+              <strong>{fila.nombre || fila.codigo}</strong>
+              <span className="ui-lista-dos__detalle ui-num">
+                {conPct ? `${Number(fila.pct).toFixed(decimalesDe(op, 1))} %` : ''}
+                {conPct && conHuecos ? ' · ' : ''}
+                {conHuecos
+                  ? fila.huecos?.length
+                    ? `${duracionLegible(fila.huecos[0].minutos)} · ${fila.huecos.length} huecos`
+                    : 'Sin huecos'
+                  : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+      <div className="ui-tabla-scroll">
+        <table className="nc-table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th>Dispositivo</th>
+              <th>Área</th>
+              {conPct && <th><abbr title="Disponibilidad">Disp.</abbr></th>}
+              {conHuecos && <th>Huecos</th>}
+            </tr>
+          </thead>
+        <tbody>
+          {filas.map((fila) => (
+            <tr key={fila.codigo}>
+              <td>{fila.nombre || fila.codigo}</td>
+              <td>{fila.area || '—'}</td>
+              {conPct && <td className="ui-num">{Number(fila.pct).toFixed(decimalesDe(op, 1))} %</td>}
+              {conHuecos && (
+                <td className="ui-num">
+                  {fila.huecos?.length
+                    ? `${duracionLegible(fila.huecos[0].minutos)} (${fila.huecos.length})`
+                    : '—'}
+                </td>
+              )}
+            </tr>
+          ))}
         </tbody>
-      </table>
+        </table>
+      </div>
+      )}
     </div>
   )
 }
@@ -744,51 +882,60 @@ function Incidentes({ c, op, areas }) {
     return <p className="ui-muted">{porArea.length || dispositivos.length ? SIN_DATOS_FILTRO : SIN_DATOS_PERIODO}</p>
   }
   const nivel = (valor) => (valor === 'PELIGRO' ? 'danger' : 'warning')
+  // El tope viene de las cifras del backend; se vuelve a aplicar por si es un reporte viejo.
+  const visibles = filas.slice(0, 5)
+  const total = c.incidentes_total ?? filas.length
   if (op.grafica === 'lista') {
     return (
-      <ul className="ui-dash__lista">
-        {filas.map((fila, i) => (
-          <li key={`${fila.dispositivo_codigo}-${fila.variable}-${fila.inicio}-${i}`}>
-            <Icon name="triangle-alert" size={16} />
-            <span style={{ flex: 1 }}>
-              <strong>{fila.dispositivo}</strong> · {fila.variable_nombre || nombreVariable(fila.variable)} ·{' '}
-              {fechaLarga(fila.inicio)} {hora(fila.inicio)}
-            </span>
-            <span className="ui-muted">{Number(fila.duracion_min).toFixed(1)} min</span>
-            <Badge tone={nivel(fila.nivel)}>{fila.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia'}</Badge>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <ul className="ui-dash__lista">
+          {visibles.map((fila, i) => (
+            <li key={`${fila.dispositivo_codigo}-${fila.variable}-${fila.inicio}-${i}`}>
+              <Icon name="triangle-alert" size={16} />
+              <span style={{ flex: 1 }}>
+                <strong>{fila.dispositivo}</strong> · {fila.variable_nombre || nombreVariable(fila.variable)} ·{' '}
+                {fechaLarga(fila.inicio)} {hora(fila.inicio)}
+              </span>
+              <span className="ui-muted ui-num">{duracionLegible(fila.duracion_min)}</span>
+              <Badge tone={nivel(fila.nivel)}>{fila.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia'}</Badge>
+            </li>
+          ))}
+        </ul>
+        {total > visibles.length && <p className="ui-dash__mas">y {total - visibles.length} más</p>}
+      </div>
     )
   }
   return (
-    <div className="ui-tabla-scroll">
-      <table className="nc-table" style={{ width: '100%' }}>
-        <thead>
-          <tr>
-            <th>Dispositivo</th>
-            <th>Variable</th>
-            <th>Inicio</th>
-            <th>Duración</th>
-            <th>Pico</th>
-            <th>Nivel</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((fila, i) => (
-            <tr key={`${fila.dispositivo_codigo}-${fila.variable}-${fila.inicio}-${i}`}>
-              <td>{fila.dispositivo}</td>
-              <td>{fila.variable_nombre || nombreVariable(fila.variable)}</td>
-              <td>{fechaLarga(fila.inicio)} {hora(fila.inicio)}</td>
-              <td className="ui-num">{Number(fila.duracion_min).toFixed(1)} min</td>
-              <td className="ui-num">
-                {Number(fila.valor_pico).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))} {UNIDAD[fila.variable] ?? ''}
-              </td>
-              <td>{fila.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia'}</td>
+    <div>
+      <div className="ui-tabla-scroll">
+        <table className="nc-table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th>Dispositivo</th>
+              <th>Variable</th>
+              <th>Inicio</th>
+              <th>Duración</th>
+              <th>Pico</th>
+              <th>Nivel</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {visibles.map((fila, i) => (
+              <tr key={`${fila.dispositivo_codigo}-${fila.variable}-${fila.inicio}-${i}`}>
+                <td>{fila.dispositivo}</td>
+                <td>{fila.variable_nombre || nombreVariable(fila.variable)}</td>
+                <td>{fechaLarga(fila.inicio)} {hora(fila.inicio)}</td>
+                <td className="ui-num">{duracionLegible(fila.duracion_min)}</td>
+                <td className="ui-num">
+                  {Number(fila.valor_pico).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))} {UNIDAD[fila.variable] ?? ''}
+                </td>
+                <td>{fila.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {total > visibles.length && <p className="ui-dash__mas">y {total - visibles.length} más</p>}
     </div>
   )
 }
@@ -801,47 +948,57 @@ function Observaciones({ c, op, areas }) {
     return <p className="ui-muted">{porArea.length || dispositivos.length ? SIN_DATOS_FILTRO : 'Sin observaciones en el periodo.'}</p>
   }
   if (op.grafica === 'tabla') {
+    const visibles = filas.slice(0, 4)
+    const total = c.observaciones_total ?? filas.length
     return (
-      <div className="ui-tabla-scroll ui-tabla-observaciones">
-        <table className="nc-table" style={{ width: '100%' }}>
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Dispositivo</th>
-              <th>Variable</th>
-              <th>Quién</th>
-              <th>Observación</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((fila, i) => (
-              <tr key={`${fila.fecha}-${i}`}>
-                <td>{fechaLarga(fila.fecha)} {hora(fila.fecha)}</td>
-                <td>{fila.dispositivo}</td>
-                <td>{fila.variable_nombre || fila.variable}</td>
-                <td>{fila.usuario}</td>
-                <td className="ui-observacion__texto">{fila.texto}</td>
+      <div>
+        <div className="ui-tabla-scroll ui-tabla-observaciones">
+          <table className="nc-table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Dispositivo</th>
+                <th>Variable</th>
+                <th>Quién</th>
+                <th>Observación</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibles.map((fila, i) => (
+                <tr key={`${fila.fecha}-${i}`}>
+                  <td>{fechaLarga(fila.fecha)} {hora(fila.fecha)}</td>
+                  <td>{fila.dispositivo}</td>
+                  <td>{fila.variable_nombre || fila.variable}</td>
+                  <td>{fila.usuario}</td>
+                  <td className="ui-observacion__texto">{fila.texto}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {total > visibles.length && <p className="ui-dash__mas">y {total - visibles.length} más</p>}
       </div>
     )
   }
+  const visibles = filas.slice(0, 4)
+  const total = c.observaciones_total ?? filas.length
   return (
-    <ul className="ui-dash__lista">
-      {filas.map((fila, i) => (
-        <li key={`${fila.fecha}-${i}`}>
-          <Icon name="message-square-text" size={16} />
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <strong>{fila.dispositivo}</strong> · {fila.variable_nombre || fila.variable} · {fila.usuario}
-            <span className="ui-muted ui-observacion__texto" style={{ display: 'block', fontSize: 11, whiteSpace: 'normal' }}>
-              {fechaLarga(fila.fecha)} {hora(fila.fecha)} · {fila.texto}
+    <div>
+      <ul className={`ui-dash__lista${Number(op.ancho) >= 8 ? ' ui-lista--dos-columnas' : ''}`}>
+        {visibles.map((fila, i) => (
+          <li key={`${fila.fecha}-${i}`}>
+            <Icon name="message-square-text" size={16} />
+            <span className="ui-observacion__entrada" style={{ flex: 1, minWidth: 0 }}>
+              <strong>{fila.dispositivo}</strong> · {fila.variable_nombre || fila.variable} · {fila.usuario}
+              <span className="ui-muted ui-observacion__texto" style={{ display: 'block', fontSize: 11, whiteSpace: 'normal' }}>
+                {fechaLarga(fila.fecha)} {hora(fila.fecha)} · {fila.texto}
+              </span>
             </span>
-          </span>
-        </li>
-      ))}
-    </ul>
+          </li>
+        ))}
+      </ul>
+      {total > visibles.length && <p className="ui-dash__mas">y {total - visibles.length} más</p>}
+    </div>
   )
 }
 
@@ -963,10 +1120,17 @@ function contenido(w, r, op, areas) {
   }
 }
 
-export function Widget({ w, r, op, areas = [] }) {
+export function Widget({ w, r, op, areas = [], columnas }) {
   const { titulo, cuerpo } = contenido(w, r, op, areas)
   return (
-    <section className="ui-dash__widget" data-ancho={op.ancho ?? w.ancho} style={op.alto ? { minHeight: op.alto } : undefined}>
+    <section
+      className="ui-dash__widget"
+      data-ancho={op.ancho ?? w.ancho}
+      style={{
+        ...(op.alto ? { minHeight: op.alto } : undefined),
+        ...(columnas ? { '--columnas': columnas } : undefined),
+      }}
+    >
       {titulo && (
         <div className="ui-dash__widget-cabeza">
           <h3>{titulo}</h3>
@@ -1537,7 +1701,13 @@ function Paginas(props) {
 function PaginasInterno({ cabeza, bloques, vacio, editando, hoja, portada, firmas, marca }) {
   const medidor = useRef(null)
   const [altos, setAltos] = useState(null)
-  const filas = agrupar(bloques)
+  const filas = agrupar(bloques).map((fila) => {
+    const suma = fila.reduce((total, b) => total + (Number(b.ancho) || 12), 0)
+    return fila.map((b) => ({
+      ...b,
+      columnas: suma ? ((Number(b.ancho) || 12) * 12) / suma : 12,
+    }))
+  })
   const medida = medidaHoja(hoja)
   const { setDimensiones } = useZoomHoja()
 
@@ -1562,7 +1732,9 @@ function PaginasInterno({ cabeza, bloques, vacio, editando, hoja, portada, firma
   const paginas = paginar(altos, filas.length, medida)
   const fila = (i) => (
     <div key={filas[i].map((b) => b.id).join()} className="ui-dash__rejilla" data-fila>
-      {filas[i].map((b) => b.nodo)}
+      {filas[i].map((b) =>
+        b.nodo.type === Widget ? cloneElement(b.nodo, { columnas: b.columnas }) : b.nodo,
+      )}
     </div>
   )
   const estilo = { width: medida.ancho, minHeight: medida.alto, '--reporte-marca': marca }
@@ -1718,7 +1890,6 @@ export function DashboardReporte({ r, areas, ed }) {
       </div>
       <div>
         <h2>{titulo}</h2>
-        <p className="ui-hoja__subtitulo">Periodo de {mesAnio(r.periodo_inicio)}</p>
       </div>
       <dl className="ui-hoja__ficha">
         <div>

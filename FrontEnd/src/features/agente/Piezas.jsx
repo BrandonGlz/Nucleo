@@ -206,7 +206,6 @@ export function Archivos({ reportes, visualizar, descargar }) {
         aria-expanded={abierto}
         aria-label={`Archivos de la conversación (${reportes.length})`}
         title="Archivos de la conversación"
-        disabled={!reportes.length}
         onClick={() => setAbierto((a) => !a)}
       >
         <Icon name="file-text" size={16} />
@@ -216,6 +215,7 @@ export function Archivos({ reportes, visualizar, descargar }) {
       {montado && (
         <div className={`ui-ia-archivos__lista${saliendo ? ' is-saliendo' : ''}`} role="dialog" aria-label="Archivos generados">
           <span className="ui-eyebrow">Generados en esta conversación</span>
+          {!reportes.length && <p className="ui-muted">Aún no hay archivos en esta conversación.</p>}
           {reportes.map((r) => (
             <div key={r.num} className="ui-ia-archivos__fila">
               <span className="ui-ia-adjunto__icono">

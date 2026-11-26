@@ -6,5 +6,5 @@ export const MEDIDAS = {
 
 export function medidaHoja(hoja = {}) {
   const [ancho, alto] = MEDIDAS[hoja.tamano]?.[hoja.orientacion] ?? MEDIDAS.carta.vertical
-  return { ancho, alto, margenY: 56, pie: 28, separacion: 16 }
+  return { ancho, alto, margenY: 56, pie: 28, separacion: 12 }
 }

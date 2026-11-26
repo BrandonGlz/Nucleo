@@ -1,6 +1,7 @@
 """Pruebas de las plantillas de formato, su catálogo y sus predeterminados."""
 
 import io
+import re
 import tempfile
 from datetime import timedelta
 from pathlib import Path
@@ -25,6 +26,7 @@ from apps.reportes.formatos import (
     validar_conf,
 )
 from apps.reportes.models import FormatoReporte, Reporte, VersionFormato
+from common.fechas import duracion_legible
 from common.testing import Escenario, PruebaBase, cliente_de
 
 VISIBLES_PLANTILLAS = {
@@ -50,10 +52,10 @@ VISIBLES_PLANTILLAS = {
         "var:AIRE",
         "serie",
         "alertas",
-        "analisis",
         "dispositivos",
         "gestion_alertas",
         "disponibilidad",
+        "analisis",
     ],
     FormatoReporte.Plantilla.INCIDENTES: [
         "incidentes",
@@ -62,6 +64,26 @@ VISIBLES_PLANTILLAS = {
         "observaciones",
     ],
 }
+
+
+class DuracionLegibleTests(PruebaBase):
+    def test_duraciones_de_ejemplo(self):
+        casos = {
+            3.4: "3 min",
+            0: "0 min",
+            191.2: "3 h 11 min",
+            11354.1: "7 d 21 h",
+            None: "—",
+        }
+        for minutos, esperado in casos.items():
+            with self.subTest(minutos=minutos):
+                self.assertEqual(duracion_legible(minutos), esperado)
+
+    def test_los_limites_de_unidad(self):
+        self.assertEqual(duracion_legible(59.6), "1 h")
+        self.assertEqual(duracion_legible(60), "1 h")
+        self.assertEqual(duracion_legible(1439), "23 h 59 min")
+        self.assertEqual(duracion_legible(1440), "1 d")
 
 
 class ValidarConfTests(PruebaBase):
@@ -253,7 +275,7 @@ class LargoAnalisisTests(PruebaBase):
 
 
 class PlantillasTests(PruebaBase):
-    def test_las_cuatro_plantillas_existen_con_su_version_dos(self):
+    def test_las_cuatro_plantillas_existen_con_su_version_tres(self):
         plantillas = FormatoReporte.objects.filter(organizacion__isnull=True)
 
         self.assertEqual(
@@ -268,7 +290,7 @@ class PlantillasTests(PruebaBase):
         for formato in plantillas:
             version = formato.version_actual()
             self.assertIsNotNone(version)
-            self.assertEqual(version.numero, 2)
+            self.assertEqual(version.numero, 3)
             normalizada = validar_conf(version.conf)
             self.assertEqual(normalizada["orden"], version.conf["orden"])
             self.assertEqual(normalizada["ocultos"], version.conf["ocultos"])
@@ -279,6 +301,8 @@ class PlantillasTests(PruebaBase):
                     version.conf["opciones"]["cumplimiento"]["grafica"],
                     "tabla",
                 )
+            if formato.plantilla == FormatoReporte.Plantilla.OPERATIVO:
+                self.assertEqual(version.conf["hoja"]["analisis_largo"], "breve")
 
     def test_no_hay_dos_predeterminados_activos_en_una_organizacion(self):
         e = Escenario()
@@ -295,6 +319,13 @@ class PlantillasTests(PruebaBase):
                     nombre="Dos",
                     predeterminado=True,
                 )
+
+    def test_la_migracion_solo_agrega_versiones_a_las_plantillas(self):
+        copias = VersionFormato.objects.filter(
+            numero=3,
+            formato__organizacion__isnull=False,
+        )
+        self.assertFalse(copias.exists())
 
 
 class FormatoParaTests(PruebaBase):
@@ -759,6 +790,221 @@ class PdfFormatoTests(PruebaBase):
             formato_version_id=1,
         )
 
+    def _reporte_estres(self, conf):
+        """R-0099 «Prueba de estrés», como objeto (no se guarda en la base).
+
+        Reproduce los datos largos de producción: 12 días de serie, nombres de dispositivo
+        largos, 9 incidentes de 3 a 11354 min, 12 observaciones de 60–90 caracteres y
+        cumplimiento con «Temperatura».
+        """
+        ahora = timezone.now()
+        inicio = ahora - timedelta(days=12)
+        nombres = [
+            ("NC-A01", "Núcleo A-01 Laboratorio norte"),
+            ("NC-A02", "Núcleo A-02 Docencia vespertina"),
+            ("NC-A03", "Núcleo A-03 Sala de cómputo"),
+        ]
+        variables = {
+            "TEMP": ("Temperatura (°C)", "°C", 24.8, 14.2, 39.6, 66144),
+            "HUM": ("Humedad relativa (%)", "%HR", 61.4, 28.1, 88.9, 66144),
+            "AIRE": ("Calidad del aire (ppm)", "ppm", 1840.0, 310.0, 4870.0, 66144),
+        }
+        series = {}
+        for codigo, (_, _, promedio, _, _, _) in variables.items():
+            series[codigo] = [
+                {
+                    "t": (inicio + timedelta(days=i)).isoformat(),
+                    "promedio": promedio + (i - 5) * (40 if codigo == "AIRE" else 0.8),
+                }
+                for i in range(12)
+            ]
+        dispositivos = {
+            codigo: {
+                "nombre": nombre,
+                "area": "Docencia 1",
+                "area_num": 4,
+                "TEMP": {"minimo": 14.2, "promedio": 24.8, "maximo": 39.6},
+                "HUM": {"minimo": 28.1, "promedio": 61.4, "maximo": 88.9},
+                "AIRE": {"minimo": 310.0, "promedio": 1840.0, "maximo": 4870.0},
+            }
+            for codigo, nombre in nombres
+        }
+        duraciones = [3, 47, 191, 312, 889, 2324, 4180, 7920, 11354]
+        textos = [
+            "Se revisó la ventilación del laboratorio y se ajustó la extracción del área norte.",
+            "La puerta del aula quedó abierta durante el cambio de turno y subió la humedad.",
+            "Se calibró el sensor de calidad del aire después del mantenimiento programado.",
+            "El equipo de docencia reportó lecturas altas al mediodía por la apertura de ventanas.",
+            "Se limpió el filtro del sistema de extracción y bajaron los niveles de eCO₂.",
+            "La batería del dispositivo bajó del veinte por ciento y se cambió en el mismo turno.",
+            "Se revisó el cableado del sensor de temperatura y se restableció la conexión.",
+            "El aula estuvo cerrada sin ventilación durante la pausa y la humedad se elevó.",
+            "Se ajustó el umbral de advertencia del aire tras revisar el histórico del mes.",
+            "El personal de limpieza usó productos con alcohol y el sensor marcó un pico breve.",
+            "Se documentó el cambio de ubicación del equipo para mejorar la representatividad.",
+            "El mantenimiento de la red eléctrica interrumpió el envío de lecturas por dos horas.",
+        ]
+        incidentes = []
+        observaciones = []
+        for i, duracion in enumerate(duraciones):
+            codigo, nombre = nombres[i % len(nombres)]
+            variable = ("TEMP", "HUM", "AIRE")[i % 3]
+            incidentes.append(
+                {
+                    "dispositivo": nombre,
+                    "dispositivo_codigo": codigo,
+                    "area": "Docencia 1",
+                    "area_num": 4,
+                    "variable": variable,
+                    "variable_nombre": variables[variable][0].split(" (")[0],
+                    "inicio": (inicio + timedelta(days=1 + i)).isoformat(),
+                    "duracion_min": duracion,
+                    "valor_pico": {"TEMP": 39.6, "HUM": 88.9, "AIRE": 4870.0}[variable],
+                    "nivel": "PELIGRO" if i % 2 == 0 else "ADVERTENCIA",
+                }
+            )
+        for i, texto in enumerate(textos):
+            codigo, nombre = nombres[i % len(nombres)]
+            variable = ("TEMP", "HUM", "AIRE")[i % 3]
+            observaciones.append(
+                {
+                    "fecha": (ahora - timedelta(hours=i * 3)).isoformat(),
+                    "dispositivo": nombre,
+                    "dispositivo_codigo": codigo,
+                    "area": "Docencia 1",
+                    "area_num": 4,
+                    "variable": variables[variable][0].split(" (")[0],
+                    "variable_codigo": variable,
+                    "usuario": (
+                        "María Fernanda de la Cruz Villalobos"
+                        if i % 2 == 0
+                        else "José Antonio Ramírez Hernández"
+                    ),
+                    "texto": texto,
+                }
+            )
+        return SimpleNamespace(
+            num=99,
+            area_id=None,
+            area=None,
+            organizacion=self.e.organizacion,
+            organizacion_id=self.e.organizacion.pk,
+            periodo_inicio=inicio,
+            periodo_fin=ahora,
+            fecha_generacion=ahora,
+            origen="MANUAL",
+            cifras={
+                "alcance": "Docencia 1",
+                "periodo": {"inicio": inicio.isoformat(), "fin": ahora.isoformat()},
+                "variables": {
+                    codigo: {
+                        "nombre": nombre,
+                        "unidad": unidad,
+                        "promedio": promedio,
+                        "minimo": minimo,
+                        "maximo": maximo,
+                        "muestras": muestras,
+                        "pico_maximo_en": ahora.isoformat(),
+                        "pico_minimo_en": ahora.isoformat(),
+                    }
+                    for codigo, (
+                        nombre,
+                        unidad,
+                        promedio,
+                        minimo,
+                        maximo,
+                        muestras,
+                    ) in variables.items()
+                },
+                "intervalo_serie": "dia",
+                "series": series,
+                "dispositivos": dispositivos,
+                "cumplimiento": {
+                    "TEMP": {"dentro_pct": 91.4, "fuera_min": 11354.1, "lecturas": 66144},
+                    "HUM": {"dentro_pct": 87.2, "fuera_min": 2324.0, "lecturas": 66144},
+                    "AIRE": {"dentro_pct": 82.6, "fuera_min": 312.5, "lecturas": 66144},
+                },
+                "comparativo": {
+                    "periodo": {"inicio": inicio.isoformat(), "fin": ahora.isoformat()},
+                    "variables": [
+                        {
+                            "variable": codigo,
+                            "nombre": nombre.split(" (")[0],
+                            "unidad": unidad,
+                            "promedio": promedio,
+                            "minimo": minimo,
+                            "maximo": maximo,
+                            "promedio_previo": promedio - 1.4,
+                            "minimo_previo": minimo - 0.3,
+                            "maximo_previo": maximo - 0.8,
+                            "dif_promedio": 1.4,
+                            "dif_promedio_pct": 6.0,
+                            "mejora": False,
+                        }
+                        for codigo, (
+                            nombre,
+                            unidad,
+                            promedio,
+                            minimo,
+                            maximo,
+                            _,
+                        ) in variables.items()
+                    ],
+                    "alertas": {
+                        "total": 27,
+                        "total_previo": 19,
+                        "diferencia": 8,
+                        "diferencia_pct": 42.1,
+                        "mejora": False,
+                    },
+                },
+                "gestion_alertas": {
+                    "estados": {"ATENDIDA": 19, "DESCARTADA": 5, "PENDIENTE": 3},
+                    "total": 27,
+                    "tiempo_medio_min": 11354.1,
+                    "responsables": [
+                        {"usuario": "María Fernanda de la Cruz Villalobos", "total": 12},
+                        {"usuario": "José Antonio Ramírez Hernández", "total": 8},
+                    ],
+                },
+                "disponibilidad": {
+                    codigo: {
+                        "nombre": nombre,
+                        "area": "Docencia 1",
+                        "pct": (98.4, 91.7, 86.2)[i],
+                        "recibidas": (12400, 11880, 10990)[i],
+                        "esperadas": (12600, 12960, 12750)[i],
+                        "huecos": [
+                            {"inicio": inicio.isoformat(), "minutos": (11354.1, 2324.0, 312.5)[i]},
+                            {"inicio": ahora.isoformat(), "minutos": (191.2, 47, 3)[i]},
+                        ],
+                    }
+                    for i, (codigo, nombre) in enumerate(nombres)
+                },
+                "incidentes": incidentes,
+                "observaciones": observaciones,
+                "incidentes_total": len(incidentes),
+                "observaciones_total": len(observaciones),
+                "alertas": {
+                    "total": 27,
+                    "por_estado": {"PENDIENTE": 3, "ATENDIDA": 19, "DESCARTADA": 5},
+                    "por_nivel": {"ADVERTENCIA": 14, "PELIGRO": 13},
+                    "por_tipo": {"POR_ENCIMA": 27},
+                    "por_variable": {"TEMP": 7, "HUM": 9, "AIRE": 11},
+                },
+            },
+            contenido=(
+                "La humedad relativa se mantuvo por encima del rango de advertencia durante "
+                "varias tardes del periodo, sobre todo en el laboratorio norte.\n\n"
+                "La calidad del aire presentó picos asociados a la apertura de ventanas y al "
+                "cambio de turno.\n\n"
+                "La temperatura no mostró una tendencia clara, pero los máximos coincidieron "
+                "con los días de mayor ocupación."
+            ),
+            formato_version=SimpleNamespace(conf=conf),
+            formato_version_id=1,
+        )
+
     def _conf_todas_las_graficas(self):
         fuentes = {
             "cifras": [None],
@@ -1015,3 +1261,71 @@ class PdfFormatoTests(PruebaBase):
         datos = pdf.construir(self._reporte(conf))
 
         self.assertTrue(datos.startswith(b"%PDF"))
+
+    def _paginas(self, datos):
+        """Cuenta páginas con pypdf si está instalado; si no, con los objetos /Type /Page."""
+        try:
+            from pypdf import PdfReader
+
+            return len(PdfReader(io.BytesIO(datos)).pages)
+        except ImportError:
+            return len(re.findall(rb"/Type\s*/Page(?!s)", datos))
+
+    def _textos_fuera(self, datos):
+        """Palabras cuya caja termina después del margen derecho, si hay pdfplumber."""
+        try:
+            import pdfplumber
+        except ImportError:
+            return []
+        fuera = []
+        with pdfplumber.open(io.BytesIO(datos)) as documento:
+            for pagina in documento.pages:
+                limite = float(pagina.width) - pdf.MARGEN_X + 1
+                for palabra in pagina.extract_words():
+                    if float(palabra["x1"]) > limite:
+                        fuera.append((palabra["text"], float(palabra["x1"]), limite))
+        return fuera
+
+    def _textos_cruzados(self, datos):
+        """Pares de palabras cuyas cajas se intersectan, si pdfplumber está instalado."""
+        try:
+            import pdfplumber
+        except ImportError:
+            return []
+        cruces = []
+        with pdfplumber.open(io.BytesIO(datos)) as documento:
+            for pagina in documento.pages:
+                palabras = pagina.extract_words()
+                for i, a in enumerate(palabras):
+                    for b in palabras[i + 1 :]:
+                        ancho = min(a["x1"], b["x1"]) - max(a["x0"], b["x0"])
+                        alto = min(a["bottom"], b["bottom"]) - max(a["top"], b["top"])
+                        if ancho > 1 and alto > 1:
+                            cruces.append((a["text"], b["text"], round(ancho, 1), round(alto, 1)))
+        return cruces
+
+    def test_ningun_texto_se_cruza_en_las_plantillas_de_estres(self):
+        for conf in (
+            CONF_OPERATIVO_AMPLIADO,
+            CONF_EJECUTIVO,
+            CONF_CUMPLIMIENTO,
+            CONF_INCIDENTES,
+        ):
+            with self.subTest(conf=conf):
+                datos = pdf.construir(self._reporte_estres(conf))
+
+                self.assertEqual(self._textos_cruzados(datos), [])
+
+    def test_cada_plantilla_de_estres_cabe_en_una_pagina(self):
+        for conf in (
+            CONF_OPERATIVO_AMPLIADO,
+            CONF_EJECUTIVO,
+            CONF_CUMPLIMIENTO,
+            CONF_INCIDENTES,
+        ):
+            with self.subTest(conf=conf):
+                datos = pdf.construir(self._reporte_estres(conf))
+
+                self.assertTrue(datos.startswith(b"%PDF"))
+                self.assertEqual(self._paginas(datos), 1)
+                self.assertEqual(self._textos_fuera(datos), [])

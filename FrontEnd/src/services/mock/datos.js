@@ -58,9 +58,11 @@ export const organizaciones = [
 ]
 
 export const areas = [
-  { num: 1, organizacion: 1, nombre: 'Moldeo', descripcion: 'Línea 1 · Línea 2 · Línea 3 · Almacén' },
-  { num: 2, organizacion: 1, nombre: 'Laboratorio', descripcion: 'Sala limpia · Esclusa · Bodega fría · Control de calidad' },
-  { num: 3, organizacion: 1, nombre: 'Guardería', descripcion: 'Aula 1 · Aula 3 · Comedor · Patio techado' },
+  { num: 1, organizacion: 1, nombre: 'Moldeo', descripcion: 'Línea 1 · Línea 2 · Línea 3 · Almacén', puente_nico: 11 },
+  { num: 2, organizacion: 1, nombre: 'Laboratorio', descripcion: 'Sala limpia · Esclusa · Bodega fría · Control de calidad', puente_nico: 5 },
+  { num: 3, organizacion: 1, nombre: 'Guardería', descripcion: 'Aula 1 · Aula 3 · Comedor · Patio techado', puente_nico: null },
+  // Área del reporte de estrés R-0099; el resto de los datos no cambia.
+  { num: 4, organizacion: 1, nombre: 'Docencia 1', descripcion: 'Laboratorio norte · Docencia vespertina · Sala de cómputo', puente_nico: null },
 ]
 
 const U = (num, area, rol, nombre, primer, segundo, estado, accesoSeg) => ({
@@ -118,6 +120,7 @@ export const dispositivos = DISP.map(([num, area, nombre, codigo, bat, seg, inte
   // Voltaje aproximado de una LiPo según su carga; el equipo 4 aún no recibe su configuración.
   voltaje_bateria: bat == null ? null : (3.3 + 0.009 * bat).toFixed(3),
   intervalo_reportado_seg: num === 4 ? 120 : intervalo, configuracion_pendiente: num === 4 && intervalo !== 120,
+  puente_ia: [1, 5, 11].includes(num),
   ultimo_arranque: hace(3 * DIA), fecha_alta: '2026-08-10T16:00:00Z',
   version_firmware: versionDe(num), version_reportada_en: versionDe(num) ? hace(seg + 2 * HORA) : null,
   version_firmware_publicada: FIRMWARE_PUBLICADO,
@@ -388,6 +391,167 @@ reportes.forEach((reporte, indice) => {
   }
   reporte.cifras = { ...reporte.cifras, ...completarCifras(reporte, indice) }
 })
+
+// R-0099 «Prueba de estrés»: mismas formas que los reportes anteriores, con datos tan largos
+// como los de producción. Se agrega después de completarCifras para no pisar sus valores.
+const ESTRES_DISPOSITIVOS = [
+  { codigo: 'NC-A01', nombre: 'Núcleo A-01 Laboratorio norte', area: 'Docencia 1' },
+  { codigo: 'NC-A02', nombre: 'Núcleo A-02 Docencia vespertina', area: 'Docencia 1' },
+  { codigo: 'NC-A03', nombre: 'Núcleo A-03 Sala de cómputo', area: 'Docencia 1' },
+]
+const ESTRES_INCIDENTES = [11354, 7920, 4180, 2324, 889, 312, 191, 47, 3]
+const ESTRES_OBSERVACIONES = [
+  'Se revisó la ventilación del laboratorio y se ajustó la extracción del área norte.',
+  'La puerta del aula quedó abierta durante el cambio de turno y subió la humedad.',
+  'Se calibró el sensor de calidad del aire después del mantenimiento programado.',
+  'El equipo de docencia reportó lecturas altas al mediodía por la apertura de ventanas.',
+  'Se limpió el filtro del sistema de extracción y bajaron los niveles de eCO₂.',
+  'La batería del dispositivo bajó del veinte por ciento y se cambió en el mismo turno.',
+  'Se revisó el cableado del sensor de temperatura y se restableció la conexión.',
+  'El aula estuvo cerrada sin ventilación durante la pausa y la humedad se elevó.',
+  'Se ajustó el umbral de advertencia del aire tras revisar el histórico del mes.',
+  'El personal de limpieza usó productos con alcohol y el sensor marcó un pico breve.',
+  'Se documentó el cambio de ubicación del equipo para mejorar la representatividad.',
+  'El mantenimiento de la red eléctrica interrumpió el envío de lecturas por dos horas.',
+]
+const ESTRES = {
+  num: 99, organizacion: 1, area: 4, areas: [], generado_por: 2, origen: 'MANUAL',
+  periodo_inicio: '2026-11-01T07:00:00Z', periodo_fin: '2026-11-13T07:00:00Z',
+  titulo: 'Prueba de estrés · Docencia 1 · 1–12 nov 2026',
+  cifras: {
+    titulo: 'Prueba de estrés',
+    alcance: 'Docencia 1',
+    lecturas: 198432,
+    dispositivos: ESTRES_DISPOSITIVOS.map((d) => d.nombre),
+    periodo: { inicio: '2026-11-01T07:00:00Z', fin: '2026-11-13T07:00:00Z' },
+    variables: [
+      { variable: 'TEMP', minimo: 14.2, promedio: 24.8, maximo: 39.6, alertas: 7 },
+      { variable: 'HUM', minimo: 28.1, promedio: 61.4, maximo: 88.9, alertas: 9 },
+      { variable: 'AIRE', minimo: 310, promedio: 1840, maximo: 4870, alertas: 11 },
+    ],
+    serie: {
+      variable: 'HUM',
+      etiqueta: 'Humedad relativa promedio por día',
+      puntos: [
+        ['1 nov', 58.2], ['2 nov', 62.4], ['3 nov', 64.1], ['4 nov', 59.8],
+        ['5 nov', 66.3], ['6 nov', 61.7], ['7 nov', 69.5], ['8 nov', 63.2],
+        ['9 nov', 72.8], ['10 nov', 67.4], ['11 nov', 70.1], ['12 nov', 65.9],
+      ],
+    },
+    cumplimiento: {
+      TEMP: { dentro_pct: 91.4, fuera_min: 11354.1, lecturas: 66144 },
+      HUM: { dentro_pct: 87.2, fuera_min: 2324.0, lecturas: 66144 },
+      AIRE: { dentro_pct: 82.6, fuera_min: 312.5, lecturas: 66144 },
+    },
+    comparativo: {
+      periodo: { inicio: '2026-11-01T07:00:00Z', fin: '2026-11-13T07:00:00Z' },
+      variables: [
+        {
+          variable: 'TEMP', nombre: 'Temperatura', unidad: '°C', promedio: 24.8,
+          minimo: 14.2, maximo: 39.6, promedio_previo: 23.4, minimo_previo: 13.9,
+          maximo_previo: 36.8, dif_promedio: 1.4, dif_promedio_pct: 6.0, mejora: false,
+        },
+        {
+          variable: 'HUM', nombre: 'Humedad relativa', unidad: '%HR', promedio: 61.4,
+          minimo: 28.1, maximo: 88.9, promedio_previo: 58.2, minimo_previo: 30.4,
+          maximo_previo: 84.1, dif_promedio: 3.2, dif_promedio_pct: 5.5, mejora: false,
+        },
+        {
+          variable: 'AIRE', nombre: 'Calidad del aire', unidad: 'ppm', promedio: 1840,
+          minimo: 310, maximo: 4870, promedio_previo: 1512, minimo_previo: 290,
+          maximo_previo: 4210, dif_promedio: 328, dif_promedio_pct: 21.7, mejora: false,
+        },
+      ],
+      alertas: {
+        total: 27, total_previo: 19, diferencia: 8, diferencia_pct: 42.1, mejora: false,
+      },
+    },
+    por_dispositivo: ESTRES_DISPOSITIVOS.map((d, i) => ({
+      ...d,
+      TEMP: { minimo: 14.2 + i * 0.4, promedio: 24.8 - i * 0.6, maximo: 39.6 - i * 0.8 },
+      HUM: { minimo: 28.1 + i, promedio: 61.4 + i * 0.7, maximo: 88.9 - i * 0.5 },
+      AIRE: { minimo: 310 + i * 20, promedio: 1840 + i * 90, maximo: 4870 - i * 40 },
+    })),
+    gestion_alertas: {
+      estados: { ATENDIDA: 19, DESCARTADA: 5, PENDIENTE: 3 },
+      total: 27,
+      tiempo_medio_min: 11354.1,
+      responsables: [
+        { usuario: 'María Fernanda de la Cruz Villalobos', total: 12 },
+        { usuario: 'José Antonio Ramírez Hernández', total: 8 },
+      ],
+    },
+    disponibilidad: Object.fromEntries(
+      ESTRES_DISPOSITIVOS.map((d, i) => [
+        d.codigo,
+        {
+          nombre: d.nombre,
+          area: d.area,
+          pct: [98.4, 91.7, 86.2][i],
+          recibidas: [12400, 11880, 10990][i],
+          esperadas: [12600, 12960, 12750][i],
+          huecos: [
+            { inicio: '2026-11-03T10:00:00Z', minutos: [11354.1, 2324.0, 312.5][i] },
+            { inicio: '2026-11-08T16:00:00Z', minutos: [191.2, 47, 3][i] },
+          ],
+        },
+      ]),
+    ),
+    incidentes: ESTRES_INCIDENTES.map((duracion, i) => {
+      const dispositivo = ESTRES_DISPOSITIVOS[i % ESTRES_DISPOSITIVOS.length]
+      const variable = ['TEMP', 'HUM', 'AIRE'][i % 3]
+      const nombres = { TEMP: 'Temperatura', HUM: 'Humedad relativa', AIRE: 'Calidad del aire' }
+      return {
+        dispositivo: dispositivo.nombre,
+        dispositivo_codigo: dispositivo.codigo,
+        area: dispositivo.area,
+        variable,
+        variable_nombre: nombres[variable],
+        inicio: `2026-11-${String(2 + i).padStart(2, '0')}T${String(8 + (i % 9)).padStart(2, '0')}:15:00Z`,
+        duracion_min: duracion,
+        valor_pico: [39.6, 88.9, 4870][i % 3],
+        nivel: i % 2 ? 'ADVERTENCIA' : 'PELIGRO',
+      }
+    }),
+    observaciones: ESTRES_OBSERVACIONES.map((texto, i) => {
+      const dispositivo = ESTRES_DISPOSITIVOS[i % ESTRES_DISPOSITIVOS.length]
+      const variable = ['TEMP', 'HUM', 'AIRE'][i % 3]
+      const nombres = { TEMP: 'Temperatura', HUM: 'Humedad relativa', AIRE: 'Calidad del aire' }
+      return {
+        fecha: `2026-11-${String(12 - i).padStart(2, '0')}T${String(9 + (i % 8)).padStart(2, '0')}:30:00Z`,
+        dispositivo: dispositivo.nombre,
+        dispositivo_codigo: dispositivo.codigo,
+        area: dispositivo.area,
+        variable,
+        variable_codigo: variable,
+        variable_nombre: nombres[variable],
+        usuario: i % 2 ? 'José Antonio Ramírez Hernández' : 'María Fernanda de la Cruz Villalobos',
+        texto,
+      }
+    }),
+    incidentes_total: ESTRES_INCIDENTES.length,
+    observaciones_total: ESTRES_OBSERVACIONES.length,
+  },
+  contenido:
+    'La humedad relativa se mantuvo por encima del rango de advertencia durante varias tardes del periodo, sobre todo en el laboratorio norte.\n\nLa calidad del aire presentó picos asociados a la apertura de ventanas y al cambio de turno. Conviene revisar la extracción antes del siguiente periodo de clases.\n\nLa temperatura no mostró una tendencia clara, pero los máximos coincidieron con los días de mayor ocupación.',
+  archivo_pdf: '/media/reportes/99.pdf', fecha_generacion: hace(3 * HORA),
+  envios: [
+    {
+      num: 1, fecha: hace(3 * HORA), origen: 'MANUAL', enviado_por_nombre: 'Andrés Villalobos Ruiz',
+      destinatarios: [
+        { num: 2, nombre: 'Yadira Salazar Uribe' },
+        { num: 3, nombre: 'Mariana Cruz León' },
+      ],
+      resultado: 'OK', error: '',
+    },
+    {
+      num: 2, fecha: hace(2 * HORA), origen: 'PROGRAMADO', enviado_por_nombre: '',
+      destinatarios: [{ num: 5, nombre: 'Karla Méndez Soto' }],
+      resultado: 'FALLO', error: 'El servidor de correo no respondió.',
+    },
+  ],
+}
+reportes.unshift(ESTRES)
 
 
 export const programaciones = [

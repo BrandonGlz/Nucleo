@@ -15,12 +15,12 @@ import * as usuariosApi from '../../services/usuarios'
 import { ESTADO_DISPOSITIVO, nombreCompleto, nombreCorto, pagina } from '../../utils/convertir'
 import { fotoDe, logoDe } from '../../utils/foto'
 
-async function cargar() {
+async function cargar(conUsuarios = true) {
   const [o, a, d, u] = await Promise.all([
     organizacionesApi.propia(),
     organizacionesApi.areas(),
     dispositivosApi.lista(),
-    usuariosApi.lista(),
+    conUsuarios ? usuariosApi.lista() : Promise.resolve({ results: [] }),
   ])
   return { organizacion: pagina(o)[0] ?? null, areas: pagina(a), dispositivos: pagina(d), usuarios: pagina(u) }
 }
@@ -156,7 +156,7 @@ function EliminarArea({ area, cerrar, eliminada }) {
   )
 }
 
-function TablaAreas({ datos, editar, eliminar, editable }) {
+function TablaAreas({ datos, editar, eliminar, editable, puedePuente, guardandoPuente, asignarPuente }) {
   return (
     <div className="nc-table-wrap nc-scroll ui-areas__tabla ui-areas__tabla--areas">
       <table className="nc-table ui-tabla-tarjetas">
@@ -166,6 +166,7 @@ function TablaAreas({ datos, editar, eliminar, editable }) {
             <th>Dispositivos</th>
             <th>Supervisor</th>
             <th>Alertas por correo</th>
+            <th>ESP de Nico</th>
             <th />
           </tr>
         </thead>
@@ -213,6 +214,20 @@ function TablaAreas({ datos, editar, eliminar, editable }) {
                       </Badge>
                     ))}
                   </div>
+                </td>
+                <td>
+                  <Desplegable
+                    icon="cpu"
+                    value={a.puente_nico ?? ''}
+                    disabled={!puedePuente(a) || guardandoPuente === a.num}
+                    onChange={(v) => asignarPuente(a, v ? Number(v) : null)}
+                    options={[
+                      { value: '', label: 'Sin asignar' },
+                      ...datos.dispositivos
+                        .filter((d) => d.puente_ia)
+                        .map((d) => ({ value: String(d.num), label: d.nombre })),
+                    ]}
+                  />
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   {editable && <MenuAcciones
@@ -445,18 +460,37 @@ function MarcaReportes({ org, editable, guardada, avisar }) {
 // El administrador gestiona los datos de su empresa, sus áreas y a qué área pertenece cada
 // dispositivo. El supervisor las consulta (la API solo deja editarlas al administrador).
 export function AreasPage() {
-  const { rol } = useSesion()
+  const { rol, usuario } = useSesion()
   const editable = rol === 'ADMIN'
-  const { estado, datos, reintentar, actualizar } = useDatos(cargar, [])
+  const esSupervisor = rol === 'SUPER'
+  const conUsuarios = ['ADMIN', 'SUPER'].includes(rol)
+  const puedePuente = (area) => editable || (esSupervisor && usuario?.area === area.num)
+  const { estado, datos, reintentar, actualizar } = useDatos(() => cargar(conUsuarios), [conUsuarios])
   const [pestana, setPestana] = useState('areas')
   const [modal, setModal] = useState(null)
   const [guardando, setGuardando] = useState(null)
+  const [guardandoPuente, setGuardandoPuente] = useState(null)
   const [aviso, setAviso] = useState(null)
   const org = datos?.organizacion
 
   const avisar = (texto, tono = 'success') => {
     setAviso({ texto, tono })
     setTimeout(() => setAviso((a) => (a?.texto === texto ? null : a)), 3500)
+  }
+  const asignarPuente = async (area, puente) => {
+    setGuardandoPuente(area.num)
+    try {
+      const nueva = await organizacionesApi.actualizarArea(area.num, { puente_nico: puente })
+      actualizar((x) => ({
+        ...x,
+        areas: x.areas.map((y) => (y.num === nueva.num ? nueva : y)),
+      }))
+      avisar(`${area.nombre}: ESP de Nico ${puente ? 'asignado' : 'sin asignar'}.`)
+    } catch (e) {
+      avisar(e.datos?.puente_nico?.[0] ?? 'No se pudo guardar el ESP de Nico.', 'danger')
+    } finally {
+      setGuardandoPuente(null)
+    }
   }
   const mover = async (d, area) => {
     setGuardando(d.num)
@@ -582,7 +616,15 @@ export function AreasPage() {
                 : 'Elige el área de cada dispositivo. Si el operador asignado es de otra área, se le quita el dispositivo.'}
             </p>
             {pestana === 'areas' ? (
-              <TablaAreas datos={datos} editable={editable} editar={(a) => setModal({ tipo: 'area', area: a })} eliminar={(a) => setModal({ tipo: 'eliminar', area: a })} />
+              <TablaAreas
+                datos={datos}
+                editable={editable}
+                puedePuente={puedePuente}
+                guardandoPuente={guardandoPuente}
+                asignarPuente={asignarPuente}
+                editar={(a) => setModal({ tipo: 'area', area: a })}
+                eliminar={(a) => setModal({ tipo: 'eliminar', area: a })}
+              />
             ) : (
               <Asignacion datos={datos} mover={mover} guardando={guardando} editable={editable} />
             )}

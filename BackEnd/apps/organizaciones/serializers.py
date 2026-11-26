@@ -84,17 +84,49 @@ class OrganizacionSerializer(ValoresPorDefectoDeBaseMixin, serializers.ModelSeri
 
 
 class AreaSerializer(serializers.ModelSerializer):
+    puente_nico_nombre = serializers.SerializerMethodField()
+
     class Meta:
         model = Area
-        fields = ["num", "organizacion", "nombre", "descripcion"]
-        read_only_fields = ["num", "organizacion"]
+        fields = [
+            "num",
+            "organizacion",
+            "nombre",
+            "descripcion",
+            "puente_nico",
+            "puente_nico_nombre",
+        ]
+        read_only_fields = ["num", "organizacion", "puente_nico_nombre"]
+
+    def get_puente_nico_nombre(self, area):
+        return area.puente_nico.nombre if area.puente_nico_id else ""
 
     def validate(self, datos):
-        organizacion = self.context["request"].user.organizacion_id
+        actor = self.context["request"].user
+        organizacion = actor.organizacion_id
+        if self.instance is not None and actor.rol_id == roles.SUPERVISOR:
+            if set(datos) - {"puente_nico"}:
+                raise serializers.ValidationError(
+                    "El supervisor solo puede elegir el ESP de Nico de su área."
+                )
         nombre = datos.get("nombre", getattr(self.instance, "nombre", None))
         repetida = Area.objects.filter(organizacion_id=organizacion, nombre=nombre)
         if self.instance:
             repetida = repetida.exclude(pk=self.instance.pk)
         if repetida.exists():
             raise serializers.ValidationError({"nombre": "Ya existe un área con ese nombre."})
+        puente = datos.get("puente_nico")
+        if puente is not None:
+            if not puente.puente_ia:
+                raise serializers.ValidationError(
+                    {
+                        "puente_nico": (
+                            "El dispositivo no está marcado como puente de Nico."
+                        )
+                    }
+                )
+            if puente.area.organizacion_id != organizacion:
+                raise serializers.ValidationError(
+                    {"puente_nico": "El dispositivo debe ser de la misma organización."}
+                )
         return datos

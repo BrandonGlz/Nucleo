@@ -72,6 +72,15 @@ class Area(models.Model):
         null=True,
         blank=True,
     )
+    # ESP32 que hace de puente de Nico AI para las preguntas de toda el área.
+    puente_nico = models.ForeignKey(
+        "dispositivos.Dispositivo",
+        on_delete=models.SET_NULL,
+        db_column="puente_nico_num",
+        related_name="areas_como_puente",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         db_table = "area"

@@ -426,6 +426,7 @@ def pendientes(usuario, limite=3):
     )
     partes = []
     total = peligro + advertencia
+    listadas = list(alertas[:limite]) if total else []
     if total:
         niveles = []
         if peligro:
@@ -436,7 +437,7 @@ def pendientes(usuario, limite=3):
             f"{a.get_nivel_display().lower()} por {a.umbral.variable.nombre.lower()} en "
             f"{a.umbral.dispositivo.nombre} ({a.umbral.dispositivo.area.nombre}, "
             f"{timezone.localtime(a.fecha_hora):%d/%m %H:%M})"
-            for a in alertas[:limite]
+            for a in listadas
         ]
         mas = f" y {total - limite} más" if total > limite else ""
         partes.append(
@@ -458,8 +459,23 @@ def pendientes(usuario, limite=3):
     if not sin_conexion and not calentando:
         partes.append("Todos tus dispositivos están en línea.")
     if total:
-        partes.append("Se atienden desde el panel de Alertas.")
-    return {"texto": " ".join(partes)}
+        partes.append("Puedes atenderlas aquí o desde el panel de Alertas.")
+    return {
+        "texto": " ".join(partes),
+        "alertas": [
+            {
+                "num": alerta.num,
+                "nivel": alerta.nivel,
+                "variable": alerta.umbral.variable.nombre.split(" (")[0],
+                "dispositivo": alerta.umbral.dispositivo.nombre,
+                "area": alerta.umbral.dispositivo.area.nombre,
+                "fecha": alerta.fecha_hora.isoformat(),
+                "valor": float(alerta.lectura_valor),
+                "unidad": alerta.umbral.variable.unidad,
+            }
+            for alerta in listadas
+        ],
+    }
 
 
 # ── Detalle de una alerta ───────────────────────────────────────────────────────────────────
