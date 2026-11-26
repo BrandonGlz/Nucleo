@@ -243,7 +243,7 @@ export function AsistenteReporte({ areas, reportes, ed, puedeEditar, muestra: el
           </div>
           <div className="ui-modal__editor">
             <div className="ui-modal__tarjetas">
-              <ListaTarjetas ed={ed} />
+              <ListaTarjetas ed={ed} areas={areas} r={muestra} />
             </div>
             <div className="ui-visor nc-scroll">{muestra && <DashboardReporte r={muestra} areas={areas} ed={ed} />}</div>
           </div>

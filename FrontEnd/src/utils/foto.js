@@ -11,3 +11,8 @@ export function fotoDe(usuario) {
     return ruta
   }
 }
+
+// Logo de la organización: misma resolución contra el dominio de la API que la foto.
+export function logoDe(organizacion) {
+  return fotoDe({ foto_url: organizacion?.logo_url })
+}

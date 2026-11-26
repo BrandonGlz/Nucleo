@@ -1,4 +1,5 @@
-import { AREA, AREAS, ORGANIZACION, ORGANIZACION_PRIMER_ADMINISTRADOR, ORGANIZACIONES } from '../api'
+import { AREA, AREAS, ORGANIZACION, ORGANIZACION_LOGO, ORGANIZACION_PRIMER_ADMINISTRADOR, ORGANIZACIONES } from '../api'
+import { apiRequest } from './api/client'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/handlers'
 
@@ -22,6 +23,18 @@ export async function primerAdministrador(num, datos) {
 export async function actualizar(num, cambios) {
   if (USAR_MOCKS) return mock.actualizarOrganizacion(num, cambios)
   return pedir(ORGANIZACION(num), { metodo: 'PATCH', cuerpo: cambios })
+}
+// Logo de la organización; ambas devuelven la organización actualizada (con `logo_url`).
+export async function subirLogo(num, archivo) {
+  if (USAR_MOCKS) return mock.subirLogo(num, archivo)
+  const cuerpo = new FormData()
+  cuerpo.append('logo', archivo)
+  // Sin Content-Type: el navegador pone multipart con su boundary.
+  return apiRequest(ORGANIZACION_LOGO(num), { method: 'POST', body: cuerpo })
+}
+export async function quitarLogo(num) {
+  if (USAR_MOCKS) return mock.quitarLogo(num)
+  return pedir(ORGANIZACION_LOGO(num), { metodo: 'DELETE' })
 }
 export async function areas() {
   if (USAR_MOCKS) return mock.areas()

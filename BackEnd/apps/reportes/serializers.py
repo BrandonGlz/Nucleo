@@ -3,6 +3,7 @@ from datetime import time, timedelta
 from django.db.models import Q
 from rest_framework import serializers
 
+from apps.organizaciones import logos
 from apps.reportes import formatos, servicios
 from apps.reportes.models import FormatoReporte, ProgramacionReporte, Reporte, VersionFormato
 from apps.usuarios.models import Usuario
@@ -87,12 +88,18 @@ class ReporteSerializer(serializers.ModelSerializer):
     formato_nombre = serializers.SerializerMethodField()
     formato_version = serializers.SerializerMethodField()
     formato_conf = serializers.SerializerMethodField()
+    organizacion_nombre = serializers.SerializerMethodField()
+    organizacion_logo_url = serializers.SerializerMethodField()
+    organizacion_color = serializers.SerializerMethodField()
 
     class Meta:
         model = Reporte
         fields = [
             "num",
             "organizacion",
+            "organizacion_nombre",
+            "organizacion_logo_url",
+            "organizacion_color",
             "area",
             "areas",
             "generado_por",
@@ -109,6 +116,15 @@ class ReporteSerializer(serializers.ModelSerializer):
             "formato_conf",
         ]
         read_only_fields = fields
+
+    def get_organizacion_nombre(self, reporte):
+        return reporte.organizacion.nombre if reporte.organizacion_id else ""
+
+    def get_organizacion_logo_url(self, reporte):
+        return logos.url_logo(reporte.organizacion) if reporte.organizacion_id else None
+
+    def get_organizacion_color(self, reporte):
+        return reporte.organizacion.color_reporte if reporte.organizacion_id else None
 
     def _resolver(self, reporte):
         """Formato y versión del reporte; los viejos usan la plantilla Operativo detallado."""
@@ -159,9 +175,7 @@ class SolicitudReporteSerializer(serializers.Serializer):
                 {"periodo_fin": "El periodo no puede durar más de 31 días."}
             )
         if datos.get("area") is not None and datos.get("areas"):
-            raise serializers.ValidationError(
-                {"areas": "Elige un área o varias, no ambas."}
-            )
+            raise serializers.ValidationError({"areas": "Elige un área o varias, no ambas."})
         datos["areas"] = sorted(set(datos.get("areas") or []))
         return datos
 
@@ -260,9 +274,7 @@ class ProgramacionReporteSerializer(serializers.ModelSerializer):
         if not numeros:
             return []
         actor = self.context["request"].user
-        visibles = set(
-            areas_visibles(actor).filter(pk__in=numeros).values_list("pk", flat=True)
-        )
+        visibles = set(areas_visibles(actor).filter(pk__in=numeros).values_list("pk", flat=True))
         if visibles != set(numeros):
             raise serializers.ValidationError("Hay áreas que no existen o no están a su alcance.")
         return sorted(visibles)

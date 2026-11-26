@@ -53,6 +53,7 @@ export const organizaciones = [
     num: 1, nombre: 'Grupo Altamira', dir_calle: 'Blvd. Industrial', dir_numero: '1450',
     dir_colonia: 'Ciudad Industrial', ciudad: 'Tijuana', telefono: '6646231100',
     estado: 'ACTIVA', fecha_registro: '2026-08-01T16:00:00Z',
+    logo_url: null, color_reporte: null,
   },
 ]
 

@@ -110,6 +110,43 @@ export async function quitarFoto() {
   cuenta.foto_url = null
   return copia(cuenta)
 }
+
+// Logo de la organización en modo simulado: hasta 2 MB y 600×200, sin recortar (data URL PNG).
+const LOGO_TIPOS = ['image/jpeg', 'image/png', 'image/webp']
+const LOGO_MAXIMO = 2 * 1024 * 1024
+const errorLogo = (mensaje) => {
+  throw new ApiError('La API respondió con el estado 400.', 400, { logo: [mensaje] })
+}
+async function ajustarLogo(archivo) {
+  let imagen
+  try {
+    imagen = await createImageBitmap(archivo)
+  } catch {
+    errorLogo('El archivo no es una imagen válida (PNG, JPEG o WebP).')
+  }
+  const escala = Math.min(1, 600 / imagen.width, 200 / imagen.height)
+  const lienzo = document.createElement('canvas')
+  lienzo.width = Math.max(1, Math.round(imagen.width * escala))
+  lienzo.height = Math.max(1, Math.round(imagen.height * escala))
+  lienzo.getContext('2d').drawImage(imagen, 0, 0, lienzo.width, lienzo.height)
+  imagen.close?.()
+  return lienzo.toDataURL('image/png')
+}
+export async function subirLogo(num, archivo) {
+  await esperar()
+  const o = db.organizaciones.find((x) => x.num === Number(num)) ?? noEncontrado()
+  if (!archivo) errorLogo('Adjunta el logo en el campo «logo».')
+  if (archivo.size > LOGO_MAXIMO) errorLogo('El logo no puede pasar de 2 MB.')
+  if (!LOGO_TIPOS.includes(archivo.type)) errorLogo('Sube una imagen PNG, JPEG o WebP.')
+  o.logo_url = await ajustarLogo(archivo)
+  return copia(o)
+}
+export async function quitarLogo(num) {
+  await esperar()
+  const o = db.organizaciones.find((x) => x.num === Number(num)) ?? noEncontrado()
+  o.logo_url = null
+  return copia(o)
+}
 export async function cambiarPassword({ password_actual, password_nueva }) {
   await esperar()
   if (!password_actual) throw new ApiError('La API respondió con el estado 400.', 400)
@@ -118,6 +155,29 @@ export async function cambiarPassword({ password_actual, password_nueva }) {
 }
 
 // Organizaciones y usuarios
+const contrasteConBlanco = (color) => {
+  const canales = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16) / 255)
+  const lineales = canales.map((canal) =>
+    canal <= 0.04045 ? canal / 12.92 : ((canal + 0.055) / 1.055) ** 2.4,
+  )
+  const luminancia = 0.2126 * lineales[0] + 0.7152 * lineales[1] + 0.0722 * lineales[2]
+  return 1.05 / (luminancia + 0.05)
+}
+const validarColorMock = (color) => {
+  if (color == null || color === '') return null
+  if (!/^#[0-9a-f]{6}$/i.test(color)) {
+    throw new ApiError('La API respondió con el estado 400.', 400, {
+      color_reporte: ['Usa un color en formato #RRGGBB.'],
+    })
+  }
+  const normalizado = color.toUpperCase()
+  if (contrasteConBlanco(normalizado) < 3) {
+    throw new ApiError('La API respondió con el estado 400.', 400, {
+      color_reporte: ['El color no tiene contraste suficiente con el blanco: el texto no se leería.'],
+    })
+  }
+  return normalizado
+}
 export async function organizaciones() {
   await esperar()
   return pagina(copia(db.organizaciones))
@@ -126,12 +186,14 @@ export async function actualizarOrganizacion(num, cambios) {
   await esperar()
   const o = db.organizaciones.find((x) => x.num === Number(num)) ?? noEncontrado()
   if (cambios.nombre != null && !String(cambios.nombre).trim()) throw new ApiError('La API respondió con el estado 400.', 400)
+  if ('color_reporte' in cambios) cambios.color_reporte = validarColorMock(cambios.color_reporte)
   Object.assign(o, cambios)
   return copia(o)
 }
 export async function crearOrganizacion(datos) {
   await esperar()
   if (!String(datos.nombre ?? '').trim()) throw new ApiError('La API respondió con el estado 400.', 400)
+  if ('color_reporte' in datos) datos.color_reporte = validarColorMock(datos.color_reporte)
   const o = { num: Math.max(0, ...db.organizaciones.map((x) => x.num)) + 1, estado: 'ACTIVA', fecha_registro: new Date().toISOString(), ...datos }
   db.organizaciones.push(o)
   return copia(o)
@@ -371,7 +433,13 @@ const prepararReporte = (r) => {
       formato_conf: copia(inicial.conf),
     })
   }
-  return copia(r)
+  const org = db.organizaciones.find((o) => o.num === r.organizacion) ?? db.organizaciones[0]
+  return copia({
+    ...r,
+    organizacion_nombre: org?.nombre ?? '',
+    organizacion_logo_url: org?.logo_url ?? null,
+    organizacion_color: org?.color_reporte ?? null,
+  })
 }
 
 export async function reportes() {

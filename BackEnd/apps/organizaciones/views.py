@@ -1,7 +1,9 @@
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
+from apps.organizaciones import logos
 from apps.organizaciones.models import Organizacion
 from apps.organizaciones.serializers import AreaSerializer, OrganizacionSerializer
 from apps.usuarios.models import Usuario
@@ -32,13 +34,45 @@ class OrganizacionViewSet(
     roles_acciones = {
         "create": (roles.ADMIN_PLATAFORMA,),
         "primer_administrador": (roles.ADMIN_PLATAFORMA,),
+        "logo": (roles.ADMIN,),
     }
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        # El permiso de la marca se revisa antes de validar el cuerpo: ADMINPLAT, SUPER y
+        # OPER reciben 403 aunque manden un color válido.
+        if request.user.rol_id != roles.ADMIN and (
+            self.action == "logo"
+            or (request.method in ("PATCH", "PUT") and "color_reporte" in request.data)
+        ):
+            self.permission_denied(
+                request,
+                message="Solo el administrador cambia la marca de los reportes.",
+            )
 
     def get_queryset(self):
         usuario = self.request.user
         if usuario.rol_id == roles.ADMIN_PLATAFORMA:
             return Organizacion.objects.all()
         return Organizacion.objects.filter(pk=usuario.organizacion_id)
+
+    @action(
+        detail=True,
+        methods=["post", "delete"],
+        url_path="logo",
+        parser_classes=[MultiPartParser],
+    )
+    def logo(self, request, pk=None):
+        """Cambia (multipart, campo ``logo``) o quita el logo de la organización."""
+        organizacion = self.get_object()
+        if request.method == "POST":
+            archivo = request.FILES.get("logo")
+            if archivo is None:
+                raise serializers.ValidationError({"logo": ["Adjunta el logo en el campo «logo»."]})
+            logos.guardar(organizacion, logos.procesar(archivo))
+        else:
+            logos.quitar(organizacion)
+        return Response(OrganizacionSerializer(organizacion, context={"request": request}).data)
 
     @action(detail=True, methods=["post"], url_path="primer-administrador")
     def primer_administrador(self, request, pk=None):

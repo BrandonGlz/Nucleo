@@ -1,5 +1,6 @@
 """Pruebas de las plantillas de formato, su catálogo y sus predeterminados."""
 
+import io
 import tempfile
 from datetime import timedelta
 from pathlib import Path
@@ -10,8 +11,9 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import override_settings
 from django.utils import timezone
+from PIL import Image
 
-from apps.reportes import ia, pdf
+from apps.reportes import formatos, ia, pdf
 from apps.reportes.formatos import (
     CONF_CUMPLIMIENTO,
     CONF_EJECUTIVO,
@@ -84,14 +86,10 @@ class ValidarConfTests(PruebaBase):
                     validar_conf(conf)
 
     def test_conserva_el_alto_valido_y_quita_el_nulo(self):
-        con_alto = validar_conf(
-            {**CONF_OPERATIVO, "opciones": {"serie": {"alto": 320}}}
-        )
+        con_alto = validar_conf({**CONF_OPERATIVO, "opciones": {"serie": {"alto": 320}}})
         self.assertEqual(con_alto["opciones"]["serie"]["alto"], 320)
 
-        con_nulo = validar_conf(
-            {**CONF_OPERATIVO, "opciones": {"serie": {"alto": None}}}
-        )
+        con_nulo = validar_conf({**CONF_OPERATIVO, "opciones": {"serie": {"alto": None}}})
         self.assertNotIn("alto", con_nulo["opciones"]["serie"])
         self.assertNotIn("alto", validar_conf(CONF_OPERATIVO)["opciones"]["serie"])
 
@@ -105,9 +103,7 @@ class ValidarConfTests(PruebaBase):
             validar_conf(conf)
 
     def test_valida_el_adjunto_csv_de_la_hoja(self):
-        normalizada = validar_conf(
-            {**CONF_OPERATIVO, "hoja": {"adjuntar_csv": True}}
-        )
+        normalizada = validar_conf({**CONF_OPERATIVO, "hoja": {"adjuntar_csv": True}})
         self.assertTrue(normalizada["hoja"]["adjuntar_csv"])
         self.assertFalse(validar_conf(CONF_OPERATIVO)["hoja"]["adjuntar_csv"])
 
@@ -133,6 +129,126 @@ class ValidarConfTests(PruebaBase):
         self.assertEqual(normalizada["orden"][0], "cifras")
         self.assertEqual(len(normalizada["orden"]), 7)
         self.assertEqual(normalizada["ocultos"], ["cifras"])
+
+    def test_la_hoja_por_omision_es_carta_vertical_sin_portada_ni_firmas(self):
+        hoja = validar_conf(CONF_OPERATIVO)["hoja"]
+
+        self.assertEqual(hoja["tamano"], "carta")
+        self.assertEqual(hoja["orientacion"], "vertical")
+        self.assertFalse(hoja["portada"])
+        self.assertEqual(hoja["firmas"], {})
+        self.assertEqual(hoja["analisis_largo"], "normal")
+        self.assertFalse(hoja["adjuntar_csv"])
+
+    def test_valida_los_campos_de_la_hoja_y_las_firmas(self):
+        hoja = validar_conf(
+            {
+                **CONF_OPERATIVO,
+                "hoja": {
+                    "tamano": "a4",
+                    "orientacion": "horizontal",
+                    "portada": True,
+                    "analisis_largo": "detallado",
+                    "firmas": {
+                        "elaboro": {"nombre": " Ana López ", "cargo": "Jefa"},
+                        "reviso": {"nombre": "", "cargo": ""},
+                    },
+                },
+            }
+        )["hoja"]
+
+        self.assertEqual(hoja["tamano"], "a4")
+        self.assertEqual(hoja["orientacion"], "horizontal")
+        self.assertTrue(hoja["portada"])
+        self.assertEqual(hoja["analisis_largo"], "detallado")
+        self.assertEqual(hoja["firmas"]["elaboro"], {"nombre": "Ana López", "cargo": "Jefa"})
+        self.assertNotIn("reviso", hoja["firmas"])
+
+    def test_rechaza_hojas_invalidas(self):
+        casos = [
+            ({"tamano": "oficio"}, "tamaño"),
+            ({"orientacion": "diagonal"}, "orientación"),
+            ({"portada": "sí"}, "portada"),
+            ({"analisis_largo": "largo"}, "largo"),
+            ({"adjuntar_csv": "sí"}, "adjuntar_csv"),
+            ({"firmas": {"elaboro": "Ana"}}, "firma"),
+        ]
+        for hoja, mensaje in casos:
+            with self.subTest(hoja=hoja):
+                with self.assertRaisesMessage(ValidationError, mensaje):
+                    validar_conf({**CONF_OPERATIVO, "hoja": hoja})
+
+    def test_las_opciones_comunes_de_la_tarjeta_se_validan_y_recortan(self):
+        conf = validar_conf(
+            {
+                **CONF_OPERATIVO,
+                "opciones": {
+                    "var:TEMP": {
+                        "titulo": "  Temperatura del turno  ",
+                        "nota": "  Lecturas estabilizadas.  ",
+                        "decimales": 2,
+                        "filtro": {"areas": [2, 2, 3]},
+                    }
+                },
+            }
+        )
+        opciones = conf["opciones"]["var:TEMP"]
+
+        self.assertEqual(opciones["titulo"], "Temperatura del turno")
+        self.assertEqual(opciones["nota"], "Lecturas estabilizadas.")
+        self.assertEqual(opciones["decimales"], 2)
+        self.assertEqual(opciones["filtro"], {"areas": [2, 3]})
+
+    def test_rechaza_opciones_comunes_invalidas(self):
+        casos = [
+            ({"titulo": "x" * 61}, "60"),
+            ({"nota": "x" * 201}, "200"),
+            ({"decimales": 3}, "decimales"),
+            ({"decimales": True}, "decimales"),
+            ({"filtro": {"areas": ["2"]}}, "áreas"),
+            ({"filtro": {"dispositivos": [2]}}, "dispositivos"),
+            ({"filtro": {"otra": [1]}}, "filtro"),
+        ]
+        for opciones, mensaje in casos:
+            with self.subTest(opciones=opciones):
+                with self.assertRaisesMessage(ValidationError, mensaje):
+                    validar_conf({**CONF_OPERATIVO, "opciones": {"var:TEMP": opciones}})
+
+    def test_un_filtro_vacio_no_se_guarda(self):
+        conf = validar_conf({**CONF_OPERATIVO, "opciones": {"var:TEMP": {"filtro": {"areas": []}}}})
+
+        self.assertNotIn("filtro", conf["opciones"]["var:TEMP"])
+
+
+class LargoAnalisisTests(PruebaBase):
+    def test_largo_analisis_usa_la_hoja_del_formato(self):
+        version = SimpleNamespace(conf={**CONF_OPERATIVO, "hoja": {"analisis_largo": "detallado"}})
+
+        self.assertEqual(formatos.largo_analisis(version), "detallado")
+        self.assertEqual(formatos.largo_analisis(None), "normal")
+
+    def test_la_instruccion_de_la_ia_cambia_con_el_largo(self):
+        capturado = {}
+
+        def proveedor(instrucciones, _cifras):
+            capturado["instrucciones"] = instrucciones
+            return "Texto"
+
+        with (
+            mock.patch.dict(ia.PROVEEDORES, {"prueba": proveedor}),
+            override_settings(IA_PROVEEDOR="prueba"),
+        ):
+            ia.redactar({}, largo="breve")
+            breve = capturado["instrucciones"]
+            ia.redactar({}, largo="detallado")
+            detallado = capturado["instrucciones"]
+
+        self.assertIn("3 a 4 frases", breve)
+        self.assertIn("hasta 4 párrafos", detallado)
+
+    def test_rechaza_un_largo_desconocido(self):
+        with self.assertRaises(ValueError):
+            ia.redactar({}, largo="eterno")
 
 
 class PlantillasTests(PruebaBase):
@@ -392,6 +508,31 @@ class FormatoReporteAPITests(PruebaBase):
         self.assertEqual(guardado.formato_version.formato_id, modelo.pk)
         redactar.assert_called_once()
 
+    def test_generar_pasa_el_largo_del_analisis_a_la_ia(self):
+        formato = self._crear(
+            "Detallado",
+            {
+                **CONF_OPERATIVO,
+                "hoja": {"analisis_largo": "detallado"},
+            },
+        )
+        ahora = timezone.now()
+        solicitud = {
+            "formato": formato["num"],
+            "periodo_inicio": (ahora - timedelta(hours=2)).isoformat(),
+            "periodo_fin": ahora.isoformat(),
+        }
+
+        with (
+            tempfile.TemporaryDirectory() as carpeta,
+            override_settings(MEDIA_ROOT=carpeta),
+            mock.patch.object(ia, "redactar", return_value="Análisis") as redactar,
+        ):
+            r = cliente_de(self.e.analista).post("/api/v1/reportes/", solicitud, format="json")
+
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(redactar.call_args.kwargs["largo"], "detallado")
+
     def test_cambiar_formato_regenera_el_pdf_sin_ia(self):
         uno = self._crear("Uno")
         dos = self._crear("Dos", CONF_EJECUTIVO)
@@ -457,6 +598,9 @@ class FormatoReporteAPITests(PruebaBase):
 
 
 class PdfFormatoTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+
     def _cifras(self, ahora):
         variables = {
             "TEMP": {
@@ -598,6 +742,7 @@ class PdfFormatoTests(PruebaBase):
             num=7,
             area_id=None,
             area=None,
+            organizacion=self.e.organizacion,
             periodo_inicio=ahora - timedelta(days=7),
             periodo_fin=ahora,
             fecha_generacion=ahora,
@@ -712,3 +857,158 @@ class PdfFormatoTests(PruebaBase):
         self.assertEqual(variable, "HUM")
         self.assertIs(color, pdf.VERDE)
         self.assertEqual(grados, 360)
+
+    def test_pdf_en_carta_y_a4_vertical_y_horizontal(self):
+        medidas = {
+            ("carta", "vertical"): b"[ 0 0 612 792 ]",
+            ("carta", "horizontal"): b"[ 0 0 792 612 ]",
+            ("a4", "vertical"): b"[ 0 0 595.2756 841.8898 ]",
+            ("a4", "horizontal"): b"[ 0 0 841.8898 595.2756 ]",
+        }
+        for (tamano, orientacion), mediabox in medidas.items():
+            with self.subTest(tamano=tamano, orientacion=orientacion):
+                conf = {
+                    **CONF_OPERATIVO,
+                    "hoja": {"tamano": tamano, "orientacion": orientacion},
+                }
+                datos = pdf.construir(self._reporte(conf))
+                self.assertIn(mediabox, datos)
+
+    def test_la_portada_y_las_firmas_se_dibujan_cuando_se_piden(self):
+        conf = {
+            **CONF_EJECUTIVO,
+            "hoja": {
+                "portada": True,
+                "firmas": {
+                    "elaboro": {"nombre": "Ana López", "cargo": "Jefa"},
+                    "reviso": {"nombre": "Carlos Ruiz", "cargo": "Gerente"},
+                },
+            },
+        }
+        with (
+            mock.patch.object(pdf, "_portada", wraps=pdf._portada) as portada,
+            mock.patch.object(pdf, "_dibujar_firmas", wraps=pdf._dibujar_firmas) as firmas,
+        ):
+            datos = pdf.construir(self._reporte(conf))
+
+        self.assertTrue(datos.startswith(b"%PDF"))
+        portada.assert_called_once()
+        firmas.assert_called_once()
+
+    def test_pdf_usa_el_logo_y_el_color_de_la_organizacion(self):
+        with tempfile.TemporaryDirectory() as carpeta, override_settings(MEDIA_ROOT=carpeta):
+            carpeta_logos = Path(carpeta) / "logos"
+            carpeta_logos.mkdir()
+            salida = io.BytesIO()
+            Image.new("RGBA", (600, 200), (15, 122, 69, 255)).save(salida, format="PNG")
+            (carpeta_logos / "logo.png").write_bytes(salida.getvalue())
+            self.e.organizacion.logo = "logos/logo.png"
+            self.e.organizacion.color_reporte = "#0F7A45"
+
+            with mock.patch.object(pdf, "_dibujar_logo", wraps=pdf._dibujar_logo) as logo:
+                datos = pdf.construir(self._reporte(CONF_EJECUTIVO))
+
+            self.assertTrue(datos.startswith(b"%PDF"))
+            logo.assert_called_once()
+            self.assertIs(pdf._MARCA.get(), pdf.VERDE)
+
+    def test_titulo_nota_decimales_y_filtro_de_una_tarjeta(self):
+        conf = {
+            **CONF_OPERATIVO,
+            "opciones": {
+                "var:TEMP": {
+                    "titulo": "Temperatura del turno",
+                    "nota": "Solo lecturas estabilizadas.",
+                    "decimales": 2,
+                },
+                "dispositivos": {
+                    "filtro": {"dispositivos": ["NC-0501"]},
+                    "titulo": "Equipos del filtro",
+                },
+            },
+        }
+
+        datos = pdf.construir(self._reporte(conf))
+
+        self.assertTrue(datos.startswith(b"%PDF"))
+        self.assertEqual(pdf._titulo({"titulo": "Hola"}, "Adiós"), "Hola")
+        self.assertEqual(pdf._decimales({"decimales": 2}, 1), 2)
+        filas = [
+            {"codigo": "NC-0501", "area_num": 1},
+            {"codigo": "NC-0502", "area_num": 2},
+        ]
+        self.assertEqual(
+            pdf._filas_filtradas({"filtro": {"areas": [1]}}, filas),
+            [filas[0]],
+        )
+        self.assertEqual(
+            pdf._filas_filtradas({"filtro": {"dispositivos": ["NC-0502"]}}, filas),
+            [filas[1]],
+        )
+        self.assertEqual(pdf._filas_filtradas({}, filas), filas)
+
+    def test_el_pdf_llama_a_la_nota_y_toma_los_decimales_de_la_tarjeta(self):
+        conf = {
+            **CONF_OPERATIVO,
+            "opciones": {
+                "var:TEMP": {
+                    "titulo": "Temperatura del turno",
+                    "nota": "Solo lecturas estabilizadas.",
+                    "decimales": 2,
+                }
+            },
+        }
+
+        with (
+            mock.patch.object(pdf, "_nota", wraps=pdf._nota) as nota,
+            mock.patch.object(pdf, "_decimales", wraps=pdf._decimales) as decimales,
+        ):
+            pdf.construir(self._reporte(conf))
+
+        notas = [llamada.args[5].get("nota") for llamada in nota.call_args_list]
+        self.assertIn("Solo lecturas estabilizadas.", notas)
+        self.assertTrue(
+            any(llamada.args[0].get("decimales") == 2 for llamada in decimales.call_args_list)
+        )
+
+    def test_la_nota_reserva_su_espacio_debajo_de_la_tarjeta(self):
+        with (
+            mock.patch.object(pdf, "_dibujar_tarjeta_base") as base,
+            mock.patch.object(pdf, "_nota") as nota,
+        ):
+            pdf._dibujar_tarjeta(
+                None,
+                "disponibilidad",
+                0,
+                300,
+                200,
+                220,
+                {},
+                {"nota": "x" * 200},
+            )
+
+        alto_tarjeta = base.call_args.args[5]
+        self.assertLess(alto_tarjeta, 220)
+        self.assertEqual(nota.call_args.args[4], alto_tarjeta)
+        self.assertGreaterEqual(220 - alto_tarjeta, pdf._alto_nota("x" * 200, 200))
+
+    def test_pdf_con_nota_en_disponibilidad_y_gestion_no_se_encima(self):
+        conf = {
+            **CONF_OPERATIVO_AMPLIADO,
+            "opciones": {
+                "disponibilidad": {
+                    "grafica": "barras",
+                    "ancho": "4",
+                    "nota": "n" * 200,
+                },
+                "gestion_alertas": {
+                    "grafica": "barras",
+                    "ancho": "6",
+                    "nota": "Tiempo medio de atención del periodo.",
+                },
+            },
+        }
+
+        datos = pdf.construir(self._reporte(conf))
+
+        self.assertTrue(datos.startswith(b"%PDF"))

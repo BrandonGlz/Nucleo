@@ -117,6 +117,31 @@ export const ANCHO = {
     ['12', 'Completa'],
   ],
 }
+// Opciones comunes a todas las tarjetas; el editor las dibuja aparte de las gráficas.
+export const OPCIONES_COMUNES = [
+  { clave: 'titulo', tipo: 'texto', etiqueta: 'Título', max: 60 },
+  {
+    clave: 'filtro',
+    tipo: 'filtro',
+    etiqueta: 'Filtro por área o dispositivo',
+    fuentes: ['dispositivos', 'disponibilidad', 'incidentes', 'observaciones'],
+  },
+  {
+    clave: 'decimales',
+    tipo: 'uno',
+    etiqueta: 'Decimales',
+    valores: [
+      [0, '0'],
+      [1, '1'],
+      [2, '2'],
+    ],
+  },
+  { clave: 'nota', tipo: 'texto', etiqueta: 'Nota al pie', max: 200 },
+]
+export const TITULO_MAX = OPCIONES_COMUNES.find((o) => o.clave === 'titulo').max
+export const NOTA_MAX = OPCIONES_COMUNES.find((o) => o.clave === 'nota').max
+// Fuentes cuyos datos se pueden restringir por área o dispositivo.
+export const FUENTES_CON_FILTRO = new Set(OPCIONES_COMUNES.find((o) => o.clave === 'filtro').fuentes)
 const CAMPOS = {
   clave: 'datos',
   tipo: 'varios',

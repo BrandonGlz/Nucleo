@@ -21,6 +21,14 @@ INSTRUCCIONES = (
     "forma. Describe tendencias, picos y alertas."
 )
 
+# El largo lo elige el formato del reporte; no cambia el modelo ni el contexto del proveedor.
+INSTRUCCIONES_LARGO = {
+    "breve": " Escribe un solo párrafo de 3 a 4 frases.",
+    "normal": "",
+    "detallado": " Escribe hasta 4 párrafos, con detalle de cada variable y de las alertas.",
+}
+LARGOS = tuple(INSTRUCCIONES_LARGO)
+
 NIVEL = {"PELIGRO": "de peligro", "ADVERTENCIA": "de advertencia"}
 
 
@@ -76,12 +84,19 @@ def redaccion_local(_instrucciones, cifras_json):
 PROVEEDORES = {"local": redaccion_local}
 
 
-def redactar(cifras):
-    """Devuelve el texto del reporte a partir de las cifras ya calculadas."""
+def redactar(cifras, largo="normal"):
+    """Devuelve el texto del reporte a partir de las cifras ya calculadas.
+
+    ``largo`` es ``breve``, ``normal`` o ``detallado`` y solo ajusta la instrucción; el
+    modelo y su contexto no cambian.
+    """
+    if largo not in INSTRUCCIONES_LARGO:
+        raise ValueError(f"Largo de análisis desconocido: {largo}")
     proveedor = PROVEEDORES.get(settings.IA_PROVEEDOR)
     if proveedor is None:
         raise IANoDisponible("El servicio de inteligencia artificial no está configurado.")
+    instrucciones = INSTRUCCIONES + INSTRUCCIONES_LARGO[largo]
     try:
-        return proveedor(INSTRUCCIONES, json.dumps(cifras, ensure_ascii=False))
+        return proveedor(instrucciones, json.dumps(cifras, ensure_ascii=False))
     except Exception as error:
         raise IANoDisponible("El servicio de inteligencia artificial no respondió.") from error

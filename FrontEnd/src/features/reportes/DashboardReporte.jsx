@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Eye, EyeOff, GripVertical, Plus, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { BarChart, Badge, Icon, Logo, TrendChart } from '../../design-system/componentes/index.js'
 import { UNIDAD, VARIABLE } from '../../utils/convertir'
-import { ANCHO, esquema, FUENTES, opcionesDe, opcionesNuevas, tarjeta } from './personalizacion'
+import { ANCHO, esquema, FUENTES, FUENTES_CON_FILTRO, NOTA_MAX, opcionesDe, opcionesNuevas, tarjeta, TITULO_MAX } from './personalizacion'
 import { fechaLarga, hora, mesAnio, miles, periodo } from '../../utils/formato'
+import { logoDe } from '../../utils/foto'
 
 const ORIGEN = {
   MANUAL: { tone: 'neutral', icon: 'user', label: 'Manual' },
@@ -40,7 +41,7 @@ function Cifras({ r, op }) {
 function TarjetaVariable({ v, op }) {
   if (!v) return <p className="ui-muted">Sin datos de esta variable en el periodo.</p>
   const info = VARIABLE[v.variable]
-  const d = info.decimales
+  const d = decimalesDe(op, info.decimales)
   const u = UNIDAD[v.variable]
   const f = (x) => Number(x).toFixed(d)
   const pos = ((v.promedio - v.minimo) / (v.maximo - v.minimo || 1)) * 100
@@ -115,7 +116,7 @@ const altoGrafica = (alto) => (alto ? Math.max(90, alto - 70) : 150)
 
 function Serie({ serie, op }) {
   const v = serie.variable
-  const dec = VARIABLE[v].decimales
+  const dec = decimalesDe(op, VARIABLE[v].decimales)
   const max = Math.max(...serie.puntos.map(([, x]) => x))
   const valores = op.datos.includes('valores')
   const resalta = op.datos.includes('maximo')
@@ -342,6 +343,17 @@ const ESTADOS_ALERTA = {
 }
 const nombreVariable = (codigo) => VARIABLE[codigo]?.corta ?? codigo
 const nombreEstado = (estado) => ESTADOS_ALERTA[estado] ?? estado
+const SIN_DATOS_FILTRO = 'Sin datos para el filtro elegido'
+const filtroDe = (op) => ({ areas: op.filtro?.areas ?? [], dispositivos: op.filtro?.dispositivos ?? [] })
+const decimalesDe = (op, porOmision) => (op.decimales === 0 || op.decimales === 1 || op.decimales === 2 ? op.decimales : porOmision)
+const areaNumDe = (fila, areas = []) => fila?.area_num ?? areas.find((a) => a.nombre === fila?.area)?.num
+const pasaFiltro = (op, codigo, areaNum) => {
+  const { areas: porArea, dispositivos } = filtroDe(op)
+  if (!porArea.length && !dispositivos.length) return true
+  if (dispositivos.length && !dispositivos.includes(codigo)) return false
+  if (porArea.length && !porArea.includes(areaNum)) return false
+  return true
+}
 const conSigno = (valor, decimales = 1, unidad = '') => {
   if (valor == null) return '—'
   const signo = valor > 0 ? '+' : valor < 0 ? '−' : ''
@@ -355,6 +367,7 @@ const conPorcentaje = (valor) => {
 
 function Cumplimiento({ c, op }) {
   if (!c.cumplimiento) return sinDatosNuevo()
+  const dec = decimalesDe(op, 1)
   const filas = ['TEMP', 'HUM', 'AIRE']
     .filter((codigo) => c.cumplimiento[codigo])
     .map((codigo) => ({ variable: codigo, ...c.cumplimiento[codigo] }))
@@ -376,8 +389,8 @@ function Cumplimiento({ c, op }) {
             {filas.map((fila) => (
               <tr key={fila.variable}>
                 <td>{nombreVariable(fila.variable)}</td>
-                {datos.includes('pct') && <td className="ui-num">{Number(fila.dentro_pct).toFixed(1)} %</td>}
-                {datos.includes('fuera') && <td className="ui-num">{Number(fila.fuera_min).toFixed(1)} min</td>}
+                {datos.includes('pct') && <td className="ui-num">{Number(fila.dentro_pct).toFixed(dec)} %</td>}
+                {datos.includes('fuera') && <td className="ui-num">{Number(fila.fuera_min).toFixed(dec)} min</td>}
                 <td className="ui-num">{miles(fila.lecturas)}</td>
               </tr>
             ))}
@@ -394,11 +407,11 @@ function Cumplimiento({ c, op }) {
           <div key={fila.variable} className="ui-dash__cifra">
             <span className="ui-eyebrow">{nombreVariable(fila.variable)}</span>
             <strong className="ui-num">
-              {datos.includes('pct') ? `${Number(fila.dentro_pct).toFixed(0)} %` : ''}
+              {datos.includes('pct') ? `${Number(fila.dentro_pct).toFixed(dec)} %` : ''}
             </strong>
             {datos.includes('fuera') && (
               <span className="ui-muted" style={{ fontSize: 11 }}>
-                {Number(fila.fuera_min).toFixed(1)} min fuera
+                {Number(fila.fuera_min).toFixed(dec)} min fuera
               </span>
             )}
           </div>
@@ -423,7 +436,7 @@ function Comparativo({ c, op }) {
   const datos = op.datos ?? ['promedio', 'extremos', 'alertas']
   const cambio = (fila) => (
     <span className={`ui-comparativo__cambio ${fila.mejora ? 'is-bueno' : 'is-aviso'}`}>
-      {conSigno(fila.dif_promedio, VARIABLE[fila.variable]?.decimales ?? 1, fila.unidad)}
+      {conSigno(fila.dif_promedio, decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1), fila.unidad)}
       {conPorcentaje(fila.dif_promedio_pct)}
     </span>
   )
@@ -434,7 +447,7 @@ function Comparativo({ c, op }) {
           filas.map((fila) => (
             <div key={fila.variable} className="ui-dash__cifra">
               <span className="ui-eyebrow">{nombreVariable(fila.variable)}</span>
-              <strong className="ui-num">{Number(fila.promedio ?? 0).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)}</strong>
+              <strong className="ui-num">{Number(fila.promedio ?? 0).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))}</strong>
               <span className="ui-muted" style={{ fontSize: 11 }}>
                 {cambio(fila)}
               </span>
@@ -471,13 +484,13 @@ function Comparativo({ c, op }) {
                 <td>{nombreVariable(fila.variable)}</td>
                 {datos.includes('promedio') && (
                   <td className="ui-num">
-                    {Number(fila.promedio ?? 0).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)} {fila.unidad}
+                    {Number(fila.promedio ?? 0).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))} {fila.unidad}
                   </td>
                 )}
                 {datos.includes('extremos') && (
                   <td className="ui-num">
-                    {Number(fila.minimo ?? 0).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)} /{' '}
-                    {Number(fila.maximo ?? 0).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)} {fila.unidad}
+                    {Number(fila.minimo ?? 0).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))} /{' '}
+                    {Number(fila.maximo ?? 0).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))} {fila.unidad}
                   </td>
                 )}
                 <td>{cambio(fila)}</td>
@@ -499,10 +512,14 @@ function Comparativo({ c, op }) {
   )
 }
 
-function Dispositivos({ c, op }) {
+function Dispositivos({ c, op, areas }) {
   if (!c.por_dispositivo) return sinDatosNuevo()
-  const filas = c.por_dispositivo
-  if (!filas.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  const todas = c.por_dispositivo
+  const filas = todas.filter((fila) => pasaFiltro(op, fila.codigo, areaNumDe(fila, areas)))
+  if (!filas.length) {
+    const { areas: porArea, dispositivos } = filtroDe(op)
+    return <p className="ui-muted">{porArea.length || dispositivos.length ? SIN_DATOS_FILTRO : SIN_DATOS_PERIODO}</p>
+  }
   const datos = op.datos ?? ['minimo', 'promedio', 'maximo', 'area']
   const campos = [
     ['minimo', 'Mín.'],
@@ -530,7 +547,7 @@ function Dispositivos({ c, op }) {
               {variables.map((codigo) => {
                 const info = fila[codigo]
                 if (!info) return <td key={codigo}>—</td>
-                const dec = VARIABLE[codigo]?.decimales ?? 1
+                const dec = decimalesDe(op, VARIABLE[codigo]?.decimales ?? 1)
                 return (
                   <td key={codigo} className="ui-num">
                     {campos.map(([clave]) => Number(info[clave]).toFixed(dec)).join(' / ')}
@@ -618,10 +635,14 @@ function GestionAlertas({ c, op }) {
   )
 }
 
-function Disponibilidad({ c, op }) {
+function Disponibilidad({ c, op, areas }) {
   if (!c.disponibilidad) return sinDatosNuevo()
-  const filas = Object.entries(c.disponibilidad).map(([codigo, datos]) => ({ codigo, ...datos }))
-  if (!filas.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  const todas = Object.entries(c.disponibilidad).map(([codigo, datos]) => ({ codigo, ...datos }))
+  const filas = todas.filter((fila) => pasaFiltro(op, fila.codigo, areaNumDe(fila, areas)))
+  if (!filas.length) {
+    const { areas: porArea, dispositivos } = filtroDe(op)
+    return <p className="ui-muted">{porArea.length || dispositivos.length ? SIN_DATOS_FILTRO : SIN_DATOS_PERIODO}</p>
+  }
   const conPct = op.datos?.includes('pct')
   const conHuecos = op.datos?.includes('huecos')
   if (!conPct && !conHuecos) return <p className="ui-muted">Elige al menos un dato.</p>
@@ -667,7 +688,7 @@ function Disponibilidad({ c, op }) {
           <tr key={fila.codigo}>
             <td>{fila.nombre || fila.codigo}</td>
             <td>{fila.area || '—'}</td>
-            {conPct && <td className="ui-num">{Number(fila.pct).toFixed(1)} %</td>}
+            {conPct && <td className="ui-num">{Number(fila.pct).toFixed(decimalesDe(op, 1))} %</td>}
             {conHuecos && (
               <td className="ui-num">
                 {fila.huecos?.length
@@ -683,14 +704,18 @@ function Disponibilidad({ c, op }) {
   )
 }
 
-function Incidentes({ c, op }) {
+function Incidentes({ c, op, areas }) {
   if (!c.incidentes) return sinDatosNuevo()
-  if (!c.incidentes.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  const filas = c.incidentes.filter((fila) => pasaFiltro(op, fila.dispositivo_codigo, areaNumDe(fila, areas)))
+  if (!filas.length) {
+    const { areas: porArea, dispositivos } = filtroDe(op)
+    return <p className="ui-muted">{porArea.length || dispositivos.length ? SIN_DATOS_FILTRO : SIN_DATOS_PERIODO}</p>
+  }
   const nivel = (valor) => (valor === 'PELIGRO' ? 'danger' : 'warning')
   if (op.grafica === 'lista') {
     return (
       <ul className="ui-dash__lista">
-        {c.incidentes.map((fila, i) => (
+        {filas.map((fila, i) => (
           <li key={`${fila.dispositivo_codigo}-${fila.variable}-${fila.inicio}-${i}`}>
             <Icon name="triangle-alert" size={16} />
             <span style={{ flex: 1 }}>
@@ -718,14 +743,14 @@ function Incidentes({ c, op }) {
           </tr>
         </thead>
         <tbody>
-          {c.incidentes.map((fila, i) => (
+          {filas.map((fila, i) => (
             <tr key={`${fila.dispositivo_codigo}-${fila.variable}-${fila.inicio}-${i}`}>
               <td>{fila.dispositivo}</td>
               <td>{fila.variable_nombre || nombreVariable(fila.variable)}</td>
               <td>{fechaLarga(fila.inicio)} {hora(fila.inicio)}</td>
               <td className="ui-num">{Number(fila.duracion_min).toFixed(1)} min</td>
               <td className="ui-num">
-                {Number(fila.valor_pico).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)} {UNIDAD[fila.variable] ?? ''}
+                {Number(fila.valor_pico).toFixed(decimalesDe(op, VARIABLE[fila.variable]?.decimales ?? 1))} {UNIDAD[fila.variable] ?? ''}
               </td>
               <td>{fila.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia'}</td>
             </tr>
@@ -736,9 +761,13 @@ function Incidentes({ c, op }) {
   )
 }
 
-function Observaciones({ c, op }) {
+function Observaciones({ c, op, areas }) {
   if (!c.observaciones) return sinDatosNuevo()
-  if (!c.observaciones.length) return <p className="ui-muted">Sin observaciones en el periodo.</p>
+  const filas = c.observaciones.filter((fila) => pasaFiltro(op, fila.dispositivo_codigo, areaNumDe(fila, areas)))
+  if (!filas.length) {
+    const { areas: porArea, dispositivos } = filtroDe(op)
+    return <p className="ui-muted">{porArea.length || dispositivos.length ? SIN_DATOS_FILTRO : 'Sin observaciones en el periodo.'}</p>
+  }
   if (op.grafica === 'tabla') {
     return (
       <div className="ui-tabla-scroll ui-tabla-observaciones">
@@ -753,7 +782,7 @@ function Observaciones({ c, op }) {
             </tr>
           </thead>
           <tbody>
-            {c.observaciones.map((fila, i) => (
+            {filas.map((fila, i) => (
               <tr key={`${fila.fecha}-${i}`}>
                 <td>{fechaLarga(fila.fecha)} {hora(fila.fecha)}</td>
                 <td>{fila.dispositivo}</td>
@@ -769,7 +798,7 @@ function Observaciones({ c, op }) {
   }
   return (
     <ul className="ui-dash__lista">
-      {c.observaciones.map((fila, i) => (
+      {filas.map((fila, i) => (
         <li key={`${fila.fecha}-${i}`}>
           <Icon name="message-square-text" size={16} />
           <span style={{ flex: 1, minWidth: 0 }}>
@@ -784,15 +813,15 @@ function Observaciones({ c, op }) {
   )
 }
 
-function Personalizada({ w, r, op }) {
+function Personalizada({ w, r, op, areas }) {
   const c = r.cifras
   if (w.fuente === 'cumplimiento') return <Cumplimiento c={c} op={op} />
   if (w.fuente === 'comparativo') return <Comparativo c={c} op={op} />
-  if (w.fuente === 'dispositivos') return <Dispositivos c={c} op={op} />
+  if (w.fuente === 'dispositivos') return <Dispositivos c={c} op={op} areas={areas} />
   if (w.fuente === 'gestion_alertas') return <GestionAlertas c={c} op={op} />
-  if (w.fuente === 'disponibilidad') return <Disponibilidad c={c} op={op} />
-  if (w.fuente === 'incidentes') return <Incidentes c={c} op={op} />
-  if (w.fuente === 'observaciones') return <Observaciones c={c} op={op} />
+  if (w.fuente === 'disponibilidad') return <Disponibilidad c={c} op={op} areas={areas} />
+  if (w.fuente === 'incidentes') return <Incidentes c={c} op={op} areas={areas} />
+  if (w.fuente === 'observaciones') return <Observaciones c={c} op={op} areas={areas} />
   if (w.fuente === 'serie') {
     if (!c.serie) return <p className="ui-muted">Este reporte no tiene datos del periodo.</p>
     const v = c.serie.variable
@@ -802,7 +831,7 @@ function Personalizada({ w, r, op }) {
         grafica={op.grafica}
         puntos={c.serie.puntos.map(([label, value]) => ({ label, value }))}
         unidad={UNIDAD[v]}
-        dec={VARIABLE[v].decimales}
+        dec={decimalesDe(op, VARIABLE[v].decimales)}
       />
     )
   }
@@ -838,7 +867,7 @@ function Personalizada({ w, r, op }) {
               </td>
               {campos.map((k) => (
                 <td key={k} className="ui-num">
-                  {k === 'alertas' ? v.alertas : Number(v[k]).toFixed(VARIABLE[v.variable].decimales)}
+                  {k === 'alertas' ? v.alertas : Number(v[k]).toFixed(decimalesDe(op, VARIABLE[v.variable].decimales))}
                 </td>
               ))}
             </tr>
@@ -858,34 +887,37 @@ function Personalizada({ w, r, op }) {
         .filter((k) => op.datos.includes(k))
         .map((k) => ({ label: CAMPO[k], value: Number(v[k]), unidad: k === 'alertas' ? '' : u }))}
       unidad={u}
-      dec={VARIABLE[v.variable].decimales}
+      dec={decimalesDe(op, VARIABLE[v.variable].decimales)}
     />
   )
 }
 
 // Contenido de una tarjeta: título (si lleva) y cuerpo, según sus opciones.
-function contenido(w, r, op) {
+function contenido(w, r, op, areas) {
   const c = r.cifras
+  const propio = op.titulo?.trim()
   // Cifras clave y Análisis añadidos a mano se dibujan igual que los de siempre.
   const tipo = w.fuente === 'cifras' || w.fuente === 'analisis' ? w.fuente : w.id
-  if (w.fuente && tipo === w.id) return { titulo: w.nombre, cuerpo: <Personalizada w={w} r={r} op={op} /> }
-  if (tipo === 'cifras') return { cuerpo: <Cifras r={r} op={op} /> }
+  if (w.fuente && tipo === w.id)
+    return { titulo: propio || w.nombre, cuerpo: <Personalizada w={w} r={r} op={op} areas={areas} /> }
+  if (tipo === 'cifras') return { titulo: propio, cuerpo: <Cifras r={r} op={op} /> }
   if (w.id.startsWith('var:'))
     return {
+      titulo: propio,
       cuerpo: <TarjetaVariable v={c.variables.find((v) => v.variable === w.id.slice(4))} op={op} />,
     }
   if (w.id === 'serie')
     return {
-      titulo: c.serie ? `${c.serie.etiqueta} · ${UNIDAD[c.serie.variable]}` : 'Gráfica del periodo',
+      titulo: propio || (c.serie ? `${c.serie.etiqueta} · ${UNIDAD[c.serie.variable]}` : 'Gráfica del periodo'),
       cuerpo: c.serie ? <Serie serie={c.serie} op={op} /> : <p className="ui-muted">Este reporte no tiene gráfica.</p>,
     }
   if (w.id === 'alertas')
     return {
-      titulo: 'Alertas por variable',
+      titulo: propio || 'Alertas por variable',
       cuerpo: <Alertas variables={c.variables} op={op} />,
     }
   return {
-    titulo: w.fuente ? w.nombre : 'Análisis',
+    titulo: propio || (w.fuente ? w.nombre : 'Análisis'),
     cuerpo: (
       <div className="ui-dash__texto">
         {op.datos.includes('texto') && r.contenido.split('\n\n').map((p) => <p key={p.slice(0, 24)}>{p}</p>)}
@@ -899,8 +931,8 @@ function contenido(w, r, op) {
   }
 }
 
-export function Widget({ w, r, op }) {
-  const { titulo, cuerpo } = contenido(w, r, op)
+export function Widget({ w, r, op, areas = [] }) {
+  const { titulo, cuerpo } = contenido(w, r, op, areas)
   return (
     <section className="ui-dash__widget" data-ancho={op.ancho ?? w.ancho} style={op.alto ? { minHeight: op.alto } : undefined}>
       {titulo && (
@@ -909,6 +941,7 @@ export function Widget({ w, r, op }) {
         </div>
       )}
       {cuerpo}
+      {op.nota && <p className="ui-dash__nota">{op.nota}</p>}
     </section>
   )
 }
@@ -994,16 +1027,107 @@ function NuevaTarjeta({ agregar, cerrar }) {
   )
 }
 
+// Campo de opción de la hoja (tamaño, orientación o largo del análisis).
+function CampoHoja({ clave, etiqueta, valores, porOmision, hoja, cambiarHoja }) {
+  return (
+    <fieldset>
+      <legend>{etiqueta}</legend>
+      <div className="ui-editor__chips">
+        {valores.map(([valor, texto]) => {
+          const activo = (hoja[clave] ?? porOmision) === valor
+          return (
+            <button
+              key={valor}
+              type="button"
+              role="radio"
+              aria-checked={activo}
+              className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
+              onClick={() => cambiarHoja({ [clave]: valor })}
+            >
+              {texto}
+            </button>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
+}
+
 // Lista de tarjetas con sus opciones; ocupa el lugar de la lista de reportes mientras se edita.
-export function ListaTarjetas({ ed }) {
+export function ListaTarjetas({ ed, areas = [], r = null }) {
   const { borrador, abierta, setAbierta, arrastre, mover, alternar, opcion, agregar, quitar, cambiarHoja } = ed
   const [nueva, setNueva] = useState(false)
+  const hoja = borrador.hoja ?? {}
+  const firmas = hoja.firmas ?? {}
+  const cambiarFirma = (campo, clave, valor) =>
+    cambiarHoja({
+      firmas: {
+        ...firmas,
+        [campo]: { ...(firmas[campo] ?? {}), [clave]: valor },
+      },
+    })
+  const equipos = new Map()
+  for (const fila of r?.cifras?.por_dispositivo ?? []) {
+    equipos.set(fila.codigo, fila.nombre || fila.codigo)
+  }
+  for (const [codigo, info] of Object.entries(r?.cifras?.disponibilidad ?? {})) {
+    equipos.set(codigo, info.nombre || codigo)
+  }
+  const opcionesDispositivos = [...equipos].map(([codigo, nombre]) => ({ codigo, nombre }))
   return (
     <div className="ui-editor__lista nc-scroll">
       <span className="ui-eyebrow">Tarjetas</span>
       <p className="ui-muted" style={{ margin: 0, fontSize: 13, lineHeight: '18px' }}>
         Arrastra para ordenar, usa el ojo para mostrar u ocultar y el ajuste para elegir la gráfica y la información.
       </p>
+      <fieldset className="ui-editor__hoja">
+        <legend>Hoja</legend>
+        <CampoHoja clave="tamano" etiqueta="Tamaño" valores={[['carta', 'Carta'], ['a4', 'A4']]} porOmision="carta" hoja={hoja} cambiarHoja={cambiarHoja} />
+        <CampoHoja
+          clave="orientacion"
+          etiqueta="Orientación"
+          valores={[['vertical', 'Vertical'], ['horizontal', 'Horizontal']]}
+          porOmision="vertical"
+          hoja={hoja}
+          cambiarHoja={cambiarHoja}
+        />
+        <CampoHoja
+          clave="analisis_largo"
+          etiqueta="Largo del análisis"
+          valores={[['breve', 'Breve'], ['normal', 'Normal'], ['detallado', 'Detallado']]}
+          porOmision="normal"
+          hoja={hoja}
+          cambiarHoja={cambiarHoja}
+        />
+        <label className="ui-editor__casilla">
+          <input
+            type="checkbox"
+            checked={hoja.portada ?? false}
+            onChange={(e) => cambiarHoja({ portada: e.target.checked })}
+          />
+          <span>Portada con logo, alcance y periodo</span>
+        </label>
+        <div className="ui-editor__firmas">
+          {[
+            ['elaboro', 'Elaboró'],
+            ['reviso', 'Revisó'],
+          ].map(([campo, etiqueta]) => (
+            <div key={campo}>
+              <strong>{etiqueta}</strong>
+              <input
+                value={firmas[campo]?.nombre ?? ''}
+                placeholder="Nombre"
+                onChange={(e) => cambiarFirma(campo, 'nombre', e.target.value)}
+              />
+              <input
+                value={firmas[campo]?.cargo ?? ''}
+                placeholder="Cargo"
+                onChange={(e) => cambiarFirma(campo, 'cargo', e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+      </fieldset>
       <label className="ui-editor__casilla">
         <input
           type="checkbox"
@@ -1092,6 +1216,106 @@ export function ListaTarjetas({ ed }) {
                       </div>
                     </fieldset>
                   ))}
+                  <label className="ui-editor__campo">
+                    <span>Título</span>
+                    <input
+                      value={op.titulo ?? ''}
+                      maxLength={TITULO_MAX}
+                      placeholder={w.nombre}
+                      onChange={(e) => opcion(id, 'titulo', e.target.value)}
+                    />
+                  </label>
+                  <label className="ui-editor__campo">
+                    <span>Nota al pie</span>
+                    <textarea
+                      value={op.nota ?? ''}
+                      maxLength={NOTA_MAX}
+                      rows={2}
+                      onChange={(e) => opcion(id, 'nota', e.target.value)}
+                    />
+                  </label>
+                  <fieldset>
+                    <legend>Decimales</legend>
+                    <div className="ui-editor__chips">
+                      {[0, 1, 2].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          role="radio"
+                          aria-checked={op.decimales === n}
+                          className={`ui-editor__chip${op.decimales === n ? ' is-activo' : ''}`}
+                          onClick={() => opcion(id, 'decimales', n)}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  {w.fuente && FUENTES_CON_FILTRO.has(w.fuente) && (
+                    <fieldset>
+                      <legend>Filtro de la tarjeta</legend>
+                      <p className="ui-muted" style={{ margin: '0 0 6px', fontSize: 12 }}>
+                        Solo esta tarjeta usa la parte elegida del alcance.
+                      </p>
+                      <div className="ui-editor__chips">
+                        {areas.map((a) => {
+                          const activo = op.filtro?.areas?.includes(a.num)
+                          return (
+                            <button
+                              key={`area-${a.num}`}
+                              type="button"
+                              role="checkbox"
+                              aria-checked={Boolean(activo)}
+                              className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
+                              onClick={() => {
+                                const actuales = op.filtro?.areas ?? []
+                                const siguientes = activo
+                                  ? actuales.filter((x) => x !== a.num)
+                                  : [...actuales, a.num]
+                                opcion(id, 'filtro', siguientes.length ? { areas: siguientes } : undefined)
+                              }}
+                            >
+                              {activo && <Check size={13} />}
+                              {a.nombre}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <div className="ui-editor__chips" style={{ marginTop: 6 }}>
+                        {opcionesDispositivos.map((d) => {
+                          const activo = op.filtro?.dispositivos?.includes(d.codigo)
+                          return (
+                            <button
+                              key={`disp-${d.codigo}`}
+                              type="button"
+                              role="checkbox"
+                              aria-checked={Boolean(activo)}
+                              className={`ui-editor__chip${activo ? ' is-activo' : ''}`}
+                              onClick={() => {
+                                const actuales = op.filtro?.dispositivos ?? []
+                                const siguientes = activo
+                                  ? actuales.filter((x) => x !== d.codigo)
+                                  : [...actuales, d.codigo]
+                                opcion(
+                                  id,
+                                  'filtro',
+                                  siguientes.length ? { dispositivos: siguientes } : undefined,
+                                )
+                              }}
+                            >
+                              {activo && <Check size={13} />}
+                              {d.nombre}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {op.filtro && (
+                        <button type="button" className="ui-editor__chip" onClick={() => opcion(id, 'filtro', undefined)}>
+                          <RotateCcw size={13} /> Quitar filtro
+                        </button>
+                      )}
+                    </fieldset>
+                  )}
                   {op.alto && (
                     <button type="button" className="ui-editor__chip" onClick={() => opcion(id, 'alto', undefined)}>
                       <RotateCcw size={13} /> Alto automático
@@ -1119,8 +1343,15 @@ export function ListaTarjetas({ ed }) {
   )
 }
 
-// Medidas de una hoja A4 a 96 ppp (210 × 297 mm) y de sus márgenes, en píxeles.
-const A4 = { ancho: 794, alto: 1123, margenY: 56, pie: 28, separacion: 16 }
+// Medidas de las hojas a 96 ppp: carta (8.5 × 11 in) y A4 (210 × 297 mm), en píxeles.
+const MEDIDAS = {
+  carta: { vertical: [816, 1056], horizontal: [1056, 816] },
+  a4: { vertical: [794, 1123], horizontal: [1123, 794] },
+}
+function medidaHoja(hoja = {}) {
+  const [ancho, alto] = MEDIDAS[hoja.tamano]?.[hoja.orientacion] ?? MEDIDAS.carta.vertical
+  return { ancho, alto, margenY: 56, pie: 28, separacion: 16 }
+}
 
 // Agrupa las tarjetas en filas de 12 columnas según su ancho, como las acomoda la hoja.
 function agrupar(bloques) {
@@ -1142,14 +1373,14 @@ function agrupar(bloques) {
 }
 
 // Reparte las filas en páginas según su alto medido; la primera página lleva la cabecera.
-function paginar(altos, nFilas) {
+function paginar(altos, nFilas, medida) {
   if (!altos || altos.filas.length !== nFilas) return [[...Array(nFilas).keys()]]
-  const util = A4.alto - A4.margenY * 2 - A4.pie
+  const util = medida.alto - medida.margenY * 2 - medida.pie
   const paginas = [[]]
-  let libre = util - altos.cabeza - A4.separacion
+  let libre = util - altos.cabeza - medida.separacion
   altos.filas.forEach((h, i) => {
     const pagina = paginas[paginas.length - 1]
-    const ocupa = h + (pagina.length ? A4.separacion : 0)
+    const ocupa = h + (pagina.length ? medida.separacion : 0)
     if (ocupa > libre && pagina.length) {
       paginas.push([i])
       libre = util - h
@@ -1164,12 +1395,13 @@ function paginar(altos, nFilas) {
 // Hojas A4 de la vista previa. Mide las filas en una copia oculta, las reparte en páginas
 // sin cortar ninguna y, si la columna es más angosta que la hoja, reduce todo a escala.
 // `zoom` fija la escala (visor de Nico AI); sin él la hoja se ajusta al ancho disponible.
-function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar }) {
+function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar, hoja, portada, firmas, marca }) {
   const medidor = useRef(null)
   const marco = useRef(null)
   const [altos, setAltos] = useState(null)
   const [escala, setEscala] = useState(1)
   const filas = agrupar(bloques)
+  const medida = medidaHoja(hoja)
 
   useLayoutEffect(() => {
     const el = medidor.current
@@ -1186,36 +1418,43 @@ function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar }) {
 
   useLayoutEffect(() => {
     const visor = marco.current.parentElement
-    const ajustar = () => setEscala(Math.min(1, (visor.clientWidth - 48) / A4.ancho))
+    const ajustar = () => setEscala(Math.min(1, (visor.clientWidth - 48) / medida.ancho))
     ajustar()
     const obs = new ResizeObserver(ajustar)
     obs.observe(visor)
     return () => obs.disconnect()
-  }, [])
+  }, [medida.ancho])
 
   // Avisa la escala de ajuste a quien la muestre (el zoom del visor de Nico AI).
   useEffect(() => {
     alEscalar?.(escala)
   }, [escala, alEscalar])
 
-  const paginas = paginar(altos, filas.length)
+  const paginas = paginar(altos, filas.length, medida)
   const fila = (i) => (
     <div key={filas[i].map((b) => b.id).join()} className="ui-dash__rejilla" data-fila>
       {filas[i].map((b) => b.nodo)}
     </div>
   )
+  const estilo = { width: medida.ancho, minHeight: medida.alto, '--reporte-marca': marca }
   return (
     <>
-      <div ref={medidor} className="ui-hoja ui-hoja--medidor" aria-hidden>
+      <div ref={medidor} className="ui-hoja ui-hoja--medidor" style={estilo} aria-hidden>
         <div data-cabeza>{cabeza}</div>
         {filas.map((_, i) => fila(i))}
       </div>
       <div ref={marco} className={`ui-paginas${editando ? ' is-editando' : ''}`} style={{ zoom: zoom ?? escala }}>
+        {portada && (
+          <article className="ui-hoja ui-hoja--portada" style={estilo} aria-label="Portada">
+            {portada}
+          </article>
+        )}
         {paginas.map((p, n) => (
-          <article key={n} className="ui-hoja" aria-label={`Página ${n + 1} de ${paginas.length}`}>
+          <article key={n} className="ui-hoja" style={estilo} aria-label={`Página ${n + 1} de ${paginas.length}`}>
             {n === 0 && cabeza}
             {n === 0 && !filas.length && vacio}
             {p.map(fila)}
+            {n === paginas.length - 1 && firmas}
             <footer className="ui-hoja__pie">
               <span>
                 <strong>Núcleo</strong> · Reporte de monitoreo ambiental
@@ -1258,7 +1497,7 @@ function redimensionar(e, id, eje, opcion) {
 }
 
 // Tarjetas de la hoja en modo edición: se arrastran, se eligen, se ocultan y cambian de tamaño.
-function bloquesEdicion(r, ed) {
+function bloquesEdicion(r, ed, areas) {
   const { borrador, abierta, setAbierta, arrastre, alternar, opcion } = ed
   return borrador.orden
     .filter((id) => !borrador.ocultos.includes(id))
@@ -1291,7 +1530,7 @@ function bloquesEdicion(r, ed) {
                 <EyeOff size={14} />
               </button>
             </div>
-            <Widget w={w} r={r} op={op} />
+            <Widget w={w} r={r} op={op} areas={areas} />
             <span
               className="ui-editor__asa-ancho"
               title="Arrastra para cambiar el ancho"
@@ -1308,21 +1547,36 @@ function bloquesEdicion(r, ed) {
     })
 }
 
-// Vista previa del reporte tal como sale en el PDF, en hojas A4. Con `ed.editando` las
-// tarjetas se pueden arrastrar y elegir; la elección vale para todos los reportes en este navegador.
+// Vista previa del reporte tal como sale en el PDF. Con `ed.editando` las tarjetas se pueden
+// arrastrar y elegir; la elección vale para todos los reportes en este navegador.
 export function DashboardReporte({ r, areas, ed, zoom, alEscalar }) {
   const c = r.cifras
   const origen = ORIGEN[r.origen] ?? ORIGEN.MANUAL
   const area =
     areas.find((a) => a.num === r.area)?.nombre ?? c.alcance ?? 'Todas las áreas'
+  const hojaOrigen = ed.editando ? ed.borrador?.hoja : ed.conf.hoja
+  const hoja = {
+    tamano: 'carta',
+    orientacion: 'vertical',
+    portada: false,
+    firmas: {},
+    analisis_largo: 'normal',
+    ...(hojaOrigen ?? {}),
+  }
+  const marca = r.organizacion_color || '#2BC47A'
+  const logo = logoDe({ logo_url: r.organizacion_logo_url })
   const bloques = ed.editando
-    ? bloquesEdicion(r, ed)
+    ? bloquesEdicion(r, ed, areas)
     : ed.conf.orden
         .filter((id) => !ed.conf.ocultos.includes(id))
         .map((id) => {
           const w = tarjeta(ed.conf, id)
           const op = opcionesDe(ed.conf, id)
-          return { id, ancho: Number(op.ancho ?? w.ancho), nodo: <Widget key={id} w={w} r={r} op={op} /> }
+          return {
+            id,
+            ancho: Number(op.ancho ?? w.ancho),
+            nodo: <Widget key={id} w={w} r={r} op={op} areas={areas} />,
+          }
         })
 
   const cabeza = (
@@ -1358,6 +1612,66 @@ export function DashboardReporte({ r, areas, ed, zoom, alEscalar }) {
       </dl>
     </header>
   )
+
+  const elaboro = hoja.firmas?.elaboro
+  const portada = hoja.portada ? (
+    <div className="ui-hoja__portada">
+      <div className="ui-hoja__portada-marca">
+        <Logo size={24} />
+        {logo && <img src={logo} alt={`Logo de ${r.organizacion_nombre || 'la organización'}`} />}
+      </div>
+      <div className="ui-hoja__portada-cuerpo">
+        <span className="ui-eyebrow">Reporte de monitoreo ambiental</span>
+        <h2>{c.titulo}</h2>
+        <span className="ui-hoja__portada-linea" />
+        <dl>
+          <div>
+            <dt>Alcance</dt>
+            <dd>{area}</dd>
+          </div>
+          <div>
+            <dt>Periodo</dt>
+            <dd>{periodo(r.periodo_inicio, r.periodo_fin)}</dd>
+          </div>
+          <div>
+            <dt>Generado</dt>
+            <dd>
+              {fechaLarga(r.fecha_generacion)}, {hora(r.fecha_generacion)}
+            </dd>
+          </div>
+          {elaboro?.nombre && (
+            <div>
+              <dt>Elaboró</dt>
+              <dd>
+                {elaboro.nombre}
+                {elaboro.cargo ? ` · ${elaboro.cargo}` : ''}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </div>
+    </div>
+  ) : null
+
+  const firmas = (() => {
+    const items = ['elaboro', 'reviso']
+      .map((campo) => [campo, hoja.firmas?.[campo]])
+      .filter(([, firma]) => firma?.nombre)
+    if (!items.length) return null
+    return (
+      <div className="ui-hoja__firmas">
+        {items.map(([campo, firma]) => (
+          <div key={campo}>
+            <span className="ui-hoja__firma-linea" />
+            <strong>{firma.nombre}</strong>
+            <small>{firma.cargo || (campo === 'elaboro' ? 'Elaboró' : 'Revisó')}</small>
+            <span className="ui-eyebrow">{campo === 'elaboro' ? 'Elaboró' : 'Revisó'}</span>
+          </div>
+        ))}
+      </div>
+    )
+  })()
+
   return (
     <Paginas
       zoom={zoom}
@@ -1365,6 +1679,10 @@ export function DashboardReporte({ r, areas, ed, zoom, alEscalar }) {
       cabeza={cabeza}
       bloques={bloques}
       editando={ed.editando}
+      hoja={hoja}
+      portada={portada}
+      firmas={firmas}
+      marca={marca}
       vacio={
         <p className="ui-muted">
           {ed.editando

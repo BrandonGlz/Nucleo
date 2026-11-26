@@ -44,6 +44,12 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Reportes con la marca de la organización: logo validado con Pillow y servido solo con sesión,
+  y color propio para títulos, barras y gráficas del PDF (los colores de estado no cambian).
+- Hojas de reporte configurables por formato: carta o A4, vertical u horizontal, portada con
+  logo y firmas, y largo del análisis (breve, normal o detallado) sin cambiar el modelo de IA.
+- Ajustes por tarjeta en los formatos: título propio, filtro por área o dispositivo, decimales y
+  nota al pie, respetados por la web y el PDF.
 - Reportes con contenido nuevo: cumplimiento contra los límites de advertencia, comparativo
   contra el periodo anterior, tabla por dispositivo, gestión de alertas, disponibilidad,
   incidentes principales y observaciones. Las cuatro plantillas incluyen estas tarjetas en una

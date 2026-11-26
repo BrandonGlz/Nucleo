@@ -11,6 +11,21 @@ from apps.reportes.models import FormatoReporte
 
 VERSION_ESQUEMA = 1
 
+TAMANOS = ("carta", "a4")
+ORIENTACIONES = ("vertical", "horizontal")
+LARGOS_ANALISIS = ("breve", "normal", "detallado")
+FIRMAS = ("elaboro", "reviso")
+TITULO_MAX = 60
+NOTA_MAX = 200
+HOJA_POR_OMISION = {
+    "tamano": "carta",
+    "orientacion": "vertical",
+    "portada": False,
+    "firmas": {},
+    "analisis_largo": "normal",
+    "adjuntar_csv": False,
+}
+
 # Tarjetas de siempre: id, nombre y ancho por omisión (columnas de 12).
 WIDGETS = [
     {"id": "cifras", "nombre": "Cifras clave", "ancho": 12},
@@ -126,6 +141,30 @@ ANCHO = {
         ("12", "Completa"),
     ],
 }
+
+# Opciones comunes a todas las tarjetas. El editor las dibuja aparte de las gráficas.
+OPCIONES_COMUNES = [
+    {"clave": "titulo", "tipo": "texto", "etiqueta": "Título", "max": 60},
+    {
+        "clave": "filtro",
+        "tipo": "filtro",
+        "etiqueta": "Filtro por área o dispositivo",
+        "fuentes": [
+            "dispositivos",
+            "disponibilidad",
+            "incidentes",
+            "observaciones",
+        ],
+    },
+    {
+        "clave": "decimales",
+        "tipo": "uno",
+        "etiqueta": "Decimales",
+        "valores": [(0, "0"), (1, "1"), (2, "2")],
+    },
+    {"clave": "nota", "tipo": "texto", "etiqueta": "Nota al pie", "max": 200},
+]
+FUENTES_CON_FILTRO = ("dispositivos", "disponibilidad", "incidentes", "observaciones")
 
 CAMPOS = {
     "clave": "datos",
@@ -423,8 +462,9 @@ def _opciones_de(tarjeta, entrada):
 
     definiciones = _definiciones(tarjeta)
     por_clave = {d["clave"]: d for d in definiciones}
-    # «alto» es común a todas las tarjetas y no se rellena por omisión.
-    desconocidas = set(entrada) - set(por_clave) - {"alto"}
+    # Opciones comunes a todas las tarjetas; no se rellenan por omisión.
+    comunes = {"alto", *(opcion["clave"] for opcion in OPCIONES_COMUNES)}
+    desconocidas = set(entrada) - set(por_clave) - comunes
     if desconocidas:
         clave = sorted(desconocidas)[0]
         raise ValidationError(f"La opción «{clave}» no existe en «{tarjeta['id']}».")
@@ -440,7 +480,7 @@ def _opciones_de(tarjeta, entrada):
             resultado[clave] = [valor for valor, _ in definicion["valores"]]
 
     for clave, valor in entrada.items():
-        if clave == "alto":
+        if clave in comunes:
             continue
         definicion = por_clave[clave]
         validos = [v for v, _ in definicion["valores"]]
@@ -463,7 +503,136 @@ def _opciones_de(tarjeta, entrada):
         if isinstance(alto, bool) or not isinstance(alto, int) or not 80 <= alto <= 2000:
             raise ValidationError("El alto debe ser un entero entre 80 y 2000.")
         resultado["alto"] = alto
+
+    titulo = entrada.get("titulo")
+    if titulo not in (None, ""):
+        if not isinstance(titulo, str):
+            raise ValidationError("El título de la tarjeta debe ser texto.")
+        titulo = titulo.strip()
+        if len(titulo) > TITULO_MAX:
+            raise ValidationError("El título de la tarjeta no puede pasar de 60 caracteres.")
+        if titulo:
+            resultado["titulo"] = titulo
+
+    nota = entrada.get("nota")
+    if nota not in (None, ""):
+        if not isinstance(nota, str):
+            raise ValidationError("La nota de la tarjeta debe ser texto.")
+        nota = nota.strip()
+        if len(nota) > NOTA_MAX:
+            raise ValidationError("La nota de la tarjeta no puede pasar de 200 caracteres.")
+        if nota:
+            resultado["nota"] = nota
+
+    decimales = entrada.get("decimales")
+    if decimales is not None:
+        if (
+            isinstance(decimales, bool)
+            or not isinstance(decimales, int)
+            or decimales not in (0, 1, 2)
+        ):
+            raise ValidationError("Los decimales deben ser 0, 1 o 2.")
+        resultado["decimales"] = decimales
+
+    filtro = entrada.get("filtro")
+    if filtro is not None and filtro != {}:
+        normalizado = _filtro(filtro)
+        if normalizado:
+            resultado["filtro"] = normalizado
     return resultado
+
+
+def _filtro(valor):
+    """Valida ``{areas: [num…]}`` o ``{dispositivos: [código…]}`` de una tarjeta."""
+    if not isinstance(valor, dict):
+        raise ValidationError("El filtro de la tarjeta debe ser un objeto.")
+    desconocidas = set(valor) - {"areas", "dispositivos"}
+    if desconocidas:
+        raise ValidationError("El filtro solo admite «areas» o «dispositivos».")
+    areas = valor.get("areas")
+    dispositivos = valor.get("dispositivos")
+    if areas is None and dispositivos is None:
+        raise ValidationError("El filtro necesita áreas o dispositivos.")
+    normalizado = {}
+    if areas is not None:
+        if not isinstance(areas, list) or any(
+            isinstance(n, bool) or not isinstance(n, int) or n <= 0 for n in areas
+        ):
+            raise ValidationError("Las áreas del filtro deben ser números enteros.")
+        if areas:
+            normalizado["areas"] = list(dict.fromkeys(areas))
+    if dispositivos is not None:
+        if not isinstance(dispositivos, list) or any(
+            not isinstance(c, str) or not c.strip() or len(c) > 60 for c in dispositivos
+        ):
+            raise ValidationError("Los dispositivos del filtro deben ser códigos de texto.")
+        if dispositivos:
+            normalizado["dispositivos"] = list(dict.fromkeys(c.strip() for c in dispositivos))
+    if not normalizado:
+        return {}
+    return normalizado
+
+
+def _firma(valor, campo):
+    """Normaliza «elaboro» o «reviso»; una firma vacía se guarda vacía."""
+    if valor is None:
+        return {}
+    if not isinstance(valor, dict):
+        raise ValidationError(f"La firma «{campo}» debe ser un objeto.")
+    firma = {}
+    for clave in ("nombre", "cargo"):
+        texto = valor.get(clave, "")
+        if texto is None:
+            texto = ""
+        if not isinstance(texto, str):
+            raise ValidationError(f"El campo «{clave}» de la firma «{campo}» debe ser texto.")
+        firma[clave] = texto.strip()[:80]
+    return firma if any(firma.values()) else {}
+
+
+def _hoja(conf):
+    """Normaliza y valida la sección ``hoja`` de la configuración."""
+    hoja = conf.get("hoja") or {}
+    if not isinstance(hoja, dict):
+        raise ValidationError("La hoja del formato debe ser un objeto.")
+    tamano = hoja.get("tamano", HOJA_POR_OMISION["tamano"])
+    if tamano not in TAMANOS:
+        raise ValidationError("El tamaño de la hoja debe ser «carta» o «a4».")
+    orientacion = hoja.get("orientacion", HOJA_POR_OMISION["orientacion"])
+    if orientacion not in ORIENTACIONES:
+        raise ValidationError("La orientación debe ser «vertical» u «horizontal».")
+    portada = hoja.get("portada", False)
+    if not isinstance(portada, bool):
+        raise ValidationError("«portada» debe ser verdadero o falso.")
+    adjuntar_csv = hoja.get("adjuntar_csv", False)
+    if not isinstance(adjuntar_csv, bool):
+        raise ValidationError("«adjuntar_csv» debe ser verdadero o falso.")
+    largo = hoja.get("analisis_largo", HOJA_POR_OMISION["analisis_largo"])
+    if largo not in LARGOS_ANALISIS:
+        raise ValidationError("El largo del análisis debe ser «breve», «normal» o «detallado».")
+    firmas_crudo = hoja.get("firmas") or {}
+    if not isinstance(firmas_crudo, dict):
+        raise ValidationError("Las firmas de la hoja deben ser un objeto.")
+    firmas = {}
+    for campo in FIRMAS:
+        firma = _firma(firmas_crudo.get(campo), campo)
+        if firma:
+            firmas[campo] = firma
+    return {
+        "tamano": tamano,
+        "orientacion": orientacion,
+        "portada": portada,
+        "firmas": firmas,
+        "analisis_largo": largo,
+        "adjuntar_csv": adjuntar_csv,
+    }
+
+
+def largo_analisis(version):
+    """Largo del análisis del formato, con «normal» si no lo define."""
+    if version is None:
+        return HOJA_POR_OMISION["analisis_largo"]
+    return _hoja(version.conf)["analisis_largo"]
 
 
 def validar_conf(conf):
@@ -512,13 +681,7 @@ def validar_conf(conf):
         for id_tarjeta in orden
     }
 
-    hoja = conf.get("hoja") or {}
-    if not isinstance(hoja, dict):
-        raise ValidationError("La hoja del formato debe ser un objeto.")
-    adjuntar_csv = hoja.get("adjuntar_csv", False)
-    if not isinstance(adjuntar_csv, bool):
-        raise ValidationError("«adjuntar_csv» debe ser verdadero o falso.")
-    hoja = {**hoja, "adjuntar_csv": adjuntar_csv}
+    hoja = _hoja(conf)
 
     return {
         "version_esquema": VERSION_ESQUEMA,

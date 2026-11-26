@@ -1955,7 +1955,11 @@ article.ui-hoja,
   flex-wrap: wrap;
   gap: 6px;
 }
-.ui-editor__item .ui-editor__chip {
+.ui-editor__item .ui-editor__chip,
+.ui-editor__hoja .ui-editor__chip {
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
   width: auto;
   height: 28px;
   gap: 4px;
@@ -1965,7 +1969,8 @@ article.ui-hoja,
   font-size: 12px;
   font-weight: 600;
 }
-.ui-editor__item .ui-editor__chip.is-activo {
+.ui-editor__item .ui-editor__chip.is-activo,
+.ui-editor__hoja .ui-editor__chip.is-activo {
   border-color: var(--text-primary);
   background: var(--text-primary);
   color: var(--surface);
@@ -2178,7 +2183,7 @@ article.ui-hoja,
   left: 0;
   right: 0;
   height: 6px;
-  background: linear-gradient(90deg, #121413 0 72%, #2bc47a 72% 100%);
+  background: linear-gradient(90deg, #121413 0 72%, var(--reporte-marca, #2bc47a) 72% 100%);
 }
 .ui-hoja .ui-eyebrow {
   font-size: 10.5px;
@@ -5563,6 +5568,44 @@ button.ui-link.foto-perfil__quitar { color: var(--text-muted); }
 .foto-perfil__error { max-width: 180px; font-size: 12px; line-height: 16px; text-align: center; color: var(--danger); }
 @media (prefers-reduced-motion: reduce) { .foto-perfil__giro { animation-duration: 2.4s; } }
 
+/* Marca en reportes: logo y color de la organización. */
+.ui-marca {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 14px 12px 4px;
+  border-top: 1px solid var(--border);
+}
+.ui-marca__logo {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--surface-muted);
+}
+.ui-marca__logo img { max-width: 100%; max-height: 72px; object-fit: contain; }
+.ui-marca__vacio { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
+.ui-marca__acciones { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+.ui-marca__acciones button:disabled, .ui-marca__color button:disabled { opacity: 0.6; cursor: progress; }
+button.ui-link.ui-marca__quitar { color: var(--text-muted); }
+.ui-marca__color { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.ui-marca__color label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.ui-marca__fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ui-marca__fila input[type='color'] {
+  width: 38px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.ui-marca__fila code { font-size: 12px; color: var(--text-muted); }
+.ui-marca__error { font-size: 12px; line-height: 16px; color: var(--danger); }
+
 /* Comparativo de los reportes: subidas y bajadas con color, sin flechas. */
 .ui-comparativo__cambio {
   font-weight: 600;
@@ -5638,4 +5681,63 @@ button.ui-link.foto-perfil__quitar { color: var(--text-muted); }
 .ui-tabla-observaciones > .nc-table {
   min-width: 100%;
   table-layout: fixed;
+}
+
+/* Hoja del reporte: portada, firmas y controles del editor. */
+.ui-hoja--portada { justify-content: space-between; }
+.ui-hoja__portada { display: flex; flex-direction: column; gap: 64px; min-height: 100%; }
+.ui-hoja__portada-marca { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ui-hoja__portada-marca img { max-width: 180px; max-height: 64px; object-fit: contain; }
+.ui-hoja__portada-cuerpo { display: flex; flex-direction: column; gap: 14px; max-width: 34rem; }
+.ui-hoja__portada-cuerpo h2 { margin: 0; font-size: 34px; line-height: 1.12; letter-spacing: -0.02em; }
+.ui-hoja__portada-linea { width: 72px; height: 3px; background: var(--reporte-marca, var(--chart-area)); }
+.ui-hoja__portada-cuerpo dl { display: grid; gap: 10px; margin: 10px 0 0; }
+.ui-hoja__portada-cuerpo dl div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; }
+.ui-hoja__portada-cuerpo dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+.ui-hoja__portada-cuerpo dd { margin: 0; font-size: 13px; }
+.ui-hoja__firmas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; margin-top: 18px; padding-top: 16px; }
+.ui-hoja__firmas > div { display: flex; flex-direction: column; gap: 3px; }
+.ui-hoja__firma-linea { height: 1px; margin-bottom: 6px; background: var(--text-primary); }
+.ui-hoja__firmas strong { font-size: 12px; }
+.ui-hoja__firmas small { font-size: 11px; color: var(--text-secondary); }
+.ui-hoja__firmas .ui-eyebrow { margin-top: 3px; }
+.ui-editor__hoja { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.ui-editor__hoja > legend { padding: 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.ui-editor__hoja fieldset { margin: 0; padding: 0; border: 0; }
+.ui-editor__hoja fieldset > legend { margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.ui-editor__firmas { display: grid; gap: 10px; }
+.ui-editor__firmas > div { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 6px 8px; align-items: center; }
+.ui-editor__firmas strong { grid-row: span 2; font-size: 12px; color: var(--text-secondary); }
+.ui-editor__firmas input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+}
+
+/* Ajustes por tarjeta: nota al pie y campos del editor. */
+.ui-dash__nota {
+  margin: 8px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.ui-editor__campo textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
 }

@@ -232,7 +232,7 @@ export function ReportesPage() {
             )}
             {edPagina.editando ? (
               <Card className="nc-grow">
-                <ListaTarjetas ed={edPagina} />
+                <ListaTarjetas ed={edPagina} areas={datos.areas} r={actual} />
               </Card>
             ) : (
               <Card className="nc-grow">

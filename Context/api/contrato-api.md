@@ -153,6 +153,14 @@ Organizaciones y usuarios
 ├── /organizaciones/                        Todos: la organización propia; PATCH: ADMIN
 │                                           (sin cambiar estado). ADMINPLAT: todas, alta (POST),
 │                                           y estado ACTIVA, SUSPENDIDA o BAJA (PATCH)
+│                                           Trae logo_url y color_reporte (#RRGGBB o null).
+├── POST /organizaciones/{num}/logo/        Solo ADMIN de esa organización; multipart {"logo"}:
+│                                           PNG, JPEG o WebP de hasta 2 MB (Pillow); se guarda
+│                                           como PNG de hasta 600×200 sin recortar → organización
+│                                           con logo_url. 400 {"logo": [...]} si no sirve
+├── DELETE /organizaciones/{num}/logo/      Quita el logo → organización (logo_url null)
+├── GET  /logos/{nombre}.png                El logo (image/png, caché privada larga); cualquier
+│                                           sesión válida, 404 si no pertenece a una organización
 ├── POST /organizaciones/{num}/primer-administrador/
 │                                           Solo ADMINPLAT; crea el primer ADMIN; 409 si ya existe
 ├── /areas/                                 Lectura: todos; escritura: ADMIN

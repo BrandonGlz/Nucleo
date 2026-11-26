@@ -145,11 +145,12 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=Non
             "maximo": _numero(fila["maximo"]),
         }
     info_dispositivo = {
-        codigo: {"nombre": nombre, "area": area_nombre}
-        for codigo, nombre, area_nombre in sensores.values_list(
+        codigo: {"nombre": nombre, "area": area_nombre, "area_num": area_num}
+        for codigo, nombre, area_nombre, area_num in sensores.values_list(
             "dispositivo__codigo_mqtt",
             "dispositivo__nombre",
             "dispositivo__area__nombre",
+            "dispositivo__area_id",
         )
     }
     for codigo, datos in dispositivos.items():
@@ -172,9 +173,7 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=Non
         "series": series,
         "dispositivos": dispositivos,
         "cumplimiento": calculos.cumplimiento(lecturas, sensores),
-        "comparativo": calculos.comparativo(
-            variables, total_alertas, previo, inicio, fin
-        ),
+        "comparativo": calculos.comparativo(variables, total_alertas, previo, inicio, fin),
         "gestion_alertas": calculos.gestion_alertas(alertas),
         "disponibilidad": calculos.disponibilidad(sensores, inicio, fin),
         "incidentes": calculos.incidentes(sensores, inicio, fin),
@@ -298,7 +297,7 @@ def generar_reporte(
     formato = formatos.formato_para(organizacion, area, formato)
     version = formato.version_actual() if formato is not None else None
     cifras = calcular_cifras(organizacion, area, inicio, fin, areas=areas)
-    contenido = ia.redactar(cifras)
+    contenido = ia.redactar(cifras, largo=formatos.largo_analisis(version))
     with transaction.atomic():
         reporte = Reporte.objects.create(
             organizacion=organizacion,
@@ -410,9 +409,7 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
             (f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf"),
         ]
         conf = (
-            reporte.formato_version.conf
-            if reporte.formato_version_id
-            else formatos.CONF_OPERATIVO
+            reporte.formato_version.conf if reporte.formato_version_id else formatos.CONF_OPERATIVO
         )
         if ((conf or {}).get("hoja") or {}).get("adjuntar_csv"):
             adjuntos.append(adjunto_csv(reporte))

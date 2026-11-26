@@ -24,6 +24,10 @@ class Organizacion(models.Model):
     dir_colonia = models.CharField(max_length=80, null=True, blank=True)
     ciudad = models.CharField(max_length=60, null=True, blank=True)
     telefono = models.CharField(max_length=15, null=True, blank=True)
+    # Nombre del archivo en MEDIA_ROOT/logos; se entrega solo por la API con sesión.
+    logo = models.CharField(max_length=255, null=True, blank=True)
+    # Color de marca de los reportes en #RRGGBB; null usa el verde de Núcleo.
+    color_reporte = models.CharField(max_length=7, null=True, blank=True)
     estado = models.CharField(max_length=12, choices=Estado.choices, db_default=Estado.ACTIVA)
     fecha_registro = models.DateTimeField(db_default=Now(), editable=False)
 

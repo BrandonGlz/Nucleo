@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Avatar, Badge, Button, Card, IconCircle, Input, Skeleton, StatusBadge, Tabs,
 } from '../../design-system/componentes/index.js'
@@ -13,7 +13,7 @@ import * as dispositivosApi from '../../services/dispositivos'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as usuariosApi from '../../services/usuarios'
 import { ESTADO_DISPOSITIVO, nombreCompleto, nombreCorto, pagina } from '../../utils/convertir'
-import { fotoDe } from '../../utils/foto'
+import { fotoDe, logoDe } from '../../utils/foto'
 
 async function cargar() {
   const [o, a, d, u] = await Promise.all([
@@ -270,6 +270,160 @@ function Asignacion({ datos, mover, guardando, editable }) {
   )
 }
 
+const VERDE_MARCA = '#2BC47A'
+const LOGO_TIPOS = ['image/jpeg', 'image/png', 'image/webp']
+const LOGO_MAXIMO = 2 * 1024 * 1024
+const mensajeLogo = (err) => err?.datos?.logo?.[0] || err?.datos?.color_reporte?.[0] || 'No se pudo guardar. Intenta de nuevo.'
+
+// Misma fórmula WCAG que el backend: luminancia relativa y contraste contra blanco.
+function contrasteConBlanco(color) {
+  const canales = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16) / 255)
+  const lineales = canales.map((canal) =>
+    canal <= 0.04045 ? canal / 12.92 : ((canal + 0.055) / 1.055) ** 2.4,
+  )
+  const luminancia = 0.2126 * lineales[0] + 0.7152 * lineales[1] + 0.0722 * lineales[2]
+  return 1.05 / (luminancia + 0.05)
+}
+
+// Sección «Marca en reportes»: logo y color de la organización, ambos opcionales. El logo se
+// sirve por la API con sesión y el color tiñe títulos, barras y gráficas del PDF.
+function MarcaReportes({ org, editable, guardada, avisar }) {
+  const entrada = useRef(null)
+  const [color, setColor] = useState(org.color_reporte || VERDE_MARCA)
+  const [estado, setEstado] = useState(null) // 'logo' | 'quitar' | 'color' | null
+  const [error, setError] = useState('')
+  const ocupado = estado !== null
+  const personalizado = Boolean(org.color_reporte)
+  const colorActual = (org.color_reporte || VERDE_MARCA).toUpperCase()
+  const bajoContraste = color.toUpperCase() !== VERDE_MARCA && contrasteConBlanco(color) < 3
+
+  async function elegir(e) {
+    const archivo = e.target.files?.[0]
+    e.target.value = ''
+    if (!archivo) return
+    setError('')
+    if (!LOGO_TIPOS.includes(archivo.type)) return setError('Elige una imagen PNG, JPEG o WebP.')
+    if (archivo.size > LOGO_MAXIMO) return setError('El logo no puede pasar de 2 MB.')
+    setEstado('logo')
+    try {
+      guardada(await organizacionesApi.subirLogo(org.num, archivo))
+      avisar('Logo actualizado.')
+    } catch (err) {
+      setError(mensajeLogo(err))
+    } finally {
+      setEstado(null)
+    }
+  }
+
+  async function quitar() {
+    setError('')
+    setEstado('quitar')
+    try {
+      guardada(await organizacionesApi.quitarLogo(org.num))
+      avisar('Logo quitado.')
+    } catch (err) {
+      setError(mensajeLogo(err))
+    } finally {
+      setEstado(null)
+    }
+  }
+
+  async function aplicar(valor) {
+    if (valor && contrasteConBlanco(valor) < 3) {
+      setError('Con este color el texto no se leería sobre blanco.')
+      return
+    }
+    setError('')
+    setEstado('color')
+    try {
+      const nuevo = await organizacionesApi.actualizar(org.num, { color_reporte: valor })
+      guardada(nuevo)
+      setColor(nuevo.color_reporte || VERDE_MARCA)
+      avisar(valor ? 'Color de reportes actualizado.' : 'Color de reportes restablecido.')
+    } catch (err) {
+      setError(mensajeLogo(err))
+    } finally {
+      setEstado(null)
+    }
+  }
+
+  return (
+    <div className="ui-marca">
+      <span className="ui-eyebrow">Marca en reportes</span>
+      <div className="ui-marca__logo">
+        {org.logo_url ? (
+          <img src={logoDe(org)} alt={`Logo de ${org.nombre}`} />
+        ) : (
+          <span className="ui-marca__vacio">
+            <IconCircle name="image" size="sm" />
+            Sin logo
+          </span>
+        )}
+      </div>
+      <input
+        ref={entrada}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        hidden
+        onChange={elegir}
+      />
+      {editable ? (
+        <div className="ui-marca__acciones">
+          <button type="button" className="ui-link" disabled={ocupado} onClick={() => entrada.current?.click()}>
+            {estado === 'logo' ? 'Subiendo…' : org.logo_url ? 'Cambiar logo' : 'Subir logo'}
+          </button>
+          {org.logo_url && (
+            <button type="button" className="ui-link ui-marca__quitar" disabled={ocupado} onClick={quitar}>
+              {estado === 'quitar' ? 'Quitando…' : 'Quitar logo'}
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="ui-muted" style={{ margin: 0, fontSize: 12 }}>
+          Solo el administrador cambia el logo y el color.
+        </p>
+      )}
+      <div className="ui-marca__color">
+        <label htmlFor="color-reportes">Color de los reportes</label>
+        <div className="ui-marca__fila">
+          <input
+            id="color-reportes"
+            type="color"
+            value={color}
+            disabled={!editable || ocupado}
+            onChange={(e) => setColor(e.target.value.toUpperCase())}
+          />
+          <code>{personalizado ? org.color_reporte : 'Verde de Núcleo'}</code>
+          {editable && (
+            <Button
+              variant="secondary"
+              disabled={ocupado || bajoContraste || color.toUpperCase() === colorActual}
+              onClick={() => aplicar(color.toUpperCase())}
+            >
+              {estado === 'color' ? 'Aplicando…' : 'Aplicar color'}
+            </Button>
+          )}
+        </div>
+        {bajoContraste && (
+          <span className="ui-marca__error" role="alert">
+            Con este color el texto no se leería sobre blanco.
+          </span>
+        )}
+        {editable && personalizado && (
+          <button type="button" className="ui-link" disabled={ocupado} onClick={() => aplicar(null)}>
+            Volver al verde de Núcleo
+          </button>
+        )}
+      </div>
+      {error && (
+        <span className="ui-marca__error" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // El administrador gestiona los datos de su empresa, sus áreas y a qué área pertenece cada
 // dispositivo. El supervisor las consulta (la API solo deja editarlas al administrador).
 export function AreasPage() {
@@ -365,6 +519,12 @@ export function AreasPage() {
                     </div>
                   </div>
                 </div>
+                <MarcaReportes
+                  org={org}
+                  editable={editable}
+                  avisar={avisar}
+                  guardada={(o) => actualizar((x) => ({ ...x, organizacion: o }))}
+                />
               </div>
             )}
             {editable ? (

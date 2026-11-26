@@ -1,6 +1,7 @@
 // Organizaciones y áreas
 export const ORGANIZACIONES = '/organizaciones/' // GET; POST solo ADMINPLAT
 export const ORGANIZACION = (num) => `/organizaciones/${num}/` // GET, PATCH
+export const ORGANIZACION_LOGO = (num) => `/organizaciones/${num}/logo/` // POST, DELETE: ADMIN
 export const ORGANIZACION_PRIMER_ADMINISTRADOR = (num) =>
   `/organizaciones/${num}/primer-administrador/` // POST, solo ADMINPLAT
 export const AREAS = '/areas/' // GET; POST: ADMIN

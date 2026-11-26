@@ -142,12 +142,16 @@ def gestion_alertas(alertas):
     for estado, total in alertas.values_list("estado").annotate(total=Count("num")):
         estados[estado] = total
 
-    espera = alertas.filter(fecha_atencion__isnull=False).annotate(
-        espera=ExpressionWrapper(
-            F("fecha_atencion") - F("fecha_hora"),
-            output_field=DurationField(),
+    espera = (
+        alertas.filter(fecha_atencion__isnull=False)
+        .annotate(
+            espera=ExpressionWrapper(
+                F("fecha_atencion") - F("fecha_hora"),
+                output_field=DurationField(),
+            )
         )
-    ).aggregate(media=Avg("espera"))["media"]
+        .aggregate(media=Avg("espera"))["media"]
+    )
 
     responsables = []
     for fila in (
@@ -248,11 +252,21 @@ def disponibilidad(sensores, inicio, fin):
     sensor_de = {}
     dispositivos = {}
     mapeo = []
-    for num, codigo, nombre, area, intervalo, fecha_alta, dispositivo_id in sensores.values_list(
+    for (
+        num,
+        codigo,
+        nombre,
+        area,
+        area_num,
+        intervalo,
+        fecha_alta,
+        dispositivo_id,
+    ) in sensores.values_list(
         "num",
         "dispositivo__codigo_mqtt",
         "dispositivo__nombre",
         "dispositivo__area__nombre",
+        "dispositivo__area_id",
         "dispositivo__intervalo_muestreo_seg",
         "dispositivo__fecha_alta",
         "dispositivo_id",
@@ -260,6 +274,7 @@ def disponibilidad(sensores, inicio, fin):
         info[codigo] = {
             "nombre": nombre,
             "area": area,
+            "area_num": area_num,
             "intervalo": intervalo,
             "fecha_alta": fecha_alta,
             "recibidas": 0,
@@ -317,9 +332,7 @@ def disponibilidad(sensores, inicio, fin):
             }
         )
         if not recibidas:
-            datos["huecos"] = [
-                {"inicio": _iso(desde), "minutos": _numero(duracion / 60)}
-            ]
+            datos["huecos"] = [{"inicio": _iso(desde), "minutos": _numero(duracion / 60)}]
         resultado[codigo] = datos
     return resultado
 
@@ -346,6 +359,7 @@ def incidentes(sensores, inicio, fin):
             "dispositivo__codigo_mqtt",
             "dispositivo__nombre",
             "dispositivo__area__nombre",
+            "dispositivo__area_id",
             "dispositivo__intervalo_muestreo_seg",
         )
     )
@@ -359,6 +373,7 @@ def incidentes(sensores, inicio, fin):
         nombres[umbral["dispositivo__codigo_mqtt"]] = {
             "nombre": umbral["dispositivo__nombre"],
             "area": umbral["dispositivo__area__nombre"],
+            "area_num": umbral["dispositivo__area_id"],
         }
         for sensor_num in por_dispositivo[umbral["dispositivo_id"]]:
             mapeo.append(
@@ -458,6 +473,7 @@ def incidentes(sensores, inicio, fin):
             "dispositivo": nombres[dispositivo]["nombre"],
             "dispositivo_codigo": dispositivo,
             "area": nombres[dispositivo]["area"],
+            "area_num": nombres[dispositivo]["area_num"],
             "variable": variable,
             "variable_nombre": _nombre_variable(catalogo, variable),
             "inicio": _iso(inicio_tramo),
@@ -487,12 +503,11 @@ def observaciones(alertas):
             "dispositivo": alerta.umbral.dispositivo.nombre,
             "dispositivo_codigo": alerta.umbral.dispositivo.codigo_mqtt,
             "area": alerta.umbral.dispositivo.area.nombre,
+            "area_num": alerta.umbral.dispositivo.area_id,
             "variable": alerta.umbral.variable.nombre,
             "variable_codigo": alerta.umbral.variable_id,
             "variable_nombre": alerta.umbral.variable.nombre.split(" (")[0],
-            "usuario": alerta.atendida_por.get_full_name()
-            if alerta.atendida_por_id
-            else "—",
+            "usuario": alerta.atendida_por.get_full_name() if alerta.atendida_por_id else "—",
             "texto": alerta.observaciones,
         }
         for alerta in filas
@@ -562,24 +577,14 @@ def comparativo(variables, alertas_total, previo, inicio, fin):
             "promedio_previo": anterior.get("promedio"),
             "minimo_previo": anterior.get("minimo"),
             "maximo_previo": anterior.get("maximo"),
-            "dif_promedio": _diferencia(
-                actual.get("promedio"), anterior.get("promedio")
-            ),
-            "dif_promedio_pct": _porcentaje(
-                actual.get("promedio"), anterior.get("promedio")
-            ),
+            "dif_promedio": _diferencia(actual.get("promedio"), anterior.get("promedio")),
+            "dif_promedio_pct": _porcentaje(actual.get("promedio"), anterior.get("promedio")),
             "dif_minimo": _diferencia(actual.get("minimo"), anterior.get("minimo")),
-            "dif_minimo_pct": _porcentaje(
-                actual.get("minimo"), anterior.get("minimo")
-            ),
+            "dif_minimo_pct": _porcentaje(actual.get("minimo"), anterior.get("minimo")),
             "dif_maximo": _diferencia(actual.get("maximo"), anterior.get("maximo")),
-            "dif_maximo_pct": _porcentaje(
-                actual.get("maximo"), anterior.get("maximo")
-            ),
+            "dif_maximo_pct": _porcentaje(actual.get("maximo"), anterior.get("maximo")),
         }
-        fila["mejora"] = (
-            None if fila["dif_promedio"] is None else fila["dif_promedio"] <= 0
-        )
+        fila["mejora"] = None if fila["dif_promedio"] is None else fila["dif_promedio"] <= 0
         filas.append(fila)
 
     diferencia = alertas_total - previo["alertas"]
