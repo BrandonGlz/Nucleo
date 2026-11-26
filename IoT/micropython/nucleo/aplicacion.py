@@ -95,64 +95,67 @@ def ejecutar():
     ultimo_muestreo = None
     antes_wifi = antes_mqtt = False  # para anotar en la bitácora solo los cambios
 
-    while True:
-        if perro:
-            perro.feed()
+    try:
+        while True:
+            if perro:
+                perro.feed()
 
-        red.mantener()
-        conectada = red.conectada()
-        indicadores.wifi(conectada)
-        en_respaldo = broker.fallos_seguidos >= config.MQTT_FALLOS_RESPALDO
-        if conectada and red.sincronizar_hora():
-            # El certificado se valida con la hora ya sincronizada. Si el broker no responde
-            # varias veces seguidas, Nico sigue vivo por HTTPS y MQTT se reintenta más espaciado.
-            broker.mantener(config.MQTT_REINTENTO_RESPALDO_SEG if en_respaldo else None)
-            if en_respaldo and not broker.conectado() and respaldo.disponible():
-                if respaldo.mantener():
-                    indicadores.parpadeo()
-        broker.revisar()
-        tarjeta.mantener()  # sin tarjeta, la busca cada SD_REINTENTO_SEG
-        if conectada != antes_wifi:
-            antes_wifi = conectada
-            tarjeta.bitacora("Wi-Fi conectado a %s" % red.red if conectada else "Wi-Fi perdido (%s)" % red.falla)
-        if broker.conectado() != antes_mqtt:
-            antes_mqtt = broker.conectado()
-            tarjeta.bitacora("MQTT conectado" if antes_mqtt else "MQTT desconectado · %d lecturas en cola" % len(cola))
-        if not confirmada and (broker.conectado() or respaldo.respondio):
-            # La versión nueva llegó a la plataforma: se queda (sin esto, vuelve atrás sola).
-            actualizacion.confirmar()
-            confirmada = True
-        if confirmada and conectada and ota.revisar():
-            reset()  # actualizacion.py la aplica al arrancar
-        cola.enviar(broker.publicar_lecturas)  # lecturas guardadas mientras no hubo conexión
-        indicadores.actualizar_buzzer()
+            red.mantener()
+            conectada = red.conectada()
+            indicadores.wifi(conectada)
+            en_respaldo = broker.fallos_seguidos >= config.MQTT_FALLOS_RESPALDO
+            if conectada and red.sincronizar_hora():
+                # El certificado se valida con la hora ya sincronizada. Si el broker no responde
+                # varias veces seguidas, Nico sigue vivo por HTTPS y MQTT se reintenta más espaciado.
+                broker.mantener(config.MQTT_REINTENTO_RESPALDO_SEG if en_respaldo else None)
+                if en_respaldo and not broker.conectado() and respaldo.disponible():
+                    if respaldo.mantener():
+                        indicadores.parpadeo()
+            broker.revisar()
+            tarjeta.mantener()  # sin tarjeta, la busca cada SD_REINTENTO_SEG
+            if conectada != antes_wifi:
+                antes_wifi = conectada
+                tarjeta.bitacora("Wi-Fi conectado a %s" % red.red if conectada else "Wi-Fi perdido (%s)" % red.falla)
+            if broker.conectado() != antes_mqtt:
+                antes_mqtt = broker.conectado()
+                tarjeta.bitacora("MQTT conectado" if antes_mqtt else "MQTT desconectado · %d lecturas en cola" % len(cola))
+            if not confirmada and (broker.conectado() or respaldo.respondio):
+                # La versión nueva llegó a la plataforma: se queda (sin esto, vuelve atrás sola).
+                actualizacion.confirmar()
+                confirmada = True
+            if confirmada and conectada and ota.revisar():
+                reset()  # actualizacion.py la aplica al arrancar
+            cola.enviar(broker.publicar_lecturas)  # lecturas guardadas mientras no hubo conexión
+            indicadores.actualizar_buzzer()
 
-        ahora = time.ticks_ms()
-        if sensores is not None and (
-            ultimo_muestreo is None
-            or time.ticks_diff(ahora, ultimo_muestreo) >= ajustes.intervalo_seg * 1000
-        ):
-            ultimo_muestreo = ahora
-            lecturas = sensores.leer()
-            estabilizado = sensores.aire_estabilizado()
-            nivel = _nivel_local(ajustes, lecturas, estabilizado)
-            indicadores.nivel(nivel)  # alerta local aunque no haya conexión (SRS 3.2.7)
-            porcentaje = bateria.porcentaje()
-            if lecturas or porcentaje is not None:
-                mensaje = _construir_mensaje(
-                    red, sensores, lecturas, estabilizado, porcentaje,
-                    bateria.voltaje, ajustes.intervalo_seg,
+            ahora = time.ticks_ms()
+            if sensores is not None and (
+                ultimo_muestreo is None
+                or time.ticks_diff(ahora, ultimo_muestreo) >= ajustes.intervalo_seg * 1000
+            ):
+                ultimo_muestreo = ahora
+                lecturas = sensores.leer()
+                estabilizado = sensores.aire_estabilizado()
+                nivel = _nivel_local(ajustes, lecturas, estabilizado)
+                indicadores.nivel(nivel)  # alerta local aunque no haya conexión (SRS 3.2.7)
+                porcentaje = bateria.porcentaje()
+                if lecturas or porcentaje is not None:
+                    mensaje = _construir_mensaje(
+                        red, sensores, lecturas, estabilizado, porcentaje,
+                        bateria.voltaje, ajustes.intervalo_seg,
+                    )
+                    if "fecha_hora" in mensaje or broker.conectado():
+                        cola.agregar(mensaje)
+                        cola.enviar(broker.publicar_lecturas)
+                pantalla.lecturas(
+                    ajustes.nombre,
+                    lecturas,
+                    nivel,
+                    red.red if conectada else "",
+                    sensores.calentamiento_restante_seg(),
+                    porcentaje,
                 )
-                if "fecha_hora" in mensaje or broker.conectado():
-                    cola.agregar(mensaje)
-                    cola.enviar(broker.publicar_lecturas)
-            pantalla.lecturas(
-                ajustes.nombre,
-                lecturas,
-                nivel,
-                red.red if conectada else "",
-                sensores.calentamiento_restante_seg(),
-                porcentaje,
-            )
 
-        time.sleep_ms(_PAUSA_MS)
+            time.sleep_ms(_PAUSA_MS)
+    finally:
+        indicadores.apagar()  # Ctrl-C o error: el buzzer no se queda sonando

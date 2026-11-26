@@ -427,13 +427,29 @@ class LlaveNicoTests(unittest.TestCase):
 
 
 class BuzzerTests(unittest.TestCase):
-    class PWM:
+    class RMT:
+        PULSE_MAX = 32767
         creados = []
+        falla = False
 
-        def __init__(self, pin, freq, duty_u16):
-            self.freq, self.duty = freq, duty_u16
+        def __init__(self, canal, pin, clock_div, idle_level):
+            if BuzzerTests.RMT.falla:
+                raise OSError("sin RMT")
+            self.divisor, self.reposo = clock_div, idle_level
+            self.bucle = self.activo = False
+            self.pulsos = None
+            BuzzerTests.RMT.creados.append(self)
+
+        @staticmethod
+        def source_freq():
+            return 80_000_000
+
+        def loop(self, activo):
+            self.bucle = activo
+
+        def write_pulses(self, duraciones, niveles):
+            self.pulsos = (duraciones, niveles)
             self.activo = True
-            BuzzerTests.PWM.creados.append(self)
 
         def deinit(self):
             self.activo = False
@@ -442,34 +458,64 @@ class BuzzerTests(unittest.TestCase):
         from nucleo import indicadores
 
         self.modulo = indicadores
-        self.original = indicadores._PWM
-        BuzzerTests.PWM.creados = []
+        self.original = indicadores._RMT
+        BuzzerTests.RMT.creados = []
+        BuzzerTests.RMT.falla = False
 
     def tearDown(self):
-        self.modulo._PWM = self.original
+        self.modulo._RMT = self.original
 
-    def test_en_peligro_los_pulsos_los_genera_el_hardware(self):
-        self.modulo._PWM = BuzzerTests.PWM
+    def test_en_peligro_los_pulsos_los_genera_el_rmt_en_bucle(self):
+        self.modulo._RMT = BuzzerTests.RMT
         ind = self.modulo.Indicadores()
         ind.nivel(PELIGRO)
         ind.actualizar_buzzer()
         ind.actualizar_buzzer()
-        self.assertEqual(len(BuzzerTests.PWM.creados), 1)  # se crea una sola vez
-        pwm = BuzzerTests.PWM.creados[0]
-        self.assertEqual((pwm.freq, pwm.duty), (1, 200 * 65535 // 1000))
+        self.assertEqual(len(BuzzerTests.RMT.creados), 1)  # se crea una sola vez
+        rmt = BuzzerTests.RMT.creados[0]
+        duraciones, niveles = rmt.pulsos
+        tick_us = 1_000_000 * rmt.divisor / 80_000_000
+        self.assertTrue(rmt.bucle)
+        self.assertTrue(all(d <= BuzzerTests.RMT.PULSE_MAX for d in duraciones))
+        self.assertAlmostEqual(sum(duraciones) * tick_us / 1000, 1000, delta=2)  # periodo 1 s
+        encendido = sum(d for d, n in zip(duraciones, niveles) if n) * tick_us / 1000
+        self.assertAlmostEqual(encendido, 200, delta=1)  # 200 ms sonando
+        self.assertFalse(rmt.reposo)  # en reposo, callado
         ind.nivel(NORMAL)
-        self.assertFalse(pwm.activo)  # al salir del peligro se apaga
+        self.assertFalse(rmt.activo)  # al salir del peligro se suelta
+        self.assertEqual(ind._buzzer.valor, 0)
+        ind.nivel(PELIGRO)
+        ind.actualizar_buzzer()
+        self.assertEqual(len(BuzzerTests.RMT.creados), 2)  # vuelve a sonar en el siguiente peligro
 
-    def test_sin_pwm_lento_se_generan_por_software(self):
-        self.modulo._PWM = None
+    def test_apagar_suelta_el_rmt_y_calla_el_buzzer(self):
+        self.modulo._RMT = BuzzerTests.RMT
         ind = self.modulo.Indicadores()
         ind.nivel(PELIGRO)
-        reloj["ms"] = 100
         ind.actualizar_buzzer()
-        self.assertEqual(ind._buzzer.valor, 1)
-        reloj["ms"] = 500
-        ind.actualizar_buzzer()
+        ind.apagar()
+        self.assertFalse(BuzzerTests.RMT.creados[0].activo)
         self.assertEqual(ind._buzzer.valor, 0)
+        ind.actualizar_buzzer()  # ya sin peligro no vuelve a sonar
+        self.assertEqual(len(BuzzerTests.RMT.creados), 1)
+
+    def test_no_usa_el_pwm_lento(self):
+        # En la S3 un PWM a 1 Hz deja el LEDC a medias y el reinicio suave truena (NLR).
+        self.assertFalse(hasattr(self.modulo, "_PWM"))
+
+    def test_sin_rmt_se_generan_por_software(self):
+        for rmt in (None, BuzzerTests.RMT):
+            BuzzerTests.RMT.falla = True
+            self.modulo._RMT = rmt
+            ind = self.modulo.Indicadores()
+            ind.nivel(PELIGRO)
+            reloj["ms"] = 100
+            ind.actualizar_buzzer()
+            self.assertEqual(ind._buzzer.valor, 1)
+            reloj["ms"] = 500
+            ind.actualizar_buzzer()
+            self.assertEqual(ind._buzzer.valor, 0)
+
 
 class BateriaTests(unittest.TestCase):
     class I2C:

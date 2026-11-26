@@ -93,7 +93,9 @@ Todas están en `IoT/micropython/lib/` y se copian a `/lib` de la placa.
 
 - **`dht`** (integrado en MicroPython) — DHT22: `dht.DHT22(Pin(config.PIN_DHT22))`.
 - **`machine.Pin`** (integrado en MicroPython) — LEDs y buzzer. Buzzer activo:
-  `on()`/`off()`.
+  `on()`/`off()`. En peligro los pulsos (200 ms cada segundo) los repite `esp32.RMT` en bucle;
+  sin RMT, por software. Desde 1.1.6 no se usa PWM: en la S3 un PWM a 1 Hz falla en el LEDC y el
+  siguiente reinicio suave (mpremote) terminaba en «NLR jump failed».
 - **`ssd1306.py`** — OLED. Origen: `micropython/micropython-lib` (master).
   `SSD1306_I2C(128, 64, i2c)`.
 - **`umqtt/simple.py`, `umqtt/robust.py`** — MQTT. Origen:

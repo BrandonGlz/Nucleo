@@ -176,7 +176,10 @@ HTTPS): `MQTT_HOST = "dispositivos.bynucleo.com"`, `MQTT_PUERTO = 443`, `MQTT_WS
 El Wi-Fi no bloquea el ciclo: prueba las redes conocidas visibles (punto de acceso de mejor
 señal) y espera cada vez más entre rondas fallidas, hasta 5 min. El watchdog (60 s) reinicia
 la placa si el ciclo se traba. Si la red bloquea el NTP (UDP 123), la hora se toma de la
-cabecera `Date` del servidor por HTTPS. El buzzer pulsa con el PWM del ESP.
+cabecera `Date` del servidor por HTTPS. El buzzer pulsa con el RMT del ESP en bucle (200 ms
+cada segundo, aunque el CPU esté ocupado con TLS). No se usa PWM: en la S3 el LEDC no baja de
+~2 Hz y un PWM a 1 Hz deja el canal a medias, así que el reinicio suave de mpremote tronaba con
+«NLR jump failed» (corregido en 1.1.6).
 
 ## Pines (ESP32-S3)
 
