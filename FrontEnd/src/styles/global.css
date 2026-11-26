@@ -5756,3 +5756,297 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
 @media (max-width: 720px) {
   .ui-reportes-filtros__selects { grid-template-columns: 1fr; }
 }
+
+/* Visor de hoja compartido: la primera hoja cabe completa con «Ajustar»; solo el visor
+   desplaza cuando hay más hojas o el zoom manual no cabe. */
+.ui-visor-hoja {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  box-shadow: inset 0 0 0 1px var(--border);
+  scrollbar-gutter: stable;
+}
+.ui-visor-hoja .ui-paginas {
+  width: max-content;
+  min-width: 100%;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.ui-visor-hoja .ui-hoja { margin: 0; flex: none; }
+.ui-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.ui-zoom__boton,
+.ui-zoom__ajustar {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+  border-radius: 7px;
+}
+.ui-zoom__boton { width: 26px; height: 26px; font-size: 17px; line-height: 1; }
+.ui-zoom__valor { min-width: 42px; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.ui-zoom__ajustar { padding: 5px 8px; font-size: 12px; white-space: nowrap; }
+.ui-zoom__boton:hover,
+.ui-zoom__ajustar:hover { background: var(--surface-muted); }
+.ui-zoom__ajustar.is-activo { background: var(--accent-soft); color: var(--accent-secondary); }
+.ui-zoom--compacto .ui-zoom__boton { width: 24px; height: 24px; }
+.ui-zoom--compacto .ui-zoom__valor { min-width: 36px; font-size: 11px; }
+.ui-zoom--compacto .ui-zoom__ajustar { padding: 4px 6px; font-size: 11px; }
+
+/* En papel no hay scroll horizontal de tablas: el ancho se reparte y el texto se ajusta. */
+.ui-hoja .ui-tabla-scroll { overflow: visible; }
+.ui-hoja .ui-tabla-scroll > .nc-table { table-layout: fixed; }
+.ui-hoja .ui-tabla-scroll .nc-table th { white-space: normal; }
+.ui-hoja .ui-tabla-scroll .nc-table td.ui-num { white-space: nowrap; }
+.ui-hoja .ui-dash__widget[data-ancho="4"] .nc-table th,
+.ui-hoja .ui-dash__widget[data-ancho="4"] .nc-table td { font-size: 11px; }
+
+/* Reportes rediseñado: lista a la izquierda, barra + visor a la derecha. */
+.ui-reportes {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: var(--contenido-separacion);
+}
+.ui-reportes__lista,
+.ui-reportes__vista {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--contenido-separacion);
+}
+.ui-reportes__lista > .nc-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ui-reportes__filtros { position: relative; flex: none; display: flex; flex-direction: column; gap: 8px; }
+.ui-reportes__buscador { display: flex; align-items: center; gap: 8px; }
+.ui-reportes__buscador > .ui-buscador { flex: 1; min-width: 0; }
+.ui-reportes__panel-filtros {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(330px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+.ui-reportes__chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ui-reportes__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ui-reportes__chip:hover { border-color: var(--border-strong); }
+.ui-reportes__items { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
+.ui-reportes__item-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.ui-reportes__item-texto .ui-titulo-fila { gap: 6px; }
+.ui-reportes__item-texto .ui-titulo-fila strong { font-size: 13px; line-height: 18px; }
+.ui-reportes__item-texto .ui-titulo-fila span { font-size: 11px; line-height: 15px; color: var(--text-muted); white-space: nowrap; }
+.ui-reportes__item-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 11px; }
+.ui-reportes__item-menu { flex: none; }
+.ui-reportes__programados { flex: 1; min-height: 0; overflow: auto; }
+.ui-reportes__vista { min-width: 0; }
+.ui-reportes__barra {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.ui-reportes__barra-titulo { display: flex; flex-direction: column; gap: 3px; min-width: 150px; flex: 1 1 220px; }
+.ui-reportes__barra-titulo strong { font-size: 14px; line-height: 19px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-reportes__barra-estado { display: flex; gap: 4px; flex-wrap: wrap; }
+.ui-reportes__barra-formato { display: flex; align-items: center; gap: 6px; min-width: min(230px, 100%); flex: 1 1 230px; }
+.ui-reportes__barra-formato > .ui-desplegable { flex: 1; min-width: 150px; }
+.ui-reportes__barra-acciones { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; flex: none; }
+.ui-reportes__pendiente { flex: 1; min-height: 100px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; }
+@media (max-width: 900px) {
+  .ui-reportes { display: block; }
+  .ui-reportes__vista { display: none; }
+  .ui-reportes.is-vista .ui-reportes__lista { display: none; }
+  .ui-reportes.is-vista .ui-reportes__vista { display: flex; height: 100%; }
+  .ui-reportes__barra { border-radius: 14px; }
+  .ui-reportes__barra-titulo { flex-basis: 100%; order: 1; }
+  .ui-reportes__barra--movil > .nc-button:first-child { order: 0; }
+  .ui-reportes__barra-formato { order: 2; flex-basis: 100%; }
+  .ui-reportes__barra-acciones { order: 3; flex-basis: 100%; }
+}
+
+/* Asistente: la vista previa ocupa el alto restante y la hoja se ajusta completa. */
+.ui-modal__caja--asistente {
+  width: min(1480px, 96vw);
+  height: min(calc(100dvh - 48px), 1100px);
+}
+.ui-asistente__cuerpo--vista { grid-template-columns: 260px minmax(0, 1fr); }
+.ui-asistente__vista { min-height: 0; }
+.ui-asistente__vista-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+.ui-asistente__visor { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ui-asistente__visor > .ui-visor-hoja { flex: 1; }
+@media (max-width: 900px) {
+  .ui-modal__caja--asistente { height: 94dvh; }
+  .ui-asistente__vista { min-height: 360px; }
+  .ui-asistente__visor { min-height: 300px; }
+}
+/* El visor de Nico usa el mismo contenedor y deja que VisorHoja desplace. */
+.ui-ia-visor__hojas { display: flex; flex-direction: column; overflow: hidden; }
+.ui-ia-visor__hojas > .ui-visor-hoja { flex: 1; border-radius: 0; box-shadow: none; }
+
+/* Empresa y áreas: resumen compacto y tabla que se ajusta al ancho (sin scroll horizontal). */
+.ui-areas { min-height: 0; }
+.ui-areas .nc-card { min-height: 0; }
+.ui-empresa { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.ui-empresa__identidad { gap: 10px; padding: 10px 12px; }
+.ui-empresa__identidad .ui-titulo-fila { gap: 2px; }
+.ui-empresa__identidad .ui-titulo-fila span { font-size: 12px; line-height: 16px; }
+.ui-empresa__datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; padding: 0 12px; }
+.ui-empresa__datos .ui-dato { min-width: 0; }
+.ui-empresa__datos .ui-dato strong { display: block; font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+.ui-empresa__marca { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0; padding: 8px 10px; border-top: 1px solid var(--border); font-size: 11px; }
+.ui-empresa__marca > .ui-eyebrow { flex: none; font-size: 10px; letter-spacing: 0.04em; }
+.ui-empresa__logo { display: inline-flex; align-items: center; min-width: 24px; height: 24px; font-size: 11px; color: var(--text-muted); }
+.ui-empresa__logo img { max-width: 90px; max-height: 24px; object-fit: contain; }
+.ui-empresa__color { width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--border); flex: none; }
+.ui-areas__tabla.nc-table-wrap { overflow-x: clip; }
+.ui-areas__tabla .nc-table { width: 100%; min-width: 0; table-layout: fixed; }
+.ui-areas__tabla .nc-table th,
+.ui-areas__tabla .nc-table td { padding-inline: 6px; overflow-wrap: anywhere; }
+.ui-areas__tabla--areas .nc-table th:first-child { width: 24%; }
+.ui-areas__tabla--areas .nc-table th:nth-child(2) { width: 25%; }
+.ui-areas__tabla--areas .nc-table th:nth-child(3) { width: 18%; }
+.ui-areas__tabla--areas .nc-table th:nth-child(4) { width: 23%; }
+.ui-areas__tabla--areas .nc-table th:nth-child(5) { width: 10%; }
+.ui-areas__tabla .ui-tabla-tarjetas { min-width: 0; }
+
+/* Ventanas bajas: el menú lateral cabe sin barra propia. */
+@media (max-height: 760px) {
+  :root { --menu-item-alto: 32px; }
+  .app > .nc-sidebar { padding-top: 8px; padding-bottom: 8px; }
+  .app__nav-group { margin-bottom: 4px; }
+  .nc-sidebar__foot { padding-top: 6px; gap: 6px; }
+}
+.ui-reportes__panel-filtros.is-saliendo { animation: ui-sale-menu 180ms var(--ease-standard) forwards; }
+.ui-reportes__panel-filtros { animation: ui-sube var(--duration-base) var(--ease-standard) backwards; }
+.ui-hoja .nc-table { width: 100%; table-layout: fixed; }
+.ui-hoja .nc-table th { white-space: normal; }
+.ui-hoja .nc-table td.ui-num { white-space: nowrap; }
+
+/* Móvil: lista o vista, y la vista ocupa el alto restante con barra de dos renglones. */
+@media (max-width: 900px) {
+  .ui-reportes { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .ui-reportes__lista { display: flex; flex: 1; min-height: 0; }
+  .ui-reportes__vista { display: none; }
+  .ui-reportes.is-vista { height: 100%; }
+  .ui-reportes.is-vista .ui-reportes__lista { display: none; }
+  .ui-reportes.is-vista .ui-reportes__vista {
+    display: flex;
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+  .ui-reportes.is-vista .ui-visor-hoja { flex: 1; min-height: 320px; }
+  .ui-reportes__barra--movil { flex-wrap: wrap; padding: 6px 8px; gap: 6px; }
+  .ui-reportes__barra--movil > .nc-btn:first-child { order: 0; flex: none; }
+  .ui-reportes__barra--movil .ui-reportes__barra-titulo {
+    order: 1;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+  .ui-reportes__barra--movil .ui-reportes__barra-titulo strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ui-reportes__barra--movil .ui-reportes__barra-estado { flex: none; flex-wrap: nowrap; }
+  .ui-reportes__barra--movil .ui-reportes__barra-formato { display: none; }
+  .ui-reportes__barra--movil .ui-reportes__barra-acciones {
+    order: 2;
+    flex-basis: 100%;
+    flex-wrap: nowrap;
+    min-width: 0;
+    gap: 3px;
+  }
+  .ui-reportes__barra--movil .ui-reportes__barra-acciones .nc-btn { min-width: 0; }
+  .ui-reportes__barra--movil .ui-reportes__barra-acciones .nc-btn--sm { padding-inline: 7px; }
+}
+
+/* Áreas: la descripción no invade la columna de chips y se corta a dos líneas. */
+.ui-areas__descripcion {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 12px;
+  line-height: 16px;
+}
+.ui-areas__tabla .nc-table td { min-width: 0; }
+/* Marca en reportes: una sola línea, con el nombre del color recortado si hace falta. */
+.ui-empresa__marca { white-space: nowrap; }
+.ui-empresa__logo { flex: none; }
+.ui-empresa__separador { flex: none; color: var(--text-muted); }
+.ui-empresa__color-nombre { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 900px) {
+  /* La vista de un reporte llena el alto de la ventana para que la hoja se ajuste completa. */
+  .app__main { min-height: calc(100dvh - 24px); }
+}
+
+@media (max-width: 900px) {
+  /* En el modal de formato la lista abre hacia arriba para no salir de la pantalla. */
+  .ui-formato-modal .ui-desplegable__lista {
+    top: auto;
+    bottom: calc(100% + 6px);
+    transform-origin: bottom center;
+  }
+}

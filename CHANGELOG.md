@@ -44,6 +44,14 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Reportes rediseñado: la hoja se ajusta completa en un visor con zoom (`−`, porcentaje,
+  `+`, «Ajustar» y Ctrl + rueda), las acciones viven en una barra sobre la vista y la lista
+  tiene pestañas Reportes/Programados, buscador, filtros por panel y chips, archivado y
+  «Generar de nuevo». En móvil la lista y la vista se alternan con «Volver».
+- El asistente de reportes muestra la hoja completa en el paso 3 y el visor de Nico AI usa
+  los mismos controles de zoom.
+- «Empresa y áreas» queda sin scroll: resumen compacto de la empresa con logo y color, la
+  marca se edita dentro de «Editar datos» y la tabla de áreas se ajusta al ancho.
 - Generación de reportes en segundo plano: la API responde al momento con el reporte en
   «Generando», un servicio de cola calcula cifras, redacta y arma el PDF, y la lista se
   actualiza sola. Los programados envían el correo al terminar y los fallos guardan el mensaje.

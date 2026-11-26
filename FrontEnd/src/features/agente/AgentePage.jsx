@@ -21,6 +21,7 @@ import { Pantalla } from '../../components/Pantalla'
 import { useAgente } from '../../context/AgenteContext'
 import { useSesion } from '../../context/SesionContext'
 import { DashboardReporte } from '../reportes/DashboardReporte'
+import { ControlZoom, ProveedorZoom } from '../reportes/VisorHoja'
 import { asignarFormato, useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
 import * as agenteApi from '../../services/agente'
@@ -111,7 +112,6 @@ function Pensando({ plan }) {
   )
 }
 
-const ZOOMS = [0.5, 0.75, 0.9, 1, 1.25, 1.5]
 const nombreReporte = (resumen) => `Reporte ${resumen.titulo ?? `R-${resumen.num}`}`
 
 // Reporte que generó el agente, como un archivo adjunto: se descarga directo (PDF del servidor)
@@ -166,8 +166,6 @@ function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
   const [saliendo, cerrar] = useCierre(quitar, 280)
   const [r, setR] = useState(null)
   const [error, setError] = useState(false)
-  const [zoom, setZoom] = useState(null)
-  const [ajuste, setAjuste] = useState(1)
   const caja = useRef(null)
   const ed = useEdicion(r ?? resumen.num)
   useEffect(() => {
@@ -186,26 +184,15 @@ function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
     return () => document.removeEventListener('keydown', tecla)
   }, [ampliado, ampliar, cerrar])
   const areas = r ? [{ num: r.area, nombre: resumen.titulo?.split(' · ')[0] ?? 'Todas las áreas' }] : []
-  const actual = zoom ?? ajuste
   return (
+    <ProveedorZoom>
     <aside ref={caja} className={`ui-ia-visor${ampliado ? ' is-ampliado' : ''}${saliendo ? ' is-saliendo' : ''}`} aria-label="Vista del reporte">
       <header className="ui-ia-visor__barra">
         <span className="ui-ia-visor__titulo">
           <strong>{nombreReporte(resumen)}</strong>
           <span className="ui-muted"> · PDF</span>
         </span>
-        <label className="ui-ia-visor__zoom">
-          <span className="ui-sr-only">Zoom</span>
-          <select value={zoom ?? 'ajustar'} onChange={(e) => setZoom(e.target.value === 'ajustar' ? null : Number(e.target.value))}>
-            <option value="ajustar">{`${Math.round(ajuste * 100)} % · Ajustar`}</option>
-            {ZOOMS.map((z) => (
-              <option key={z} value={z}>
-                {Math.round(z * 100)} %
-              </option>
-            ))}
-          </select>
-          <Icon name="chevron-down" size={14} />
-        </label>
+        <ControlZoom compacto />
         <Button
           size="sm"
           icon="download"
@@ -231,13 +218,13 @@ function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
           <Icon name="x" size={18} />
         </button>
       </header>
-      <div className="ui-ia-visor__hojas nc-scroll" data-zoom={Math.round(actual * 100)}>
+      <div className="ui-ia-visor__hojas">
         {error ? (
           <span className="ui-aviso ui-aviso--danger" role="alert">
             No se pudo cargar el reporte. Intenta de nuevo o ábrelo en Reportes.
           </span>
         ) : r ? (
-          <DashboardReporte r={r} areas={areas} ed={ed} zoom={zoom ?? undefined} alEscalar={setAjuste} />
+          <DashboardReporte r={r} areas={areas} ed={ed} />
         ) : (
           <div className="ui-ia-visor__cargando">
             <Skeleton variant="card" />
@@ -245,6 +232,7 @@ function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
         )}
       </div>
     </aside>
+    </ProveedorZoom>
   )
 }
 

@@ -6,6 +6,7 @@ import { useCierre } from '../../hooks/useSalida'
 import * as reportesApi from '../../services/reportes'
 import { periodo } from '../../utils/formato'
 import { DashboardReporte, ListaTarjetas } from './DashboardReporte'
+import { ControlZoom, ProveedorZoom } from './VisorHoja'
 import { etiquetaFormato } from './personalizacion'
 
 const PASOS = ['De qué', 'Cuándo', 'Cómo']
@@ -451,18 +452,23 @@ export function AsistenteReporte({ areas, reportes, ed, puedeEditar, muestra: el
           </div>
 
           {paso === 3 && (
-            <div className="ui-asistente__vista">
-              <span className="ui-eyebrow">Vista previa</span>
-              <div className="ui-visor nc-scroll">
-                {cargandoPreview ? (
-                  <Skeleton variant="card" />
-                ) : errorPreview ? (
-                  <p className="ui-muted">{errorPreview}</p>
-                ) : reportePreview ? (
-                  <DashboardReporte r={reportePreview} areas={areas} ed={edPreview} />
-                ) : null}
+            <ProveedorZoom>
+              <div className="ui-asistente__vista">
+                <div className="ui-asistente__vista-cabeza">
+                  <span className="ui-eyebrow">Vista previa</span>
+                  <ControlZoom compacto />
+                </div>
+                <div className="ui-asistente__visor">
+                  {cargandoPreview ? (
+                    <Skeleton variant="card" />
+                  ) : errorPreview ? (
+                    <p className="ui-muted">{errorPreview}</p>
+                  ) : reportePreview ? (
+                    <DashboardReporte r={reportePreview} areas={areas} ed={edPreview} />
+                  ) : null}
+                </div>
               </div>
-            </div>
+            </ProveedorZoom>
           )}
         </div>
 

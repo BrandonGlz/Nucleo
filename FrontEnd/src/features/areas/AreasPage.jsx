@@ -38,7 +38,7 @@ const CAMPOS_EMPRESA = [
   ['telefono', 'Teléfono'],
 ]
 
-function EditarEmpresa({ org, cerrar, guardado }) {
+function EditarEmpresa({ org, cerrar, guardado, actualizarOrg, avisar }) {
   const [f, setF] = useState(() => Object.fromEntries(CAMPOS_EMPRESA.map(([k]) => [k, org[k] ?? ''])))
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
@@ -69,6 +69,12 @@ function EditarEmpresa({ org, cerrar, guardado }) {
           <Input key={k} label={label} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
         ))}
       </div>
+      <MarcaReportes
+        org={org}
+        editable
+        avisar={avisar}
+        guardada={actualizarOrg}
+      />
     </Modal>
   )
 }
@@ -140,7 +146,7 @@ function EliminarArea({ area, cerrar, eliminada }) {
 
 function TablaAreas({ datos, editar, eliminar, editable }) {
   return (
-    <div className="nc-table-wrap nc-scroll">
+    <div className="nc-table-wrap nc-scroll ui-areas__tabla ui-areas__tabla--areas">
       <table className="nc-table ui-tabla-tarjetas">
         <thead>
           <tr>
@@ -162,7 +168,7 @@ function TablaAreas({ datos, editar, eliminar, editable }) {
                 <td style={{ paddingTop: 14, paddingBottom: 14 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <strong className="ui-strong">{a.nombre}</strong>
-                    <span className="ui-muted" style={{ fontSize: 12 }}>
+                    <span className="ui-muted ui-areas__descripcion">
                       {a.descripcion || 'Sin descripción'}
                     </span>
                   </div>
@@ -224,7 +230,7 @@ function TablaAreas({ datos, editar, eliminar, editable }) {
 function Asignacion({ datos, mover, guardando, editable }) {
   const opciones = datos.areas.map((a) => ({ value: a.num, label: a.nombre }))
   return (
-    <div className="nc-table-wrap nc-scroll">
+    <div className="nc-table-wrap nc-scroll ui-areas__tabla">
       <table className="nc-table ui-tabla-tarjetas">
         <thead>
           <tr>
@@ -480,7 +486,7 @@ export function AreasPage() {
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
-        <div className="ui-fila" style={{ gridTemplateColumns: 'clamp(260px, 28%, 320px) minmax(0,1fr)' }}>
+        <div className="ui-fila ui-areas" style={{ gridTemplateColumns: 'clamp(280px, 30%, 340px) minmax(0,1fr)' }}>
           <Card className="nc-grow">
             <div className="nc-card__head" style={{ marginBottom: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -489,17 +495,17 @@ export function AreasPage() {
               </div>
             </div>
             {org && (
-              <div className="nc-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div className="ui-item is-selected" style={{ gap: 12, padding: 12 }}>
+              <div className="ui-empresa">
+                <div className="ui-item is-selected ui-empresa__identidad">
                   <IconCircle name="building-2" tone="ink" size="md" />
                   <div className="ui-titulo-fila" style={{ flex: 1 }}>
                     <strong>{org.nombre}</strong>
-                    <span style={{ fontSize: 12, lineHeight: '16px' }}>
+                    <span>
                       {org.ciudad} · {datos.areas.length} áreas · {datos.dispositivos.length} dispositivos
                     </span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px 12px' }}>
+                <div className="ui-empresa__datos">
                   <div className="ui-dato">
                     <span className="ui-eyebrow">Dirección</span>
                     <strong>
@@ -519,12 +525,21 @@ export function AreasPage() {
                     </div>
                   </div>
                 </div>
-                <MarcaReportes
-                  org={org}
-                  editable={editable}
-                  avisar={avisar}
-                  guardada={(o) => actualizar((x) => ({ ...x, organizacion: o }))}
-                />
+                <div className="ui-empresa__marca">
+                  <span className="ui-eyebrow">Marca en reportes</span>
+                  <span className="ui-empresa__logo">
+                    {org.logo_url ? <img src={logoDe(org)} alt={`Logo de ${org.nombre}`} /> : 'Sin logo'}
+                  </span>
+                  <span className="ui-empresa__separador" aria-hidden>·</span>
+                  <span
+                    className="ui-empresa__color"
+                    style={{ background: org.color_reporte || VERDE_MARCA }}
+                    aria-hidden
+                  />
+                  <span className="ui-muted ui-empresa__color-nombre">
+                    {org.color_reporte || 'Verde de Núcleo'}
+                  </span>
+                </div>
               </div>
             )}
             {editable ? (
@@ -566,6 +581,8 @@ export function AreasPage() {
         <EditarEmpresa
           org={org}
           cerrar={() => setModal(null)}
+          avisar={avisar}
+          actualizarOrg={(o) => actualizar((x) => ({ ...x, organizacion: o }))}
           guardado={(o) => {
             actualizar((x) => ({ ...x, organizacion: o }))
             setModal(null)

@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Eye, EyeOff, GripVertical, Plus, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { BarChart, Badge, Icon, Logo, TrendChart } from '../../design-system/componentes/index.js'
 import { UNIDAD, VARIABLE } from '../../utils/convertir'
 import { ANCHO, esquema, FUENTES, FUENTES_CON_FILTRO, NOTA_MAX, opcionesDe, opcionesNuevas, tarjeta, TITULO_MAX } from './personalizacion'
 import { fechaLarga, hora, mesAnio, miles, periodo } from '../../utils/formato'
 import { logoDe } from '../../utils/foto'
+import { ProveedorZoom, useZoomHoja, VisorHoja } from './VisorHoja'
 
 const ORIGEN = {
   MANUAL: { tone: 'neutral', icon: 'user', label: 'Manual' },
@@ -1392,19 +1393,33 @@ function paginar(altos, nFilas, medida) {
   return paginas
 }
 
-// Hojas A4 de la vista previa. Mide las filas en una copia oculta, las reparte en páginas
-// sin cortar ninguna y, si la columna es más angosta que la hoja, reduce todo a escala.
-// `zoom` fija la escala (visor de Nico AI); sin él la hoja se ajusta al ancho disponible.
-function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar, hoja, portada, firmas, marca }) {
+// Hojas de la vista previa. `VisorHoja` mide la caja y controla el zoom; aquí se reparten
+// las filas en páginas sin cortar ninguna.
+function Paginas(props) {
+  const contexto = useZoomHoja()
+  return contexto ? (
+    <PaginasInterno {...props} />
+  ) : (
+    <ProveedorZoom>
+      <PaginasInterno {...props} />
+    </ProveedorZoom>
+  )
+}
+
+function PaginasInterno({ cabeza, bloques, vacio, editando, hoja, portada, firmas, marca }) {
   const medidor = useRef(null)
-  const marco = useRef(null)
   const [altos, setAltos] = useState(null)
-  const [escala, setEscala] = useState(1)
   const filas = agrupar(bloques)
   const medida = medidaHoja(hoja)
+  const { setDimensiones } = useZoomHoja()
+
+  useLayoutEffect(() => {
+    setDimensiones(medida.ancho, medida.alto)
+  }, [medida.ancho, medida.alto, setDimensiones])
 
   useLayoutEffect(() => {
     const el = medidor.current
+    if (!el) return undefined
     const medir = () => {
       const cab = el.querySelector('[data-cabeza]')?.offsetHeight ?? 0
       const fs = [...el.querySelectorAll('[data-fila]')].map((x) => x.offsetHeight)
@@ -1415,20 +1430,6 @@ function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar, hoja, port
     obs.observe(el)
     return () => obs.disconnect()
   })
-
-  useLayoutEffect(() => {
-    const visor = marco.current.parentElement
-    const ajustar = () => setEscala(Math.min(1, (visor.clientWidth - 48) / medida.ancho))
-    ajustar()
-    const obs = new ResizeObserver(ajustar)
-    obs.observe(visor)
-    return () => obs.disconnect()
-  }, [medida.ancho])
-
-  // Avisa la escala de ajuste a quien la muestre (el zoom del visor de Nico AI).
-  useEffect(() => {
-    alEscalar?.(escala)
-  }, [escala, alEscalar])
 
   const paginas = paginar(altos, filas.length, medida)
   const fila = (i) => (
@@ -1443,7 +1444,7 @@ function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar, hoja, port
         <div data-cabeza>{cabeza}</div>
         {filas.map((_, i) => fila(i))}
       </div>
-      <div ref={marco} className={`ui-paginas${editando ? ' is-editando' : ''}`} style={{ zoom: zoom ?? escala }}>
+      <VisorHoja editando={editando}>
         {portada && (
           <article className="ui-hoja ui-hoja--portada" style={estilo} aria-label="Portada">
             {portada}
@@ -1465,7 +1466,7 @@ function Paginas({ cabeza, bloques, vacio, editando, zoom, alEscalar, hoja, port
             </footer>
           </article>
         ))}
-      </div>
+      </VisorHoja>
     </>
   )
 }
@@ -1549,7 +1550,7 @@ function bloquesEdicion(r, ed, areas) {
 
 // Vista previa del reporte tal como sale en el PDF. Con `ed.editando` las tarjetas se pueden
 // arrastrar y elegir; la elección vale para todos los reportes en este navegador.
-export function DashboardReporte({ r, areas, ed, zoom, alEscalar }) {
+export function DashboardReporte({ r, areas, ed }) {
   const c = r.cifras
   const origen = ORIGEN[r.origen] ?? ORIGEN.MANUAL
   const area =
@@ -1674,8 +1675,6 @@ export function DashboardReporte({ r, areas, ed, zoom, alEscalar }) {
 
   return (
     <Paginas
-      zoom={zoom}
-      alEscalar={alEscalar}
       cabeza={cabeza}
       bloques={bloques}
       editando={ed.editando}
