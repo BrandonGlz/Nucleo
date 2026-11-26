@@ -264,7 +264,7 @@ def dims(cam):
             cota3d(cam, (m.TX0, m.TY0, m.TZ1), (m.TX1, m.TY0, m.TZ1), (0, 0, 16), cm(CAM_W)))
 RESUMEN = f'cuerpo {cm3(W, D, H)} · cámara de sensores {cm3(CAM_W, CAM_D, CAM_H)}, separada {cm(SEP)} · total {cm3(W - m.TX0, D, H)}'
 o = hoja(1400, 1240, 'Núcleo · exterior', f'Medidas en cm · {RESUMEN}')
-vista(o, 0, 80, 700, 580, 32, 22, '1 · Frente y lado derecho', f'Tapa C con 4 tornillos {m.TORN_C}: pantalla, anillo RGB, buzzer; USB del ESP y USB-C de carga', extra=dims, margen=95, piezas=False)
+vista(o, 0, 80, 700, 580, 32, 22, '1 · Frente y lado derecho', f'Tapa C con 4 tornillos {m.TORN_C}: pantalla, LED de estado, buzzer; USB del ESP y USB-C de carga', extra=dims, margen=95, piezas=False)
 vista(o, 700, 80, 700, 580, -38, 22, '2 · Frente y lado izquierdo', f'Rejillas de la cámara; tapa D con 4 tornillos {m.TORN_D}', piezas=False)
 vista(o, 0, 660, 700, 580, 205, 22, '3 · Parte trasera', 'Ventilador con 4 tornillos M3 × 12 y ranuras para colgar', piezas=False)
 vista(o, 700, 660, 700, 580, 28, -34, '4 · Por debajo', 'Ranura de la microSD', piezas=False)
@@ -349,7 +349,7 @@ y_ = tabla(o, 44, 2750, [(f'{k} · {NOMBRE_PARTE[k]}', f'{tam(medidas_parte(k))}
             ('Ranuras para placas', f'{n(1.6)} cm para placas de {n(1.6)}: imprimir a {n(1.9)} cm si la impresora cierra los huecos'),
             ('Impresión sugerida', 'PETG o PLA, capa 0.2 mm, 3 perímetros; C y D acostadas por su cara exterior; A de pie sobre el piso'),
             ('Ventana de la pantalla', f'{n(m.VENTANA[2]-m.VENTANA[0])} × {n(m.VENTANA[3]-m.VENTANA[1])} cm, x {n(m.VENTANA[0])}–{n(m.VENTANA[2])}, z {n(m.VENTANA[1])}–{n(m.VENTANA[3])}'),
-            ('Anillo RGB', f'Ø 2.2 cm, centro x {n(m.RGB_C[0])}, z {n(m.RGB_C[1])}; LED en barreno Ø 0.52'),
+            ('Barreno del LED RGB', f'Ø {n(m.LED_HUECO)} con chaflán a 45° hasta Ø {n(m.LED_CHAFLAN)}, centro x {n(m.RGB_C[0])}, z {n(m.RGB_C[1])}; sin difusor'),
             ('Rejilla del buzzer', f'4 × 4 orificios Ø 0.2, centro x {n(m.BUZ_C[0])}, z {n(m.BUZ_C[1])}'),
             ('Atrás: ventilador', f'rejilla Ø 2.8, centro x {n(m.VENT_C[0])}, z {n(m.VENT_C[1])}; 4 barrenos M3 a 2.4 cm'),
             ('Abajo: ranura microSD', 'ranura de 1.5 × 0.3 cm, x 5.05–6.55, y 0.56–0.86')],
@@ -483,7 +483,7 @@ PASOS = [
     ('Imprime las 4 piezas', ['A base, B separador, C tapa frontal y D tapa de la cámara.', 'Lija las ranuras de 0.16 cm hasta que la placa entre justa.', 'Repasa los barrenos con un tornillo antes de armar.'], None),
     ('Tapa C: pantalla y lector microSD', ['Pantalla OLED con el vidrio en la ventana: 4 × M2 × 5.', 'Lector microSD de pie, ranura hacia el piso: 4 × M2 × 5.', 'Pon antes los jumpers de 10 cm en sus pines.'],
      dict(yaw=200, pitch=22, partes={'C'}, mostrar=['Pantalla OLED', 'Lector microSD HW-125'], nuevas=['Pantalla OLED', 'Lector microSD HW-125'], quitar=(), esqueleto=True)),
-    ('Tapa C: LED RGB y buzzer', ['Desliza el LED RGB en sus 2 guías hasta que el LED entre al anillo.', 'Desliza el buzzer en sus 2 guías, contra la rejilla.', 'Pon sus jumpers de 10 cm antes de deslizarlos.'],
+    ('Tapa C: LED RGB y buzzer', ['Desliza el LED RGB en sus 2 guías hasta que el LED apoye en su barreno.', 'Desliza el buzzer en sus 2 guías, contra la rejilla.', 'Pon sus jumpers de 10 cm antes de deslizarlos.'],
      dict(yaw=200, pitch=22, partes={'C'}, mostrar=FRENTE, nuevas=['LED RGB KY-016', 'Buzzer KY-012'], quitar=(), esqueleto=True)),
     ('Base A: ventilador y batería', ['Ventilador contra la pared trasera: 4 × M3 × 12 desde afuera.', 'Batería de pie en su cuna, cable hacia la derecha; cinta velcro.', 'Pasa los cables del ventilador hacia la derecha.'],
      dict(yaw=-150, pitch=26, partes={'A'}, mostrar=['Batería LiPo', 'Ventilador 5 V'], nuevas=['Batería LiPo', 'Ventilador 5 V'], quitar=('atras', 'techo', 'izquierda'), esqueleto=True)),
@@ -533,7 +533,7 @@ def d_frente(c):
     r += cota(P3(c, m.TX0, 0, m.TZ0), P3(c, m.TX0, 0, m.TZ1), cm(CAM_H), 'izq', 18)
     r += cota(P3(c, W, 0, 0), P3(c, W, 0, H), cm(H), 'der', 22)
     r += cota(P3(c, vx0, 0, vz1), P3(c, vx1, 0, vz1), f'ventana {n(vx1-vx0)} × {n(vz1-vz0)} cm', 'arriba', 6 + (H - vz1) * c.s)
-    r += cota(P3(c, rx - 11, 0, H), P3(c, rx + 11, 0, H), 'anillo Ø 2.2 cm', 'arriba', 14)
+    r += cota(P3(c, rx - m.LED_CHAFLAN / 2, 0, rz), P3(c, rx + m.LED_CHAFLAN / 2, 0, rz), f'LED Ø {n(m.LED_HUECO)} / {n(m.LED_CHAFLAN)} cm', 'arriba', 6 + (H - rz) * c.s)
     return r
 plano('Frente', 0, 90, 760, 400, 0, 0, 3.4, dims=d_frente, piezas=False)
 plano('Lado derecho', 760, 90, 330, 400, 90, 0, 3.4, dims=lambda c: cota(P3(c, W, 0, 0), P3(c, W, D, 0), cm(D), 'abajo', 18) + cota(P3(c, W, D, 0), P3(c, W, D, H), cm(H), 'der', 18), piezas=False)

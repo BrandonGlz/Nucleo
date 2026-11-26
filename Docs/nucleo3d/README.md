@@ -62,7 +62,7 @@ Son 4. Las tapas cierran con tornillos pequeños en las esquinas, que roscan en 
 | --- | --- | --- | --- |
 | A | Base | 14.4 × 6 × 8 | cuerpo, cámara de sensores, puente de cables, postes de las tapas, cuna de la batería, rieles del CCS811 y del DHT22, topes del separador |
 | B | Separador | 10.5 × 0.99 × 6.95 | tabique con rejilla y pasacables, 4 postes M3 de la placa de expansión, repisa y gancho del módulo de carga, 2 patas al piso |
-| C | Tapa frontal | 11 × 1.5 × 8 | ventana de la pantalla, anillo RGB, rejilla del buzzer, postes de la pantalla y del lector microSD, guías del LED RGB y del buzzer |
+| C | Tapa frontal | 11 × 1.5 × 8 | ventana de la pantalla, barreno del LED RGB con chaflán, rejilla del buzzer, postes de la pantalla y del lector microSD, guías del LED RGB y del buzzer |
 | D | Tapa de la cámara | 2.8 × 0.38 × 7.2 | rejilla y pestaña que sujeta al DHT22 |
 
 - **Paredes:** cuerpo 0.25 cm, cámara 0.2 cm, separador 0.2 cm.
@@ -98,7 +98,8 @@ Son 4. Las tapas cierran con tornillos pequeños en las esquinas, que roscan en 
   superior) y el **DHT22 abajo** (de pie en su riel, pines hacia arriba): el calor del CCS811 sube
   y no llega al DHT22.
 - **Capas de fondo**, de adelante hacia atrás:
-  1. **Tapa C y frente** (0–1.36 cm): la pantalla atornillada contra la ventana, el lector
+  1. **Tapa C y frente** (0–1.36 cm): la pantalla atornillada contra la ventana, el LED RGB
+     apoyado detrás de un barreno de 0.52 cm con chaflán (sin difusor ni acrílico), el lector
      microSD atornillado con la ranura de la tarjeta hacia el piso, y el LED RGB y el buzzer
      deslizados en sus guías.
   2. **Cables y conectores** (1.7–3.6 cm): plano de cables a 1.7 cm del frente,
@@ -120,7 +121,8 @@ Son 4. Las tapas cierran con tornillos pequeños en las esquinas, que roscan en 
 1. Imprime A, B, C y D; lija las ranuras y repasa los barrenos con un tornillo.
 2. **Tapa C:** pantalla con el vidrio en la ventana (4 × M2 × 5) y lector microSD de pie
    (4 × M2 × 5), con sus jumpers ya puestos.
-3. **Tapa C:** desliza el LED RGB y el buzzer en sus guías, con sus jumpers puestos.
+3. **Tapa C:** desliza el LED RGB en sus guías hasta que la punta del LED apoye en su barreno
+   (sin difusor: la luz sale directo por el agujero) y el buzzer en las suyas, con sus jumpers puestos.
 4. **Base A:** ventilador contra la pared trasera (4 × M3 × 12 desde afuera) y batería en su cuna
    con cinta velcro.
 5. **Separador B:** módulo de carga en la repisa; suelda SDA, SCL, STEP ± y el ventilador, y
@@ -140,7 +142,7 @@ Medidas del módulo sin cables. Posición: esquina inferior izquierda delantera,
 | 1 | CCS811 | Cámara de sensores | 2.1 × 1.5 × 0.31 | -3.05 · 4 · 5.15 | rieles con ranura de 0.16 cm; entra deslizando desde el frente |
 | 2 | DHT22 | Cámara de sensores | 1.55 × 3.5 × 0.93 | -2.73 · 0.6 · 0.6 | riel en el piso + tope ranurado; la tapa D lo presiona |
 | 3 | Pantalla OLED | Frente (tapa C) | 2.73 × 2.78 × 0.31 | 1.84 · 0.25 · 4.38 | 4 postes de 0.3 × 0.15 cm en la tapa C, barrenos M2 a 2.33 × 2.38 cm |
-| 4 | LED RGB KY-016 | Frente (tapa C) | 1.85 × 1.5 × 1.02 | 4.2 · 0.25 · 4.7 | 2 guías en U (ranura 0.16 cm) en la tapa C; LED en barreno Ø0.52 |
+| 4 | LED RGB KY-016 | Frente (tapa C) | 1.85 × 1.5 × 1.02 | 4.2 · 0.25 · 4.7 | 2 guías en U (ranura 0.16 cm) en la tapa C; LED en barreno Ø 0.52 con chaflán |
 | 5 | Buzzer KY-012 | Frente (tapa C) | 1.5 × 1.85 × 1.11 | 8 · 0.25 · 0.7 | 2 guías en U (ranura 0.16 cm) en la tapa C |
 | 6 | Lector microSD HW-125 | Frente (tapa C) | 2.4 × 4.2 × 0.41 | 4.6 · 0.45 · 0.35 | 4 postes de 0.4 × 0.2 cm en la tapa C, barrenos M2 a 1.9 × 3.7 cm |
 | 7 | Placa de expansión | Centro (separador B) | 8 × 5.2 × 1.01 | 1.5 · 2.75 · 2.2 | 4 postes M3 de 0.34 cm en el separador B |

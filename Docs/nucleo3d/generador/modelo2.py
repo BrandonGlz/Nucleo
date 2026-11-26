@@ -40,7 +40,9 @@ TORNILLOS = [  # (cantidad, medida, dónde)
 ]
 
 VENTANA = (20, 50, 44, 64)                  # ventana de la pantalla en la tapa C (x0, z0, x1, z1)
-RGB_C = (71.25, 54.5)                       # centro del LED RGB / anillo difusor
+RGB_C = (71.25, 54.5)                       # centro del LED RGB (barreno con chaflán en la tapa C)
+LED_HUECO, LED_CHAFLAN = 5.2, 9             # Ø del barreno del LED y Ø exterior del chaflán a 45°
+Y_RGB = 11.1                                # cara del LED de la placa KY-016: la punta del LED toca la tapa
 BUZ_C = (87.5, 36.25)                       # centro del buzzer / rejilla
 BATERIA = (6, 46, P, 56, 52, 36.5)          # LiPo 603450 de pie; cables por el lado derecho
 VENT = (26, 47.5, 44, 56, 57.5, 74)         # ventilador 3010 atornillado a la pared trasera
@@ -70,10 +72,12 @@ def frente_tapa(w, h):
          f'<text x="{x0+2}" y="{H-z1+4.5}" font-size="2.6" fill="#7dd3fc" font-weight="600">NC-0501 · Wi-Fi</text>',
          f'<text x="{x0+2}" y="{H-z1+9}" font-size="3.6" fill="#e0f2fe" font-weight="700">23.4°C 48%</text>',
          f'<text x="{x0+2}" y="{H-z1+12.6}" font-size="2.6" fill="#bae6fd">eCO2 412 ppm</text>',
-         f'<circle cx="{rx}" cy="{H-rz}" r="11" fill="none" stroke="#22c55e" stroke-width="2.6"/>',
-         f'<circle cx="{rx}" cy="{H-rz}" r="12.6" fill="none" stroke="#22c55e" stroke-opacity="0.35" stroke-width="1.6"/>',
-         f'<circle cx="{rx}" cy="{H-rz}" r="8.5" fill="#e5e7eb" stroke="#94a3b8" stroke-width="0.4"/>',
-         f'<circle cx="{rx}" cy="{H-rz}" r="2.6" fill="#f8fafc" stroke="#94a3b8" stroke-width="0.3"/>']
+         f'<circle cx="{rx}" cy="{H-rz}" r="{LED_CHAFLAN/2}" fill="#cfd6df" stroke="#94a3b8" stroke-width="0.4"/>',
+         f'<circle cx="{rx}" cy="{H-rz}" r="{(LED_CHAFLAN+LED_HUECO)/4}" fill="none" stroke="#b8c1cc" stroke-width="0.5"/>',
+         f'<circle cx="{rx}" cy="{H-rz}" r="{LED_HUECO/2}" fill="#334155"/>',
+         f'<circle cx="{rx}" cy="{H-rz}" r="2.3" fill="#ecfdf5" stroke="#86efac" stroke-width="0.4"/>',
+         f'<circle cx="{rx-0.7}" cy="{H-rz-0.8}" r="0.7" fill="#ffffff"/>',
+         f'<text x="{rx}" y="{H-rz+8.3}" font-size="2.4" text-anchor="middle" fill="#64748b" font-weight="700">ESTADO</text>']
     for i in range(4):
         for j in range(4):
             s.append(f'<circle cx="{bx-5.4+i*3.6:.1f}" cy="{H-bz-5.4+j*3.6:.1f}" r="1" fill="#475569"/>')
@@ -259,18 +263,19 @@ def piezas():
                                        ('Pines', '4 rectos hacia atrás + dupont: 1.65 cm detrás de la placa'),
                                        ('Sujeción', '4 postes de 0.3 × 0.15 cm en la tapa C, barrenos M2 a 2.33 × 2.38 cm'),
                                        ('Fuente', 'clon común 27.3 × 27.8 mm: verificar')], sal))
-    # 4 · LED RGB KY-016: LED de 5 mm al centro del anillo difusor, pines a 90° hacia la izquierda.
-    rx, rz = RGB_C
-    c = [Caja(rx - 9.25, 11.1, rz - 7.5, rx + 9.25, 12.7, rz + 7.5, '#18181b', {'front': pcb('KY-016')}),
-         Caja(rx - 2.5, P, rz - 2.5, rx + 2.5, 11.1, rz + 2.5, '#f8fafc'),
-         Caja(rx - 9.25, 8.68, rz - 5.08, rx - 6.75, 11.1, rz + 5.08, PLASTICO)]
+    # 4 · LED RGB KY-016: la punta del LED de 5 mm apoya detrás del barreno de la tapa, pines a 90° hacia la izquierda.
+    rx, rz = RGB_C; yl = Y_RGB
+    led = Caja(rx - 2.5, P, rz - 2.5, rx + 2.5, yl, rz + 2.5, '#ecfdf5')
+    c = [Caja(rx - 9.25, yl, rz - 7.5, rx + 9.25, yl + 1.6, rz + 7.5, '#18181b', {'front': pcb('KY-016')}),
+         led,
+         Caja(rx - 9.25, yl - 2.42, rz - 5.08, rx - 6.75, yl, rz + 5.08, PLASTICO)]
     zs = [rz + 3.81, rz + 1.27, rz - 1.27, rz - 3.81]
-    sal = _header(c, 'x', [(0, 9.95, z) for z in zs], rx - 9.25 - PIN_L, -1, ['−', 'B', 'G', 'R'])
-    c += [Caja(rx - 9.25 - PIN_L, 9.63, z - 0.32, rx - 9.25, 10.27, z + 0.32, METAL) for z in zs]
-    L.append(Pieza('LED RGB KY-016', 'frente', c, 'En dos guías de la tapa; LED al centro del anillo; jumpers de 10 cm',
+    sal = _header(c, 'x', [(0, yl - 1.15, z) for z in zs], rx - 9.25 - PIN_L, -1, ['−', 'B', 'G', 'R'])
+    c += [Caja(rx - 9.25 - PIN_L, yl - 1.47, z - 0.32, rx - 9.25, yl - 0.83, z + 0.32, METAL) for z in zs]
+    L.append(Pieza('LED RGB KY-016', 'frente', c, 'En dos guías de la tapa; la punta del LED apoya en su barreno; jumpers de 10 cm',
                    (18.5, 15, 10.2), [('Placa', '1.85 × 1.5 × 0.16 cm'), ('LED', 'Ø 0.5 cm, 0.86 cm de alto'),
                                       ('Pines', '4 a 90° hacia la izquierda + dupont: 2 cm fuera de la placa'),
-                                      ('Sujeción', '2 guías en U (ranura 0.16 cm) en la tapa C; LED en barreno Ø0.52'),
+                                      ('Sujeción', '2 guías en U (ranura 0.16 cm) en la tapa C; LED en barreno Ø 0.52 con chaflán'),
                                       ('Fuente', 'tienda (18.5 × 15 mm; hay versiones de 10 × 10): verificar')], sal))
     # 5 · Buzzer KY-012: buzzer contra la rejilla, pines a 90° hacia abajo.
     bx, bz = BUZ_C
@@ -420,8 +425,8 @@ def esqueleto_extra():
         for zc in (45.85, 69.65):
             c.append(_s('C', 'Postes de la pantalla', ox + dx - 1.5, P, zc - 1.5, ox + dx + 1.5, 4.0, zc + 1.5))
     rx, rz = RGB_C
-    c += guia_u('C', 'Guías del LED RGB', rx - 1, rx + 5, 11.1, 12.7, rz - 7.5, -1)
-    c += guia_u('C', 'Guías del LED RGB', rx - 1, rx + 5, 11.1, 12.7, rz + 7.5, +1)
+    c += guia_u('C', 'Guías del LED RGB', rx - 1, rx + 5, Y_RGB, Y_RGB + 1.6, rz - 7.5, -1)
+    c += guia_u('C', 'Guías del LED RGB', rx - 1, rx + 5, Y_RGB, Y_RGB + 1.6, rz + 7.5, +1)
     bx, bz = BUZ_C
     c += guia_v('C', 'Guías del buzzer', bx - 7.5, -1, bz - 5.5, bz + 9.25, 12, 13.6)
     c += guia_v('C', 'Guías del buzzer', bx + 7.5, +1, bz - 5.5, bz + 9.25, 12, 13.6)

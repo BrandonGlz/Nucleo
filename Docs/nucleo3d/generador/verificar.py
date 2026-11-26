@@ -38,6 +38,8 @@ def revisar():
             (n1, t1, c1), (n2, t2, c2) = todas[i], todas[j]
             if t1 == t2 == 'pared' or (n1 == n2 and t1 == t2): continue
             if t1 == t2 == 'soporte': continue
+            if getattr(c1, 'pasa_tapa', False) and t2 == 'pared' and c2.parte == 'C': continue
+            if getattr(c2, 'pasa_tapa', False) and t1 == 'pared' and c1.parte == 'C': continue
             if enciman(c1.b, c2.b):
                 errores.append(f'se enciman: {n1} {tuple(round(v, 2) for v in c1.b)} y {n2} {tuple(round(v, 2) for v in c2.b)}')
     # 2 · cables

@@ -19,7 +19,7 @@ todas = cu + ca + pu + m.esqueleto_extra()
 NOMBRES = {'A': 'Base', 'B': 'Separador', 'C': 'Tapa frontal', 'D': 'Tapa de la cámara'}
 QUE = {'A': 'cuerpo, cámara de sensores, puente de cables, postes de las tapas, cuna de la batería, rieles del CCS811 y del DHT22, topes del separador',
        'B': 'tabique con rejilla y pasacables, 4 postes M3 de la placa de expansión, repisa y gancho del módulo de carga, 2 patas al piso',
-       'C': 'ventana de la pantalla, anillo RGB, rejilla del buzzer, postes de la pantalla y del lector microSD, guías del LED RGB y del buzzer',
+       'C': 'ventana de la pantalla, barreno del LED RGB con chaflán, rejilla del buzzer, postes de la pantalla y del lector microSD, guías del LED RGB y del buzzer',
        'D': 'rejilla y pestaña que sujeta al DHT22'}
 partes = '\n'.join(f'| {k} | {NOMBRES[k]} | {" × ".join(f(b[i+3]-b[i]) for i in range(3))} | {QUE[k]} |' for k in 'ABCD' for b in [caja([c for c in todas if c.parte == k])])
 tornillos = '\n'.join(f'| {c} | {med} | {donde} |' for c, med, donde in m.TORNILLOS)
@@ -139,7 +139,8 @@ Son 4. Las tapas cierran con tornillos pequeños en las esquinas, que roscan en 
   superior) y el **DHT22 abajo** (de pie en su riel, pines hacia arriba): el calor del CCS811 sube
   y no llega al DHT22.
 - **Capas de fondo**, de adelante hacia atrás:
-  1. **Tapa C y frente** (0–1.36 cm): la pantalla atornillada contra la ventana, el lector
+  1. **Tapa C y frente** (0–1.36 cm): la pantalla atornillada contra la ventana, el LED RGB
+     apoyado detrás de un barreno de {f(m.LED_HUECO)} cm con chaflán (sin difusor ni acrílico), el lector
      microSD atornillado con la ranura de la tarjeta hacia el piso, y el LED RGB y el buzzer
      deslizados en sus guías.
   2. **Cables y conectores** ({f(m.YC)}–{f(m.PLACA[1])} cm): plano de cables a {f(m.YC)} cm del frente,
@@ -161,7 +162,8 @@ Son 4. Las tapas cierran con tornillos pequeños en las esquinas, que roscan en 
 1. Imprime A, B, C y D; lija las ranuras y repasa los barrenos con un tornillo.
 2. **Tapa C:** pantalla con el vidrio en la ventana (4 × M2 × 5) y lector microSD de pie
    (4 × M2 × 5), con sus jumpers ya puestos.
-3. **Tapa C:** desliza el LED RGB y el buzzer en sus guías, con sus jumpers puestos.
+3. **Tapa C:** desliza el LED RGB en sus guías hasta que la punta del LED apoye en su barreno
+   (sin difusor: la luz sale directo por el agujero) y el buzzer en las suyas, con sus jumpers puestos.
 4. **Base A:** ventilador contra la pared trasera (4 × M3 × 12 desde afuera) y batería en su cuna
    con cinta velcro.
 5. **Separador B:** módulo de carga en la repisa; suelda SDA, SCL, STEP ± y el ventilador, y
