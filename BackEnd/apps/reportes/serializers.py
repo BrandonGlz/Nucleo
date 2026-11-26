@@ -104,6 +104,9 @@ class ReporteSerializer(serializers.ModelSerializer):
             "areas",
             "generado_por",
             "origen",
+            "estado",
+            "error",
+            "archivado",
             "periodo_inicio",
             "periodo_fin",
             "cifras",
@@ -177,6 +180,22 @@ class SolicitudReporteSerializer(serializers.Serializer):
         if datos.get("area") is not None and datos.get("areas"):
             raise serializers.ValidationError({"areas": "Elige un área o varias, no ambas."})
         datos["areas"] = sorted(set(datos.get("areas") or []))
+        return datos
+
+
+class SolicitudRepetirSerializer(serializers.Serializer):
+    periodo_inicio = serializers.DateTimeField()
+    periodo_fin = serializers.DateTimeField()
+
+    def validate(self, datos):
+        if datos["periodo_inicio"] >= datos["periodo_fin"]:
+            raise serializers.ValidationError(
+                {"periodo_inicio": "Debe ser anterior al fin del periodo."}
+            )
+        if datos["periodo_fin"] - datos["periodo_inicio"] > timedelta(days=31):
+            raise serializers.ValidationError(
+                {"periodo_fin": "El periodo no puede durar más de 31 días."}
+            )
         return datos
 
 

@@ -75,16 +75,17 @@ function formatoParaAlcance(formatos, alcance, area) {
 
 // Asistente de tres pasos para generar reportes: alcance, periodo y formato con vista previa
 // de las cifras reales. «Uno por cada área» conserva el comportamiento anterior de «Todas».
-export function AsistenteReporte({ areas, reportes, ed, puedeEditar, muestra: elegido, cerrar, creado }) {
+export function AsistenteReporte({ areas, reportes, ed, puedeEditar, muestra: elegido, inicial, cerrar, creado }) {
   const [saliendo, cerrarAnimado] = useCierre(cerrar)
-  const [paso, setPaso] = useState(1)
-  const [alcance, setAlcance] = useState('una')
-  const [area, setArea] = useState('')
-  const [areasElegidas, setAreasElegidas] = useState([])
+  const alcanceInicial = inicial?.areas?.length > 1 ? 'varias' : inicial?.area ? 'una' : inicial?.areas?.length ? 'varias' : 'organizacion'
+  const [paso, setPaso] = useState(inicial ? 2 : 1)
+  const [alcance, setAlcance] = useState(alcanceInicial)
+  const [area, setArea] = useState(inicial?.area ? String(inicial.area) : '')
+  const [areasElegidas, setAreasElegidas] = useState(inicial?.areas ?? [])
   const [rango, setRango] = useState('mes')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
-  const [formato, setFormato] = useState('')
+  const [formato, setFormato] = useState(inicial?.formato ? String(inicial.formato) : '')
   const [preview, setPreview] = useState(null)
   const [cargandoPreview, setCargandoPreview] = useState(false)
   const [errorPreview, setErrorPreview] = useState(null)

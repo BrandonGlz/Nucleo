@@ -44,6 +44,15 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Generación de reportes en segundo plano: la API responde al momento con el reporte en
+  «Generando», un servicio de cola calcula cifras, redacta y arma el PDF, y la lista se
+  actualiza sola. Los programados envían el correo al terminar y los fallos guardan el mensaje.
+- Lista de reportes con búsqueda por título, filtros por área, formato, origen, estado y fechas,
+  archivados, «Generar de nuevo» y «Archivar» con confirmación.
+- La app móvil muestra el estado de cada reporte, permite buscar y filtrar por origen, y bloquea
+  el PDF mientras se genera o si falló.
+- Nico AI entiende el formato del reporte, rangos de fechas explícitos, alcance por áreas o toda
+  la organización, y la hora y el día al programar.
 - Reportes con la marca de la organización: logo validado con Pillow y servido solo con sesión,
   y color propio para títulos, barras y gráficas del PDF (los colores de estado no cambian).
 - Hojas de reporte configurables por formato: carta o A4, vertical u horizontal, portada con

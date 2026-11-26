@@ -4223,6 +4223,11 @@ button.ui-menuitem:not(:disabled):hover svg {
 .ui-item--boton:active {
   transform: scale(0.985);
 }
+/* Un transform en la fila vuelve relativo a ella el menú «⋯» (position: fixed): al presionarlo
+   el menú se movería bajo el puntero y el clic caería en la fila. */
+.ui-item--boton:active:has(.ui-menu-acciones:active) {
+  transform: none;
+}
 
 
 @media (prefers-reduced-motion: reduce) {
@@ -5740,4 +5745,14 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   color: var(--text-primary);
   font: inherit;
   font-size: 13px;
+}
+
+/* Lista de reportes: filtros y acciones por reporte. */
+.ui-reportes-filtros { display: flex; flex-direction: column; gap: 10px; }
+.ui-reportes-filtros .ui-buscador { max-width: none; }
+/* Cada select necesita ~170 px para leer «Todas las áreas»: en la columna angosta caben dos por fila. */
+.ui-reportes-filtros__selects { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; align-items: end; }
+.ui-reportes-filtros__selects .ui-editor__casilla { grid-column: 1 / -1; }
+@media (max-width: 720px) {
+  .ui-reportes-filtros__selects { grid-template-columns: 1fr; }
 }

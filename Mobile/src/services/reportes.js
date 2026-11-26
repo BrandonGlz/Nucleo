@@ -17,7 +17,11 @@ export async function lista() {
   const [reportes, areas] = await Promise.all([pedir(REPORTES), pedir(AREAS).then(pagina).catch(() => [])])
   const nombres = Object.fromEntries(areas.map((a) => [a.num, a.nombre]))
   return pagina(reportes)
-    .map((r) => ({ ...r, area_nombre: r.area ? (nombres[r.area] ?? `Área ${r.area}`) : 'Todas las áreas' }))
+    .map((r) => ({
+      ...r,
+      area_nombre: r.area ? (nombres[r.area] ?? `Área ${r.area}`) : 'Todas las áreas',
+      titulo: r.cifras?.titulo || `Reporte R-${String(r.num).padStart(4, '0')}`,
+    }))
     .sort((a, b) => (a.fecha_generacion < b.fecha_generacion ? 1 : -1))
 }
 

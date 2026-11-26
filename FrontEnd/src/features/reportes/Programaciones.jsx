@@ -205,7 +205,7 @@ export function Programaciones({ programaciones, areas, formatos, puedeEditar, o
   const probar = async (programacion) => {
     try {
       await reportesApi.probarProgramacion(programacion.num)
-      setMensaje(`Se envió la prueba de «${textoFrecuencia(programacion)}» a tu correo.`)
+      setMensaje(`La prueba de «${textoFrecuencia(programacion)}» quedó en cola; llegará a tu correo al generarse.`)
       setError('')
     } catch (e) {
       setError(e?.status === 503 ? 'El servicio de IA no está disponible.' : 'No se pudo enviar la prueba.')

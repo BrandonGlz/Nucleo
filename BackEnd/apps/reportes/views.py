@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, StreamingHttpResponse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
@@ -26,7 +27,6 @@ from apps.reportes import (
     formatos,
     graficas,
     herramientas,
-    ia,
     interprete,
     pdf,
     puente,
@@ -48,6 +48,7 @@ from apps.reportes.serializers import (
     SolicitudAreasFormatoSerializer,
     SolicitudDuplicarFormatoSerializer,
     SolicitudFormatoSerializer,
+    SolicitudRepetirSerializer,
     SolicitudReporteSerializer,
     SolicitudVistaPreviaSerializer,
     VersionFormatoSerializer,
@@ -81,9 +82,55 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         usuario = self.request.user
         consulta = Reporte.objects.filter(organizacion_id=usuario.organizacion_id)
-        if usuario.rol_id != roles.ADMIN and usuario.area_id:
-            consulta = consulta.filter(area_id=usuario.area_id)
-        return consulta.select_related("organizacion", "area", "formato_version__formato")
+        if usuario.rol_id != roles.ADMIN:
+            visibles = list(areas_visibles(usuario).values_list("pk", flat=True))
+            if visibles:
+                consulta = consulta.filter(Q(area_id__in=visibles) | Q(areas__overlap=visibles))
+            else:
+                consulta = consulta.none()
+        # Las acciones de archivo y repetir también ven los archivados.
+        if self.action not in ("archivar", "desarchivar", "repetir"):
+            archivados = self.request.query_params.get("archivados", "").lower()
+            if archivados not in ("1", "true"):
+                consulta = consulta.filter(archivado=False)
+        consulta = consulta.select_related("organizacion", "area", "formato_version__formato")
+        return self._filtrar(consulta)
+
+    def _filtrar(self, consulta):
+        """Filtros de la lista; el alcance por rol ya está aplicado en ``get_queryset``."""
+        parametros = self.request.query_params
+        q = parametros.get("q", "").strip()
+        if q:
+            consulta = consulta.filter(cifras__titulo__icontains=q)
+        area = parametros.get("area", "").strip()
+        if area:
+            if not area.isdigit():
+                raise ValidationError({"area": "El área debe ser un número."})
+            consulta = consulta.filter(Q(area_id=int(area)) | Q(areas__contains=[int(area)]))
+        formato = parametros.get("formato", "").strip()
+        if formato:
+            if not formato.isdigit():
+                raise ValidationError({"formato": "El formato debe ser un número."})
+            consulta = consulta.filter(formato_version__formato_id=int(formato))
+        origen = parametros.get("origen", "").strip()
+        if origen:
+            consulta = consulta.filter(origen=origen)
+        estado = parametros.get("estado", "").strip()
+        if estado:
+            consulta = consulta.filter(estado=estado)
+        desde = parametros.get("desde", "").strip()
+        if desde:
+            fecha = parse_datetime(desde)
+            if fecha is None:
+                raise ValidationError({"desde": "La fecha no es válida."})
+            consulta = consulta.filter(fecha_generacion__gte=fecha)
+        hasta = parametros.get("hasta", "").strip()
+        if hasta:
+            fecha = parse_datetime(hasta)
+            if fecha is None:
+                raise ValidationError({"hasta": "La fecha no es válida."})
+            consulta = consulta.filter(fecha_generacion__lte=fecha)
+        return consulta
 
     def create(self, request):
         entrada = SolicitudReporteSerializer(data=request.data)
@@ -118,20 +165,54 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
         if datos.get("formato") is not None:
             formato = _formato_visible(request.user, datos["formato"])
 
-        try:
-            reporte = servicios.generar_reporte(
-                request.user.organizacion,
-                area,
-                datos["periodo_inicio"],
-                datos["periodo_fin"],
-                Reporte.Origen.MANUAL,
-                usuario=request.user,
-                formato=formato,
-                areas=elegidas,
-            )
-        except ia.IANoDisponible as error:
-            return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        reporte = servicios.crear_reporte_pendiente(
+            request.user.organizacion,
+            area,
+            datos["periodo_inicio"],
+            datos["periodo_fin"],
+            Reporte.Origen.MANUAL,
+            usuario=request.user,
+            formato=formato,
+            areas=elegidas,
+        )
         return Response(self.get_serializer(reporte).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def archivar(self, request, pk=None):
+        reporte = self.get_object()
+        reporte.archivado = True
+        reporte.save(update_fields=["archivado"])
+        return Response(self.get_serializer(reporte).data)
+
+    @action(detail=True, methods=["post"])
+    def desarchivar(self, request, pk=None):
+        reporte = self.get_object()
+        reporte.archivado = False
+        reporte.save(update_fields=["archivado"])
+        return Response(self.get_serializer(reporte).data)
+
+    @action(detail=True, methods=["post"])
+    def repetir(self, request, pk=None):
+        """Crea un reporte nuevo con el mismo alcance y formato, en la cola."""
+        original = self.get_object()
+        entrada = SolicitudRepetirSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        datos = entrada.validated_data
+        formato = original.formato_version.formato if original.formato_version_id else None
+        reporte = servicios.crear_reporte_pendiente(
+            original.organizacion,
+            original.area,
+            datos["periodo_inicio"],
+            datos["periodo_fin"],
+            Reporte.Origen.MANUAL,
+            usuario=request.user,
+            formato=formato,
+            areas=original.areas,
+        )
+        return Response(
+            self.get_serializer(reporte).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=False, methods=["get"], url_path="vista-previa")
     def vista_previa(self, request):
@@ -161,6 +242,16 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["get"], url_path="pdf")
     def descargar_pdf(self, request, pk=None):
         reporte = self.get_object()
+        if reporte.estado == Reporte.Estado.GENERANDO:
+            return Response(
+                {"detail": "El reporte se está generando."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        if reporte.estado == Reporte.Estado.FALLO:
+            return Response(
+                {"detail": reporte.error or "El reporte no se pudo generar."},
+                status=status.HTTP_409_CONFLICT,
+            )
         respuesta = HttpResponse(pdf.construir(reporte), content_type="application/pdf")
         respuesta["Content-Disposition"] = f'attachment; filename="reporte-{reporte.num}.pdf"'
         return respuesta
@@ -169,6 +260,16 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
     def descargar_csv(self, request, pk=None):
         """Anexo con las lecturas del alcance y periodo, en streaming."""
         reporte = self.get_object()
+        if reporte.estado == Reporte.Estado.GENERANDO:
+            return Response(
+                {"detail": "El reporte se está generando."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        if reporte.estado == Reporte.Estado.FALLO:
+            return Response(
+                {"detail": reporte.error or "El reporte no se pudo generar."},
+                status=status.HTTP_409_CONFLICT,
+            )
         respuesta = StreamingHttpResponse(
             servicios.filas_csv(reporte),
             content_type="text/csv; charset=utf-8",
@@ -409,24 +510,21 @@ class ProgramacionReporteViewSet(viewsets.ModelViewSet):
         programacion = self.get_object()
         ahora = timezone.now()
         inicio = servicios.desplazar(ahora, programacion.frecuencia, -1)
-        try:
-            reporte = servicios.generar_reporte(
-                programacion.organizacion,
-                programacion.area,
-                inicio,
-                ahora,
-                Reporte.Origen.PROGRAMADO,
-                usuario=request.user,
-                formato=programacion.formato,
-                areas=programacion.areas,
-            )
-        except ia.IANoDisponible as error:
-            return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        asunto = (
-            f"[Prueba] Reporte {programacion.get_frecuencia_display().lower()} "
-            f"de {programacion.organizacion.nombre}"
+        reporte = servicios.crear_reporte_pendiente(
+            programacion.organizacion,
+            programacion.area,
+            inicio,
+            ahora,
+            Reporte.Origen.PROGRAMADO,
+            usuario=request.user,
+            formato=programacion.formato,
+            areas=programacion.areas,
+            destinatarios=[request.user.pk],
+            asunto=(
+                f"[Prueba] Reporte {programacion.get_frecuencia_display().lower()} "
+                f"de {programacion.organizacion.nombre}"
+            ),
         )
-        servicios.enviar_reporte(reporte, [request.user.pk], asunto=asunto)
         return Response(
             ReporteSerializer(reporte, context=self.get_serializer_context()).data,
             status=status.HTTP_201_CREATED,
@@ -777,7 +875,9 @@ class AgenteView(APIView):
             datos["accion"] = r["accion"]
         if "faltan" in r:
             datos["faltan"] = {"campos": r.pop("faltan"), "pregunta": pregunta}
-        if "opciones" in r:
+        if "opciones" in r and r.get("tipo") == "formato":
+            datos["faltan"] = {"campos": ["formato"], "pregunta": pregunta}
+        elif "opciones" in r:
             # Nombre ambiguo: la respuesta («Ana López») completa la misma petición.
             datos["faltan"] = {"campos": ["destinatarios"], "pregunta": pregunta}
         return datos
@@ -787,6 +887,8 @@ class AgenteView(APIView):
         campos = faltan.get("campos", [])
         texto = agente._normalizar(original)
         if "periodo" in campos and interprete._periodo_nombrado(original):
+            return True
+        if "formato" in campos and herramientas._formato_de(usuario, original)[0] is not None:
             return True
         if "frecuencia" in campos and herramientas._frecuencias(texto):
             return True

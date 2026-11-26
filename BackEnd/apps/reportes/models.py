@@ -132,6 +132,12 @@ class Reporte(models.Model):
         PROGRAMADO = "PROGRAMADO", "Programado"
         AGENTE = "AGENTE", "Agente de IA"
 
+    class Estado(models.TextChoices):
+        GENERANDO = "GENERANDO", "Generando"
+        LISTO = "LISTO", "Listo"
+        ENVIADO = "ENVIADO", "Enviado"
+        FALLO = "FALLO", "Falló"
+
     num = models.AutoField(primary_key=True)
     organizacion = models.ForeignKey(
         "organizaciones.Organizacion",
@@ -168,8 +174,16 @@ class Reporte(models.Model):
     origen = models.CharField(max_length=12, choices=Origen.choices)
     periodo_inicio = models.DateTimeField()
     periodo_fin = models.DateTimeField()
-    cifras = models.JSONField()
-    contenido = models.TextField()
+    estado = models.CharField(
+        max_length=10, choices=Estado.choices, default=Estado.LISTO, db_default=Estado.LISTO
+    )
+    error = models.TextField(null=True, blank=True)
+    archivado = models.BooleanField(default=False, db_default=False)
+    # Destinatarios de un reporte programado; el procesador los usa al terminar.
+    destinatarios = ArrayField(models.IntegerField(), default=list, blank=True)
+    asunto = models.CharField(max_length=200, null=True, blank=True)
+    cifras = models.JSONField(default=dict, blank=True)
+    contenido = models.TextField(default="", blank=True)
     archivo_pdf = models.CharField(max_length=255, null=True, blank=True)
     fecha_generacion = models.DateTimeField(db_default=Now(), editable=False)
 
@@ -186,6 +200,10 @@ class Reporte(models.Model):
             models.CheckConstraint(
                 condition=Q(periodo_inicio__lt=F("periodo_fin")),
                 name="ck_reporte_periodo",
+            ),
+            models.CheckConstraint(
+                condition=Q(estado__in=["GENERANDO", "LISTO", "ENVIADO", "FALLO"]),
+                name="ck_reporte_estado",
             ),
         ]
 
@@ -274,8 +292,7 @@ class ProgramacionReporte(models.Model):
                 name="ck_programacion_hora",
             ),
             models.CheckConstraint(
-                condition=Q(dia_semana__isnull=True)
-                | Q(dia_semana__gte=0, dia_semana__lte=6),
+                condition=Q(dia_semana__isnull=True) | Q(dia_semana__gte=0, dia_semana__lte=6),
                 name="ck_programacion_dia_semana",
             ),
             models.CheckConstraint(

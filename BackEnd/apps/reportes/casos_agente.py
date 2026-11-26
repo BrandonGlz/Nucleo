@@ -262,4 +262,29 @@ CASOS = [
         "intencion": "no_entendida",
         "contiene": ["solo puedo responder"],
     },
+    # ── Reportes: formato, rango explícito y alcance (etapa 6) ──────────────────────────────
+    {
+        "pregunta": "genera el reporte de esta semana con el formato Ejecutivo",
+        "intencion": "reporte",
+    },
+    {
+        "pregunta": "usa la plantilla de cumplimiento para el reporte de esta semana",
+        "intencion": "reporte",
+    },
+    {
+        "pregunta": "genera el reporte del 1 al 15 de noviembre",
+        "intencion": "reporte",
+    },
+    {
+        "pregunta": "genera el reporte de toda la organización de esta semana",
+        "intencion": "reporte",
+    },
+    {
+        "pregunta": "genera el reporte de Área a y Otra a de esta semana",
+        "intencion": "reporte",
+    },
+    {
+        "pregunta": "programa un reporte cada viernes a las 9:30 para mí",
+        "intencion": "programar",
+    },
 ]

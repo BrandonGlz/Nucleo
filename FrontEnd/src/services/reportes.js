@@ -5,9 +5,12 @@ import {
   PROGRAMACION_PROBAR,
   PROGRAMACION_REPORTE,
   REPORTE,
+  REPORTE_ARCHIVAR,
   REPORTE_CSV,
+  REPORTE_DESARCHIVAR,
   REPORTE_FORMATO,
   REPORTE_PDF,
+  REPORTE_REPETIR,
   REPORTE_VISTA_PREVIA,
   REPORTES,
 } from '../api'
@@ -35,10 +38,22 @@ async function contexto() {
   return [pagina(areas), Object.fromEntries(pagina(dispositivos).map((d) => [d.codigo_mqtt, d.nombre]))]
 }
 
-export async function lista() {
-  if (USAR_MOCKS) return mock.reportes()
-  const [respuesta, [areas, nombres]] = await Promise.all([pedir(REPORTES), contexto()])
+export async function lista(params = {}) {
+  if (USAR_MOCKS) return mock.reportes(params)
+  const [respuesta, [areas, nombres]] = await Promise.all([pedir(REPORTES, { params }), contexto()])
   return pagina(respuesta).map((r) => adaptar(r, areas, nombres))
+}
+export async function archivar(num) {
+  if (USAR_MOCKS) return mock.archivarReporte(num)
+  return pedir(REPORTE_ARCHIVAR(num), { metodo: 'POST', cuerpo: {} })
+}
+export async function desarchivar(num) {
+  if (USAR_MOCKS) return mock.desarchivarReporte(num)
+  return pedir(REPORTE_DESARCHIVAR(num), { metodo: 'POST', cuerpo: {} })
+}
+export async function repetir(num, datos) {
+  if (USAR_MOCKS) return mock.repetirReporte(num, datos)
+  return pedir(REPORTE_REPETIR(num), { metodo: 'POST', cuerpo: datos })
 }
 export async function programaciones() {
   if (USAR_MOCKS) return mock.programaciones()

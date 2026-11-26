@@ -268,6 +268,111 @@ def adjunto_csv(reporte):
     return nombre, contenido, "text/csv"
 
 
+def crear_reporte_pendiente(
+    organizacion,
+    area,
+    inicio,
+    fin,
+    origen,
+    usuario=None,
+    formato=None,
+    areas=None,
+    destinatarios=None,
+    asunto=None,
+):
+    """Guarda un reporte ``GENERANDO`` sin calcular cifras ni llamar a la IA.
+
+    El procesador de la cola lo completa después. ``destinatarios`` solo se usa en los
+    reportes programados; son los usuarios que reciben el correo al terminar.
+    """
+    areas = list(dict.fromkeys(areas or []))
+    if len(areas) == 1:
+        unica = Area.objects.filter(organizacion=organizacion, pk=areas[0]).first()
+        if unica is not None:
+            area = unica
+            areas = []
+    elif areas:
+        area = None
+    formato = formatos.formato_para(organizacion, area, formato)
+    version = formato.version_actual() if formato is not None else None
+    return Reporte.objects.create(
+        organizacion=organizacion,
+        area=area,
+        areas=areas,
+        generado_por=usuario,
+        origen=origen,
+        formato_version=version,
+        periodo_inicio=inicio,
+        periodo_fin=fin,
+        estado=Reporte.Estado.GENERANDO,
+        destinatarios=list(dict.fromkeys(destinatarios or [])),
+        asunto=asunto,
+    )
+
+
+def procesar_reporte(reporte):
+    """Completa un reporte pendiente: cifras, IA y PDF, o lo deja en ``FALLO``.
+
+    El trabajo va en un savepoint: si algo falla a media escritura, se deshace solo esa parte
+    y la transacción del procesador sigue sana para guardar el ``FALLO``.
+    """
+    try:
+        with transaction.atomic():
+            _completar_reporte(reporte)
+    except ia.IANoDisponible as error:
+        reporte.estado = Reporte.Estado.FALLO
+        reporte.error = str(error)
+        reporte.save(update_fields=["estado", "error"])
+    except Exception as error:  # noqa: BLE001 - un fallo no debe tumbar la cola
+        reporte.estado = Reporte.Estado.FALLO
+        reporte.error = f"No se pudo generar el reporte: {error}"
+        reporte.save(update_fields=["estado", "error"])
+    return reporte
+
+
+def _completar_reporte(reporte):
+    """Cifras, IA, PDF y, si es programado, el correo; las excepciones las maneja quien llama."""
+    cifras = calcular_cifras(
+        reporte.organizacion,
+        reporte.area,
+        reporte.periodo_inicio,
+        reporte.periodo_fin,
+        areas=reporte.areas,
+    )
+    version = reporte.formato_version
+    contenido = ia.redactar(cifras, largo=formatos.largo_analisis(version))
+    reporte.cifras = cifras
+    reporte.contenido = contenido
+    reporte.error = None
+    reporte.archivo_pdf = pdf.guardar(reporte)
+    if reporte.origen == Reporte.Origen.PROGRAMADO:
+        reporte.estado = Reporte.Estado.ENVIADO
+        reporte.save(
+            update_fields=[
+                "cifras",
+                "contenido",
+                "error",
+                "archivo_pdf",
+                "estado",
+            ]
+        )
+        correos = enviar_reporte(reporte, reporte.destinatarios, asunto=reporte.asunto)
+        if not correos:
+            avisos.reporte_listo(reporte, reporte.generado_por)
+    else:
+        reporte.estado = Reporte.Estado.LISTO
+        reporte.save(
+            update_fields=[
+                "cifras",
+                "contenido",
+                "error",
+                "archivo_pdf",
+                "estado",
+            ]
+        )
+        avisos.reporte_listo(reporte, reporte.generado_por)
+
+
 def generar_reporte(
     organizacion,
     area,
@@ -440,17 +545,16 @@ def programaciones_vencidas(ahora):
 
 
 def ejecutar_programacion(programacion, ahora):
-    """Genera el reporte vencido de una programación y lo envía a sus destinatarios.
+    """Deja en cola el reporte vencido de una programación y calcula la siguiente ejecución.
 
-    El periodo termina en ``ahora`` y abarca una frecuencia hacia atrás. Después se
-    calcula la siguiente ejecución. Lanza ``ia.IANoDisponible`` sin guardar nada, de modo
-    que la programación sigue vencida y se reintenta en la siguiente corrida del cron.
-    Devuelve ``(reporte, destinatarios)`` o ``None`` si la organización no está activa.
+    El periodo termina en ``ahora`` y abarca una frecuencia hacia atrás. El procesador de
+    la cola calcula, redacta, arma el PDF y envía el correo. Devuelve ``(reporte, destinatarios)``
+    o ``None`` si la organización no está activa.
     """
     if not programacion.organizacion.esta_activa:
         return None
     inicio = desplazar(ahora, programacion.frecuencia, -1)
-    reporte = generar_reporte(
+    reporte = crear_reporte_pendiente(
         programacion.organizacion,
         programacion.area,
         inicio,
@@ -459,12 +563,7 @@ def ejecutar_programacion(programacion, ahora):
         usuario=programacion.creada_por,
         formato=programacion.formato,
         areas=programacion.areas,
-    )
-    correos = enviar_reporte(
-        reporte,
-        programacion.destinatarios,
-        f"Reporte {programacion.get_frecuencia_display().lower()} "
-        f"de {programacion.organizacion.nombre}",
+        destinatarios=programacion.destinatarios,
     )
 
     programacion.ultima_ejecucion = ahora
@@ -476,4 +575,4 @@ def ejecutar_programacion(programacion, ahora):
         desde=ahora,
     )
     programacion.save(update_fields=["ultima_ejecucion", "proxima_ejecucion"])
-    return reporte, correos
+    return reporte, list(programacion.destinatarios)

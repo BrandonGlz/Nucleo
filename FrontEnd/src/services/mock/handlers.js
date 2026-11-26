@@ -436,15 +436,75 @@ const prepararReporte = (r) => {
   const org = db.organizaciones.find((o) => o.num === r.organizacion) ?? db.organizaciones[0]
   return copia({
     ...r,
+    estado: r.estado ?? 'LISTO',
+    error: r.error ?? null,
+    archivado: r.archivado ?? false,
     organizacion_nombre: org?.nombre ?? '',
     organizacion_logo_url: org?.logo_url ?? null,
     organizacion_color: org?.color_reporte ?? null,
   })
 }
 
-export async function reportes() {
+export async function reportes(params = {}) {
   await esperar()
-  return pagina(db.reportes.map(prepararReporte))
+  let lista = db.reportes.map(prepararReporte)
+  if (!['1', 'true'].includes(String(params.archivados ?? '').toLowerCase())) {
+    lista = lista.filter((r) => !r.archivado)
+  }
+  if (params.q) {
+    const q = String(params.q).toLowerCase()
+    lista = lista.filter((r) => String(r.cifras?.titulo ?? '').toLowerCase().includes(q))
+  }
+  if (params.area) {
+    const area = Number(params.area)
+    lista = lista.filter((r) => r.area === area || (r.areas ?? []).includes(area))
+  }
+  if (params.formato) lista = lista.filter((r) => r.formato === Number(params.formato))
+  if (params.origen) lista = lista.filter((r) => r.origen === params.origen)
+  if (params.estado) lista = lista.filter((r) => r.estado === params.estado)
+  if (params.desde) lista = lista.filter((r) => r.fecha_generacion >= params.desde)
+  if (params.hasta) lista = lista.filter((r) => r.fecha_generacion <= params.hasta)
+  return pagina(lista)
+}
+
+export async function archivarReporte(num) {
+  await esperar()
+  const r = db.reportes.find((x) => x.num === Number(num)) ?? noEncontrado()
+  r.archivado = true
+  return prepararReporte(r)
+}
+
+export async function desarchivarReporte(num) {
+  await esperar()
+  const r = db.reportes.find((x) => x.num === Number(num)) ?? noEncontrado()
+  r.archivado = false
+  return prepararReporte(r)
+}
+
+// Como el procesador del servidor: el reporte nace GENERANDO y queda LISTO unos segundos después.
+const procesarEnCola = (reporte) => {
+  setTimeout(() => {
+    const r = db.reportes.find((x) => x.num === reporte.num)
+    if (r && r.estado === 'GENERANDO') r.estado = 'LISTO'
+  }, 6000)
+}
+
+export async function repetirReporte(num, datos) {
+  await esperar()
+  const original = db.reportes.find((x) => x.num === Number(num)) ?? noEncontrado()
+  const nuevo = {
+    ...copia(original),
+    num: Math.max(...db.reportes.map((r) => r.num)) + 1,
+    periodo_inicio: datos.periodo_inicio,
+    periodo_fin: datos.periodo_fin,
+    estado: 'GENERANDO',
+    error: null,
+    archivado: false,
+    fecha_generacion: new Date().toISOString(),
+  }
+  db.reportes.unshift(nuevo)
+  procesarEnCola(nuevo)
+  return prepararReporte(nuevo)
 }
 const prepararProgramacion = (p) => {
   const formato = p.formato ? formatoDe(p.formato) : null
@@ -726,8 +786,10 @@ export async function crearReporte({ area, areas = [], formato, periodo_inicio, 
     cifras: cifrasHoja(cifras, { area: cifras.alcance, nombres }),
     contenido: base.contenido,
     formato: elegido.num, formato_nombre: elegido.nombre, formato_version: elegido.version, formato_conf: elegido.conf,
+    estado: 'GENERANDO', error: null, archivado: false,
   }
   db.reportes.unshift(nuevo)
+  procesarEnCola(nuevo)
   return copia(nuevo)
 }
 export async function cambiarFormatoReporte(num, formato) {

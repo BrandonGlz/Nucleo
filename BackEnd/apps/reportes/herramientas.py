@@ -22,11 +22,11 @@ from pathlib import Path
 from django.utils import timezone
 
 from apps.alertas.models import Alerta
-from apps.reportes.models import ProgramacionReporte, Reporte
+from apps.reportes.models import FormatoReporte, ProgramacionReporte, Reporte
 from apps.umbrales.models import Umbral
 from common import roles
 from common.fechas import periodo_texto
-from common.scoping import dispositivos_visibles
+from common.scoping import areas_visibles, dispositivos_visibles
 
 from . import agente
 
@@ -579,6 +579,68 @@ def programaciones(usuario, limite=5):
 VIGENCIA_ACCION = timedelta(minutes=10)
 
 
+def _alcance_de(usuario, dispositivo, pregunta):
+    """``(area, areas, descripcion)`` que nombra la pregunta.
+
+    Sin alcance explícito se queda en el área del dispositivo, como hasta ahora. «Toda la
+    organización» deja ``area=None`` y ``areas=[]``.
+    """
+    texto = agente._normalizar(pregunta)
+    if any(
+        frase in texto
+        for frase in (
+            "toda la organizacion",
+            "toda la empresa",
+            "todas las areas",
+            "organizacion completa",
+        )
+    ):
+        return None, [], "toda la organización"
+    visibles = list(areas_visibles(usuario).order_by("nombre"))
+    mencionadas = [
+        area
+        for area in visibles
+        if len(agente._normalizar(area.nombre)) >= 3 and agente._normalizar(area.nombre) in texto
+    ]
+    if len(mencionadas) == 1:
+        return mencionadas[0], [], mencionadas[0].nombre
+    if len(mencionadas) > 1:
+        return (
+            None,
+            [area.pk for area in mencionadas],
+            " y ".join(area.nombre for area in mencionadas),
+        )
+    return dispositivo.area, [], dispositivo.area.nombre
+
+
+def _ambiguo_formatos(formatos):
+    opciones = [f"{f.nombre} (#{f.pk})" for f in formatos]
+    return {
+        "texto": "¿Cuál formato? " + "; ".join(opciones) + ". Dime su nombre.",
+        "codigo": "ambiguo",
+        "tipo": "formato",
+        "opciones": opciones,
+    }
+
+
+def _formato_de(usuario, pregunta):
+    """``(formato, ambiguos)``: el formato nombrado o las opciones si hay más de uno."""
+    texto = agente._normalizar(pregunta)
+    formatos = list(
+        FormatoReporte.objects.filter(organizacion_id=usuario.organizacion_id, activo=True)
+    ) + list(FormatoReporte.objects.filter(organizacion__isnull=True, activo=True))
+    vistos = []
+    for formato in formatos:
+        nombre = agente._normalizar(formato.nombre)
+        if nombre and nombre in texto and formato.pk not in {f.pk for f in vistos}:
+            vistos.append(formato)
+    if len(vistos) == 1:
+        return vistos[0], []
+    if len(vistos) > 1:
+        return None, vistos
+    return None, []
+
+
 def preparar_reporte(usuario, dispositivo, pregunta):
     """Valida, calcula las cifras con el mismo servicio de Reportes y devuelve un resumen con
     una acción pendiente. No guarda nada: el reporte se genera solo al confirmar."""
@@ -599,8 +661,16 @@ def preparar_reporte(usuario, dispositivo, pregunta):
     inicio, fin, descripcion = agente.periodo_de(pregunta)
     if inicio >= fin:
         return {"texto": banco()["errores"]["periodo_invalido"], "codigo": "periodo_invalido"}
-    area = dispositivo.area
-    cifras = servicios.calcular_cifras(usuario.organizacion, area, inicio, fin)
+    if fin - inicio > timedelta(days=31):
+        return {
+            "texto": "El periodo no puede durar más de 31 días. Elige un rango más corto.",
+            "codigo": "periodo_invalido",
+        }
+    area, areas, alcance = _alcance_de(usuario, dispositivo, pregunta)
+    formato, ambiguos = _formato_de(usuario, pregunta)
+    if ambiguos:
+        return _ambiguo_formatos(ambiguos)
+    cifras = servicios.calcular_cifras(usuario.organizacion, area, inicio, fin, areas=areas)
     lecturas = sum(v.get("muestras", 0) for v in _valores(cifras["variables"]))
     if not lecturas:
         return {
@@ -612,7 +682,7 @@ def preparar_reporte(usuario, dispositivo, pregunta):
     destinatarios = []
     if pide_enviar(pregunta):
         # «Genera el reporte de esta semana y envíaselo a Ana»: un paso más, misma confirmación.
-        destinatarios, ambiguos = destinatarios_de(usuario, area, pregunta)
+        destinatarios, ambiguos = destinatarios_de(usuario, area or dispositivo.area, pregunta)
         if ambiguos:
             return _ambiguo(ambiguos)
     vence = timezone.now() + VIGENCIA_ACCION
@@ -623,17 +693,22 @@ def preparar_reporte(usuario, dispositivo, pregunta):
         "inicio": inicio.isoformat(),
         "fin": fin.isoformat(),
         "descripcion": descripcion,
+        "alcance": alcance,
+        "area": area.pk if area else None,
+        "areas": areas,
+        "formato": formato.pk if formato else None,
         "pregunta": pregunta,
         "vence": vence.isoformat(),
     }
     alertas = cifras["alertas"]["total"]
     return {
         "texto": (
-            f"Voy a generar el reporte del área {area.nombre} de {descripcion} "
+            f"Voy a generar el reporte de {alcance} de {descripcion} "
             f"({periodo_texto(inicio, fin)}): "
             f"{agente._n(len(cifras['dispositivos']), 'dispositivo')}, "
             f"{agente._n(lecturas, 'lectura válida', 'lecturas válidas')} y "
             f"{agente._n(alertas, 'alerta')}"
+            + (f", con el formato {formato.nombre}" if formato else "")
             + (f", y enviarlo por correo a {_nombres(destinatarios)}" if destinatarios else "")
             + ". ¿Lo genero? Responde «sí» o «cancela»."
         ),
@@ -659,12 +734,29 @@ def confirmar_reporte(usuario, dispositivo, accion):
             "codigo": "accion_vencida",
             "propuesta": accion["pregunta"],
         }
-    area = dispositivo.area
+    from apps.organizaciones.models import Area
+
+    area_id = accion.get("area")
+    area = (
+        Area.objects.filter(pk=area_id, organizacion_id=usuario.organizacion_id).first()
+        if area_id
+        else dispositivo.area
+    )
+    areas = accion.get("areas") or []
+    formato_id = accion.get("formato")
+    formato = FormatoReporte.objects.filter(pk=formato_id).first() if formato_id else None
     inicio = datetime.fromisoformat(accion["inicio"])
     fin = datetime.fromisoformat(accion["fin"])
     try:
         reporte = servicios.generar_reporte(
-            usuario.organizacion, area, inicio, fin, Reporte.Origen.AGENTE, usuario=usuario
+            usuario.organizacion,
+            area,
+            inicio,
+            fin,
+            Reporte.Origen.AGENTE,
+            usuario=usuario,
+            formato=formato,
+            areas=areas,
         )
     except ia.IANoDisponible:
         return {
@@ -673,13 +765,14 @@ def confirmar_reporte(usuario, dispositivo, accion):
             "alertas siguen funcionando.",
             "codigo": "ia_no_disponible",
         }
+    lugar = accion.get("alcance") or (area.nombre if area else "la organización")
     return {
         "texto": (
-            f"Listo: generé el reporte de {area.nombre} de {accion['descripcion']} "
+            f"Listo: generé el reporte de {lugar} de {accion['descripcion']} "
             f"({periodo_texto(inicio, fin)}). "
             "Puedes visualizarlo aquí o descargarlo en PDF desde Reportes."
         ),
-        "reporte": agente.resumen_reporte(reporte, f"{area.nombre} · {accion['descripcion']}"),
+        "reporte": agente.resumen_reporte(reporte, f"{lugar} · {accion['descripcion']}"),
     }
 
 
@@ -789,13 +882,42 @@ SIN_PERMISO_PROGRAMAR = {
 }
 
 
-def _horario_programacion(frecuencia):
-    """Valores por omisión del chat hasta la tarea 6.4 (allí Nico aprende hora y día)."""
-    datos = {"hora": "08:00"}
+DIAS_SEMANA = ("lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo")
+
+
+def _horario_programacion(frecuencia, pregunta=""):
+    """Hora y día que nombra la pregunta; si faltan, los valores por omisión del chat."""
+    texto = agente._normalizar(pregunta)
+    hora = 8
+    minuto = 0
+    m = re.search(r"\ba las?\s+(\d{1,2})(?::(\d{2}))?\b", texto)
+    if m is None:
+        m = re.search(r"\b(\d{1,2}):(\d{2})\b", texto)
+    if m:
+        hora, minuto = int(m.group(1)), int(m.group(2) or 0)
+        if hora < 12 and re.search(r"\b(tarde|noche)\b", texto):
+            hora += 12
+        if hora == 12 and re.search(r"\b(manana|madrugada)\b", texto):
+            hora = 0
+    elif re.search(r"\b\d{1,2}\s+y\s+media\b", texto):
+        m = re.search(r"\b(\d{1,2})\s+y\s+media\b", texto)
+        hora, minuto = int(m.group(1)), 30
+        if hora < 12 and re.search(r"\b(tarde|noche)\b", texto):
+            hora += 12
+    hora = max(0, min(hora, 23))
+    minuto = minuto if minuto in (0, 30) else 0
+    datos = {"hora": f"{hora:02d}:{minuto:02d}"}
     if frecuencia == ProgramacionReporte.Frecuencia.SEMANAL:
         datos["dia_semana"] = 0
+        for indice, dia in enumerate(DIAS_SEMANA):
+            if re.search(r"\b(?:cada|lost?|el)\s+" + dia + r"\b", texto):
+                datos["dia_semana"] = indice
+                break
     if frecuencia == ProgramacionReporte.Frecuencia.MENSUAL:
         datos["dia_mes"] = 1
+        m = re.search(r"\b(?:dia|el)\s+(\d{1,2})\s+de\s+cada\s+mes\b", texto)
+        if m:
+            datos["dia_mes"] = max(1, min(int(m.group(1)), 28))
     return datos
 
 
@@ -898,11 +1020,15 @@ def pide_editar_programacion(pregunta):
 
 
 def _frecuencias(texto):
-    """Frecuencias nombradas, en el orden en que aparecen."""
+    """Frecuencias nombradas, en el orden en que aparecen («cada viernes» = semanal)."""
     halladas = []
     for valor, patron in FRECUENCIAS:
         for m in re.finditer(patron, texto):
             halladas.append((m.start(), valor))
+    for dia in DIAS_SEMANA:
+        m = re.search(r"\b(?:cada|lost?|el)\s+" + dia + r"\b", texto)
+        if m:
+            halladas.append((m.start(), ProgramacionReporte.Frecuencia.SEMANAL))
     return [v for _, v in sorted(halladas)]
 
 
@@ -977,9 +1103,12 @@ def preparar_programacion(usuario, dispositivo, pregunta):
     if not _puede_programar(usuario):
         return SIN_PERMISO_PROGRAMAR
     texto = agente._normalizar(pregunta)
-    area = dispositivo.area
+    area, areas, alcance = _alcance_de(usuario, dispositivo, pregunta)
     frecuencias = _frecuencias(texto)
-    destinatarios, ambiguos = destinatarios_de(usuario, area, pregunta)
+    formato, ambiguos_formato = _formato_de(usuario, pregunta)
+    if ambiguos_formato:
+        return _ambiguo_formatos(ambiguos_formato)
+    destinatarios, ambiguos = destinatarios_de(usuario, area or dispositivo.area, pregunta)
     if ambiguos:
         return _ambiguo(ambiguos)
     if not frecuencias:
@@ -995,35 +1124,51 @@ def preparar_programacion(usuario, dispositivo, pregunta):
             "faltan": ["destinatarios"],
         }
     frecuencia = frecuencias[0]
-    horario = _horario_programacion(frecuencia)
+    horario = _horario_programacion(frecuencia, pregunta)
     s = _serializar_programacion(
         usuario,
         {
-            "area": area.pk,
+            "area": area.pk if area else None,
+            "areas": areas,
+            "formato": formato.pk if formato else None,
             "frecuencia": frecuencia,
             **horario,
             "destinatarios": [u.pk for u in destinatarios],
         },
     )
     if not s.is_valid():
-        return {"texto": banco()["errores"]["sin_permiso"], "codigo": "sin_permiso"}
+        error = next(iter(s.errors.values()), [None])[0]
+        return {
+            "texto": str(error) if error else banco()["errores"]["sin_permiso"],
+            "codigo": "datos_faltantes",
+        }
     from apps.reportes import servicios
 
     primera = servicios.siguiente_ejecucion(
         frecuencia,
-        time(8, 0),
+        time.fromisoformat(horario["hora"]),
         horario.get("dia_semana"),
         horario.get("dia_mes"),
     )
     return {
         "texto": "Voy a programar un reporte "
-        f"{ProgramacionReporte.Frecuencia(frecuencia).label.lower()} del área {area.nombre} "
-        f"para {_nombres(destinatarios)}; el primero sale el "
+        f"{ProgramacionReporte.Frecuencia(frecuencia).label.lower()} de {alcance} "
+        f"a las {horario['hora']}"
+        + (
+            f" cada {DIAS_SEMANA[horario['dia_semana']]}"
+            if frecuencia == ProgramacionReporte.Frecuencia.SEMANAL
+            else f" el día {horario['dia_mes']} de cada mes"
+            if frecuencia == ProgramacionReporte.Frecuencia.MENSUAL
+            else " cada día"
+        )
+        + f" para {_nombres(destinatarios)}; el primero sale el "
         f"{timezone.localtime(primera):%d/%m/%Y %H:%M}. ¿Lo programo? Responde «sí» o «cancela».",
         "accion": _accion(
             "programar",
             pregunta,
-            area=area.pk,
+            area=area.pk if area else None,
+            areas=areas,
+            formato=formato.pk if formato else None,
             frecuencia=frecuencia,
             **horario,
             destinatarios=[u.pk for u in destinatarios],
@@ -1147,7 +1292,9 @@ def confirmar(usuario, dispositivo, accion):
         s = _serializar_programacion(
             usuario,
             {
-                "area": accion["area"],
+                "area": accion.get("area"),
+                "areas": accion.get("areas") or [],
+                "formato": accion.get("formato"),
                 "frecuencia": accion["frecuencia"],
                 "hora": accion.get("hora", "08:00"),
                 "dia_semana": accion.get("dia_semana"),

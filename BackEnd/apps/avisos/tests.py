@@ -263,6 +263,7 @@ class ReporteTests(PruebaBase):
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
+        call_command("procesar_reportes", "--una-vez", stdout=StringIO())
         aviso = de(self.e.analista)[0]
         self.assertEqual((aviso.tipo, aviso.ruta), (Tipo.REPORTE, "/reportes"))
         self.assertIn("listo", aviso.titulo)
@@ -279,6 +280,7 @@ class ReporteTests(PruebaBase):
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
+        call_command("procesar_reportes", "--una-vez", stdout=StringIO())
         aviso = de(self.e.analista)[0]
         self.assertIn("15/11/2026 al 21/11/2026", aviso.detalle)
         reporte = Reporte.objects.get(pk=r.data["num"])
@@ -304,6 +306,7 @@ class ReporteTests(PruebaBase):
             proxima_ejecucion=timezone.now() - timedelta(hours=1),
         )
         call_command("generar_reportes_programados", stdout=StringIO())
+        call_command("procesar_reportes", "--una-vez", stdout=StringIO())
         avisados = set(Aviso.objects.values_list("usuario_id", flat=True))
         self.assertEqual(avisados, {self.e.supervisor.pk, self.e.operador.pk, self.e.analista.pk})
         self.assertTrue(all("programado" in a.titulo for a in Aviso.objects.all()))

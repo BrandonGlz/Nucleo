@@ -263,14 +263,18 @@ Formatos de reporte (ADMIN, SUPER y ANALISTA leen; ADMIN y SUPER escriben)
 
 Reportes (ADMIN, SUPER y ANALISTA)
 ├── GET /reportes/                          Lista y detalle; incluye area, areas, formato (num),
-│                                           formato_nombre, formato_version y formato_conf. Sin
-│                                           versión, se usa la plantilla Operativo detallado
+│                                           formato_nombre, formato_version y formato_conf,
+│                                           estado (GENERANDO|LISTO|ENVIADO|FALLO), error y
+│                                           archivado. Filtros: q, area, formato, origen, estado,
+│                                           desde, hasta y archivados=1; respetan el alcance del rol
 ├── POST /reportes/                         {"area"?, "areas"?, "formato"?, "periodo_inicio",
 │                                           "periodo_fin"}; un área con "area", varias con
 │                                           "areas" [num de área] y toda la organización sin
 │                                           ninguna. El periodo dura hasta 31 días y las áreas
 │                                           deben ser visibles para el usuario; sin formato usa
-│                                           el predeterminado del área o el de la organización
+│                                           el predeterminado del área o el de la organización.
+│                                           Responde 201 al momento con estado GENERANDO; la cola
+│                                           calcula, redacta y arma el PDF después
 ├── GET /reportes/vista-previa/             ?areas=1,2&desde=…&hasta=… → {cifras, areas} para el
 │                                           asistente; sin IA y sin guardar, hasta 31 días y solo
 │                                           áreas visibles. Sin areas, el área del usuario
@@ -279,6 +283,9 @@ Reportes (ADMIN, SUPER y ANALISTA)
 ├── GET /reportes/{num}/csv/                Anexo CSV en streaming con las lecturas del alcance y
 │                                           periodo: fecha local, dispositivo, área, variable,
 │                                           valor, unidad y estabilizada
+├── POST /reportes/{num}/archivar/         Marca archivado; /desarchivar/ lo devuelve a la lista
+├── POST /reportes/{num}/repetir/          {"periodo_inicio", "periodo_fin"} → nuevo reporte en cola
+│                                           con el mismo alcance y formato
 ├── POST /reportes/{num}/formato/           {"formato": num} → usa la versión actual de ese formato
 │                                           y regenera solo el PDF, sin llamar a la IA
 ├── /programaciones-reporte/                Reportes periódicos: {"frecuencia" DIARIA|SEMANAL|MENSUAL,

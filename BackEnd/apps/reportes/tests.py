@@ -2,13 +2,13 @@ import tempfile
 from datetime import UTC, datetime, time, timedelta
 from io import StringIO
 from pathlib import Path
+from threading import Event, Thread
 from unittest import mock
 
 from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
-from django.core.management.base import CommandError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connections, transaction
 from django.test import override_settings
 from django.utils import timezone
 
@@ -24,7 +24,7 @@ from apps.reportes.models import (
     RespuestaAprendida,
     VersionFormato,
 )
-from common.testing import Escenario, PruebaBase, cliente_de
+from common.testing import Escenario, PruebaBase, PruebaTransaccional, cliente_de
 
 
 def fijar_reloj(prueba, ancla=None):
@@ -84,6 +84,13 @@ class ReporteTests(PruebaBase):
             "periodo_inicio": self.inicio.isoformat(),
             "periodo_fin": self.ahora.isoformat(),
         }
+
+    def _procesar(self):
+        call_command("procesar_reportes", "--una-vez", stdout=StringIO())
+
+    def _completar(self, cliente, respuesta):
+        self._procesar()
+        return cliente.get(f"/api/v1/reportes/{respuesta.json()['num']}/").json()
 
     def test_las_cifras_se_calculan_en_el_backend(self):
         cifras = servicios.calcular_cifras(self.e.organizacion, None, self.inicio, self.ahora)
@@ -155,7 +162,8 @@ class ReporteTests(PruebaBase):
             )
 
         self.assertEqual(r.status_code, 201, r.content)
-        cuerpo = r.json()
+        cliente = cliente_de(self.e.admin)
+        cuerpo = self._completar(cliente, r)
         self.assertIsNone(cuerpo["area"])
         self.assertEqual(cuerpo["areas"], [self.e.area.pk, self.e.otra_area.pk])
         self.assertEqual(cuerpo["cifras"]["alcance"], "Laboratorio y Moldeo")
@@ -178,7 +186,8 @@ class ReporteTests(PruebaBase):
             )
 
         self.assertEqual(r.status_code, 201, r.content)
-        cuerpo = r.json()
+        cliente = cliente_de(self.e.admin)
+        cuerpo = self._completar(cliente, r)
         self.assertEqual(cuerpo["area"], self.e.area.pk)
         self.assertEqual(cuerpo["areas"], [])
         self.assertEqual(cuerpo["cifras"]["alcance"], self.e.area.nombre)
@@ -190,12 +199,11 @@ class ReporteTests(PruebaBase):
             override_settings(MEDIA_ROOT=carpeta),
             mock.patch.object(ia, "redactar", return_value="Reporte de toda la organización."),
         ):
-            r = cliente_de(self.e.admin).post(
-                "/api/v1/reportes/", self.solicitud, format="json"
-            )
+            r = cliente_de(self.e.admin).post("/api/v1/reportes/", self.solicitud, format="json")
 
         self.assertEqual(r.status_code, 201, r.content)
-        cuerpo = r.json()
+        cliente = cliente_de(self.e.admin)
+        cuerpo = self._completar(cliente, r)
         self.assertIsNone(cuerpo["area"])
         self.assertEqual(cuerpo["areas"], [])
         self.assertEqual(cuerpo["cifras"]["alcance"], "Toda la organización")
@@ -304,10 +312,15 @@ class ReporteTests(PruebaBase):
         self.assertIn("hasta", r.json())
 
     @override_settings(IA_PROVEEDOR="")
-    def test_sin_servicio_de_ia_responde_503_y_no_guarda_nada(self):
-        r = cliente_de(self.e.analista).post("/api/v1/reportes/", self.solicitud, format="json")
-        self.assertEqual(r.status_code, 503)
-        self.assertFalse(Reporte.objects.exists())
+    def test_sin_servicio_de_ia_deja_el_reporte_en_fallo(self):
+        cliente = cliente_de(self.e.analista)
+        r = cliente.post("/api/v1/reportes/", self.solicitud, format="json")
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.json()["estado"], "GENERANDO")
+        self._procesar()
+        reporte = Reporte.objects.get(pk=r.json()["num"])
+        self.assertEqual(reporte.estado, "FALLO")
+        self.assertIn("inteligencia artificial", reporte.error)
 
     def test_genera_reporte_con_texto_de_la_ia_y_pdf(self):
         with (
@@ -320,7 +333,10 @@ class ReporteTests(PruebaBase):
 
             r = cliente.post("/api/v1/reportes/", self.solicitud, format="json")
             self.assertEqual(r.status_code, 201, r.content)
-            cuerpo = r.json()
+            self.assertEqual(r.json()["estado"], "GENERANDO")
+            self._procesar()
+            cuerpo = cliente.get(f"/api/v1/reportes/{r.json()['num']}/").json()
+            self.assertEqual(cuerpo["estado"], "LISTO")
             self.assertEqual(cuerpo["contenido"], "La temperatura subió a 30 °C.")
             self.assertEqual(cuerpo["origen"], "MANUAL")
             self.assertEqual(cuerpo["cifras"]["variables"]["TEMP"]["maximo"], 30.0)
@@ -476,6 +492,7 @@ class ProgramacionTests(PruebaBase):
             ia.PROVEEDORES["prueba"] = lambda instrucciones, cifras: "Todo normal."
             self.addCleanup(ia.PROVEEDORES.pop, "prueba")
             call_command("generar_reportes_programados", stdout=StringIO())
+            call_command("procesar_reportes", "--una-vez", stdout=StringIO())
 
         reporte = Reporte.objects.get()
         self.assertEqual(reporte.origen, "PROGRAMADO")
@@ -492,7 +509,7 @@ class ProgramacionTests(PruebaBase):
         self.assertIsNone(futura.ultima_ejecucion)
 
     @override_settings(IA_PROVEEDOR="")
-    def test_sin_ia_la_programacion_sigue_vencida(self):
+    def test_sin_ia_el_reporte_programado_queda_en_fallo(self):
         programacion = ProgramacionReporte.objects.create(
             organizacion=self.e.organizacion,
             creada_por=self.e.analista,
@@ -500,11 +517,13 @@ class ProgramacionTests(PruebaBase):
             destinatarios=[self.e.admin.pk],
             proxima_ejecucion=self.ahora - timedelta(hours=1),
         )
-        with self.assertRaises(CommandError):
-            call_command("generar_reportes_programados", stdout=StringIO(), stderr=StringIO())
+        call_command("generar_reportes_programados", stdout=StringIO())
+        call_command("procesar_reportes", "--una-vez", stdout=StringIO())
         programacion.refresh_from_db()
-        self.assertIsNone(programacion.ultima_ejecucion)
-        self.assertFalse(Reporte.objects.exists())
+        reporte = Reporte.objects.get()
+        self.assertEqual(reporte.estado, "FALLO")
+        self.assertIsNotNone(programacion.ultima_ejecucion)
+        self.assertEqual(mail.outbox, [])
 
 
 class ProgramacionHorarioTests(PruebaBase):
@@ -533,9 +552,7 @@ class ProgramacionHorarioTests(PruebaBase):
         desde = self._local(2026, 11, 23, 10, 0)
         self.assertEqual(timezone.localtime(desde).weekday(), 0)  # lunes
 
-        proxima = servicios.siguiente_ejecucion(
-            "SEMANAL", time(9, 30), dia_semana=4, desde=desde
-        )
+        proxima = servicios.siguiente_ejecucion("SEMANAL", time(9, 30), dia_semana=4, desde=desde)
 
         self.assertEqual(timezone.localtime(proxima).strftime("%Y-%m-%d %H:%M"), "2026-11-27 09:30")
 
@@ -624,9 +641,7 @@ class ProgramacionHorarioTests(PruebaBase):
             proxima_ejecucion=self.ahora,
         )
 
-        r = cliente_de(self.e.admin).delete(
-            f"/api/v1/programaciones-reporte/{programacion.num}/"
-        )
+        r = cliente_de(self.e.admin).delete(f"/api/v1/programaciones-reporte/{programacion.num}/")
         self.assertEqual(r.status_code, 405)
 
     def test_probar_envia_solo_al_solicitante_y_no_mueve_fechas(self):
@@ -664,6 +679,7 @@ class ProgramacionHorarioTests(PruebaBase):
             )
 
         self.assertEqual(r.status_code, 201, r.content)
+        call_command("procesar_reportes", "--una-vez", stdout=StringIO())
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.e.admin.correo])
         self.assertTrue(mail.outbox[0].subject.startswith("[Prueba]"))
@@ -1009,7 +1025,6 @@ class NicoAprendeTests(PruebaBase):
         """Un ESP32 simulado: firma la siguiente petición (como por MQTT) y la IA del servidor
         contesta ``responder(trabajo)``."""
         import threading
-        from unittest import mock
 
         def ia(trabajo, espera):
             return {
@@ -1651,7 +1666,6 @@ class NicoAprendeTests(PruebaBase):
 
     @override_settings(IA_PUENTE_DISPOSITIVOS=["NUC-A"], IA_PUENTE_CLAVE="k", IA_ESPERA_SEGUNDOS=5)
     def test_sin_firma_valida_no_se_usa_la_ia(self):
-        from unittest import mock
 
         codigo = self.e.dispositivo.codigo_mqtt
         puente.recibir_latido(codigo, {"diag": "red=UTT;rssi=-72;rec=2;falla=ninguna;mem=180000"})
@@ -1999,3 +2013,208 @@ class HerramientasAgenteTests(PruebaBase):
             call_command("agente_mantenimiento", "off", stdout=StringIO())
             r = self._pedir(self.e.admin, "¿cómo está la temperatura?")
             self.assertNotIn("codigo", r)
+
+    def test_periodo_con_rango_explicito_es_inclusivo(self):
+        from datetime import datetime
+
+        from apps.reportes import agente
+
+        ahora = timezone.make_aware(datetime(2026, 11, 20, 12, 0))
+        inicio, fin, descripcion = agente.periodo_de("del 3/11 al 10/11", ahora=ahora)
+        self.assertEqual(inicio.date().isoformat(), "2026-11-03")
+        self.assertEqual(fin.date().isoformat(), "2026-11-11")
+        self.assertIn("3 de noviembre", descripcion)
+        self.assertIn("10 de noviembre", descripcion)
+
+        inicio, fin, _ = agente.periodo_de("del 1 al 15 de noviembre", ahora=ahora)
+        self.assertEqual(inicio.date().isoformat(), "2026-11-01")
+        self.assertEqual(fin.date().isoformat(), "2026-11-16")
+
+    def test_un_rango_de_mas_de_31_dias_se_explica(self):
+        r = self._pedir(self.e.admin, "genera el reporte del 1 de octubre al 30 de noviembre")
+        self.assertIn("31 días", r["texto"])
+
+    def test_formato_ambiguo_pregunta_con_opciones(self):
+        for nombre in ("Ejecutivo", "Ejecutivo de dirección"):
+            formato = FormatoReporte.objects.create(organizacion=self.e.organizacion, nombre=nombre)
+            VersionFormato.objects.create(formato=formato, numero=1, conf=formatos.CONF_OPERATIVO)
+        r = self._pedir(self.e.admin, "genera el reporte de esta semana con el formato Ejecutivo")
+        self.assertEqual(r["codigo"], "ambiguo")
+        self.assertGreaterEqual(len(r["opciones"]), 2)
+        self.assertTrue(any("Ejecutivo" in opcion for opcion in r["opciones"]))
+
+    def test_programacion_entiende_dia_y_hora(self):
+        r = herramientas.preparar_programacion(
+            self.e.admin,
+            self.e.dispositivo,
+            "programa un reporte semanal cada viernes a las 9:30 para mí",
+        )
+        self.assertIn("viernes", r["texto"])
+        self.assertIn("09:30", r["texto"])
+        self.assertEqual(r["accion"]["hora"], "09:30")
+        self.assertEqual(r["accion"]["dia_semana"], 4)
+
+    def test_reporte_entiende_formato_y_alcance(self):
+        self.e.area.nombre = "Laboratorio"
+        self.e.area.save(update_fields=["nombre"])
+        self.e.otra_area.nombre = "Moldeo"
+        self.e.otra_area.save(update_fields=["nombre"])
+        r = herramientas.preparar_reporte(
+            self.e.admin,
+            self.e.dispositivo,
+            "genera el reporte de Laboratorio y Moldeo de esta semana con el formato Cumplimiento",
+        )
+        self.assertIn("Cumplimiento", r["texto"])
+        self.assertEqual(r["accion"]["areas"], [self.e.area.pk, self.e.otra_area.pk])
+        self.assertIsNone(r["accion"]["area"])
+        self.assertIsNotNone(r["accion"]["formato"])
+
+
+class ReporteListaTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        self.ahora = timezone.now()
+        self.formato = FormatoReporte.objects.create(
+            organizacion=self.e.organizacion, nombre="Formato de lista"
+        )
+        self.version = VersionFormato.objects.create(
+            formato=self.formato, numero=1, conf=formatos.CONF_OPERATIVO
+        )
+        self.reporte = self._crear("Reporte de temperatura", area=self.e.area)
+        self.otro = self._crear("Reporte de humedad", area=self.e.otra_area)
+
+    def _crear(self, titulo, **extra):
+        datos = {
+            "organizacion": self.e.organizacion,
+            "area": self.e.area,
+            "origen": Reporte.Origen.MANUAL,
+            "periodo_inicio": self.ahora - timedelta(hours=2),
+            "periodo_fin": self.ahora,
+            "cifras": {"titulo": titulo},
+            "contenido": "Texto",
+            "estado": Reporte.Estado.LISTO,
+        }
+        datos.update(extra)
+        return Reporte.objects.create(**datos)
+
+    def _lista(self, usuario=None, **params):
+        return cliente_de(usuario or self.e.admin).get("/api/v1/reportes/", params)
+
+    def test_filtros_por_texto_area_formato_origen_estado_y_fechas(self):
+        self.reporte.formato_version = self.version
+        self.reporte.save(update_fields=["formato_version"])
+        self.assertEqual(
+            [r["num"] for r in self._lista(q="temperatura").json()["results"]],
+            [self.reporte.num],
+        )
+        self.assertEqual(
+            [r["num"] for r in self._lista(area=self.e.otra_area.pk).json()["results"]],
+            [self.otro.num],
+        )
+        self.assertEqual(
+            [r["num"] for r in self._lista(formato=self.formato.pk).json()["results"]],
+            [self.reporte.num],
+        )
+        self.assertEqual(
+            [r["num"] for r in self._lista(origen="MANUAL").json()["results"]],
+            [self.otro.num, self.reporte.num],
+        )
+        self.assertEqual(
+            [r["num"] for r in self._lista(estado="LISTO").json()["results"]],
+            [self.otro.num, self.reporte.num],
+        )
+        self.assertEqual(
+            [
+                r["num"]
+                for r in self._lista(desde=(self.ahora + timedelta(days=1)).isoformat()).json()[
+                    "results"
+                ]
+            ],
+            [],
+        )
+
+    def test_los_archivados_se_ocultan_salvo_que_se_pidan(self):
+        self.reporte.archivado = True
+        self.reporte.save(update_fields=["archivado"])
+        self.assertEqual([r["num"] for r in self._lista().json()["results"]], [self.otro.num])
+        self.assertEqual(
+            sorted(r["num"] for r in self._lista(archivados=1).json()["results"]),
+            sorted([self.reporte.num, self.otro.num]),
+        )
+
+    def test_el_supervisor_solo_ve_su_area(self):
+        self.otro.area = self.e.otra_area
+        self.otro.save(update_fields=["area"])
+        r = self._lista(self.e.supervisor)
+        self.assertEqual([fila["num"] for fila in r.json()["results"]], [self.reporte.num])
+
+    def test_archivar_y_desarchivar(self):
+        r = cliente_de(self.e.analista).post(f"/api/v1/reportes/{self.reporte.num}/archivar/")
+        self.assertEqual(r.status_code, 200)
+        self.reporte.refresh_from_db()
+        self.assertTrue(self.reporte.archivado)
+        r = cliente_de(self.e.analista).post(f"/api/v1/reportes/{self.reporte.num}/desarchivar/")
+        self.assertEqual(r.status_code, 200)
+        self.reporte.refresh_from_db()
+        self.assertFalse(self.reporte.archivado)
+
+    def test_repetir_conserva_alcance_y_formato(self):
+        self.reporte.formato_version = self.version
+        self.reporte.save(update_fields=["formato_version"])
+        r = cliente_de(self.e.admin).post(
+            f"/api/v1/reportes/{self.reporte.num}/repetir/",
+            {
+                "periodo_inicio": (self.ahora - timedelta(days=1)).isoformat(),
+                "periodo_fin": self.ahora.isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        nuevo = r.json()
+        self.assertEqual(nuevo["area"], self.e.area.pk)
+        self.assertEqual(nuevo["formato"], self.formato.pk)
+        self.assertEqual(nuevo["estado"], "GENERANDO")
+        self.assertNotEqual(nuevo["num"], self.reporte.num)
+
+
+class ProcesadorColaTests(PruebaTransaccional):
+    def test_dos_procesadores_no_toman_el_mismo_reporte(self):
+        e = Escenario()
+        ahora = timezone.now()
+        reporte = Reporte.objects.create(
+            organizacion=e.organizacion,
+            area=e.area,
+            origen=Reporte.Origen.MANUAL,
+            periodo_inicio=ahora - timedelta(hours=1),
+            periodo_fin=ahora,
+            estado=Reporte.Estado.GENERANDO,
+        )
+        tomado = Event()
+        liberar = Event()
+        vistos = []
+
+        def procesador():
+            try:
+                with transaction.atomic():
+                    fila = (
+                        Reporte.objects.select_for_update(skip_locked=True)
+                        .filter(estado=Reporte.Estado.GENERANDO)
+                        .first()
+                    )
+                    vistos.append(fila.num if fila else None)
+                    tomado.set()
+                    liberar.wait(5)
+            finally:
+                connections.close_all()
+
+        primero = Thread(target=procesador)
+        primero.start()
+        self.assertTrue(tomado.wait(5))
+        segundo = Thread(target=procesador)
+        segundo.start()
+        segundo.join(5)
+        liberar.set()
+        primero.join(5)
+
+        self.assertIn(None, vistos)
+        self.assertEqual([v for v in vistos if v is not None], [reporte.num])

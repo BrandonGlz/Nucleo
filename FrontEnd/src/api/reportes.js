@@ -5,6 +5,9 @@ export const REPORTE_VISTA_PREVIA = '/reportes/vista-previa/' // GET ?areas=1,2&
 export const REPORTE_PDF = (num) => `/reportes/${num}/pdf/` // GET: descarga en PDF
 export const REPORTE_CSV = (num) => `/reportes/${num}/csv/` // GET: anexo CSV de lecturas
 export const REPORTE_FORMATO = (num) => `/reportes/${num}/formato/` // POST {formato}: cambia el formato y regenera el PDF
+export const REPORTE_ARCHIVAR = (num) => `/reportes/${num}/archivar/` // POST
+export const REPORTE_DESARCHIVAR = (num) => `/reportes/${num}/desarchivar/` // POST
+export const REPORTE_REPETIR = (num) => `/reportes/${num}/repetir/` // POST
 export const PROGRAMACIONES_REPORTE = '/programaciones-reporte/' // GET, POST
 // GET, PATCH {activa} para pausar/reanudar; DELETE deshabilitado (405)
 export const PROGRAMACION_REPORTE = (num) => `/programaciones-reporte/${num}/`

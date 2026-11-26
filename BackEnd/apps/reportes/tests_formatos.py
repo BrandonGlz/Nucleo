@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.test import override_settings
 from django.utils import timezone
@@ -499,6 +500,7 @@ class FormatoReporteAPITests(PruebaBase):
                 solicitud,
                 format="json",
             )
+            call_command("procesar_reportes", "--una-vez")
 
         self.assertEqual(r.status_code, 201, r.content)
         cuerpo = r.json()
@@ -529,6 +531,7 @@ class FormatoReporteAPITests(PruebaBase):
             mock.patch.object(ia, "redactar", return_value="Análisis") as redactar,
         ):
             r = cliente_de(self.e.analista).post("/api/v1/reportes/", solicitud, format="json")
+            call_command("procesar_reportes", "--una-vez")
 
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(redactar.call_args.kwargs["largo"], "detallado")

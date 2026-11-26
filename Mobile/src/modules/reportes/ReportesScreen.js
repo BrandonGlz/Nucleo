@@ -3,7 +3,7 @@ import { Alert, StyleSheet, View } from 'react-native'
 import { Cabecera } from '../../components/Cabecera'
 import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
-import { Aparece, Badge, Button, IconCircle, Skeleton, T } from '../../components/ui'
+import { Aparece, Badge, Button, Chip, IconCircle, Input, Skeleton, T } from '../../components/ui'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
 import * as reportesApi from '../../services/reportes'
@@ -15,8 +15,14 @@ const ORIGEN = {
   PROGRAMADO: { icono: 'calendar-clock', texto: 'Programado' },
   AGENTE: { icono: 'sparkles', texto: 'Nico AI' },
 }
-// Estado como en la web: los programados se envían por correo; los demás quedan listos para descargar.
-const estadoDe = (r) => (r.origen === 'PROGRAMADO' ? 'Enviado por correo' : 'Listo')
+// Estado real de la generación en segundo plano.
+const ESTADOS = {
+  GENERANDO: { label: 'Generando…', tone: 'warning', icon: 'clock' },
+  LISTO: { label: 'Listo', tone: 'success', icon: 'circle-check' },
+  ENVIADO: { label: 'Enviado por correo', tone: 'success', icon: 'circle-check' },
+  FALLO: { label: 'Falló', tone: 'danger', icon: 'triangle-alert' },
+}
+const estadoDe = (r) => ESTADOS[r.estado] ?? (r.origen === 'PROGRAMADO' ? ESTADOS.ENVIADO : ESTADOS.LISTO)
 const lecturasDe = (r) => Object.values(r.cifras?.variables ?? {}).reduce((s, v) => s + (v?.muestras ?? 0), 0)
 
 // Un reporte en una tarjeta (sin tablas): periodo, estado, origen, cifras clave, un extracto del
@@ -32,16 +38,16 @@ function TarjetaReporte({ r, resaltar, abriendo, onPdf }) {
         <IconCircle name="file-text" size="sm" tone={resaltar ? 'success' : 'neutral'} />
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <T peso={700} size={14} lh={19} numberOfLines={2}>
-            {`Reporte ${r.num} · ${r.area_nombre}`}
+            {r.titulo || `Reporte R-${String(r.num).padStart(4, '0')}`}
           </T>
           <T size={12} color={c.textMuted}>
-            {periodo(r.periodo_inicio, r.periodo_fin)}
+            {periodo(r.periodo_inicio, r.periodo_fin)} · {r.formato_nombre || 'Predeterminado'}
           </T>
         </View>
       </View>
       <View style={s.chips}>
-        <Badge tone="success" icon="circle-check">
-          {estadoDe(r)}
+        <Badge tone={estadoDe(r).tone} icon={estadoDe(r).icon}>
+          {estadoDe(r).label}
         </Badge>
         <Badge tone={r.origen === 'AGENTE' ? 'accent' : 'neutral'} icon={origen.icono}>
           {origen.texto}
@@ -55,8 +61,19 @@ function TarjetaReporte({ r, resaltar, abriendo, onPdf }) {
           {r.contenido.replace(/[#*_>`]/g, '').replace(/\s+/g, ' ').trim()}
         </T>
       ) : null}
-      <Button variant={resaltar ? 'primary' : 'secondary'} size="sm" icon="download" disabled={abriendo} onPress={onPdf}>
-        {abriendo ? 'Descargando…' : 'Abrir PDF'}
+      {r.estado === 'FALLO' && r.error ? (
+        <T size={12} lh={17} color={c.danger}>
+          {r.error}
+        </T>
+      ) : null}
+      <Button
+        variant={resaltar ? 'primary' : 'secondary'}
+        size="sm"
+        icon="download"
+        disabled={abriendo || r.estado === 'GENERANDO' || r.estado === 'FALLO'}
+        onPress={onPdf}
+      >
+        {abriendo ? 'Descargando…' : r.estado === 'GENERANDO' ? 'Generando…' : 'Abrir PDF'}
       </Button>
     </View>
   )
@@ -69,8 +86,24 @@ export function ReportesScreen({ navigation, route }) {
   const resaltado = route?.params?.num ?? null
   const { estado, datos, reintentar } = useDatos(() => reportesApi.lista(), [], { esVacio: (d) => !d.length })
   const [abriendo, setAbriendo] = useState(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [origen, setOrigen] = useState('')
+  const filtrados = (datos ?? []).filter((r) => {
+    const texto = busqueda.trim().toLowerCase()
+    const coincide = !texto || `${r.titulo ?? ''} ${r.area_nombre}`.toLowerCase().includes(texto)
+    return coincide && (!origen || r.origen === origen)
+  })
 
   const abrir = (num) => {
+    const reporte = (datos ?? []).find((r) => r.num === num)
+    if (reporte?.estado === 'GENERANDO') {
+      Alert.alert('Generando…', 'El reporte todavía se está generando. Inténtalo en unos segundos.')
+      return
+    }
+    if (reporte?.estado === 'FALLO') {
+      Alert.alert('No se pudo generar', reporte.error || 'Vuelve a pedirlo desde la web o a Nico AI.')
+      return
+    }
     setAbriendo(num)
     reportesApi
       .abrirPdf(num)
@@ -86,6 +119,25 @@ export function ReportesScreen({ navigation, route }) {
           ? `${datos.length} ${datos.length === 1 ? 'reporte' : 'reportes'} a tu alcance. Se piden y programan en la web o con Nico AI.`
           : 'Los reportes de tu organización o de tu área. Se piden y programan en la web o con Nico AI.'}
       </T>
+      <Input
+        icon="search"
+        placeholder="Buscar reporte…"
+        value={busqueda}
+        onChangeText={setBusqueda}
+        autoCapitalize="none"
+      />
+      <View style={s.filtros}>
+        {[
+          ['', 'Todos'],
+          ['MANUAL', 'Manual'],
+          ['PROGRAMADO', 'Programado'],
+          ['AGENTE', 'Nico AI'],
+        ].map(([valor, etiqueta]) => (
+          <Chip key={valor || 'todos'} selected={origen === valor} onPress={() => setOrigen(valor)}>
+            {etiqueta}
+          </Chip>
+        ))}
+      </View>
     </>
   )
 
@@ -98,7 +150,9 @@ export function ReportesScreen({ navigation, route }) {
       ) : !datos ? (
         [0, 1, 2].map((i) => <Skeleton key={i} height={180} style={{ borderRadius: 22 }} />)
       ) : (
-        datos.map((r, i) => (
+        filtrados.length === 0 ? (
+          <T size={13} color={c.textMuted}>No hay reportes con ese filtro.</T>
+        ) : filtrados.map((r, i) => (
           <Aparece key={r.num} indice={i}>
             <TarjetaReporte r={r} resaltar={r.num === resaltado} abriendo={abriendo === r.num} onPdf={() => abrir(r.num)} />
           </Aparece>
@@ -117,4 +171,5 @@ const s = StyleSheet.create({
   tarjeta: { gap: 10, padding: 16, borderRadius: 22 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  filtros: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 })

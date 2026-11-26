@@ -1095,6 +1095,54 @@ def pide_reporte(pregunta):
     return any(v in palabras for v in VERBOS_REPORTE) and any(p in texto for p in PALABRAS_PERIODO)
 
 
+def _rango_en(texto, hoy):
+    """Rango explícito «del 1 al 15 de noviembre» o «del 3/11 al 10/11».
+
+    Devuelve ``(inicio, fin_exclusivo, descripcion)`` o ``None``. El fin es inclusivo y se
+    convierte al día siguiente a las 00:00 locales.
+    """
+    meses = "|".join(MESES)
+    patron = re.compile(
+        r"\b(?:del|desde el|entre el)\s+(\d{1,2})"
+        r"(?:\s+de\s+(" + meses + r"))?(?:\s+de\s+(\d{4}))?"
+        r"\s+al?\s+(\d{1,2})"
+        r"(?:\s+de\s+(" + meses + r"))?(?:\s+de\s+(\d{4}))?"
+    )
+    m = patron.search(texto)
+    if m:
+        dia1, mes1, anio1, dia2, mes2, anio2 = m.groups()
+        mes1 = MESES.index(mes1) + 1 if mes1 else None
+        mes2 = MESES.index(mes2) + 1 if mes2 else None
+    else:
+        m = re.search(
+            r"\b(?:del|desde el|entre el)\s+(\d{1,2})/(\d{1,2})(?:/(\d{4}))?"
+            r"\s+al?\s+(\d{1,2})/(\d{1,2})(?:/(\d{4}))?",
+            texto,
+        )
+        if not m:
+            return None
+        dia1, mes1, anio1, dia2, mes2, anio2 = m.groups()
+        mes1, mes2 = int(mes1), int(mes2)
+    mes1 = mes1 or mes2
+    mes2 = mes2 or mes1
+    if mes1 is None or mes2 is None:
+        return None
+    explicito = bool(anio1)
+    anio1 = int(anio1) if anio1 else hoy.year
+    anio2 = int(anio2) if anio2 else anio1
+    if not explicito and mes1 > hoy.month:
+        anio1 -= 1
+        anio2 = anio1
+    try:
+        inicio = hoy.replace(year=anio1, month=mes1, day=int(dia1))
+        fin_dia = hoy.replace(year=anio2, month=mes2, day=int(dia2))
+    except ValueError:
+        return None
+    fin = fin_dia + timedelta(days=1)
+    descripcion = f"del {int(dia1)} de {MESES[mes1 - 1]} al {int(dia2)} de {MESES[mes2 - 1]}"
+    return inicio, fin, descripcion
+
+
 def periodo_de(pregunta, ahora=None):
     """Periodo que nombra la petición: ``(inicio, fin, descripcion)`` en hora local.
 
@@ -1159,6 +1207,10 @@ def periodo_de(pregunta, ahora=None):
         return mes(hoy.year, hoy.month)
     if "quincena" in texto:
         return ahora - timedelta(days=15), ahora, "los últimos 15 días"
+    rango = _rango_en(texto, hoy)
+    if rango is not None:
+        inicio, fin, descripcion = rango
+        return inicio, min(fin, ahora), descripcion
     fecha = _fecha_en(texto, hoy)
     if fecha is not None:
         inicio = fecha

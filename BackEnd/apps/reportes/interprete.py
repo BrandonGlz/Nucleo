@@ -130,6 +130,14 @@ def interpretar(pregunta, anterior=""):
         peticion.intencion = "enviar"
     elif herramientas.modificar(pregunta) and not herramientas.pide_umbrales(pregunta):
         peticion.intencion = "modificar"
+    elif (
+        agente.pide_reporte(pregunta)
+        and not herramientas.pide_reportes(pregunta)
+        and not herramientas.pide_programar(pregunta)
+        and not herramientas.pide_editar_programacion(pregunta)
+        and not herramientas.pide_cancelar_programacion(pregunta)
+    ):
+        peticion.intencion = "reporte"
     elif herramientas.pide_capacidades(pregunta) or herramientas.explicacion(pregunta):
         peticion.intencion = "banco"
     elif (

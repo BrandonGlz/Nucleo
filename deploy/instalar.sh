@@ -107,7 +107,7 @@ plantilla nucleo.caddy /etc/caddy/sitios/nucleo.caddy
 # Límite de memoria de Caddy (sirve Núcleo, TMO y el panel): hoy usa ~90 MB.
 sudo install -d /etc/systemd/system/caddy.service.d
 printf '[Service]\nMemoryHigh=200M\nMemoryMax=256M\n' | sudo tee /etc/systemd/system/caddy.service.d/memoria.conf >/dev/null
-servicios=(nucleo-daphne nucleo-mqtt nucleo-sin-conexion)
+servicios=(nucleo-daphne nucleo-mqtt nucleo-sin-conexion nucleo-reportes-cola)
 temporizados=(nucleo-reportes nucleo-respaldo nucleo-prueba-restauracion nucleo-recursos)
 for unidad in "${servicios[@]}" "${temporizados[@]}" nucleo-aviso@; do
   plantilla "$unidad.service" "/etc/systemd/system/$unidad.service"
