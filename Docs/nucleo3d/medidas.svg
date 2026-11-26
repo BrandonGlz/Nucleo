@@ -1,0 +1,434 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 2156" width="1400" height="2156" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<defs><marker id="fl" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L10 5 L0 9 z" fill="#0f172a"/></marker></defs>
+<rect width="1400" height="2156" fill="#ffffff"/>
+<text x="40" y="44" font-size="25" font-weight="800" fill="#0f172a">Núcleo · medidas de cada módulo</text>
+<rect x="457.2" y="22" width="74" height="28" rx="14" fill="#7c3aed"/><text x="494.2" y="42" text-anchor="middle" font-size="15" font-weight="800" fill="#fff" letter-spacing="2">BETA</text>
+<text x="40" y="70" font-size="14" fill="#64748b">Vista de frente y de lado de cada módulo con sus conectores dupont puestos; las cotas son el espacio que ocupa dentro de la carcasa, en cm</text>
+<rect x="20" y="90" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="46" cy="118" r="13" fill="#7c3aed"/><text x="46" y="123" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">1</text>
+<text x="68" y="123" font-size="16" font-weight="800" fill="#0f172a">CCS811</text>
+<polygon points="156.6,197.4 172.8,197.4 172.8,204.0 156.6,204.0" fill="#0f1624" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="102.0,204.0 228.0,204.0 228.0,213.6 102.0,213.6" fill="#6525c9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="104.0,228.6 119.3,228.6 119.3,312.6 104.0,312.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="119.3,228.6 134.5,228.6 134.5,312.6 119.3,312.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="134.5,228.6 149.8,228.6 149.8,312.6 134.5,312.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="149.8,228.6 165.0,228.6 165.0,312.6 149.8,312.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="104.0,213.6 226.0,213.6 226.0,228.6 104.0,228.6" fill="#0f0f0f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="102.0" y1="312.6" x2="102.0" y2="326.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="228.0" y1="312.6" x2="228.0" y2="326.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="102.0" y1="326.6" x2="228.0" y2="326.6" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="165.0" y="341.6" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">2.1 cm</text>
+<line x1="102.0" y1="312.6" x2="90.0" y2="312.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="102.0" y1="197.4" x2="90.0" y2="197.4" stroke="#64748b" stroke-width="0.8"/>
+<line x1="90.0" y1="312.6" x2="90.0" y2="197.4" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="84.0" y="259.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">1.92 cm</text>
+<text x="165" y="152" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="330.0,228.6 345.2,228.6 345.2,312.6 330.0,312.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="330.0,228.6 345.2,228.6 345.2,312.6 330.0,312.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="330.0,228.6 345.2,228.6 345.2,312.6 330.0,312.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="330.0,228.6 345.2,228.6 345.2,312.6 330.0,312.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="366.0,197.4 390.0,197.4 390.0,204.0 366.0,204.0" fill="#0c111c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="330.0,204.0 420.0,204.0 420.0,213.6 330.0,213.6" fill="#4e1c9c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="330.0,213.6 345.2,213.6 345.2,228.6 330.0,228.6" fill="#0c0c0c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="330.0" y1="312.6" x2="330.0" y2="326.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="420.0" y1="312.6" x2="420.0" y2="326.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="330.0" y1="326.6" x2="420.0" y2="326.6" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="375.0" y="341.6" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1.5 cm</text>
+<text x="375" y="152" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="38" y="406" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 2.1 × 1.5 × 0.31 cm · <tspan font-weight="700">ocupa:</tspan> 2.1 × 1.5 × 1.92 cm</text>
+<text x="38" y="428" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 2.1 × 1.5 × 0.16 cm (CJMCU-811)</text>
+<text x="38" y="447" font-size="11.5" fill="#334155"><tspan font-weight="700">Alto con sensor:</tspan> 0.31 cm</text>
+<text x="38" y="466" font-size="11.5" fill="#334155"><tspan font-weight="700">Pines:</tspan> 8 rectos hacia abajo (usa 4) + dupont: 2 cm bajo la placa</text>
+<text x="38" y="485" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> rieles con ranura de 0.16 cm; entra deslizando desde el frente</text>
+<text x="38" y="504" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> tienda (20–21 × 15 mm): verificar</text>
+<text x="38" y="527" font-size="11.5" fill="#64748b">Posición: x -3.05–-0.95 · y 4–5.5 · z 5.15–7.07</text>
+<rect x="480" y="90" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="506" cy="118" r="13" fill="#7c3aed"/><text x="506" y="123" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">2</text>
+<text x="528" y="123" font-size="16" font-weight="800" fill="#0f172a">DHT22</text>
+<polygon points="636.1,165.0 644.4,165.0 644.4,210.8 636.1,210.8" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="639.2,210.8 641.3,210.8 641.3,230.5 639.2,230.5" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="630.8,230.5 636.1,230.5 636.1,345.0 630.8,345.0" fill="#0f1624" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="605.6,237.0 630.8,237.0 630.8,318.8 605.6,318.8" fill="#dfe3e7" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="636.1,230.5 644.4,230.5 644.4,238.6 636.1,238.6" fill="#0f0f0f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="636.1,165.0 644.4,165.0 644.4,210.8 636.1,210.8" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="639.2,210.8 641.3,210.8 641.3,230.5 639.2,230.5" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="636.1,165.0 644.4,165.0 644.4,210.8 636.1,210.8" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="639.2,210.8 641.3,210.8 641.3,230.5 639.2,230.5" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="605.6" y1="345.0" x2="605.6" y2="359.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="644.4" y1="345.0" x2="644.4" y2="359.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="605.6" y1="359.0" x2="644.4" y2="359.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="625.0" y="374.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1.18 cm</text>
+<line x1="605.6" y1="345.0" x2="593.6" y2="345.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="605.6" y1="165.0" x2="593.6" y2="165.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="593.6" y1="345.0" x2="593.6" y2="165.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="587.6" y="259.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">5.5 cm</text>
+<text x="625" y="152" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="810.3,237.0 859.7,237.0 859.7,318.8 810.3,318.8" fill="#adb0b3" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="809.6,230.5 860.4,230.5 860.4,345.0 809.6,345.0" fill="#0c111c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="822.5,230.5 847.5,230.5 847.5,238.6 822.5,238.6" fill="#0c0c0c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="822.5,165.0 830.8,165.0 830.8,210.8 822.5,210.8" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="830.8,165.0 839.2,165.0 839.2,210.8 830.8,210.8" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="839.2,165.0 847.5,165.0 847.5,210.8 839.2,210.8" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="825.6,210.8 827.7,210.8 827.7,230.5 825.6,230.5" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="834.0,210.8 836.0,210.8 836.0,230.5 834.0,230.5" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="842.3,210.8 844.4,210.8 844.4,230.5 842.3,230.5" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="809.6" y1="345.0" x2="809.6" y2="359.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="860.4" y1="345.0" x2="860.4" y2="359.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="809.6" y1="359.0" x2="860.4" y2="359.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="835.0" y="374.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1.55 cm</text>
+<text x="835" y="152" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="498" y="406" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 1.55 × 3.5 × 0.93 cm · <tspan font-weight="700">ocupa:</tspan> 1.18 × 1.55 × 5.5 cm</text>
+<text x="498" y="428" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 1.55 × 3.5 × 0.16 cm</text>
+<text x="498" y="447" font-size="11.5" fill="#334155"><tspan font-weight="700">Sensor:</tspan> 1.51 × 2.5 × 0.77 cm (AM2302)</text>
+<text x="498" y="466" font-size="11.5" fill="#334155"><tspan font-weight="700">Pines:</tspan> 3 a 90° hacia arriba + dupont: 2 cm sobre la placa</text>
+<text x="498" y="485" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> riel en el piso + tope ranurado; la tapa D lo presiona</text>
+<text x="498" y="504" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> hoja de datos (sensor) · placa: verificar</text>
+<text x="498" y="527" font-size="11.5" fill="#64748b">Posición: x -2.73–-1.55 · y 0.6–2.15 · z 0.6–6.1</text>
+<rect x="940" y="90" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="966" cy="118" r="13" fill="#7c3aed"/><text x="966" y="123" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">3</text>
+<text x="988" y="123" font-size="16" font-weight="800" fill="#0f172a">Pantalla OLED</text>
+<polygon points="1054.5,173.0 1069.8,173.0 1069.8,188.2 1054.5,188.2" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1069.8,173.0 1085.0,173.0 1085.0,188.2 1069.8,188.2" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1085.0,173.0 1100.2,173.0 1100.2,188.2 1085.0,188.2" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1100.2,173.0 1115.5,173.0 1115.5,188.2 1100.2,188.2" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1054.5,173.0 1115.5,173.0 1115.5,188.2 1054.5,188.2" fill="#0f0f0f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1003.1,171.6 1166.9,171.6 1166.9,338.4 1003.1,338.4" fill="#1b3580" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1004.9,201.6 1165.1,201.6 1165.1,317.4 1004.9,317.4" fill="#010515" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(6.0000 0.0000 0.0000 6.0000 1004.90 201.60)"><rect x="2.5" y="2.5" width="21.7" height="10.9" fill="#020617"/><text x="4" y="7.5" font-size="3" fill="#7dd3fc" font-weight="700">OLED</text><text x="4" y="11.5" font-size="2.2" fill="#7dd3fc">0.96″ · 0x3C</text></g>
+<line x1="1003.1" y1="338.4" x2="1003.1" y2="352.4" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1166.9" y1="338.4" x2="1166.9" y2="352.4" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1003.1" y1="352.4" x2="1166.9" y2="352.4" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="1085.0" y="367.4" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">2.73 cm</text>
+<line x1="1003.1" y1="338.4" x2="991.1" y2="338.4" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1003.1" y1="171.6" x2="991.1" y2="171.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="991.1" y1="338.4" x2="991.1" y2="171.6" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="985.1" y="259.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">2.78 cm</text>
+<text x="1085" y="152" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="1269.8,173.0 1353.8,173.0 1353.8,188.2 1269.8,188.2" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1269.8,173.0 1353.8,173.0 1353.8,188.2 1269.8,188.2" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1245.2,171.6 1254.8,171.6 1254.8,338.4 1245.2,338.4" fill="#152963" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1236.2,201.6 1245.2,201.6 1245.2,317.4 1236.2,317.4" fill="#010410" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1254.8,173.0 1269.8,173.0 1269.8,188.2 1254.8,188.2" fill="#0c0c0c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1269.8,173.0 1353.8,173.0 1353.8,188.2 1269.8,188.2" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1269.8,173.0 1353.8,173.0 1353.8,188.2 1269.8,188.2" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="1236.2" y1="338.4" x2="1236.2" y2="352.4" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1353.8" y1="338.4" x2="1353.8" y2="352.4" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1236.2" y1="352.4" x2="1353.8" y2="352.4" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="1295.0" y="367.4" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1.96 cm</text>
+<text x="1295" y="152" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="958" y="406" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 2.73 × 2.78 × 0.31 cm · <tspan font-weight="700">ocupa:</tspan> 2.73 × 1.96 × 2.78 cm</text>
+<text x="958" y="428" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 2.73 × 2.78 × 0.16 cm</text>
+<text x="958" y="447" font-size="11.5" fill="#334155"><tspan font-weight="700">Vidrio:</tspan> 2.67 × 1.93 × 0.15 cm, área visible 2.17 × 1.09</text>
+<text x="958" y="466" font-size="11.5" fill="#334155"><tspan font-weight="700">Pines:</tspan> 4 rectos hacia atrás + dupont: 1.65 cm detrás de la placa</text>
+<text x="958" y="485" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> 4 postes de 0.3 × 0.15 cm en la tapa C, barrenos M2 a 2.33 × 2.38 cm</text>
+<text x="958" y="504" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> clon común 27.3 × 27.8 mm: verificar</text>
+<text x="958" y="527" font-size="11.5" fill="#64748b">Posición: x 1.84–4.56 · y 0.25–2.21 · z 4.38–7.17</text>
+<rect x="20" y="604" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="46" cy="632" r="13" fill="#7c3aed"/><text x="46" y="637" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">4</text>
+<text x="68" y="637" font-size="16" font-weight="800" fill="#0f172a">LED RGB KY-016</text>
+<polygon points="168.7,732.0 260.0,732.0 260.0,806.0 168.7,806.0" fill="#161619" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(4.9351 0.0000 0.0000 4.9351 168.70 731.99)"><text x="9.2" y="8.4" font-size="2.6" text-anchor="middle" fill="#f8fafc" font-weight="700">KY-016</text></g>
+<polygon points="70.0,743.9 139.1,743.9 139.1,756.5 70.0,756.5" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="70.0,756.5 139.1,756.5 139.1,769.0 70.0,769.0" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="70.0,769.0 139.1,769.0 139.1,781.5 70.0,781.5" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="70.0,781.5 139.1,781.5 139.1,794.1 70.0,794.1" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="139.1,748.6 168.7,748.6 168.7,751.8 139.1,751.8" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="139.1,761.2 168.7,761.2 168.7,764.3 139.1,764.3" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="139.1,773.7 168.7,773.7 168.7,776.8 139.1,776.8" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="139.1,786.2 168.7,786.2 168.7,789.4 139.1,789.4" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="168.7,743.9 181.0,743.9 181.0,794.1 168.7,794.1" fill="#0f0f0f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="202.0,756.7 226.7,756.7 226.7,781.3 202.0,781.3" fill="#e6e8e9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="70.0" y1="806.0" x2="70.0" y2="820.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="260.0" y1="806.0" x2="260.0" y2="820.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="70.0" y1="820.0" x2="260.0" y2="820.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="165.0" y="835.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">3.85 cm</text>
+<line x1="70.0" y1="806.0" x2="58.0" y2="806.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="70.0" y1="732.0" x2="58.0" y2="732.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="58.0" y1="806.0" x2="58.0" y2="732.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="52.0" y="773.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">1.5 cm</text>
+<text x="165" y="666" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="380.3,743.9 392.9,743.9 392.9,756.5 380.3,756.5" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="380.3,756.5 392.9,756.5 392.9,769.0 380.3,769.0" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="380.3,769.0 392.9,769.0 392.9,781.5 380.3,781.5" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="380.3,781.5 392.9,781.5 392.9,794.1 380.3,794.1" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="385.0,748.6 388.2,748.6 388.2,751.8 385.0,751.8" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="385.0,761.2 388.2,761.2 388.2,764.3 385.0,764.3" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="385.0,773.7 388.2,773.7 388.2,776.8 385.0,776.8" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="385.0,786.2 388.2,786.2 388.2,789.4 385.0,789.4" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="380.3,743.9 392.3,743.9 392.3,794.1 380.3,794.1" fill="#0c0c0c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="392.3,732.0 400.2,732.0 400.2,806.0 392.3,806.0" fill="#111113" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="349.8,756.7 392.3,756.7 392.3,781.3 349.8,781.3" fill="#b2b4b5" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="349.8" y1="806.0" x2="349.8" y2="820.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="400.2" y1="806.0" x2="400.2" y2="820.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="349.8" y1="820.0" x2="400.2" y2="820.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="375.0" y="835.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1.02 cm</text>
+<text x="375" y="666" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="38" y="920" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 1.85 × 1.5 × 1.02 cm · <tspan font-weight="700">ocupa:</tspan> 3.85 × 1.02 × 1.5 cm</text>
+<text x="38" y="942" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 1.85 × 1.5 × 0.16 cm</text>
+<text x="38" y="961" font-size="11.5" fill="#334155"><tspan font-weight="700">LED:</tspan> Ø 0.5 cm, 0.86 cm de alto</text>
+<text x="38" y="980" font-size="11.5" fill="#334155"><tspan font-weight="700">Pines:</tspan> 4 a 90° hacia la izquierda + dupont: 2 cm fuera de la placa</text>
+<text x="38" y="999" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> 2 guías en U (ranura 0.16 cm) en la tapa C; LED en barreno Ø0.52</text>
+<text x="38" y="1018" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> tienda (18.5 × 15 mm; hay versiones de 10 × 10): verificar</text>
+<text x="38" y="1041" font-size="11.5" fill="#64748b">Posición: x 4.2–8.05 · y 0.25–1.27 · z 4.7–6.2</text>
+<rect x="480" y="604" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="506" cy="632" r="13" fill="#7c3aed"/><text x="506" y="637" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">5</text>
+<text x="528" y="637" font-size="16" font-weight="800" fill="#0f172a">Buzzer KY-012</text>
+<polygon points="589.9,679.0 660.1,679.0 660.1,765.5 589.9,765.5" fill="#161619" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(4.6753 0.0000 0.0000 4.6753 589.94 679.00)"><text x="7.5" y="10.1" font-size="2.6" text-anchor="middle" fill="#f8fafc" font-weight="700">KY-012</text></g>
+<polygon points="607.2,753.8 642.8,753.8 642.8,765.5 607.2,765.5" fill="#0f0f0f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="607.2,793.5 619.1,793.5 619.1,859.0 607.2,859.0" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="619.1,793.5 630.9,793.5 630.9,859.0 619.1,859.0" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="630.9,793.5 642.8,793.5 642.8,859.0 630.9,859.0" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="611.6,765.5 614.6,765.5 614.6,793.5 611.6,793.5" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="623.5,765.5 626.5,765.5 626.5,793.5 623.5,793.5" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="635.4,765.5 638.4,765.5 638.4,793.5 635.4,793.5" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="596.9,694.2 653.1,694.2 653.1,750.3 596.9,750.3" fill="#0f1624" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(4.6753 0.0000 0.0000 4.6753 596.95 694.19)"><circle cx="6.0" cy="6.0" r="5.6" fill="#1f2937" stroke="#4b5563" stroke-width="0.6"/><circle cx="6.0" cy="6.0" r="1.2" fill="#0b0b0b"/></g>
+<line x1="589.9" y1="859.0" x2="589.9" y2="873.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="660.1" y1="859.0" x2="660.1" y2="873.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="589.9" y1="873.0" x2="660.1" y2="873.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="625.0" y="888.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1.5 cm</text>
+<line x1="589.9" y1="859.0" x2="577.9" y2="859.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="589.9" y1="679.0" x2="577.9" y2="679.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="577.9" y1="859.0" x2="577.9" y2="679.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="571.9" y="773.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">3.85 cm</text>
+<text x="625" y="666" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="841.6,793.5 853.5,793.5 853.5,859.0 841.6,859.0" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="846.0,765.5 849.0,765.5 849.0,793.5 846.0,793.5" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="853.5,679.0 860.9,679.0 860.9,765.5 853.5,765.5" fill="#111113" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="809.1,694.2 853.5,694.2 853.5,750.3 809.1,750.3" fill="#0c111c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="841.6,753.8 853.5,753.8 853.5,765.5 841.6,765.5" fill="#0c0c0c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="841.6,793.5 853.5,793.5 853.5,859.0 841.6,859.0" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="846.0,765.5 849.0,765.5 849.0,793.5 846.0,793.5" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="841.6,793.5 853.5,793.5 853.5,859.0 841.6,859.0" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="846.0,765.5 849.0,765.5 849.0,793.5 846.0,793.5" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="809.1" y1="859.0" x2="809.1" y2="873.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="860.9" y1="859.0" x2="860.9" y2="873.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="809.1" y1="873.0" x2="860.9" y2="873.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="835.0" y="888.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1.11 cm</text>
+<text x="835" y="666" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="498" y="920" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 1.5 × 1.85 × 1.11 cm · <tspan font-weight="700">ocupa:</tspan> 1.5 × 1.11 × 3.85 cm</text>
+<text x="498" y="942" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 1.5 × 1.85 × 0.16 cm</text>
+<text x="498" y="961" font-size="11.5" fill="#334155"><tspan font-weight="700">Buzzer:</tspan> Ø 1.2 × 0.95 cm (activo)</text>
+<text x="498" y="980" font-size="11.5" fill="#334155"><tspan font-weight="700">Pines:</tspan> 3 a 90° hacia abajo + dupont: 2 cm bajo la placa</text>
+<text x="498" y="999" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> 2 guías en U (ranura 0.16 cm) en la tapa C</text>
+<text x="498" y="1018" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> tienda (18.5 × 15 mm; Joy-it 15 × 25): verificar</text>
+<text x="498" y="1041" font-size="11.5" fill="#64748b">Posición: x 8–9.5 · y 0.25–1.36 · z 0.7–4.55</text>
+<rect x="940" y="604" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="966" cy="632" r="13" fill="#7c3aed"/><text x="966" y="637" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">6</text>
+<text x="988" y="637" font-size="16" font-weight="800" fill="#0f172a">Lector microSD HW-125</text>
+<polygon points="1062.9,737.1 1107.1,737.1 1107.1,744.3 1062.9,744.3" fill="#0f0f0f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1062.9,679.0 1070.3,679.0 1070.3,719.6 1062.9,719.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1070.3,679.0 1077.6,679.0 1077.6,719.6 1070.3,719.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1077.6,679.0 1085.0,679.0 1085.0,719.6 1077.6,719.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1085.0,679.0 1092.4,679.0 1092.4,719.6 1085.0,719.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1092.4,679.0 1099.7,679.0 1099.7,719.6 1092.4,719.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1099.7,679.0 1107.1,679.0 1107.1,719.6 1099.7,719.6" fill="#1c2633" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1065.6,719.6 1067.5,719.6 1067.5,737.1 1065.6,737.1" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1073.0,719.6 1074.9,719.6 1074.9,737.1 1073.0,737.1" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1080.4,719.6 1082.2,719.6 1082.2,737.1 1080.4,737.1" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1087.8,719.6 1089.6,719.6 1089.6,737.1 1087.8,737.1" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1095.1,719.6 1097.0,719.6 1097.0,737.1 1095.1,737.1" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1102.5,719.6 1104.4,719.6 1104.4,737.1 1102.5,737.1" fill="#c49415" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1064.7,815.5 1105.3,815.5 1105.3,859.0 1064.7,859.0" fill="#bcc5d0" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1067.6,773.4 1102.4,773.4 1102.4,796.6 1067.6,796.6" fill="#0f1624" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1050.2,737.1 1119.8,737.1 1119.8,859.0 1050.2,859.0" fill="#1b3ba2" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(2.9032 0.0000 0.0000 2.9032 1050.16 737.06)"><text x="12.0" y="21.9" font-size="2.6" text-anchor="middle" fill="#f8fafc" font-weight="700">HW-125</text></g>
+<line x1="1050.2" y1="859.0" x2="1050.2" y2="873.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1119.8" y1="859.0" x2="1119.8" y2="873.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1050.2" y1="873.0" x2="1119.8" y2="873.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="1085.0" y="888.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">2.4 cm</text>
+<line x1="1050.2" y1="859.0" x2="1038.2" y2="859.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1050.2" y1="679.0" x2="1038.2" y2="679.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1038.2" y1="859.0" x2="1038.2" y2="679.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="1032.2" y="773.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">6.2 cm</text>
+<text x="1085" y="666" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="1293.6,679.0 1301.0,679.0 1301.0,719.6 1293.6,719.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1296.4,719.6 1298.3,719.6 1298.3,737.1 1296.4,737.1" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1293.6,679.0 1301.0,679.0 1301.0,719.6 1293.6,719.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1296.4,719.6 1298.3,719.6 1298.3,737.1 1296.4,737.1" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1293.6,679.0 1301.0,679.0 1301.0,719.6 1293.6,719.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1296.4,719.6 1298.3,719.6 1298.3,737.1 1296.4,737.1" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1289.0,737.1 1293.6,737.1 1293.6,859.0 1289.0,859.0" fill="#152e7e" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1293.6,815.5 1299.2,815.5 1299.2,859.0 1293.6,859.0" fill="#9299a2" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1293.6,773.4 1298.6,773.4 1298.6,796.6 1293.6,796.6" fill="#0c111c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1293.6,737.1 1301.0,737.1 1301.0,744.3 1293.6,744.3" fill="#0c0c0c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1293.6,679.0 1301.0,679.0 1301.0,719.6 1293.6,719.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1296.4,719.6 1298.3,719.6 1298.3,737.1 1296.4,737.1" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1293.6,679.0 1301.0,679.0 1301.0,719.6 1293.6,719.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1296.4,719.6 1298.3,719.6 1298.3,737.1 1296.4,737.1" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1293.6,679.0 1301.0,679.0 1301.0,719.6 1293.6,719.6" fill="#161d27" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1296.4,719.6 1298.3,719.6 1298.3,737.1 1296.4,737.1" fill="#987310" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="1289.0" y1="859.0" x2="1289.0" y2="873.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1301.0" y1="859.0" x2="1301.0" y2="873.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1289.0" y1="873.0" x2="1301.0" y2="873.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="1295.0" y="888.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">0.41 cm</text>
+<text x="1295" y="666" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="958" y="920" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 2.4 × 4.2 × 0.41 cm · <tspan font-weight="700">ocupa:</tspan> 2.4 × 0.41 × 6.2 cm</text>
+<text x="958" y="942" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 2.4 × 4.2 × 0.16 cm</text>
+<text x="958" y="961" font-size="11.5" fill="#334155"><tspan font-weight="700">Zócalo:</tspan> 1.4 × 1.5 × 0.19 cm, abajo</text>
+<text x="958" y="980" font-size="11.5" fill="#334155"><tspan font-weight="700">Pines:</tspan> 6 a 90° hacia arriba + dupont: 2 cm sobre la placa</text>
+<text x="958" y="999" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> 4 postes de 0.4 × 0.2 cm en la tapa C, barrenos M2 a 1.9 × 3.7 cm</text>
+<text x="958" y="1018" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> clon común 42 × 24 mm, barrenos M2: verificar</text>
+<text x="958" y="1041" font-size="11.5" fill="#64748b">Posición: x 4.6–7 · y 0.45–0.86 · z 0.35–6.55</text>
+<rect x="20" y="1118" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="46" cy="1146" r="13" fill="#7c3aed"/><text x="46" y="1151" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">7</text>
+<text x="68" y="1151" font-size="16" font-weight="800" fill="#0f172a">Placa de expansión</text>
+<polygon points="70.0,1221.2 260.0,1221.2 260.0,1344.8 70.0,1344.8" fill="#0a0a0a" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(2.3750 0.0000 0.0000 2.3750 70.00 1221.25)"><circle cx="3.5" cy="3.5" r="2.2" fill="#d1d5db"/><circle cx="3.5" cy="3.5" r="1.2" fill="#0b0b0b"/><circle cx="76.5" cy="3.5" r="2.2" fill="#d1d5db"/><circle cx="76.5" cy="3.5" r="1.2" fill="#0b0b0b"/><circle cx="3.5" cy="48.5" r="2.2" fill="#d1d5db"/><circle cx="3.5" cy="48.5" r="1.2" fill="#0b0b0b"/><circle cx="76.5" cy="48.5" r="2.2" fill="#d1d5db"/><circle cx="76.5" cy="48.5" r="1.2" fill="#0b0b0b"/><rect x="69" y="47" width="5" height="2.6" rx="0.4" fill="#d4a017"/><text x="71.5" y="45.8" font-size="1.9" text-anchor="middle" fill="#e5e7eb" font-weight="700">GND 5V</text><text x="5" y="27" font-size="2.2" fill="#9ca3af" font-weight="700">3V3</text><text x="5" y="30" font-size="2.2" fill="#9ca3af" font-weight="700">GND</text></g>
+<polygon points="86.6,1236.7 243.5,1236.7 243.5,1242.6 86.6,1242.6" fill="#e6e8e9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(2.3750 0.0000 0.0000 2.3750 86.62 1236.69)"><rect x="0.92" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="3.46" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="6.0" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="8.540000000000001" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="11.08" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="13.62" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="16.16" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="18.7" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="21.24" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="23.779999999999998" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="26.319999999999997" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="28.86" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="31.4" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="33.940000000000005" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="36.480000000000004" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="39.02" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="41.56" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="44.1" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="46.64" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="49.18" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="51.72" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="54.260000000000005" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="56.800000000000004" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="59.34" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="61.88" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="64.42" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/></g>
+<polygon points="86.6,1322.2 243.5,1322.2 243.5,1328.1 86.6,1328.1" fill="#e6e8e9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(2.3750 0.0000 0.0000 2.3750 86.62 1322.19)"><rect x="0.92" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="3.46" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="6.0" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="8.540000000000001" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="11.08" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="13.62" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="16.16" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="18.7" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="21.24" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="23.779999999999998" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="26.319999999999997" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="28.86" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="31.4" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="33.940000000000005" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="36.480000000000004" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="39.02" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="41.56" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="44.1" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="46.64" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="49.18" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="51.72" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="54.260000000000005" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="56.800000000000004" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="59.34" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="61.88" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/><rect x="64.42" y="0.9" width="0.7" height="0.7" fill="#cbd5e1"/></g>
+<polygon points="86.6,1245.0 243.5,1245.0 243.5,1250.9 86.6,1250.9" fill="#e8bd13" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(2.3750 0.0000 0.0000 2.3750 86.62 1245.00)"><rect x="0.77" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="3.31" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="5.85" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="8.39" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="10.93" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="13.469999999999999" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="16.01" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="18.55" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="21.09" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="23.63" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="26.169999999999998" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="28.71" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="31.25" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="33.790000000000006" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="36.330000000000005" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="38.870000000000005" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="41.410000000000004" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="43.95" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="46.49" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="49.03" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="51.57" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="54.11000000000001" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="56.650000000000006" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="59.190000000000005" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="61.730000000000004" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="64.27" y="0.75" width="1" height="1" fill="#3f3f46"/></g>
+<polygon points="86.6,1313.9 243.5,1313.9 243.5,1319.8 86.6,1319.8" fill="#e8bd13" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(2.3750 0.0000 0.0000 2.3750 86.62 1313.88)"><rect x="0.77" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="3.31" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="5.85" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="8.39" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="10.93" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="13.469999999999999" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="16.01" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="18.55" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="21.09" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="23.63" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="26.169999999999998" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="28.71" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="31.25" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="33.790000000000006" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="36.330000000000005" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="38.870000000000005" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="41.410000000000004" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="43.95" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="46.49" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="49.03" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="51.57" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="54.11000000000001" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="56.650000000000006" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="59.190000000000005" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="61.730000000000004" y="0.75" width="1" height="1" fill="#3f3f46"/><rect x="64.27" y="0.75" width="1" height="1" fill="#3f3f46"/></g>
+<polygon points="86.6,1307.2 243.4,1307.2 243.4,1312.9 86.6,1312.9" fill="#161619" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="86.6,1253.1 243.4,1253.1 243.4,1258.8 86.6,1258.8" fill="#161619" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="70.0" y1="1344.8" x2="70.0" y2="1358.8" stroke="#64748b" stroke-width="0.8"/>
+<line x1="260.0" y1="1344.8" x2="260.0" y2="1358.8" stroke="#64748b" stroke-width="0.8"/>
+<line x1="70.0" y1="1358.8" x2="260.0" y2="1358.8" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="165.0" y="1373.8" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">8 cm</text>
+<line x1="70.0" y1="1344.8" x2="58.0" y2="1344.8" stroke="#64748b" stroke-width="0.8"/>
+<line x1="70.0" y1="1221.2" x2="58.0" y2="1221.2" stroke="#64748b" stroke-width="0.8"/>
+<line x1="58.0" y1="1344.8" x2="58.0" y2="1221.2" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="52.0" y="1287.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">5.2 cm</text>
+<text x="165" y="1180" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="383.2,1221.2 387.0,1221.2 387.0,1344.8 383.2,1344.8" fill="#070707" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="363.0,1307.2 383.2,1307.2 383.2,1312.9 363.0,1312.9" fill="#111113" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="363.0,1253.1 383.2,1253.1 383.2,1258.8 363.0,1258.8" fill="#111113" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="377.3,1236.7 383.2,1236.7 383.2,1242.6 377.3,1242.6" fill="#b2b4b5" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="363.0,1245.0 383.2,1245.0 383.2,1250.9 363.0,1250.9" fill="#b4920f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="377.3,1322.2 383.2,1322.2 383.2,1328.1 377.3,1328.1" fill="#b2b4b5" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="363.0,1313.9 383.2,1313.9 383.2,1319.8 363.0,1319.8" fill="#b4920f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="363.0" y1="1344.8" x2="363.0" y2="1358.8" stroke="#64748b" stroke-width="0.8"/>
+<line x1="387.0" y1="1344.8" x2="387.0" y2="1358.8" stroke="#64748b" stroke-width="0.8"/>
+<line x1="363.0" y1="1358.8" x2="387.0" y2="1358.8" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="375.0" y="1373.8" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1.01 cm</text>
+<text x="375" y="1180" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="38" y="1434" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 8 × 5.2 × 1.01 cm · <tspan font-weight="700">ocupa:</tspan> 8 × 1.01 × 5.2 cm</text>
+<text x="38" y="1456" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 8 × 5.2 × 0.16 cm</text>
+<text x="38" y="1475" font-size="11.5" fill="#334155"><tspan font-weight="700">Alto con zócalos:</tspan> 0.85 cm (hembra) / 0.25 cm (macho)</text>
+<text x="38" y="1494" font-size="11.5" fill="#334155"><tspan font-weight="700">Pines:</tspan> por GPIO un macho y un hembra; 3V3 y GND en los extremos</text>
+<text x="38" y="1513" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> 4 postes M3 de 0.34 cm en el separador B</text>
+<text x="38" y="1532" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> estimado de la foto: verificar</text>
+<text x="38" y="1555" font-size="11.5" fill="#64748b">Posición: x 1.5–9.5 · y 2.75–3.76 · z 2.2–7.4</text>
+<rect x="480" y="1118" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="506" cy="1146" r="13" fill="#7c3aed"/><text x="506" y="1151" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">8</text>
+<text x="528" y="1151" font-size="16" font-weight="800" fill="#0f172a">ESP32-S3 (girado)</text>
+<polygon points="530.0,1247.8 720.0,1247.8 720.0,1318.2 530.0,1318.2" fill="#0f0f0f" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(2.7536 0.0000 0.0000 2.7536 530.00 1247.75)"><rect x="2.5" y="5" width="18" height="18" rx="0.8" fill="#c7cbd1" stroke="#9ca3af" stroke-width="0.3"/><path d="M2 7 h-1.5 v2 h1.5 v2 h-1.5 v2 h1.5 v2 h-1.5 v2 h1.5" fill="none" stroke="#d4a017" stroke-width="0.4"/><text x="11.5" y="15" font-size="2.4" text-anchor="middle" fill="#374151" font-weight="700">ESP32-S3</text><text x="42" y="15.5" font-size="3.4" text-anchor="middle" fill="#f3f4f6" font-weight="800">lonely binary</text><circle cx="8.00" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="8.00" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="10.54" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="10.54" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="13.08" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="13.08" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="15.62" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="15.62" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="18.16" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="18.16" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="20.70" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="20.70" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="23.24" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="23.24" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="25.78" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="25.78" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="28.32" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="28.32" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="30.86" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="30.86" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="33.40" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="33.40" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="35.94" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="35.94" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="38.48" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="38.48" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="41.02" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="41.02" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="43.56" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="43.56" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="46.10" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="46.10" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="48.64" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="48.64" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="51.18" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="51.18" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="53.72" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="53.72" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="56.26" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="56.26" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="58.80" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="58.80" cy="24.299999999999994" r="0.7" fill="#d4a017"/><circle cx="61.34" cy="1.3" r="0.7" fill="#d4a017"/><circle cx="61.34" cy="24.299999999999994" r="0.7" fill="#d4a017"/><rect x="65" y="6" width="4" height="4.5" rx="0.8" fill="#c0c4cc"/><rect x="65" y="17.5" width="4" height="4.5" rx="0.8" fill="#c0c4cc"/></g>
+<line x1="530.0" y1="1318.2" x2="530.0" y2="1332.2" stroke="#64748b" stroke-width="0.8"/>
+<line x1="720.0" y1="1318.2" x2="720.0" y2="1332.2" stroke="#64748b" stroke-width="0.8"/>
+<line x1="530.0" y1="1332.2" x2="720.0" y2="1332.2" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="625.0" y="1347.2" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">6.9 cm</text>
+<line x1="530.0" y1="1318.2" x2="518.0" y2="1318.2" stroke="#64748b" stroke-width="0.8"/>
+<line x1="530.0" y1="1247.8" x2="518.0" y2="1247.8" stroke="#64748b" stroke-width="0.8"/>
+<line x1="518.0" y1="1318.2" x2="518.0" y2="1247.8" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="512.0" y="1287.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">2.56 cm</text>
+<text x="625" y="1180" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="828.1,1247.8 841.9,1247.8 841.9,1318.2 828.1,1318.2" fill="#0c0c0c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="828.1" y1="1318.2" x2="828.1" y2="1332.2" stroke="#64748b" stroke-width="0.8"/>
+<line x1="841.9" y1="1318.2" x2="841.9" y2="1332.2" stroke="#64748b" stroke-width="0.8"/>
+<line x1="828.1" y1="1332.2" x2="841.9" y2="1332.2" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="835.0" y="1347.2" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">0.5 cm</text>
+<text x="835" y="1180" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="498" y="1434" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 6.9 × 2.56 × 0.5 cm · <tspan font-weight="700">ocupa:</tspan> 6.9 × 0.5 × 2.56 cm</text>
+<text x="498" y="1456" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 6.9 × 2.56 × 0.16 cm (DevKitC-1, 2 USB-C)</text>
+<text x="498" y="1475" font-size="11.5" fill="#334155"><tspan font-weight="700">Filas de pines:</tspan> 22 + 22 a 0.254 cm</text>
+<text x="498" y="1494" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> encajado en los zócalos de la placa de expansión</text>
+<text x="498" y="1513" font-size="11.5" fill="#334155"><tspan font-weight="700">USB:</tspan> abertura de 1.2 × 0.8 cm en la pared derecha</text>
+<text x="498" y="1532" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> Espressif / tienda: verificar</text>
+<text x="498" y="1555" font-size="11.5" fill="#64748b">Posición: x 2–8.9 · y 2.25–2.75 · z 3.52–6.08</text>
+<rect x="940" y="1118" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="966" cy="1146" r="13" fill="#7c3aed"/><text x="966" y="1151" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">9</text>
+<text x="988" y="1151" font-size="16" font-weight="800" fill="#0f172a">Módulo de carga UNIT</text>
+<polygon points="1088.1,1268.4 1113.2,1268.4 1113.2,1293.4 1088.1,1293.4" fill="#225bda" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="996.3,1289.3 1021.3,1289.3 1021.3,1314.3 996.3,1314.3" fill="#e6e8e9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1025.5,1251.7 1079.8,1251.7 1079.8,1314.3 1025.5,1314.3" fill="#242426" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1148.7,1264.2 1180.0,1264.2 1180.0,1301.8 1148.7,1301.8" fill="#b2b5bd" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="990.0,1243.3 1180.0,1243.3 1180.0,1322.7 990.0,1322.7" fill="#161619" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(4.1758 0.0000 0.0000 4.1758 990.00 1243.33)"><text x="22.75" y="9.5" font-size="2.6" text-anchor="middle" fill="#f8fafc" font-weight="700">UNIT LiPo Boost · I2C</text><text x="22.75" y="13.5" font-size="2" text-anchor="middle" fill="#cbd5e1">TP4056 · MT3608 · MAX17048</text></g>
+<line x1="990.0" y1="1322.7" x2="990.0" y2="1336.7" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1180.0" y1="1322.7" x2="1180.0" y2="1336.7" stroke="#64748b" stroke-width="0.8"/>
+<line x1="990.0" y1="1336.7" x2="1180.0" y2="1336.7" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="1085.0" y="1351.7" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">4.55 cm</text>
+<line x1="990.0" y1="1322.7" x2="978.0" y2="1322.7" stroke="#64748b" stroke-width="0.8"/>
+<line x1="990.0" y1="1243.3" x2="978.0" y2="1243.3" stroke="#64748b" stroke-width="0.8"/>
+<line x1="978.0" y1="1322.7" x2="978.0" y2="1243.3" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="972.0" y="1287.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">1.9 cm</text>
+<text x="1085" y="1180" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="1288.1,1289.3 1306.9,1289.3 1306.9,1314.3 1288.1,1314.3" fill="#b2b4b5" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1288.1,1251.7 1302.3,1251.7 1302.3,1314.3 1288.1,1314.3" fill="#1c1c1e" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1281.4,1243.3 1288.1,1243.3 1288.1,1322.7 1281.4,1322.7" fill="#111113" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1288.1,1268.4 1308.6,1268.4 1308.6,1293.4 1288.1,1293.4" fill="#1a47a9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1288.1,1264.2 1301.9,1264.2 1301.9,1301.8 1288.1,1301.8" fill="#8a8d92" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="1281.4" y1="1322.7" x2="1281.4" y2="1336.7" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1308.6" y1="1322.7" x2="1308.6" y2="1336.7" stroke="#64748b" stroke-width="0.8"/>
+<line x1="1281.4" y1="1336.7" x2="1308.6" y2="1336.7" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="1295.0" y="1351.7" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">0.65 cm</text>
+<text x="1295" y="1180" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="958" y="1434" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 4.55 × 1.9 × 0.7 cm · <tspan font-weight="700">ocupa:</tspan> 4.55 × 0.65 × 1.9 cm</text>
+<text x="958" y="1456" font-size="11.5" fill="#334155"><tspan font-weight="700">Placa:</tspan> 4.55 × 1.9 × 0.16 cm</text>
+<text x="958" y="1475" font-size="11.5" fill="#334155"><tspan font-weight="700">Alto con componentes:</tspan> 0.7 cm (USB-C, JST, potenciómetro)</text>
+<text x="958" y="1494" font-size="11.5" fill="#334155"><tspan font-weight="700">Cables:</tspan> soldados: SDA, SCL, STEP +, STEP − (sin dupont)</text>
+<text x="958" y="1513" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> repisa con ranura + gancho superior en el separador B</text>
+<text x="958" y="1532" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> UNIT Electronics (45.5 × 19 mm)</text>
+<text x="958" y="1555" font-size="11.5" fill="#64748b">Posición: x 6.15–10.7 · y 4.5–5.15 · z 5.1–7</text>
+<rect x="20" y="1632" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="46" cy="1660" r="13" fill="#7c3aed"/><text x="46" y="1665" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">10</text>
+<text x="68" y="1665" font-size="16" font-weight="800" fill="#0f172a">Batería LiPo</text>
+<polygon points="70.0,1732.4 244.8,1732.4 244.8,1861.6 70.0,1861.6" fill="#babfc6" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(3.8000 0.0000 0.0000 3.8000 70.00 1732.40)"><rect x="3" y="8.0" width="40" height="18" rx="1.5" fill="#1d4ed8" fill-opacity="0.85"/><text x="23.0" y="15.5" font-size="4" text-anchor="middle" fill="#fff" font-weight="800">LiPo 3.7 V</text><text x="23.0" y="21.5" font-size="3.2" text-anchor="middle" fill="#dbeafe">1000 mAh · 603450</text></g>
+<polygon points="244.8,1732.4 260.0,1732.4 260.0,1861.6 244.8,1861.6" fill="#d4a844" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="70.0" y1="1861.6" x2="70.0" y2="1875.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="260.0" y1="1861.6" x2="260.0" y2="1875.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="70.0" y1="1875.6" x2="260.0" y2="1875.6" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="165.0" y="1890.6" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">5 cm</text>
+<line x1="70.0" y1="1861.6" x2="58.0" y2="1861.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="70.0" y1="1732.4" x2="58.0" y2="1732.4" stroke="#64748b" stroke-width="0.8"/>
+<line x1="58.0" y1="1861.6" x2="58.0" y2="1732.4" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="52.0" y="1801.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">3.4 cm</text>
+<text x="165" y="1694" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="363.6,1732.4 386.4,1732.4 386.4,1861.6 363.6,1861.6" fill="#90949a" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="363.6,1732.4 386.4,1732.4 386.4,1861.6 363.6,1861.6" fill="#a48235" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="363.6" y1="1861.6" x2="363.6" y2="1875.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="386.4" y1="1861.6" x2="386.4" y2="1875.6" stroke="#64748b" stroke-width="0.8"/>
+<line x1="363.6" y1="1875.6" x2="386.4" y2="1875.6" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="375.0" y="1890.6" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">0.6 cm</text>
+<text x="375" y="1694" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="38" y="1948" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 5 × 0.6 × 3.4 cm · <tspan font-weight="700">ocupa:</tspan> 5 × 0.6 × 3.4 cm</text>
+<text x="38" y="1970" font-size="11.5" fill="#334155"><tspan font-weight="700">Celda:</tspan> 5 × 3.4 × 0.6 cm (603450, 1000 mAh, 3.7 V)</text>
+<text x="38" y="1989" font-size="11.5" fill="#334155"><tspan font-weight="700">Cable:</tspan> JST-PH 2.0 de 2 hilos, ~7 cm</text>
+<text x="38" y="2008" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> cuna de 5.24 × 0.84 × 1.2 cm en la base A + cinta velcro</text>
+<text x="38" y="2027" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> formato estándar 603450: verificar el grosor</text>
+<text x="38" y="2050" font-size="11.5" fill="#64748b">Posición: x 0.6–5.6 · y 4.6–5.2 · z 0.25–3.65</text>
+<rect x="480" y="1632" width="450" height="500" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<circle cx="506" cy="1660" r="13" fill="#7c3aed"/><text x="506" y="1665" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">11</text>
+<text x="528" y="1665" font-size="16" font-weight="800" fill="#0f172a">Ventilador 5 V</text>
+<polygon points="535.0,1707.0 715.0,1707.0 715.0,1887.0 535.0,1887.0" fill="#0f1624" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<g transform="matrix(6.0000 0.0000 0.0000 6.0000 535.00 1707.00)"><circle cx="15.0" cy="15.0" r="13.5" fill="#0f172a"/><circle cx="15.0" cy="15.0" r="5" fill="#334155"/><path d="M15.0 15.0 q 6 -9.5 11 -10.5" stroke="#64748b" stroke-width="2.4" fill="none" transform="rotate(0 15.0 15.0)"/><path d="M15.0 15.0 q 6 -9.5 11 -10.5" stroke="#64748b" stroke-width="2.4" fill="none" transform="rotate(72 15.0 15.0)"/><path d="M15.0 15.0 q 6 -9.5 11 -10.5" stroke="#64748b" stroke-width="2.4" fill="none" transform="rotate(144 15.0 15.0)"/><path d="M15.0 15.0 q 6 -9.5 11 -10.5" stroke="#64748b" stroke-width="2.4" fill="none" transform="rotate(216 15.0 15.0)"/><path d="M15.0 15.0 q 6 -9.5 11 -10.5" stroke="#64748b" stroke-width="2.4" fill="none" transform="rotate(288 15.0 15.0)"/><circle cx="3" cy="3" r="1.6" fill="#e5e7eb"/><circle cx="27" cy="3" r="1.6" fill="#e5e7eb"/><circle cx="3" cy="27" r="1.6" fill="#e5e7eb"/><circle cx="27" cy="27" r="1.6" fill="#e5e7eb"/></g>
+<line x1="535.0" y1="1887.0" x2="535.0" y2="1901.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="715.0" y1="1887.0" x2="715.0" y2="1901.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="535.0" y1="1901.0" x2="715.0" y2="1901.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="625.0" y="1916.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">3 cm</text>
+<line x1="535.0" y1="1887.0" x2="523.0" y2="1887.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="535.0" y1="1707.0" x2="523.0" y2="1707.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="523.0" y1="1887.0" x2="523.0" y2="1707.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="517.0" y="1801.0" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">3 cm</text>
+<text x="625" y="1694" text-anchor="middle" font-size="11" fill="#64748b">de frente</text>
+<polygon points="805.0,1707.0 865.0,1707.0 865.0,1887.0 805.0,1887.0" fill="#0c111c" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
+<line x1="805.0" y1="1887.0" x2="805.0" y2="1901.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="865.0" y1="1887.0" x2="865.0" y2="1901.0" stroke="#64748b" stroke-width="0.8"/>
+<line x1="805.0" y1="1901.0" x2="865.0" y2="1901.0" stroke="#0f172a" stroke-width="1.2" marker-start="url(#fl)" marker-end="url(#fl)"/>
+<text x="835.0" y="1916.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">1 cm</text>
+<text x="835" y="1694" text-anchor="middle" font-size="11" fill="#64748b">de lado</text>
+<text x="498" y="1948" font-size="12.5" fill="#0f172a"><tspan font-weight="700">Módulo:</tspan> 3 × 1 × 3 cm · <tspan font-weight="700">ocupa:</tspan> 3 × 1 × 3 cm</text>
+<text x="498" y="1970" font-size="11.5" fill="#334155"><tspan font-weight="700">Cuerpo:</tspan> 3 × 3 × 1 cm (3010, 5 V)</text>
+<text x="498" y="1989" font-size="11.5" fill="#334155"><tspan font-weight="700">Barrenos:</tspan> 4 a 2.4 cm entre centros</text>
+<text x="498" y="2008" font-size="11.5" fill="#334155"><tspan font-weight="700">Cable:</tspan> 2 hilos al STEP ± del módulo de carga</text>
+<text x="498" y="2027" font-size="11.5" fill="#334155"><tspan font-weight="700">Sujeción:</tspan> 4 tornillos M3 × 12 autorroscantes por la pared trasera</text>
+<text x="498" y="2046" font-size="11.5" fill="#334155"><tspan font-weight="700">Fuente:</tspan> formato 3010 (barrenos a 24 mm)</text>
+<text x="498" y="2069" font-size="11.5" fill="#64748b">Posición: x 2.6–5.6 · y 4.75–5.75 · z 4.4–7.4</text>
+</svg>
