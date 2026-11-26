@@ -309,6 +309,20 @@ class MensajeTests(unittest.TestCase):
             },
         )
 
+    def test_manda_el_voltaje_y_el_intervalo_que_usa(self):
+        sensores = Sensores(i2c=None)
+        mensaje = aplicacion._construir_mensaje(
+            self.Red(None), sensores, {"TEMP": 22}, True, 64, 3.871, 60
+        )
+        self.assertEqual(mensaje["bateria"], 64)
+        self.assertEqual(mensaje["bateria_v"], 3.871)
+        self.assertEqual(mensaje["intervalo_seg"], 60)
+
+    def test_sin_porcentaje_no_se_manda_el_voltaje(self):
+        sensores = Sensores(i2c=None)
+        mensaje = aplicacion._construir_mensaje(self.Red(None), sensores, {"TEMP": 22}, True, None, 3.9, 60)
+        self.assertNotIn("bateria_v", mensaje)
+
     def test_sin_hora_ni_bateria_se_omiten_esos_campos(self):
         sensores = Sensores(i2c=None)
         mensaje = aplicacion._construir_mensaje(self.Red(None), sensores, {"TEMP": 22}, True, None)
@@ -490,6 +504,12 @@ class BateriaTests(unittest.TestCase):
 
     def test_sin_medidor_se_omite_el_nivel(self):
         self.assertIsNone(self.bateria.Bateria(self.I2C(falla=True)).porcentaje())
+
+    def test_un_bus_que_lee_puros_ceros_no_es_una_bateria_vacia(self):
+        # SDA pegado a tierra (medidor sin alimentación o cable a GND): todo se lee en cero.
+        b = self.bateria.Bateria(self.I2C({0x04: 0x0000, 0x02: 0x0000}))
+        self.assertIsNone(b.porcentaje())
+        self.assertIsNone(b.voltaje)
 
     def test_sin_bateria_configurada_no_hay_nivel(self):
         config.BATERIA = None

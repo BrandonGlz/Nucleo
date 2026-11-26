@@ -22,7 +22,7 @@ from nucleo.umbrales import NORMAL, Ajustes
 _PAUSA_MS = 100
 
 
-def _construir_mensaje(red, sensores, lecturas, estabilizado, bateria):
+def _construir_mensaje(red, sensores, lecturas, estabilizado, bateria, voltaje=None, intervalo=None):
     mensaje = {
         "dispositivo": secrets.CODIGO_MQTT,
         "aire_estabilizado": estabilizado,
@@ -36,6 +36,12 @@ def _construir_mensaje(red, sensores, lecturas, estabilizado, bateria):
         mensaje["fecha_hora"] = fecha_hora  # sin hora válida, el backend usa la de recepción
     if bateria is not None:
         mensaje["bateria"] = bateria
+        if voltaje is not None:
+            mensaje["bateria_v"] = voltaje  # voltaje de la celda: valida el porcentaje
+    if intervalo is not None:
+        # El intervalo que se usa de verdad: si no es el de la plataforma, le reenvía la
+        # configuración (no le llegó) y no lo marca sin conexión por medir más espaciado.
+        mensaje["intervalo_seg"] = intervalo
     return mensaje
 
 
@@ -133,7 +139,10 @@ def ejecutar():
             indicadores.nivel(nivel)  # alerta local aunque no haya conexión (SRS 3.2.7)
             porcentaje = bateria.porcentaje()
             if lecturas or porcentaje is not None:
-                mensaje = _construir_mensaje(red, sensores, lecturas, estabilizado, porcentaje)
+                mensaje = _construir_mensaje(
+                    red, sensores, lecturas, estabilizado, porcentaje,
+                    bateria.voltaje, ajustes.intervalo_seg,
+                )
                 if "fecha_hora" in mensaje or broker.conectado():
                     cola.agregar(mensaje)
                     cola.enviar(broker.publicar_lecturas)

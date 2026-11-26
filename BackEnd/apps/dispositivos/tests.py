@@ -1,6 +1,8 @@
 from datetime import timedelta
+from unittest import mock
 
 from django.db import IntegrityError, transaction
+from django.test import override_settings
 from django.utils import timezone
 
 from apps.dispositivos.models import Dispositivo
@@ -107,6 +109,76 @@ class SinConexionTests(PruebaBase):
     def test_respeta_mantenimiento(self):
         self.configurar(500, estado=roles.DISPOSITIVO_MANTENIMIENTO)
         self.assertEqual(marcar_sin_conexion(), [])
+
+    def test_usa_el_intervalo_que_informa_el_esp_si_es_mas_largo(self):
+        # Plataforma 30 s (límite 90 s), pero el ESP mide cada 60 s: no le llegó la configuración.
+        Dispositivo.objects.filter(pk=self.e.dispositivo.pk).update(intervalo_reportado_seg=60)
+        self.configurar(120)
+        self.assertEqual(marcar_sin_conexion(), [])
+        self.configurar(200)
+        self.assertEqual(len(marcar_sin_conexion()), 1)
+
+    def test_un_intervalo_informado_mas_corto_no_acorta_el_limite(self):
+        Dispositivo.objects.filter(pk=self.e.dispositivo.pk).update(intervalo_reportado_seg=5)
+        self.configurar(60)
+        self.assertEqual(marcar_sin_conexion(), [])
+
+
+class ConfiguracionRetenidaTests(PruebaBase):
+    """La configuración sale por la cola que publica escuchar_mqtt, nunca por otra conexión."""
+
+    def setUp(self):
+        from apps.reportes import puente
+
+        self.e = Escenario()
+        self.cola = puente._Memoria()
+        parche = mock.patch.object(puente, "_cola", self.cola)
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def test_la_api_deja_la_configuracion_retenida_en_la_cola(self):
+        from apps.mediciones.mqtt import publicar_configuracion
+
+        publicar_configuracion(self.e.dispositivo)
+        topico, carga, retener = self.cola.siguiente_salida(1)
+        self.assertEqual(topico, f"nucleo/devices/{self.e.dispositivo.codigo_mqtt}/config")
+        self.assertTrue(retener)
+        self.assertEqual(carga["intervalo_muestreo_seg"], self.e.dispositivo.intervalo_muestreo_seg)
+        self.assertEqual(carga["nombre"], self.e.dispositivo.nombre)
+
+    @override_settings(MQTT_PUBLICAR_CONFIG=True)
+    def test_cambiar_el_intervalo_publica_la_configuracion(self):
+        url = f"/api/v1/dispositivos/{self.e.dispositivo.pk}/"
+        with self.captureOnCommitCallbacks(execute=True):
+            r = cliente_de(self.e.admin).patch(url, {"intervalo_muestreo_seg": 90}, format="json")
+        self.assertEqual(r.status_code, 200)
+        _, carga, retener = self.cola.siguiente_salida(1)
+        self.assertEqual(carga["intervalo_muestreo_seg"], 90)
+        self.assertTrue(retener)
+
+    def test_al_conectarse_escuchar_mqtt_reenvia_todas_menos_las_de_baja(self):
+        from apps.mediciones.mqtt import publicar_todas_las_configuraciones
+
+        otro = Dispositivo.objects.create(
+            area=self.e.dispositivo.area,
+            registrado_por=self.e.admin,
+            nombre="De baja",
+            codigo_mqtt="NC-BAJA",
+            estado_dispositivo_id=roles.DISPOSITIVO_BAJA,
+        )
+        cliente = mock.Mock()
+        total = publicar_todas_las_configuraciones(cliente)
+        topicos = [c.args[0] for c in cliente.publish.call_args_list]
+        self.assertIn(f"nucleo/devices/{self.e.dispositivo.codigo_mqtt}/config", topicos)
+        self.assertNotIn(f"nucleo/devices/{otro.codigo_mqtt}/config", topicos)
+        self.assertEqual(total, len(topicos))
+        self.assertTrue(all(c.kwargs["retain"] for c in cliente.publish.call_args_list))
+
+    def test_la_respuesta_avisa_si_la_configuracion_esta_pendiente(self):
+        Dispositivo.objects.filter(pk=self.e.dispositivo.pk).update(intervalo_reportado_seg=120)
+        r = cliente_de(self.e.admin).get(f"/api/v1/dispositivos/{self.e.dispositivo.pk}/")
+        self.assertTrue(r.json()["configuracion_pendiente"])
+        self.assertEqual(r.json()["intervalo_reportado_seg"], 120)
 
 
 class CambioDeAreaTests(PruebaBase):

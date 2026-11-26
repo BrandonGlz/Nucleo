@@ -2,9 +2,11 @@ import re
 from datetime import datetime, timedelta
 from decimal import Decimal
 from io import StringIO
+from unittest import mock
 
 from django.core import mail
 from django.db import IntegrityError, connections, transaction
+from django.test import override_settings
 from django.utils import timezone
 
 from apps.alertas.models import Alerta, Notificacion
@@ -308,6 +310,58 @@ class BateriaSinDatoTests(PruebaBase):
         e.dispositivo.refresh_from_db()
         self.assertIsNone(e.dispositivo.nivel_bateria)
         self.assertEqual(e.dispositivo.estado_dispositivo_id, roles.DISPOSITIVO_EN_LINEA)
+
+
+class VoltajeEIntervaloInformadoTests(PruebaBase):
+    """Desde el firmware 1.1.5 el ESP manda el voltaje de la celda y el intervalo que usa."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.e = Escenario()
+        self.temp = [lectura("DHT22", "TEMP", 22)]
+        parche = mock.patch("apps.mediciones.mqtt.publicar_configuracion")
+        self.publicar = parche.start()
+        self.addCleanup(parche.stop)
+
+    def procesar(self, **extra):
+        services.procesar_mensaje(mensaje(self.e.dispositivo.codigo_mqtt, self.temp, **extra))
+        self.e.dispositivo.refresh_from_db()
+
+    def test_guarda_el_voltaje_y_el_intervalo(self):
+        self.procesar(
+            bateria=64, bateria_v=3.8714, intervalo_seg=self.e.dispositivo.intervalo_muestreo_seg
+        )
+        self.assertEqual(self.e.dispositivo.voltaje_bateria, Decimal("3.871"))
+        self.assertEqual(
+            self.e.dispositivo.intervalo_reportado_seg, self.e.dispositivo.intervalo_muestreo_seg
+        )
+        self.publicar.assert_not_called()
+
+    def test_un_voltaje_imposible_o_mal_tipado_se_ignora(self):
+        for valor in (0, 0.0, 7.2, "3.9", True):
+            self.procesar(bateria=50, bateria_v=valor)
+            self.assertIsNone(self.e.dispositivo.voltaje_bateria, valor)
+
+    @override_settings(MQTT_PUBLICAR_CONFIG=True)
+    def test_si_el_esp_usa_otro_intervalo_se_le_reenvia_la_configuracion_una_vez(self):
+        self.procesar(intervalo_seg=120)
+        self.procesar(intervalo_seg=120)
+        self.assertEqual(self.e.dispositivo.intervalo_reportado_seg, 120)
+        self.publicar.assert_called_once()
+
+    @override_settings(MQTT_PUBLICAR_CONFIG=False)
+    def test_sin_envio_de_configuracion_no_se_reenvia(self):
+        self.procesar(intervalo_seg=120)
+        self.publicar.assert_not_called()
+
+    @override_settings(MQTT_PUBLICAR_CONFIG=True)
+    def test_un_mensaje_rezagado_no_cambia_el_intervalo_informado(self):
+        antes = (timezone.now() - timedelta(hours=1)).isoformat()
+        self.procesar(intervalo_seg=120, fecha_hora=antes)
+        self.assertIsNone(self.e.dispositivo.intervalo_reportado_seg)
+        self.publicar.assert_not_called()
 
 
 class LecturasRezagadasTests(PruebaBase):

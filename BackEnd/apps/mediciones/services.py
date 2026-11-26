@@ -6,6 +6,8 @@ Formato del mensaje que publica el dispositivo en ``nucleo/devices/<codigo_mqtt>
         "dispositivo": "NUC-001",
         "fecha_hora": "2026-10-24T08:30:00-07:00",
         "bateria": 87,
+        "bateria_v": 3.912,
+        "intervalo_seg": 60,
         "aire_estabilizado": true,
         "lecturas": [
             {"sensor": "DHT22", "variable": "TEMP", "valor": 26.4},
@@ -17,6 +19,10 @@ Formato del mensaje que publica el dispositivo en ``nucleo/devices/<codigo_mqtt>
 ``fecha_hora``, ``bateria`` y ``aire_estabilizado`` son opcionales: sin fecha se usa la hora
 de recepción y sin indicador se considera que el aire ya está estabilizado. Sin ``bateria``
 (el ESP no tiene medidor o no responde) el nivel queda vacío: así no se muestra uno viejo.
+``bateria_v`` (voltaje de la celda) e ``intervalo_seg`` (el intervalo que el ESP usa de verdad)
+también son opcionales; los mandan los firmwares desde 1.1.5. Si el intervalo informado no es
+el de la plataforma, el ESP no recibió su configuración: se vuelve a publicar (como mucho una
+vez cada ``REENVIO_CONFIG``) y, mientras tanto, «Sin conexión» se calcula con el más largo.
 Si un valor es inválido se descarta y las demás lecturas del mensaje se guardan.
 
 Secuencia (SRS 3.2.6): las lecturas válidas se insertan en ``nucleo_iot``; en ``nucleo_db`` se
@@ -40,6 +46,7 @@ from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -58,6 +65,8 @@ CENTESIMAS = Decimal("0.01")
 CALENTAMIENTO = timedelta(minutes=20)
 RETRASO_AVISO = timedelta(minutes=10)
 LIMITE_FUTURO = timedelta(minutes=5)
+REENVIO_CONFIG = timedelta(minutes=5)
+MILESIMAS = Decimal("0.001")
 
 
 class MensajeInvalido(Exception):
@@ -101,6 +110,41 @@ def _bateria(valor):
     if isinstance(valor, bool) or not isinstance(valor, int) or not 0 <= valor <= 100:
         return None
     return valor
+
+
+def _voltaje(valor):
+    """Voltaje de la celda en V; fuera de lo posible para una LiPo (o mal tipado), vacío."""
+    if isinstance(valor, bool) or not isinstance(valor, (int, float)) or not math.isfinite(valor):
+        return None
+    if not 2.0 <= valor <= 5.0:
+        return None
+    return Decimal(str(valor)).quantize(MILESIMAS, rounding=ROUND_HALF_UP)
+
+
+def _intervalo(valor):
+    if isinstance(valor, bool) or not isinstance(valor, int) or not 1 <= valor <= 3600:
+        return None
+    return valor
+
+
+def _reenviar_configuracion_si_difiere(dispositivo, intervalo):
+    """El ESP mide con otro intervalo que el de la plataforma: no le llegó la configuración."""
+    if intervalo is None or intervalo == dispositivo.intervalo_muestreo_seg:
+        return
+    if not settings.MQTT_PUBLICAR_CONFIG:
+        return
+    clave = f"config-reenviada:{dispositivo.codigo_mqtt}"
+    if not cache.add(clave, 1, int(REENVIO_CONFIG.total_seconds())):
+        return
+    from apps.mediciones.mqtt import publicar_configuracion
+
+    logger.warning(
+        "%s mide cada %d s y la plataforma dice %d s: se reenvía su configuración",
+        dispositivo.codigo_mqtt,
+        intervalo,
+        dispositivo.intervalo_muestreo_seg,
+    )
+    publicar_configuracion(dispositivo)
 
 
 def _aire_estabilizado(valor):
@@ -161,6 +205,10 @@ def procesar_mensaje(datos):
     recibida = timezone.now()
     fecha_mensaje = _fecha_medicion(datos.get("fecha_hora"), recibida)
     bateria = _bateria(datos.get("bateria"))
+    voltaje = _voltaje(datos.get("bateria_v"))
+    intervalo = _intervalo(datos.get("intervalo_seg"))
+    # Un mensaje rezagado (guardado sin conexión) trae el intervalo de entonces: no cuenta.
+    al_dia = recibida - fecha_mensaje <= RETRASO_AVISO
     aire_estabilizado = _aire_estabilizado(datos.get("aire_estabilizado"))
 
     resultado = ResultadoIngesta(dispositivo=dispositivo)
@@ -222,7 +270,10 @@ def procesar_mensaje(datos):
         "ultima_conexion": recibida,
         "estado_dispositivo_id": _estado_tras_mensaje(dispositivo, bateria, aire_estabilizado),
         "nivel_bateria": bateria,
+        "voltaje_bateria": voltaje,
     }
+    if al_dia:
+        cambios["intervalo_reportado_seg"] = intervalo
     if _inicia_calentamiento(dispositivo, aire_estabilizado, recibida):
         cambios["ultimo_arranque"] = recibida
     estado_anterior = dispositivo.estado_dispositivo_id
@@ -237,6 +288,9 @@ def procesar_mensaje(datos):
             avisos.dispositivo_reconectado(dispositivo)
         if nuevo == roles.DISPOSITIVO_BATERIA_BAJA:
             avisos.dispositivo_bateria_baja(dispositivo)
+
+    if al_dia:
+        _reenviar_configuracion_si_difiere(dispositivo, intervalo)
 
     # Cada alerta se registra con sus notificaciones en su propia transacción.
     for lectura in resultado.lecturas:

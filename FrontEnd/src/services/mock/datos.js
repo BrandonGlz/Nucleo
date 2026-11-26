@@ -115,6 +115,9 @@ const versionDe = (num) => (num === 4 ? '1.3.0' : num === 12 ? null : FIRMWARE_P
 export const dispositivos = DISP.map(([num, area, nombre, codigo, bat, seg, intervalo, estado, operador]) => ({
   num, area, estado_dispositivo: estado, operador, registrado_por: 1, nombre, codigo_mqtt: codigo,
   intervalo_muestreo_seg: intervalo, nivel_bateria: bat, ultima_conexion: hace(seg),
+  // Voltaje aproximado de una LiPo según su carga; el equipo 4 aún no recibe su configuración.
+  voltaje_bateria: bat == null ? null : (3.3 + 0.009 * bat).toFixed(3),
+  intervalo_reportado_seg: num === 4 ? 120 : intervalo, configuracion_pendiente: num === 4 && intervalo !== 120,
   ultimo_arranque: hace(3 * DIA), fecha_alta: '2026-08-10T16:00:00Z',
   version_firmware: versionDe(num), version_reportada_en: versionDe(num) ? hace(seg + 2 * HORA) : null,
   version_firmware_publicada: FIRMWARE_PUBLICADO,

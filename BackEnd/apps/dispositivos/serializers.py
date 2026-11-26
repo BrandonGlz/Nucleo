@@ -35,6 +35,8 @@ class DispositivoSerializer(ValoresPorDefectoDeBaseMixin, serializers.ModelSeria
     # Versión de firmware publicada para la actualización remota (null si no hay ninguna): con
     # version_firmware el cliente sabe si el equipo está al día.
     version_firmware_publicada = serializers.SerializerMethodField()
+    # El ESP mide con otro intervalo que el configurado: su configuración aún no le llega.
+    configuracion_pendiente = serializers.SerializerMethodField()
 
     class Meta:
         model = Dispositivo
@@ -48,6 +50,9 @@ class DispositivoSerializer(ValoresPorDefectoDeBaseMixin, serializers.ModelSeria
             "codigo_mqtt",
             "intervalo_muestreo_seg",
             "nivel_bateria",
+            "voltaje_bateria",
+            "intervalo_reportado_seg",
+            "configuracion_pendiente",
             "ultima_conexion",
             "ultimo_arranque",
             "fecha_alta",
@@ -60,12 +65,18 @@ class DispositivoSerializer(ValoresPorDefectoDeBaseMixin, serializers.ModelSeria
             "num",
             "registrado_por",
             "nivel_bateria",
+            "voltaje_bateria",
+            "intervalo_reportado_seg",
             "ultima_conexion",
             "ultimo_arranque",
             "fecha_alta",
             "version_firmware",
             "version_reportada_en",
         ]
+
+    def get_configuracion_pendiente(self, dispositivo):
+        reportado = dispositivo.intervalo_reportado_seg
+        return reportado is not None and reportado != dispositivo.intervalo_muestreo_seg
 
     def get_version_firmware_publicada(self, dispositivo):
         # Se lee una vez por respuesta (es un archivo), no una por dispositivo de la lista.

@@ -127,9 +127,9 @@ class _Memoria:
     def terminar(self, codigo):
         self.en_curso[codigo] = max(0, self.en_curso[codigo] - 1)
 
-    def publicar(self, topico, carga):
+    def publicar(self, topico, carga, retener=False):
         with self.cond:
-            self.salida.append((topico, carga))
+            self.salida.append((topico, carga, retener))
             self.cond.notify_all()
 
     def siguiente_salida(self, espera):
@@ -209,8 +209,8 @@ class _Redis:
         if self.r.decr(f"puente:curso:{codigo}") < 0:
             self.r.set(f"puente:curso:{codigo}", 0, ex=120)
 
-    def publicar(self, topico, carga):
-        self.r.rpush("puente:salida", json.dumps([topico, carga]))
+    def publicar(self, topico, carga, retener=False):
+        self.r.rpush("puente:salida", json.dumps([topico, carga, retener]))
         self.r.expire("puente:salida", 60)
 
     def siguiente_salida(self, espera):

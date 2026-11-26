@@ -64,6 +64,8 @@ Tópico `nucleo/devices/<codigo_mqtt>/measurements`:
   "dispositivo": "NUC-001",
   "fecha_hora": "2026-10-23T15:20:00-07:00",
   "bateria": 87,
+  "bateria_v": 3.912,
+  "intervalo_seg": 60,
   "aire_estabilizado": true,
   "lecturas": [
     {"sensor": "DHT22", "variable": "TEMP", "valor": 26.4},
@@ -82,6 +84,12 @@ Tópico `nucleo/devices/<codigo_mqtt>/measurements`:
 - `fecha_hora`, `bateria` y `aire_estabilizado` son opcionales; sin `fecha_hora` se
   usa la hora de recepción (el firmware envía la hora UTC con `Z`); sin `bateria` el nivel
   del dispositivo queda vacío (se muestra «—»), para no mostrar un porcentaje viejo.
+- `bateria_v` (voltaje de la celda, 2.0 a 5.0 V; fuera de eso se ignora) e `intervalo_seg`
+  (el intervalo con el que el ESP mide de verdad) son opcionales y llegan desde el firmware
+  1.1.5. Se guardan en `voltaje_bateria` e `intervalo_reportado_seg` (este último solo de
+  mensajes al día, no de rezagados). Si `intervalo_seg` no es el de la plataforma, al ESP no le
+  llegó su configuración: el backend se la vuelve a publicar (como mucho cada 5 minutos) y
+  «Sin conexión» se calcula con el más largo de los dos intervalos.
 - `aire_estabilizado: false` indica que el CCS811 sigue en sus 20 minutos de
   calentamiento tras el arranque: sus lecturas se guardan con `estabilizada = false`,
   el dispositivo queda en estado `CALENT` y no se generan alertas por ellas. Sin el
@@ -98,8 +106,12 @@ Tópico `nucleo/devices/<codigo_mqtt>/measurements`:
 ## Mensaje de configuración
 
 Tópico `nucleo/devices/<codigo_mqtt>/config`, retenido, publicado por el backend
-cuando cambian el intervalo de muestreo o los umbrales (con
-`MQTT_PUBLICAR_CONFIG=True`):
+(`MQTT_PUBLICAR_CONFIG`, activo por defecto) cuando cambian el nombre, el intervalo de
+muestreo o los umbrales, cada vez que `escuchar_mqtt` se conecta (de todos los dispositivos
+que no están de baja) y cuando un ESP informa otro intervalo. Solo lo publica la conexión de
+`escuchar_mqtt`: la API lo deja en la cola de Redis (`puente:salida`, la misma de las firmas
+de Nico), porque una segunda conexión con el client id `nucleo-backend` haría que el broker
+desconectara a la otra.
 
 ```json
 {

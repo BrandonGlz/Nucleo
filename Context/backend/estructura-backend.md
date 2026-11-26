@@ -114,7 +114,7 @@ BackEnd/.env
 │   ├── MQTT_USE_TLS, MQTT_CA_CERT
 │   ├── MQTT_TOPIC_LECTURAS     nucleo/devices/+/measurements
 │   ├── MQTT_TOPIC_CONFIG       nucleo/devices/{codigo_mqtt}/config
-│   └── MQTT_PUBLICAR_CONFIG    True para enviar intervalo y umbrales al dispositivo
+│   └── MQTT_PUBLICAR_CONFIG    True (por defecto) para enviar nombre, intervalo y umbrales
 ├── Correo
 │   └── EMAIL_BACKEND, EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD,
 │       EMAIL_USE_TLS, DEFAULT_FROM_EMAIL     (por defecto se imprime en consola)
@@ -208,11 +208,14 @@ broker (`apps/mediciones/mqtt.py`, patrón Singleton). Por cada mensaje:
 6. La alerta nueva y el cambio de estado del dispositivo se publican en el canal en vivo.
 
 `manage.py marcar_sin_conexion [--cada N]` marca como "Sin conexión" los
-dispositivos que llevan más de tres intervalos de muestreo sin enviar lecturas.
+dispositivos que llevan más de tres intervalos de muestreo sin enviar lecturas (el más largo
+entre el configurado y el que informa el ESP en `intervalo_seg`).
 
-Cuando `MQTT_PUBLICAR_CONFIG` está activo, al cambiar el intervalo o los umbrales
-de un dispositivo el backend publica su configuración como mensaje retenido en
-`MQTT_TOPIC_CONFIG`.
+Con `MQTT_PUBLICAR_CONFIG` (activo por defecto), al cambiar el nombre, el intervalo o los
+umbrales de un dispositivo el backend publica su configuración como mensaje retenido en
+`MQTT_TOPIC_CONFIG`. La API la deja en la cola de Redis y la publica `escuchar_mqtt`, que
+además la reenvía de todos los dispositivos cada vez que se conecta al broker y cuando un ESP
+informa un intervalo distinto (`configuracion_pendiente` en la API).
 
 ## Canal en vivo
 

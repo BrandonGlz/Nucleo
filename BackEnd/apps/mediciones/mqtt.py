@@ -1,8 +1,11 @@
 """Cliente MQTT del backend.
 
-Hay una única conexión compartida con el broker (patrón Singleton). El comando
-``escuchar_mqtt`` la usa para recibir lecturas; la API la usa para enviar a los
-dispositivos su configuración.
+Hay una única conexión del backend con el broker (patrón Singleton), la del comando
+``escuchar_mqtt``. La API no abre la suya (tendría el mismo client id y el broker las
+desconectaría entre sí): deja lo que hay que publicar (configuración de los dispositivos,
+peticiones de firma del puente) en la cola compartida de Redis y ``escuchar_mqtt`` lo envía.
+Además, cada vez que ``escuchar_mqtt`` se conecta reenvía la configuración retenida de todos
+los dispositivos, así que un cambio hecho mientras estaba caído también llega.
 """
 
 import json
@@ -57,6 +60,14 @@ class ClienteMQTT:
         cliente.subscribe(settings.MQTT_TOPIC_LECTURAS, qos=1)
         cliente.subscribe(settings.MQTT_TOPIC_LATIDO, qos=0)
         cliente.subscribe(settings.MQTT_TOPIC_PUENTE_AUTORIZA, qos=0)
+        if settings.MQTT_PUBLICAR_CONFIG:
+            close_old_connections()
+            try:
+                total = publicar_todas_las_configuraciones(cliente)
+            except Exception:
+                logger.exception("No se pudo reenviar la configuración de los dispositivos")
+            else:
+                logger.info("Configuración retenida reenviada a %d dispositivos", total)
 
     def _al_recibir(self, cliente, userdata, mensaje):
         close_old_connections()
@@ -112,8 +123,12 @@ class ClienteMQTT:
                 time.sleep(5)
                 continue
             if salida:
-                topico, carga = salida
-                self.cliente.publish(topico, json.dumps(carga), qos=0)
+                topico, carga, *resto = salida
+                retener = bool(resto and resto[0])
+                # La configuración va retenida y con QoS 1; las peticiones de firma, sin retener.
+                self.cliente.publish(
+                    topico, json.dumps(carga), qos=1 if retener else 0, retain=retener
+                )
 
     def escuchar(self):
         """Conecta y atiende mensajes en el hilo actual hasta que se interrumpa."""
@@ -131,13 +146,9 @@ class ClienteMQTT:
         return self.cliente.publish(topico, json.dumps(carga), qos=1, retain=retener)
 
 
-def publicar_configuracion(dispositivo):
-    """Publica el nombre, el intervalo y los umbrales vigentes del dispositivo.
-
-    El mensaje es retenido: el dispositivo lo recibe al conectarse y lo usa también sin
-    conexión. Un fallo del broker se registra pero no interrumpe la API.
-    """
-    carga = {
+def carga_configuracion(dispositivo):
+    """Nombre, intervalo y umbrales vigentes del dispositivo, como los espera el ESP32."""
+    return {
         "dispositivo": dispositivo.codigo_mqtt,
         "nombre": dispositivo.nombre,  # encabezado de la pantalla OLED
         "intervalo_muestreo_seg": dispositivo.intervalo_muestreo_seg,
@@ -149,11 +160,44 @@ def publicar_configuracion(dispositivo):
                 "advertencia_max": float(u.advertencia_max),
                 "peligro_max": float(u.peligro_max),
             }
-            for u in dispositivo.umbrales.filter(activo=True)
+            for u in dispositivo.umbrales.all()
+            if u.activo
         ],
     }
-    topico = settings.MQTT_TOPIC_CONFIG.format(codigo_mqtt=dispositivo.codigo_mqtt)
+
+
+def _topico_config(dispositivo):
+    return settings.MQTT_TOPIC_CONFIG.format(codigo_mqtt=dispositivo.codigo_mqtt)
+
+
+def publicar_configuracion(dispositivo):
+    """Deja en la cola la configuración del dispositivo para que ``escuchar_mqtt`` la publique.
+
+    El mensaje es retenido: el dispositivo lo recibe al conectarse y lo usa también sin
+    conexión. Un fallo de la cola se registra pero no interrumpe la API.
+    """
+    from apps.reportes import puente
+
     try:
-        ClienteMQTT.obtener().publicar(topico, carga, retener=True)
+        puente.cola().publicar(
+            _topico_config(dispositivo), carga_configuracion(dispositivo), retener=True
+        )
     except Exception:
         logger.exception("No se pudo publicar la configuración de %s", dispositivo.codigo_mqtt)
+
+
+def publicar_todas_las_configuraciones(cliente):
+    """Publica directo (desde ``escuchar_mqtt``) la configuración retenida de cada dispositivo
+    que no está dado de baja. Devuelve cuántos se publicaron."""
+    from apps.dispositivos.models import Dispositivo
+    from common import roles
+
+    dispositivos = Dispositivo.objects.exclude(
+        estado_dispositivo_id=roles.DISPOSITIVO_BAJA
+    ).prefetch_related("umbrales")
+    total = 0
+    for dispositivo in dispositivos:
+        carga = carga_configuracion(dispositivo)
+        cliente.publish(_topico_config(dispositivo), json.dumps(carga), qos=1, retain=True)
+        total += 1
+    return total

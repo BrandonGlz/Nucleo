@@ -279,6 +279,8 @@ Mensaje que publica en `nucleo/devices/<codigo_mqtt>/measurements`:
   "aire_estabilizado": true,
   "fecha_hora": "2026-10-24T15:30:00Z",
   "bateria": 87,
+  "bateria_v": 3.912,
+  "intervalo_seg": 60,
   "lecturas": [
     {"sensor": "DHT22", "variable": "TEMP", "valor": 23.4},
     {"sensor": "DHT22", "variable": "HUM", "valor": 48.0},
@@ -287,9 +289,15 @@ Mensaje que publica en `nucleo/devices/<codigo_mqtt>/measurements`:
 }
 ```
 
-La configuración llega retenida en `nucleo/devices/<codigo_mqtt>/config` con el intervalo
-de muestreo y, por variable, los límites `peligro_min`, `advertencia_min`,
-`advertencia_max` y `peligro_max`. El backend descarta las lecturas con un sensor no
+`bateria_v` es el voltaje de la celda (va solo junto con `bateria`) e `intervalo_seg` el
+intervalo que la placa usa de verdad (ambos desde el firmware 1.1.5). Si el MAX17048 lee menos
+de 2.5 V (SDA pegado a tierra: medidor sin alimentación o cable a GND, todo se lee en cero) se
+omite el nivel en vez de mandar 0 %.
+
+La configuración llega retenida en `nucleo/devices/<codigo_mqtt>/config` con el nombre, el
+intervalo de muestreo y, por variable, los límites `peligro_min`, `advertencia_min`,
+`advertencia_max` y `peligro_max`. Si `intervalo_seg` no coincide con el de la plataforma,
+el backend se la vuelve a publicar. El backend descarta las lecturas con un sensor no
 registrado, una variable desconocida o un valor fuera del rango físico, y guarda el resto.
 
 ## Sintaxis de ejemplo

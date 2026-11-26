@@ -180,7 +180,7 @@ Origen → Destino                                Protocolo                  Est
 ├── Backend → PostgreSQL nucleo_db              SQL/psycopg 3              Activo; 18 tablas
 ├── ESP32 → Mosquitto                           MQTT sobre TLS             :8883 en local; en WebSocket por Cloudflare en producción
 ├── Mosquitto → Backend                         MQTT (escuchar_mqtt)       Activo
-├── Backend → Mosquitto                         MQTT retenido (config)     Activo con MQTT_PUBLICAR_CONFIG
+├── Backend → Mosquitto                         MQTT retenido (config)     Activo (MQTT_PUBLICAR_CONFIG)
 ├── Backend → correo                            SMTP                       Activo; consola en desarrollo
 ├── Backend → Ollama (Nico AI)                  HTTP local :11434          Activo; solo con la firma del ESP32
 ├── Backend → TimescaleDB nucleo_iot            SQL/psycopg 3              Activo; hypertable lectura

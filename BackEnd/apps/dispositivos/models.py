@@ -48,6 +48,11 @@ class Dispositivo(models.Model):
     codigo_mqtt = models.CharField(max_length=40, unique=True)
     intervalo_muestreo_seg = models.SmallIntegerField(db_default=60)
     nivel_bateria = models.SmallIntegerField(null=True, blank=True)
+    # Voltaje de la celda que informa el ESP32 (MAX17048) con cada lectura; vacío sin medidor.
+    voltaje_bateria = models.DecimalField(max_digits=4, decimal_places=3, null=True, blank=True)
+    # Intervalo con el que el ESP32 mide de verdad (lo manda en cada lectura desde el firmware
+    # 1.1.5). Distinto de intervalo_muestreo_seg: aún no le llega la configuración.
+    intervalo_reportado_seg = models.SmallIntegerField(null=True, blank=True)
     ultima_conexion = models.DateTimeField(null=True, blank=True)
     ultimo_arranque = models.DateTimeField(null=True, blank=True)
     # La consola de administración elige qué equipos reciben la actualización remota (OTA).

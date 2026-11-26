@@ -31,6 +31,8 @@ const ESTADO_SENSOR = {
   FALLA: ['danger', 'octagon-alert', 'Falla'],
 }
 // Una lectura es reciente si llegó dentro de tres intervalos de muestreo (al menos 2 min).
+// Con la configuración pendiente el equipo mide con su propio intervalo: cuenta el más largo.
+const intervaloEfectivo = (d) => Math.max(d.intervalo_muestreo_seg, d.intervalo_reportado_seg ?? 0)
 const esReciente = (iso, intervaloSeg) => !!iso && Date.now() - new Date(iso).getTime() <= Math.max(3 * intervaloSeg, 120) * 1000
 
 function estadoSensor(s, d, lecturas, sinConexion) {
@@ -40,10 +42,10 @@ function estadoSensor(s, d, lecturas, sinConexion) {
   if (s.estado_sensor === 'FALLA' || s.estado_sensor === 'CALIB') return { clave: s.estado_sensor, ultima }
   if (sinConexion) return { clave: 'sinDatos', ultima }
   // El CCS811 no entrega lecturas estabilizadas en sus primeros 20 min tras arrancar.
-  if (s.modelo === 'CCS811' && d.estado_dispositivo === 'CALENT' && !esReciente(ultima, d.intervalo_muestreo_seg)) {
+  if (s.modelo === 'CCS811' && d.estado_dispositivo === 'CALENT' && !esReciente(ultima, intervaloEfectivo(d))) {
     return { clave: 'calentando', ultima }
   }
-  return { clave: esReciente(ultima, d.intervalo_muestreo_seg) ? 'responde' : 'sinDatos', ultima }
+  return { clave: esReciente(ultima, intervaloEfectivo(d)) ? 'responde' : 'sinDatos', ultima }
 }
 
 // Versión de firmware del equipo contra la publicada para la actualización remota.
@@ -109,10 +111,19 @@ function cifrasDetalle({ d, lecturas, umbrales }, sinConexion) {
         })),
       {
         etiqueta: 'Batería', valor: d.nivel_bateria ?? '—', unidad: d.nivel_bateria == null ? '' : '%',
-        sub: d.nivel_bateria == null ? 'Sin dato' : d.nivel_bateria <= 15 ? 'Batería baja' : d.nivel_bateria <= 30 ? 'Cambiar pronto' : 'Bien',
+        sub: d.nivel_bateria == null
+          ? 'Sin dato'
+          : `${d.voltaje_bateria != null ? `${num(Number(d.voltaje_bateria), 2)} V · ` : ''}${d.nivel_bateria <= 15 ? 'Batería baja' : d.nivel_bateria <= 30 ? 'Cambiar pronto' : 'Bien'}`,
         tono: d.nivel_bateria == null ? 'tenue' : d.nivel_bateria <= 15 ? 'peligro' : undefined,
       },
-      ...(sinConexion ? [] : [{ etiqueta: 'Muestreo', valor: d.intervalo_muestreo_seg, unidad: 's', sub: `Última lectura ${haceCuanto(d.ultima_conexion)}` }]),
+      ...(sinConexion ? [] : [{
+        etiqueta: 'Muestreo', valor: d.intervalo_muestreo_seg, unidad: 's',
+        // El equipo aún no recibe su configuración: la plataforma se la vuelve a enviar sola.
+        sub: d.configuracion_pendiente
+          ? `El equipo mide cada ${d.intervalo_reportado_seg} s · configuración pendiente`
+          : `Última lectura ${haceCuanto(d.ultima_conexion)}`,
+        tono: d.configuracion_pendiente ? 'peligro' : undefined,
+      }]),
     ],
   }
 }

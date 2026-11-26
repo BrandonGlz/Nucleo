@@ -174,7 +174,11 @@ Dispositivos
 │                                           estados LINEA, CALENT, SINCONEX, BATBAJA, MANT, BAJA;
 │                                           solo lectura: version_firmware y version_reportada_en
 │                                           (las informa el ESP en /puente/firmware/) y
-│                                           version_firmware_publicada (null si no hay ninguna)
+│                                           version_firmware_publicada (null si no hay ninguna);
+│                                           voltaje_bateria e intervalo_reportado_seg (del
+│                                           mensaje del ESP, firmware 1.1.5+) y
+│                                           configuracion_pendiente (el ESP mide con otro
+│                                           intervalo: su configuración se le reenvía sola)
 ├── GET /dispositivos/{num}/ultimas-lecturas/    Última lectura de cada variable
 └── /sensores/                              Escritura: ADMIN y SUPER; filtro ?dispositivo=
 

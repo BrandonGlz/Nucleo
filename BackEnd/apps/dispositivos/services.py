@@ -6,6 +6,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import transaction
 from django.db.models import ExpressionWrapper, F, fields
+from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
 
 from apps.avisos import servicios as avisos
@@ -38,8 +39,15 @@ def marcar_sin_conexion(ahora=None):
         .select_related("area")
         .filter(ultima_conexion__isnull=False)
         .annotate(
+            # Si el ESP informa otro intervalo (no le llegó la configuración), se usa el más
+            # largo de los dos: así no se marca sin conexión a uno que sí está enviando.
             limite=ExpressionWrapper(
-                F("intervalo_muestreo_seg") * factor * timedelta(seconds=1),
+                Greatest(
+                    F("intervalo_muestreo_seg"),
+                    Coalesce(F("intervalo_reportado_seg"), F("intervalo_muestreo_seg")),
+                )
+                * factor
+                * timedelta(seconds=1),
                 output_field=fields.DurationField(),
             )
         )

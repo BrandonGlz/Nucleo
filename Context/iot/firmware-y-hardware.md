@@ -249,6 +249,8 @@ Tópico `nucleo/devices/<codigo_mqtt>/measurements`; el formato completo está e
   "aire_estabilizado": true,
   "fecha_hora": "2026-10-24T15:30:00Z",
   "bateria": 87,
+  "bateria_v": 3.912,
+  "intervalo_seg": 60,
   "lecturas": [
     {"sensor": "DHT22", "variable": "TEMP", "valor": 23.4},
     {"sensor": "DHT22", "variable": "HUM", "valor": 48.0},
