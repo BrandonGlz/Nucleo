@@ -5,6 +5,7 @@ from .views import (
     AgenteView,
     CalificarAgenteView,
     EstadoAgenteView,
+    FormatoReporteViewSet,
     ProgramacionReporteViewSet,
     PuenteFirmwareArchivoView,
     PuenteFirmwareView,
@@ -15,6 +16,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register("reportes", ReporteViewSet, basename="reporte")
+router.register("formatos-reporte", FormatoReporteViewSet, basename="formato-reporte")
 router.register(
     "programaciones-reporte", ProgramacionReporteViewSet, basename="programacion-reporte"
 )

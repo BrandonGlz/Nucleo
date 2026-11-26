@@ -58,7 +58,7 @@ servicios.
 
 ## Modelo de datos
 
-Las migraciones de Django crean 16 tablas en PostgreSQL (`nucleo_db`) y la
+Las migraciones de Django crean 18 tablas en PostgreSQL (`nucleo_db`) y la
 hypertable `lectura` en TimescaleDB (`nucleo_iot`). Los nombres de tabla y de
 columna son los del modelo (`db_table` y `db_column`), por ejemplo
 `usuario.estado_usuario_codigo` o `lectura.recibida_en`.

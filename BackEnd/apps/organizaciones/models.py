@@ -59,6 +59,15 @@ class Area(models.Model):
     )
     nombre = models.CharField(max_length=80)
     descripcion = models.CharField(max_length=200, null=True, blank=True)
+    # Formato predeterminado para los reportes de esta área.
+    formato_reporte = models.ForeignKey(
+        "reportes.FormatoReporte",
+        on_delete=models.SET_NULL,
+        db_column="formato_reporte_num",
+        related_name="areas_predeterminado",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         db_table = "area"

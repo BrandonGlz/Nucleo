@@ -3,6 +3,7 @@
 import { ApiError } from '../api/client'
 import { PLATAFORMA } from './consola'
 import * as db from './datos'
+import { formatos as formatosDatos, formatoPredeterminado } from './formatos'
 
 const esperar = () => new Promise((r) => setTimeout(r, 300 + Math.random() * 300))
 const pagina = (results) => ({ count: results.length, next: null, previous: null, results })
@@ -354,23 +355,171 @@ export async function marcarAvisosLeidos({ nums } = {}) {
 }
 
 // Reportes
+const formatoDe = (num) =>
+  formatosDatos.find((f) => f.num === Number(num) && f.activo) ?? formatoPredeterminado()
+
+const prepararReporte = (r) => {
+  // La primera vez que se consulta se fija la versión del formato, como en la base real.
+  if (r.formato == null) {
+    const inicial = formatoPredeterminado()
+    Object.assign(r, {
+      formato: inicial.num,
+      formato_nombre: inicial.nombre,
+      formato_version: inicial.version,
+      formato_conf: copia(inicial.conf),
+    })
+  }
+  return copia(r)
+}
+
 export async function reportes() {
   await esperar()
-  return pagina(copia(db.reportes))
+  return pagina(db.reportes.map(prepararReporte))
 }
 export async function programaciones() {
   await esperar()
   return pagina(copia(db.programaciones))
 }
-export async function crearReporte({ area, periodo_inicio, periodo_fin }) {
+export async function crearReporte({ area, formato, periodo_inicio, periodo_fin }) {
   await esperar()
   const base = db.reportes.find((r) => r.area === Number(area)) ?? db.reportes[0]
+  const elegido = formatoDe(formato ?? formatoPredeterminado().num)
   const nuevo = {
     ...copia(base), num: Math.max(...db.reportes.map((r) => r.num)) + 1, area: area ? Number(area) : null,
     generado_por: 2, origen: 'MANUAL', periodo_inicio, periodo_fin, fecha_generacion: new Date().toISOString(),
+    formato: elegido.num, formato_nombre: elegido.nombre, formato_version: elegido.version, formato_conf: elegido.conf,
   }
   db.reportes.unshift(nuevo)
   return copia(nuevo)
+}
+export async function cambiarFormatoReporte(num, formato) {
+  await esperar()
+  const r = db.reportes.find((x) => x.num === Number(num)) ?? noEncontrado()
+  const elegido = formatoDe(formato)
+  Object.assign(r, {
+    formato: elegido.num,
+    formato_nombre: elegido.nombre,
+    formato_version: elegido.version,
+    formato_conf: elegido.conf,
+  })
+  return prepararReporte(r)
+}
+export async function descargarReporte() {
+  await esperar()
+  return new Blob(['%PDF-1.4\n% Reporte simulado de Núcleo\n'], { type: 'application/pdf' })
+}
+
+// Formatos de reporte
+const PUEDEN_EDITAR = ['ADMIN', 'SUPER']
+const formatoSalida = (f) => {
+  const { versiones: _versiones, ...resto } = f
+  return copia(resto)
+}
+const nombreLibre = (base) => {
+  const usados = new Set(formatosDatos.map((f) => f.nombre))
+  if (!usados.has(base)) return base
+  let n = 2
+  while (usados.has(`${base} (${n})`)) n++
+  return `${base} (${n})`
+}
+
+export async function formatos({ archivados = false } = {}) {
+  await esperar()
+  const visibles = formatosDatos.filter(
+    (f) => f.es_plantilla || archivados || f.activo,
+  )
+  return pagina(visibles.map(formatoSalida))
+}
+export async function crearFormato({ nombre, conf }) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const nuevo = {
+    num: Math.max(...formatosDatos.map((f) => f.num)) + 1,
+    nombre,
+    plantilla: '',
+    predeterminado: false,
+    activo: true,
+    es_plantilla: false,
+    version: 1,
+    conf,
+    creado_por_nombre: 'Ana López',
+    areas_predeterminado: [],
+    versiones: [{ numero: 1, fecha: new Date().toISOString(), creada_por_nombre: 'Ana López' }],
+  }
+  formatosDatos.push(nuevo)
+  return formatoSalida(nuevo)
+}
+export async function actualizarFormato(num, cambios) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const f = formatosDatos.find((x) => x.num === Number(num)) ?? noEncontrado()
+  if (f.es_plantilla) throw new ApiError('La API respondió con el estado 403.', 403)
+  if (cambios.nombre != null) f.nombre = cambios.nombre
+  if (cambios.conf != null) {
+    f.conf = cambios.conf
+    f.version += 1
+    f.versiones.push({ numero: f.version, fecha: new Date().toISOString(), creada_por_nombre: 'Ana López' })
+  }
+  return formatoSalida(f)
+}
+export async function archivarFormato(num) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const f = formatosDatos.find((x) => x.num === Number(num)) ?? noEncontrado()
+  if (f.es_plantilla) throw new ApiError('La API respondió con el estado 403.', 403)
+  f.activo = false
+  f.predeterminado = false
+  f.areas_predeterminado = []
+  return null
+}
+export async function duplicarFormato(num, { nombre } = {}) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const original = formatosDatos.find((x) => x.num === Number(num)) ?? noEncontrado()
+  const copiaFormato = {
+    num: Math.max(...formatosDatos.map((f) => f.num)) + 1,
+    nombre: nombreLibre(nombre || `Copia de ${original.nombre}`),
+    plantilla: '',
+    predeterminado: false,
+    activo: true,
+    es_plantilla: false,
+    version: 1,
+    conf: copia(original.conf),
+    creado_por_nombre: 'Ana López',
+    areas_predeterminado: [],
+    versiones: [{ numero: 1, fecha: new Date().toISOString(), creada_por_nombre: 'Ana López' }],
+  }
+  formatosDatos.push(copiaFormato)
+  return formatoSalida(copiaFormato)
+}
+export async function predeterminadoFormato(num) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const f = formatosDatos.find((x) => x.num === Number(num)) ?? noEncontrado()
+  if (f.es_plantilla) throw new ApiError('La API respondió con el estado 403.', 403)
+  for (const otro of formatosDatos) if (!otro.es_plantilla) otro.predeterminado = false
+  f.predeterminado = true
+  return formatoSalida(f)
+}
+export async function areasFormato(num, areas) {
+  await esperar()
+  if (!PUEDEN_EDITAR.includes(rolMock())) throw new ApiError('La API respondió con el estado 403.', 403)
+  const f = formatosDatos.find((x) => x.num === Number(num)) ?? noEncontrado()
+  if (f.es_plantilla) throw new ApiError('La API respondió con el estado 403.', 403)
+  for (const otro of formatosDatos) {
+    if (otro !== f) {
+      otro.areas_predeterminado = otro.areas_predeterminado.filter(
+        (area) => !areas.includes(area),
+      )
+    }
+  }
+  f.areas_predeterminado = areas
+  return formatoSalida(f)
+}
+export async function versionesFormato(num) {
+  await esperar()
+  const f = formatosDatos.find((x) => x.num === Number(num)) ?? noEncontrado()
+  return copia(f.versiones)
 }
 
 // Agente IA: hay un agente por dispositivo (cada ESP32). La respuesta se arma con los datos del

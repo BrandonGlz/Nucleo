@@ -1,4 +1,12 @@
-import { AREAS, DISPOSITIVOS, PROGRAMACIONES_REPORTE, REPORTE, REPORTE_PDF, REPORTES } from '../api'
+import {
+  AREAS,
+  DISPOSITIVOS,
+  PROGRAMACIONES_REPORTE,
+  REPORTE,
+  REPORTE_FORMATO,
+  REPORTE_PDF,
+  REPORTES,
+} from '../api'
 import { API_BASE_URL, OPCIONES_SESION } from './api/client'
 import { pagina } from '../utils/convertir'
 import { USAR_MOCKS, pedir } from './config'
@@ -75,6 +83,16 @@ export async function crear(datos) {
   return adaptar(r, areas, nombres)
 }
 
+// Cambia el formato del reporte: la API usa su versión actual y regenera el PDF sin IA.
+export async function cambiarFormato(num, formato) {
+  if (USAR_MOCKS) return mock.cambiarFormatoReporte(num, formato)
+  const [r, [areas, nombres]] = await Promise.all([
+    pedir(REPORTE_FORMATO(num), { metodo: 'POST', cuerpo: { formato } }),
+    contexto(),
+  ])
+  return adaptar(r, areas, nombres)
+}
+
 // Un reporte con la misma forma que la lista (lo usa Nico AI para mostrar la hoja en el chat).
 export async function obtener(num) {
   if (USAR_MOCKS) return pagina(await mock.reportes()).find((r) => r.num === num) ?? null
@@ -84,10 +102,13 @@ export async function obtener(num) {
 
 // Descarga directa del PDF que genera el servidor (formato estándar, el mismo de los correos).
 export async function descargarArchivo(num, nombre) {
-  if (USAR_MOCKS) throw new Error('Sin PDF en modo simulado.')
-  const r = await fetch(`${API_BASE_URL}${REPORTE_PDF(num)}`, OPCIONES_SESION)
-  if (!r.ok) throw new Error(`La API respondió con el estado ${r.status}.`)
-  const url = URL.createObjectURL(await r.blob())
+  const blob = USAR_MOCKS
+    ? await mock.descargarReporte(num)
+    : await fetch(`${API_BASE_URL}${REPORTE_PDF(num)}`, OPCIONES_SESION).then((r) => {
+        if (!r.ok) throw new Error(`La API respondió con el estado ${r.status}.`)
+        return r.blob()
+      })
+  const url = URL.createObjectURL(blob)
   const a = Object.assign(document.createElement('a'), { href: url, download: `${nombre}.pdf` })
   document.body.appendChild(a)
   a.click()

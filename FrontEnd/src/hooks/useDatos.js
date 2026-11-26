@@ -15,6 +15,7 @@ export const estadoForzado = () => {
 export function useDatos(cargar, deps = [], { esVacio, cadaMs, enVivo } = {}) {
   const [res, setRes] = useState({ estado: 'cargando', datos: null, error: null })
   const [vuelta, setVuelta] = useState(0)
+  const [silenciosa, setSilenciosa] = useState(false)
 
   useEffect(() => {
     const forzado = estadoForzado()
@@ -35,7 +36,7 @@ export function useDatos(cargar, deps = [], { esVacio, cadaMs, enVivo } = {}) {
     if (forzado === 'error') {
       setRes({ estado: 'error', datos: null, error: new Error('Error forzado con ?estado=error') })
     } else {
-      traer(false)
+      traer(silenciosa)
       if (cadaMs) timer = setInterval(() => traer(true), cadaMs)
     }
     // Varios eventos seguidos se juntan en una sola consulta.
@@ -53,8 +54,16 @@ export function useDatos(cargar, deps = [], { esVacio, cadaMs, enVivo } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, vuelta])
 
-  const reintentar = useCallback(() => setVuelta((v) => v + 1), [])
+  const reintentar = useCallback(() => {
+    setSilenciosa(false)
+    setVuelta((v) => v + 1)
+  }, [])
+  // Vuelve a pedir los datos sin mostrar el esqueleto: lo actual queda hasta que llegan.
+  const recargar = useCallback(() => {
+    setSilenciosa(true)
+    setVuelta((v) => v + 1)
+  }, [])
   // Reemplaza los datos sin volver a pedirlos (después de guardar algo).
   const actualizar = useCallback((fn) => setRes((r) => ({ ...r, datos: fn(r.datos) })), [])
-  return { ...res, reintentar, actualizar }
+  return { ...res, reintentar, recargar, actualizar }
 }

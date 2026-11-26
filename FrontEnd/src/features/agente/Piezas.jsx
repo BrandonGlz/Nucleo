@@ -224,7 +224,8 @@ export function Archivos({ reportes, visualizar, descargar }) {
               <span className="ui-ia-archivos__texto">
                 <strong>{r.titulo ?? `R-${r.num}`}</strong>
                 <span className="ui-muted">
-                  {periodo(r.periodo_inicio, r.periodo_fin)} · {formatoDeReporte(formatos, r.num).nombre}
+                  {periodo(r.periodo_inicio, r.periodo_fin)} ·{' '}
+                  {r.formato_nombre ?? formatoDeReporte(formatos, r.num)?.nombre ?? 'Formato'}
                 </span>
               </span>
               <button

@@ -6,6 +6,118 @@ from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Now
 
 
+class FormatoReporte(models.Model):
+    """Formato de reporte compartido por una organización o plantilla del sistema.
+
+    Cada cambio de la configuración crea una ``VersionFormato`` nueva; los reportes guardan
+    la versión con la que se generaron. Las plantillas del sistema no tienen organización y
+    no se editan: se duplican.
+    """
+
+    class Plantilla(models.TextChoices):
+        EJECUTIVO = "EJECUTIVO", "Ejecutivo"
+        CUMPLIMIENTO = "CUMPLIMIENTO", "Cumplimiento"
+        OPERATIVO = "OPERATIVO", "Operativo detallado"
+        INCIDENTES = "INCIDENTES", "Incidentes"
+
+    num = models.AutoField(primary_key=True)
+    organizacion = models.ForeignKey(
+        "organizaciones.Organizacion",
+        on_delete=models.PROTECT,
+        db_column="organizacion_num",
+        related_name="formatos_reporte",
+        null=True,
+        blank=True,
+    )
+    nombre = models.CharField(max_length=80)
+    plantilla = models.CharField(max_length=20, choices=Plantilla.choices, blank=True)
+    predeterminado = models.BooleanField(default=False)
+    activo = models.BooleanField(default=True)
+    creado_por = models.ForeignKey(
+        "usuarios.Usuario",
+        on_delete=models.PROTECT,
+        db_column="creado_por",
+        related_name="formatos_creados",
+        null=True,
+        blank=True,
+    )
+    fecha_creacion = models.DateTimeField(db_default=Now(), editable=False)
+
+    class Meta:
+        db_table = "formato_reporte"
+        ordering = ["nombre"]
+        verbose_name = "formato de reporte"
+        verbose_name_plural = "formatos de reporte"
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (Q(plantilla="") & Q(organizacion__isnull=False))
+                    | (~Q(plantilla="") & Q(organizacion__isnull=True))
+                ),
+                name="ck_formato_plantilla_sin_org",
+            ),
+            models.UniqueConstraint(
+                fields=["organizacion"],
+                condition=Q(predeterminado=True, activo=True),
+                name="uq_formato_predeterminado",
+            ),
+            models.UniqueConstraint(
+                fields=["organizacion", "nombre"],
+                condition=Q(activo=True),
+                name="uq_formato_nombre",
+            ),
+        ]
+
+    def version_actual(self):
+        """La última versión guardada del formato."""
+        return self.versiones.order_by("-numero").first()
+
+    def __str__(self):
+        return f"{self.nombre} ({self.organizacion or 'plantilla'})"
+
+
+class VersionFormato(models.Model):
+    """Configuración de un formato en un momento dado.
+
+    Los reportes apuntan a la versión con la que se generaron, así un cambio posterior no
+    altera los reportes ya emitidos.
+    """
+
+    num = models.AutoField(primary_key=True)
+    formato = models.ForeignKey(
+        FormatoReporte,
+        on_delete=models.PROTECT,
+        db_column="formato_num",
+        related_name="versiones",
+    )
+    numero = models.PositiveIntegerField()
+    conf = models.JSONField()
+    creada_por = models.ForeignKey(
+        "usuarios.Usuario",
+        on_delete=models.PROTECT,
+        db_column="creada_por",
+        related_name="versiones_formato_creadas",
+        null=True,
+        blank=True,
+    )
+    fecha = models.DateTimeField(db_default=Now(), editable=False)
+
+    class Meta:
+        db_table = "version_formato"
+        ordering = ["formato", "numero"]
+        verbose_name = "versión de formato"
+        verbose_name_plural = "versiones de formato"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["formato", "numero"],
+                name="uq_version_formato_numero",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.formato.nombre} · versión {self.numero}"
+
+
 class Reporte(models.Model):
     """Reporte de un periodo.
 
@@ -37,6 +149,14 @@ class Reporte(models.Model):
         "usuarios.Usuario",
         on_delete=models.PROTECT,
         db_column="generado_por",
+        related_name="reportes",
+        null=True,
+        blank=True,
+    )
+    formato_version = models.ForeignKey(
+        VersionFormato,
+        on_delete=models.PROTECT,
+        db_column="formato_version_num",
         related_name="reportes",
         null=True,
         blank=True,

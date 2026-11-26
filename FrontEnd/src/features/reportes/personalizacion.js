@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
+import * as formatosApi from '../../services/formatos'
+import * as reportesApi from '../../services/reportes'
 
 // Tarjetas del dashboard: id, nombre en el panel de personalización y columnas que ocupa (de 12).
 export const WIDGETS = [
@@ -222,8 +224,7 @@ export const opcionesNuevas = (fuente) => ({
 const BASE = { orden: WIDGETS.map((w) => w.id), ocultos: [], opciones: {}, personalizadas: [] }
 // Un formato nuevo empieza vacío: solo la cabecera y ninguna tarjeta en la lista.
 const VACIO = { orden: [], ocultos: [], opciones: {}, personalizadas: [], base: false }
-const CLAVE = 'nucleo.reportes.formatos'
-const CLAVE_ANTERIOR = 'nucleo.reportes.widgets'
+// Se conserva para que el chat de Nico AI compile hasta la tarea 1.5.
 export const ESTANDAR = 'estandar'
 
 // Completa una configuración guardada: quita tarjetas que ya no existen y añade las nuevas.
@@ -237,50 +238,54 @@ function normalizar(g) {
     ocultos: g.ocultos ?? [],
     opciones: g.opciones ?? {},
     personalizadas,
+    ...(g.hoja && { hoja: g.hoja }),
+    ...(g.version_esquema && { version_esquema: g.version_esquema }),
     ...(g.base === false && { base: false }),
   }
 }
 
-// Formatos guardados (diseños con nombre) y el formato que usa cada reporte. Se recuerdan en
-// este navegador; sin almacenamiento solo existe el formato estándar.
-function leer() {
-  try {
-    const g = JSON.parse(localStorage.getItem(CLAVE))
-    if (g?.formatos?.length) {
-      return {
-        formatos: g.formatos.map((f) => ({ ...f, conf: normalizar(f.conf) })),
-        porReporte: g.porReporte ?? {},
-      }
-    }
-    const anterior = JSON.parse(localStorage.getItem(CLAVE_ANTERIOR))
-    return { formatos: [{ id: ESTANDAR, nombre: 'Estándar', conf: normalizar(anterior) }], porReporte: {} }
-  } catch {
-    return { formatos: [{ id: ESTANDAR, nombre: 'Estándar', conf: BASE }], porReporte: {} }
-  }
-}
-// Sin almacenamiento los formatos duran lo que dure la página: se guardan también en memoria.
-let enMemoria = null
 const EVENTO = 'nucleo:formatos'
-function guardar(estado) {
-  enMemoria = estado
-  try {
-    localStorage.setItem(CLAVE, JSON.stringify(estado))
-  } catch {
-    // Sin almacenamiento queda solo la copia en memoria.
-  }
-  // Avisa a las demás vistas (Reportes, visor y chat de Nico AI) para que se actualicen.
-  window.dispatchEvent(new Event(EVENTO))
+const prepararFormato = (f) => ({ ...f, conf: normalizar(f.conf) })
+const FORMATO_VACIO = {
+  id: '',
+  num: null,
+  nombre: '',
+  conf: BASE,
+  esPlantilla: false,
+  predeterminado: false,
+  areasPredeterminado: [],
 }
 
-// Formatos y asignaciones fuera de React: los usa Nico AI para elegir y editar plantillas.
-export const leerFormatos = () => enMemoria ?? leer()
-export const guardarFormatos = (estado) => guardar(estado)
+// Caché compartida por las vistas: los formatos viven en el servidor y se piden por la API.
+let cache = []
+let cacheLista = false
+
+// Carga (o recarga) los formatos desde la API y actualiza la caché compartida.
+export async function cargarFormatos() {
+  const lista = (await formatosApi.lista()).map(prepararFormato)
+  cache = lista
+  cacheLista = true
+  return lista
+}
+
+// Formatos en caché fuera de React. El chat de Nico AI los consulta así.
+export const leerFormatos = () => ({ formatos: cache, porReporte: {} })
+export const guardarFormatos = (estado) => {
+  cache = (estado.formatos ?? []).map(prepararFormato)
+  cacheLista = true
+  window.dispatchEvent(new Event(EVENTO))
+}
 export const formatoDeReporte = (estado, num) =>
-  estado.formatos.find((f) => f.id === estado.porReporte[num]) ?? estado.formatos[0]
+  estado.formatos.find((f) => f.num === Number(num)) ??
+  estado.formatos.find((f) => f.predeterminado) ??
+  estado.formatos[0]
+
+// Cambia el formato de un reporte desde el chat. La tarea 1.5 lo integrará con la conversación.
 export function asignarFormato(num, id) {
-  const estado = leerFormatos()
-  if (estado.porReporte[num] === id || !estado.formatos.some((f) => f.id === id)) return
-  guardar({ ...estado, porReporte: { ...estado.porReporte, [num]: id } })
+  reportesApi
+    .cambiarFormato(num, Number(id))
+    .then(() => window.dispatchEvent(new Event('nucleo:reporte')))
+    .catch(() => {})
 }
 
 // Mueve `id` antes o después de `destino` dentro del orden.
@@ -291,43 +296,72 @@ function reordenar(orden, id, destino, despues) {
   return [...sin.slice(0, i), id, ...sin.slice(i)]
 }
 
-// Estado de la personalización del reporte. Mientras se edita, la columna de la lista muestra
-// las tarjetas (ListaTarjetas) y la hoja de la vista previa deja arrastrarlas.
-// Se trabaja sobre un borrador: «Guardar» lo aplica y «Cancelar» o Escape lo descartan.
-// `reporte` es el número del reporte en pantalla; la personalización edita su formato.
+// Estado de la personalización del reporte. Los formatos se cargan de la API; el borrador
+// sigue siendo local hasta «Guardar». `reporte` puede ser el objeto o solo su número.
 export function useEdicion(reporte) {
-  const [estado, setEstado] = useState(leerFormatos)
-  // Cambios hechos desde otra vista (o en otra pestaña) se reflejan aquí.
-  useEffect(() => {
-    const releer = (e) => {
-      if (e.type === 'storage') enMemoria = null // lo cambió otra pestaña: se lee del almacenamiento
-      setEstado(leerFormatos())
-    }
-    window.addEventListener(EVENTO, releer)
-    window.addEventListener('storage', releer)
-    return () => {
-      window.removeEventListener(EVENTO, releer)
-      window.removeEventListener('storage', releer)
-    }
-  }, [])
+  const informe = reporte && typeof reporte === 'object' ? reporte : null
+  const numReporte = informe?.num ?? (typeof reporte === 'number' ? reporte : null)
+  const [formatos, setFormatos] = useState(cache)
+  const [cargando, setCargando] = useState(!cacheLista)
+  const [error, setError] = useState(null)
+  const [activo, setActivo] = useState(null)
   const [borrador, setBorrador] = useState(null)
-  // «formato»: se edita el formato del reporte en pantalla; «nuevo»: se crea uno desde el modal.
   const [modo, setModo] = useState('formato')
   const [abierta, setAbierta] = useState(null)
   const [arrastrando, setArrastrando] = useState(null)
   const [destino, setDestino] = useState(null)
+
+  const cargar = useCallback(async () => {
+    setCargando(true)
+    try {
+      const lista = await cargarFormatos()
+      setFormatos(lista)
+      setError(null)
+      return lista
+    } catch (e) {
+      setError(e)
+      return []
+    } finally {
+      setCargando(false)
+    }
+  }, [])
+
+  const recargar = useCallback(async () => {
+    const lista = await cargar()
+    window.dispatchEvent(new Event(EVENTO))
+    return lista
+  }, [cargar])
+
+  useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect
+    cargar()
+    const alCambiar = () => cargar()
+    window.addEventListener(EVENTO, alCambiar)
+    return () => window.removeEventListener(EVENTO, alCambiar)
+  }, [cargar])
+
+  // Al cambiar de reporte se vuelve a su formato, no al que se estaba editando.
+  useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect
+    setActivo(null)
+  }, [numReporte])
+
   const editando = borrador != null
-  const { formatos, porReporte } = estado
-  const formatoDe = (num) => formatos.find((f) => f.id === porReporte[num]) ?? formatos[0]
-  const formato = formatoDe(reporte)
-  const conf = formato.conf
-  const cambiar = (nuevo) => {
-    setEstado(nuevo)
-    guardar(nuevo)
-  }
-  // Asigna un formato a uno o varios reportes (num o lista de num).
-  const asignar = (nums, id) =>
-    cambiar({ ...estado, porReporte: { ...porReporte, ...Object.fromEntries([nums].flat().map((n) => [n, id])) } })
+  const formatoReporte = formatos.find((f) => f.num === Number(informe?.formato))
+  const predeterminado = formatos.find((f) => f.predeterminado)
+  const formato =
+    (activo && formatos.find((f) => f.id === activo)) ??
+    formatoReporte ??
+    predeterminado ??
+    formatos[0] ??
+    FORMATO_VACIO
+  const conf = activo
+    ? formato.conf
+    : informe?.formato_conf
+      ? normalizar(informe.formato_conf)
+      : formato.conf
+  const formatoDe = (num) =>
+    formatos.find((f) => f.num === Number(num)) ?? predeterminado ?? formatos[0] ?? FORMATO_VACIO
 
   const cancelar = useCallback(() => {
     setBorrador(null)
@@ -420,6 +454,52 @@ export function useEdicion(reporte) {
       .join(' '),
   })
 
+  // Guarda el borrador como una versión nueva del formato (PATCH) o crea el formato (POST).
+  const guardar = async () => {
+    if (!formato.num) return
+    try {
+      await formatosApi.actualizar(formato.num, { conf: borrador })
+      if (informe?.num) await reportesApi.cambiarFormato(informe.num, formato.num)
+      await recargar()
+      setActivo(String(formato.num))
+      cancelar()
+      if (informe?.num) window.dispatchEvent(new Event('nucleo:reporte'))
+    } catch {
+      window.alert('No se pudo guardar el formato. Intenta de nuevo.')
+    }
+  }
+
+  const asignar = async (nums, id) => {
+    try {
+      await Promise.all([nums].flat().map((num) => reportesApi.cambiarFormato(num, Number(id))))
+      setActivo(String(id))
+      window.dispatchEvent(new Event('nucleo:reporte'))
+    } catch {
+      window.alert('No se pudo cambiar el formato del reporte.')
+    }
+  }
+
+  // Duplica una plantilla (o un formato) y abre la copia en edición para este reporte.
+  const duplicar = async () => {
+    if (!formato.num) return null
+    try {
+      const copia = await formatosApi.duplicar(formato.num)
+      const lista = await recargar()
+      const nueva = lista.find((f) => f.num === copia.num) ?? prepararFormato(copia)
+      if (informe?.num) {
+        await reportesApi.cambiarFormato(informe.num, copia.num)
+        window.dispatchEvent(new Event('nucleo:reporte'))
+      }
+      setActivo(nueva.id)
+      setModo('formato')
+      setBorrador(nueva.conf)
+      return nueva
+    } catch {
+      window.alert('No se pudo duplicar el formato. Intenta de nuevo.')
+      return null
+    }
+  }
+
   return {
     conf,
     borrador,
@@ -436,37 +516,37 @@ export function useEdicion(reporte) {
     formato,
     formatoDe,
     asignar,
+    duplicar,
+    recargar,
     modo,
+    cargando,
+    error,
     abrir: () => {
       setModo('formato')
+      setActivo(formato.id)
       setBorrador(conf)
     },
     cancelar,
     restablecer: () => setBorrador(modo === 'nuevo' ? VACIO : BASE),
-    // Guarda los cambios en el formato del reporte en pantalla.
-    guardar: () => {
-      cambiar({ ...estado, formatos: formatos.map((f) => (f.id === formato.id ? { ...f, conf: borrador } : f)) })
-      cancelar()
-    },
+    guardar,
     // Crea un formato desde cero (modal «Generar reporte»), lo guarda y devuelve su id.
     nuevo: () => {
       setModo('nuevo')
       setBorrador(VACIO)
     },
-    crearFormato: (nombre) => {
-      const id = `f${Date.now().toString(36)}`
-      cambiar({ ...estado, formatos: [...formatos, { id, nombre, conf: borrador }] })
-      cancelar()
-      return id
-    },
-    // Elimina un formato; los reportes que lo usaban vuelven al estándar.
-    eliminar: (id) => {
-      if (id === ESTANDAR) return
-      cambiar({
-        formatos: formatos.filter((f) => f.id !== id),
-        porReporte: Object.fromEntries(Object.entries(porReporte).filter(([, f]) => f !== id)),
-      })
-      cancelar()
+    crearFormato: async (nombre) => {
+      try {
+        const creado = await formatosApi.crear({ nombre, conf: borrador })
+        if (informe?.num) await reportesApi.cambiarFormato(informe.num, creado.num)
+        await recargar()
+        setActivo(creado.id)
+        cancelar()
+        if (informe?.num) window.dispatchEvent(new Event('nucleo:reporte'))
+        return creado.id
+      } catch {
+        window.alert('No se pudo crear el formato. Intenta de nuevo.')
+        return null
+      }
     },
   }
 }

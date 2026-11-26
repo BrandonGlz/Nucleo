@@ -47,11 +47,11 @@ FrontEnd/
 │   ├── features/
 │   │   ├── index.js      # registro de módulos: ruta, título, página, sección, ícono y roles
 │   │   └── <modulo>/     # acceso (con recuperar y solicitar acceso), panel, dispositivos
-│   │                     # (lista y detalle), mediciones (Histórico), alertas, reportes,
-│   │                     # agente, umbrales, usuarios, areas, organizaciones, solicitudes,
-│   │                     # perfil (foto y verificación en dos pasos) y notificaciones
+│   │                     # (lista y detalle), mediciones (Histórico), alertas, reportes
+│   │                     # (formatos, versiones y PDF del servidor), agente, umbrales,
+│   │                     # usuarios, areas, organizaciones, solicitudes, perfil y notificaciones
 │   ├── hooks/
-│   │   ├── useDatos.js        # { estado, datos, error, reintentar, actualizar }
+│   │   ├── useDatos.js        # { estado, datos, error, reintentar, recargar, actualizar }
 │   │   ├── useMonitoreo.js    # dispositivos + últimas lecturas + umbrales + alertas
 │   │   ├── useSalida.js       # useSalida (menús y listas) y useCierre (modales): animación de salida
 │   │   ├── useMenuMovil.js    # CONSULTA_MOVIL (max-width: 900px): menú lateral como cajón
@@ -64,9 +64,9 @@ FrontEnd/
 │   ├── services/
 │   │   ├── api/               # client.js (fetch y errores) y health.js
 │   │   ├── config.js          # USAR_MOCKS, token y pedir() con Authorization
-│   │   ├── mock/              # datos.js y handlers.js
+│   │   ├── mock/              # datos.js, formatos.js y handlers.js
 │   │   └── <dominio>.js       # auth, dispositivos, lecturas, alertas, umbrales,
-│   │                          # reportes, usuarios, organizaciones, agente,
+│   │                          # reportes, formatos, usuarios, organizaciones, agente,
 │   │                          # seguridad (auditoría, integraciones y descarga de CSV)
 │   ├── styles/
 │   │   ├── fluido.css         # tokens que escalan con la ventana (clamp) y los dos puntos de quiebre
@@ -222,6 +222,19 @@ componentes con `utils/convertir.js`.
 - `services/reportes.js` convierte las cifras que guarda la API (variables y series por
   código, dispositivos por código MQTT) en la forma de la hoja del reporte: título,
   lecturas, nombres de dispositivos, una fila por variable y la serie principal.
+- `services/formatos.js` habla con `/formatos-reporte/`: lista las 4 plantillas y los
+  formatos de la organización, crea, edita (cada edición es una versión nueva), duplica,
+  archiva, marca predeterminados y consulta versiones. `personalizacion.js` mantiene una
+  caché compartida y `useEdicion` carga el formato del reporte (`formato` y `formato_conf`),
+  guarda el borrador por la API y cambia el reporte con `POST /reportes/{num}/formato/`.
+  Las plantillas no se editan: se duplican antes de modificarlas. Si un ADMIN o SUPER
+  conserva formatos viejos en `nucleo.reportes.formatos`, Reportes le ofrece subirlos a la
+  organización o descartarlos; ANALISTA no ve ese aviso y su navegador no se toca.
+- El PDF de un reporte lo genera el servidor con la versión de formato del reporte; la web
+  solo lo descarga con `descargarArchivo`, igual que la app y los correos. La vista previa
+  de `DashboardReporte` sigue siendo la previsualización en pantalla.
+- `useDatos.recargar()` vuelve a pedir los datos sin mostrar el esqueleto; se usa después de
+  acciones de formatos para no reemplazar la pantalla mientras llega la respuesta.
 - `services/tiempoReal.js` abre `/ws/panel/?token=` al entrar y reenvía cada evento como
   `nucleo:evento` en `window`. Con un evento de alerta se recargan la campana y el
   contador; Panel, Dispositivos y Detalle (`useDatos` con `enVivo`) vuelven a pedir sus

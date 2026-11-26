@@ -1,18 +1,21 @@
 import { useSesion } from '../../context/SesionContext'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { RotateCcw, Trash2 } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import {
   Badge, Button, Card, IconCircle, IconButton, Skeleton,
 } from '../../design-system/componentes/index.js'
 import { Desplegable } from '../../components/Desplegable'
 import { EstadoError } from '../../components/EstadoError'
+import { MenuAcciones } from '../../components/MenuAcciones'
+import { Modal } from '../../components/Modal'
 import { DashboardReporte, ListaTarjetas } from './DashboardReporte'
-import { ESTANDAR, useEdicion } from './personalizacion'
-import { descargarPdf } from './pdf'
+import { MigracionFormatos } from './MigracionFormatos'
+import { useEdicion } from './personalizacion'
 import { Pantalla } from '../../components/Pantalla'
 import { useDatos } from '../../hooks/useDatos'
 import { useCierre } from '../../hooks/useSalida'
+import * as formatosApi from '../../services/formatos'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as reportesApi from '../../services/reportes'
 import { pagina } from '../../utils/convertir'
@@ -29,13 +32,16 @@ async function cargar() {
 // el editor de formatos (tarjetas a la izquierda y hoja A4 de muestra a la derecha, con los
 // datos del reporte seleccionado); al guardarlo queda elegido para este reporte.
 const TODAS = 'todas'
+const etiquetaFormato = (f) =>
+  `${f.nombre}${f.predeterminado ? ' (predeterminado)' : ''}${f.esPlantilla ? ' · Plantilla' : ''}`
 
-function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado }) {
+function NuevoReporte({ areas, reportes, ed, puedeEditar, muestra: elegido, cerrar, creado }) {
   const [saliendo, cerrarAnimado] = useCierre(cerrar)
   const [area, setArea] = useState(null)
   const [rango, setRango] = useState('mes')
   const [formato, setFormato] = useState(ed.formato.id)
   const [nombre, setNombre] = useState('')
+  const [guardandoFormato, setGuardandoFormato] = useState(false)
   const [estado, setEstado] = useState(null)
   const creando = ed.modo === 'nuevo' && ed.editando
   // La hoja de muestra del editor usa un reporte del área elegida, si ya hay uno.
@@ -51,8 +57,15 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
       const destino = area === TODAS ? areas.map((a) => String(a.num)) : [area]
       const nuevos = []
       for (const a of destino)
-        nuevos.push(await reportesApi.crear({ area: a, periodo_inicio: inicio.toISOString(), periodo_fin: fin.toISOString() }))
-      creado(nuevos, formato)
+        nuevos.push(
+          await reportesApi.crear({
+            area: a,
+            formato: formato ? Number(formato) : undefined,
+            periodo_inicio: inicio.toISOString(),
+            periodo_fin: fin.toISOString(),
+          }),
+        )
+      creado(nuevos)
     } catch (e) {
       setEstado(e.status === 503 ? 'El servicio de IA no está disponible. Intenta más tarde.' : 'No se pudo generar el reporte.')
     }
@@ -89,13 +102,18 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
             </Button>
             <Button
               icon="circle-check"
-              disabled={!nombre.trim()}
-              onClick={() => {
-                setFormato(ed.crearFormato(nombre.trim()))
-                setNombre('')
+              disabled={!nombre.trim() || guardandoFormato}
+              onClick={async () => {
+                setGuardandoFormato(true)
+                const id = await ed.crearFormato(nombre.trim())
+                if (id) {
+                  setFormato(id)
+                  setNombre('')
+                }
+                setGuardandoFormato(false)
               }}
             >
-              Guardar formato
+              {guardandoFormato ? 'Guardando…' : 'Guardar formato'}
             </Button>
           </div>
           <div className="ui-modal__editor">
@@ -150,8 +168,8 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
           value={formato}
           onChange={setFormato}
           disabled={!area}
-          options={ed.formatos.map((f) => ({ value: f.id, label: f.nombre }))}
-          accion={{ label: 'Nuevo formato', icon: 'plus', onClick: ed.nuevo }}
+          options={ed.formatos.map((f) => ({ value: f.id, label: etiquetaFormato(f) }))}
+          accion={puedeEditar ? { label: 'Nuevo formato', icon: 'plus', onClick: ed.nuevo } : undefined}
         />
         {estado && estado !== 'enviando' && <p style={{ margin: 0, fontSize: 13, color: 'var(--danger)' }}>{estado}</p>}
         <div className="ui-acciones ui-separado" style={{ paddingTop: 16 }}>
@@ -168,19 +186,65 @@ function NuevoReporte({ areas, reportes, ed, muestra: elegido, cerrar, creado })
 }
 
 export function ReportesPage() {
-  const { organizacion } = useSesion()
-  const { estado, datos, reintentar, actualizar } = useDatos(cargar, [])
+  const { organizacion, rol } = useSesion()
+  const { estado, datos, reintentar, recargar, actualizar } = useDatos(cargar, [])
   // ?reporte=<num> abre ese reporte (lo usa Nico AI al generar uno).
   const [params] = useSearchParams()
   const [elegido, setElegido] = useState(() => Number(params.get('reporte')) || null)
   const [verTodos, setVerTodos] = useState(false)
   const [modal, setModal] = useState(false)
+  const [modalFormato, setModalFormato] = useState(null)
+  const [areasElegidas, setAreasElegidas] = useState([])
+  const [versiones, setVersiones] = useState(null)
   const reportes = datos?.reportes ?? []
   const actual = reportes.find((r) => r.num === elegido) ?? reportes[0]
-  const ed = useEdicion(actual?.num)
+  const ed = useEdicion(actual)
+  const puedeEditar = rol === 'ADMIN' || rol === 'SUPER'
   // Mientras se crea un formato en el modal, la página de fondo sigue en vista normal.
   const edPagina = ed.modo === 'nuevo' ? { ...ed, editando: false } : ed
   const nombreArea = (n) => datos?.areas.find((a) => a.num === n)?.nombre ?? 'Todas las áreas'
+
+  const accionFormato = async (accion) => {
+    try {
+      await accion()
+      await ed.recargar()
+      recargar()
+    } catch {
+      window.alert('No se pudo actualizar el formato. Intenta de nuevo.')
+    }
+  }
+  const hacerPredeterminado = () =>
+    accionFormato(() => formatosApi.predeterminado(ed.formato.num))
+  const archivar = () => {
+    if (!window.confirm(`¿Archivar el formato «${ed.formato.nombre}»? Los reportes ya generados no cambian.`)) return
+    accionFormato(() => formatosApi.archivar(ed.formato.num))
+  }
+  const abrirAreas = () => {
+    setAreasElegidas(ed.formato.areasPredeterminado ?? [])
+    setModalFormato('areas')
+  }
+  const guardarAreas = async () => {
+    await accionFormato(() => formatosApi.areas(ed.formato.num, areasElegidas))
+    setModalFormato(null)
+  }
+  const verVersiones = async () => {
+    setVersiones(null)
+    setModalFormato('versiones')
+    try {
+      setVersiones(await formatosApi.versiones(ed.formato.num))
+    } catch {
+      setVersiones([])
+    }
+  }
+  const duplicarParaEditar = async () => {
+    await ed.duplicar()
+  }
+  // Guardar o cambiar el formato de un reporte avisa para refrescar la lista sin esqueleto.
+  useEffect(() => {
+    const alCambiarReporte = () => recargar()
+    window.addEventListener('nucleo:reporte', alCambiarReporte)
+    return () => window.removeEventListener('nucleo:reporte', alCambiarReporte)
+  }, [recargar])
 
   return (
     <Pantalla
@@ -192,6 +256,15 @@ export function ReportesPage() {
         </Button>
       }
     >
+      {puedeEditar && (
+        <MigracionFormatos
+          formatos={ed.formatos}
+          alSubir={async () => {
+            await ed.recargar()
+            recargar()
+          }}
+        />
+      )}
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
       {estado === 'cargando' && <Skeleton variant="card" />}
       {estado === 'listo' && (
@@ -218,30 +291,82 @@ export function ReportesPage() {
                         Guardar
                       </Button>
                     </div>
-                    {ed.formato.id !== ESTANDAR && (
-                      <div className="ui-formato-extra">
-                        <button type="button" className="is-peligro" onClick={() => ed.eliminar(ed.formato.id)}>
-                          <Trash2 size={14} /> Eliminar formato
-                        </button>
-                      </div>
-                    )}
                   </>
                 ) : (
                   <>
                     <span className="ui-eyebrow">Reporte seleccionado</span>
                     <strong className="ui-acciones-reporte__titulo">{actual.cifras.titulo}</strong>
-                    <Desplegable
-                      label="Formato"
-                      icon="file-text"
-                      value={ed.formato.id}
-                      onChange={(v) => ed.asignar(actual.num, v)}
-                      options={ed.formatos.map((f) => ({ value: f.id, label: f.nombre }))}
-                    />
+                    <div className="ui-formato-cabeza">
+                      <span className="ui-eyebrow">Formato</span>
+                      {ed.formato.esPlantilla && <Badge tone="neutral">Plantilla</Badge>}
+                      {ed.formato.predeterminado && <Badge tone="success">Predeterminado</Badge>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Desplegable
+                          icon="file-text"
+                          value={ed.formato.id}
+                          onChange={async (v) => {
+                            await ed.asignar(actual.num, v)
+                          }}
+                          options={ed.formatos.map((f) => ({ value: f.id, label: etiquetaFormato(f) }))}
+                        />
+                      </div>
+                      {puedeEditar && ed.formato.num && (
+                        <MenuAcciones
+                          items={[
+                            {
+                              label: 'Hacer predeterminado',
+                              icon: 'circle-check',
+                              disabled: ed.formato.esPlantilla || ed.formato.predeterminado,
+                              nota: ed.formato.esPlantilla ? 'Duplica la plantilla primero' : undefined,
+                              onClick: hacerPredeterminado,
+                            },
+                            {
+                              label: 'Predeterminado de áreas…',
+                              icon: 'map-pin',
+                              disabled: ed.formato.esPlantilla,
+                              onClick: abrirAreas,
+                            },
+                            {
+                              label: 'Archivar',
+                              icon: 'circle-x',
+                              peligro: true,
+                              disabled: ed.formato.esPlantilla,
+                              onClick: archivar,
+                            },
+                            {
+                              label: 'Ver versiones',
+                              icon: 'history',
+                              onClick: verVersiones,
+                            },
+                          ]}
+                        />
+                      )}
+                    </div>
                     <div className="ui-acciones-reporte" style={{ marginTop: 12 }}>
-                      <Button variant="secondary" size="sm" icon="sliders-horizontal" onClick={ed.abrir}>
-                        Personalizar
-                      </Button>
-                      <Button size="sm" icon="download" onClick={() => descargarPdf(`${actual.cifras.titulo} · ${ed.formato.nombre}`)}>
+                      {puedeEditar && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={ed.formato.esPlantilla ? 'copy' : 'sliders-horizontal'}
+                          onClick={ed.formato.esPlantilla ? duplicarParaEditar : ed.abrir}
+                        >
+                          {ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar'}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        icon="download"
+                        onClick={() =>
+                          reportesApi
+                            .descargarArchivo(
+                              actual.num,
+                              `${actual.cifras.titulo} · ${actual.formato_nombre ?? ed.formato.nombre}`,
+                            )
+                            .catch(() => window.alert('No se pudo descargar el PDF. Intenta de nuevo.'))
+                        }
+                      >
                         Descargar PDF
                       </Button>
                     </div>
@@ -279,7 +404,9 @@ export function ReportesPage() {
                           <Badge tone="success" icon="circle-check">
                             {r.origen === 'PROGRAMADO' ? 'Enviado por correo' : 'Listo'}
                           </Badge>
-                          <span className="ui-muted ui-formato-etiqueta">Formato: {ed.formatoDe(r.num).nombre}</span>
+                          <span className="ui-muted ui-formato-etiqueta">
+                            Formato: {r.formato_nombre ?? ed.formatoDe(r.num).nombre}
+                          </span>
                         </div>
                       </div>
                     </button>
@@ -329,15 +456,67 @@ export function ReportesPage() {
           areas={datos.areas}
           reportes={reportes}
           ed={ed}
+          puedeEditar={puedeEditar}
           muestra={actual}
           cerrar={() => setModal(false)}
-          creado={(nuevos, formato) => {
-            ed.asignar(nuevos.map((r) => r.num), formato)
+          creado={(nuevos) => {
             actualizar((d) => ({ ...d, reportes: [...nuevos.reverse(), ...d.reportes] }))
             setElegido(nuevos[0].num)
             setModal(false)
           }}
         />
+      )}
+      {modalFormato === 'areas' && datos && (
+        <Modal
+          titulo="Predeterminado de áreas"
+          sub={`Elige en qué áreas se usará «${ed.formato.nombre}» por omisión.`}
+          cerrar={() => setModalFormato(null)}
+          acciones={<Button onClick={guardarAreas}>Guardar áreas</Button>}
+        >
+          <div style={{ display: 'grid', gap: 10 }}>
+            {datos.areas.map((area) => (
+              <label key={area.num} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={areasElegidas.includes(area.num)}
+                  onChange={(e) =>
+                    setAreasElegidas((actuales) =>
+                      e.target.checked
+                        ? [...actuales, area.num]
+                        : actuales.filter((num) => num !== area.num),
+                    )
+                  }
+                />
+                <span>{area.nombre}</span>
+              </label>
+            ))}
+          </div>
+        </Modal>
+      )}
+      {modalFormato === 'versiones' && (
+        <Modal
+          titulo="Versiones del formato"
+          sub={ed.formato.nombre}
+          cerrar={() => setModalFormato(null)}
+          acciones={null}
+        >
+          {versiones === null ? (
+            <p className="ui-muted">Cargando versiones…</p>
+          ) : versiones.length === 0 ? (
+            <p className="ui-muted">Este formato no tiene versiones.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {versiones.map((version) => (
+                <div key={version.numero} className="ui-item" style={{ padding: 10 }}>
+                  <strong>Versión {version.numero}</strong>
+                  <span className="ui-muted">
+                    {' '}· {fechaLarga(version.fecha)} · {version.creada_por_nombre || 'Sistema'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
       )}
     </Pantalla>
   )

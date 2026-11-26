@@ -11,7 +11,7 @@ reportes, y expone una API REST que consumen la web y la app móvil.
 
 - **`BackEnd/`**
   - API Django REST con autenticación por token y permisos por rol.
-  - Modelo relacional de 16 tablas en PostgreSQL con aislamiento por organización, y
+  - Modelo relacional de 18 tablas en PostgreSQL con aislamiento por organización, y
     lecturas en una hypertable de TimescaleDB.
   - Consumidor MQTT que valida y guarda lecturas y genera alertas de advertencia y peligro.
   - Canal en vivo (WebSocket `ws/panel/`, Django Channels y Redis) y notificaciones push con Expo.
@@ -48,7 +48,7 @@ reportes, y expone una API REST que consumen la web y la app móvil.
   - Configuración del broker, ACL por usuario, `preparar.sh` (certificados y usuarios de
     desarrollo) y `dispositivo.sh` (alta de un usuario por dispositivo).
 - **`Database/`**
-  - Scripts SQL de práctica: `Web-Mobile/` (16 tablas, en `nucleo_test`) e `IoT/`
+  - Scripts SQL de práctica: `Web-Mobile/` (18 tablas, en `nucleo_test`) e `IoT/`
     (hypertable `lectura`, en `nucleo_iot_test`), y `crear-roles.sh` (opcional) para usuarios de
     base de datos sin superusuario.
 - **`Context/`**
@@ -177,7 +177,7 @@ Origen → Destino                                Protocolo                  Est
 ├── Web / Mobile → Backend                      WebSocket /ws/panel/       Activo
 ├── Backend → Redis                             Capa de canales            Activo
 ├── Backend → Expo Push                         HTTPS                      Activo en producción; Firebase
-├── Backend → PostgreSQL nucleo_db              SQL/psycopg 3              Activo; 16 tablas
+├── Backend → PostgreSQL nucleo_db              SQL/psycopg 3              Activo; 18 tablas
 ├── ESP32 → Mosquitto                           MQTT sobre TLS             :8883 en local; en WebSocket por Cloudflare en producción
 ├── Mosquitto → Backend                         MQTT (escuchar_mqtt)       Activo
 ├── Backend → Mosquitto                         MQTT retenido (config)     Activo con MQTT_PUBLICAR_CONFIG

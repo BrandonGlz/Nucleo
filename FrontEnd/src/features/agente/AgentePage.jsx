@@ -21,7 +21,6 @@ import { Pantalla } from '../../components/Pantalla'
 import { useAgente } from '../../context/AgenteContext'
 import { useSesion } from '../../context/SesionContext'
 import { DashboardReporte } from '../reportes/DashboardReporte'
-import { descargarPdf } from '../reportes/pdf'
 import { asignarFormato, useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
 import * as agenteApi from '../../services/agente'
@@ -170,7 +169,7 @@ function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
   const [zoom, setZoom] = useState(null)
   const [ajuste, setAjuste] = useState(1)
   const caja = useRef(null)
-  const ed = useEdicion(resumen.num)
+  const ed = useEdicion(r ?? resumen.num)
   useEffect(() => {
     let vivo = true
     reportesApi
@@ -207,7 +206,16 @@ function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
           </select>
           <Icon name="chevron-down" size={14} />
         </label>
-        <Button size="sm" icon="download" disabled={!r} onClick={() => descargarPdf(`${nombreReporte(resumen)} · ${ed.formato.nombre}`, caja.current)}>
+        <Button
+          size="sm"
+          icon="download"
+          disabled={!r}
+          onClick={() =>
+            reportesApi
+              .descargarArchivo(resumen.num, `${nombreReporte(resumen)} · ${ed.formato.nombre}`)
+              .catch(() => window.alert('No se pudo descargar el PDF. Intenta de nuevo.'))
+          }
+        >
           Descargar como PDF
         </Button>
         <button
@@ -622,29 +630,29 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   const puedeReporte = ROLES_REPORTE.includes(usuario?.rol)
   // Lo que se resuelve en el navegador, sin servidor ni IA: saludos y ayuda, ir a otra sección,
   // editar la plantilla del reporte de la conversación y elegir plantilla antes de generar.
-  const local = (pregunta) => {
+  const local = async (pregunta) => {
     // Con un reporte preparado, «ok» o «cancela» los responde el servidor (confirma o descarta).
     if (mensajes.at(-1)?.accion) return null
     const rapida = respuestaRapida(pregunta, { nombre: usuario?.nombre?.split(' ')[0], dispositivo: nombreAgente })
     if (rapida) return rapida
     const reporte = visor ?? reportes[0]
-    const orden = reporte && puedeReporte ? interpretar(pregunta, reporte.num) : null
+    const orden = reporte && puedeReporte ? await interpretar(pregunta, reporte) : null
     if (orden) {
       const ultimaEdicion = mensajes.findLast((m) => m.edicion?.num === reporte.num && m.edicion.previo)?.edicion
-      const r = aplicar(orden, reporte.num, ultimaEdicion)
+      const r = await aplicar(orden, reporte, ultimaEdicion, usuario?.rol)
       return { ...r, reporteEditado: reporte }
     }
     if (puedeReporte && esReporte(pregunta)) {
-      const opciones = plantillas()
+      const opciones = await plantillas()
       if (opciones.length > 1)
         return { texto: '¿Con qué plantilla genero el reporte? Estos son los elementos de cada una.', plantillas: { pregunta, opciones } }
     }
     return null
   }
-  const preguntar = (pregunta, base) => {
+  const preguntar = async (pregunta, base) => {
     if (!pregunta.trim() || pensando) return
     setTexto('')
-    const r = base ? null : local(pregunta)
+    const r = base ? null : await local(pregunta)
     if (r) {
       ag.responderLocal(pregunta, r)
       if (r.ir) setTimeout(() => navegarA(r.ir), 900)

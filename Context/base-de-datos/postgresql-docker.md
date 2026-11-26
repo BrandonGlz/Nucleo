@@ -76,7 +76,7 @@ autorización y respaldo.
 
 ## Cambios de esquema
 
-Backend, con migraciones de Django (crean las 16 tablas de `nucleo_db` y la
+Backend, con migraciones de Django (crean las 18 tablas de `nucleo_db` y la
 hypertable `lectura` de `nucleo_iot`, descritas en
 `Context/base-de-datos/modelo-relacional.md`):
 
@@ -108,7 +108,7 @@ actualizar el archivo que la consume.
 inicialización de Docker y no los usa el backend.
 
 - `Database/Web-Mobile/` practica en `nucleo_test` (servicio PostgreSQL): `init.sql` y
-  `drop.sql` crean y eliminan la base, `tables.sql` crea las 16 tablas, `seed.sql`
+  `drop.sql` crean y eliminan la base, `tables.sql` crea las 18 tablas, `seed.sql`
   carga los catálogos y datos de práctica y `queries.sql` reúne consultas de alertas,
   del límite de 2 minutos, de destinatarios y de reportes. `procedures.sql` y
   `triggers.sql` están vacíos.

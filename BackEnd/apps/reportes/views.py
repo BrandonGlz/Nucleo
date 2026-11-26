@@ -3,6 +3,9 @@ import time
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
+from django.db.models import Q
 from django.http import FileResponse, HttpResponse
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
@@ -15,10 +18,12 @@ from rest_framework.views import APIView
 from apps.dispositivos import firmware
 from apps.dispositivos.models import Dispositivo
 from apps.nico import configuracion, sugerencias
+from apps.organizaciones.models import Area
 from apps.reportes import (
     agente,
     aprendizaje,
     carga,
+    formatos,
     graficas,
     herramientas,
     ia,
@@ -28,15 +33,39 @@ from apps.reportes import (
     servicios,
     social,
 )
-from apps.reportes.models import PreguntaAgente, ProgramacionReporte, Reporte
+from apps.reportes.models import (
+    FormatoReporte,
+    PreguntaAgente,
+    ProgramacionReporte,
+    Reporte,
+    VersionFormato,
+)
 from apps.reportes.serializers import (
+    CambioFormatoSerializer,
+    FormatoReporteSerializer,
     ProgramacionReporteSerializer,
     ReporteSerializer,
+    SolicitudAreasFormatoSerializer,
+    SolicitudDuplicarFormatoSerializer,
+    SolicitudFormatoSerializer,
     SolicitudReporteSerializer,
+    VersionFormatoSerializer,
 )
 from common import roles
 from common.permissions import PermisoPorRol
 from common.scoping import areas_visibles, dispositivos_visibles
+
+
+def _formato_visible(usuario, num):
+    """El formato debe ser de su organización o una plantilla del sistema, y estar activo."""
+    formato = FormatoReporte.objects.filter(
+        Q(organizacion_id=usuario.organizacion_id) | Q(organizacion__isnull=True),
+        activo=True,
+        pk=num,
+    ).first()
+    if formato is None:
+        raise NotFound("El formato no existe o no está a su alcance.")
+    return formato
 
 
 class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
@@ -53,7 +82,7 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
         consulta = Reporte.objects.filter(organizacion_id=usuario.organizacion_id)
         if usuario.rol_id != roles.ADMIN and usuario.area_id:
             consulta = consulta.filter(area_id=usuario.area_id)
-        return consulta.select_related("organizacion", "area")
+        return consulta.select_related("organizacion", "area", "formato_version__formato")
 
     def create(self, request):
         entrada = SolicitudReporteSerializer(data=request.data)
@@ -69,6 +98,10 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
         elif request.user.rol_id != roles.ADMIN and request.user.area_id:
             area = areas.filter(pk=request.user.area_id).first()
 
+        formato = None
+        if datos.get("formato") is not None:
+            formato = _formato_visible(request.user, datos["formato"])
+
         try:
             reporte = servicios.generar_reporte(
                 request.user.organizacion,
@@ -77,6 +110,7 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
                 datos["periodo_fin"],
                 Reporte.Origen.MANUAL,
                 usuario=request.user,
+                formato=formato,
             )
         except ia.IANoDisponible as error:
             return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -88,6 +122,207 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
         respuesta = HttpResponse(pdf.construir(reporte), content_type="application/pdf")
         respuesta["Content-Disposition"] = f'attachment; filename="reporte-{reporte.num}.pdf"'
         return respuesta
+
+    @action(detail=True, methods=["post"], url_path="formato")
+    def cambiar_formato(self, request, pk=None):
+        """Cambia el formato de un reporte ya generado y rehace solo su PDF (sin IA)."""
+        reporte = self.get_object()
+        entrada = CambioFormatoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        formato = _formato_visible(request.user, entrada.validated_data["formato"])
+        version = formato.version_actual()
+        if version is None:
+            raise ValidationError({"formato": "El formato no tiene una versión para usar."})
+        with transaction.atomic():
+            reporte.formato_version = version
+            reporte.save(update_fields=["formato_version"])
+            reporte.archivo_pdf = pdf.guardar(reporte)
+            reporte.save(update_fields=["archivo_pdf"])
+        return Response(self.get_serializer(reporte).data)
+
+
+class FormatoReporteViewSet(viewsets.ModelViewSet):
+    """Formatos de reporte compartidos por la organización, con versiones.
+
+    ADMIN, SUPER y ANALISTA leen y usan los formatos; solo ADMIN y SUPER crean, editan,
+    duplican, archivan y marcan predeterminados. Las plantillas del sistema no se editan:
+    se duplican.
+    """
+
+    serializer_class = FormatoReporteSerializer
+    permission_classes = [PermisoPorRol]
+    roles_lectura = (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA)
+    roles_escritura = (roles.ADMIN, roles.SUPERVISOR)
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def get_queryset(self):
+        usuario = self.request.user
+        consulta = FormatoReporte.objects.filter(
+            Q(organizacion__isnull=True) | Q(organizacion_id=usuario.organizacion_id)
+        ).select_related("organizacion", "creado_por")
+        archivados = self.request.query_params.get("archivados", "").lower()
+        if archivados not in ("1", "true"):
+            consulta = consulta.filter(Q(organizacion__isnull=True) | Q(activo=True))
+        return consulta
+
+    @staticmethod
+    def _normalizar_conf(conf):
+        try:
+            return formatos.validar_conf(conf)
+        except DjangoValidationError as error:
+            raise ValidationError({"conf": error.messages}) from error
+
+    def _validar_nombre(self, nombre, excluir=None):
+        consulta = FormatoReporte.objects.filter(
+            organizacion_id=self.request.user.organizacion_id,
+            nombre=nombre,
+            activo=True,
+        )
+        if excluir is not None:
+            consulta = consulta.exclude(pk=excluir.pk)
+        if consulta.exists():
+            raise ValidationError({"nombre": "Ya existe un formato activo con ese nombre."})
+
+    def _nombre_libre(self, base):
+        """El nombre pedido o, si ya existe en la organización, «Nombre (2)», «(3)»…"""
+        usados = set(
+            FormatoReporte.objects.filter(
+                organizacion_id=self.request.user.organizacion_id,
+            ).values_list("nombre", flat=True)
+        )
+        if base not in usados:
+            return base
+        numero = 2
+        while f"{base} ({numero})" in usados:
+            numero += 1
+        return f"{base} ({numero})"
+
+    def create(self, request, *args, **kwargs):
+        entrada = SolicitudFormatoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        datos = entrada.validated_data
+        self._validar_nombre(datos["nombre"])
+        conf = self._normalizar_conf(datos["conf"])
+        with transaction.atomic():
+            formato = FormatoReporte.objects.create(
+                organizacion=request.user.organizacion,
+                nombre=datos["nombre"],
+                creado_por=request.user,
+            )
+            VersionFormato.objects.create(
+                formato=formato,
+                numero=1,
+                conf=conf,
+                creada_por=request.user,
+            )
+        return Response(self.get_serializer(formato).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        formato = self.get_object()
+        if formato.organizacion_id is None:
+            raise PermissionDenied("Las plantillas no se editan; duplícalas para cambiarlas.")
+        entrada = SolicitudFormatoSerializer(data=request.data, partial=True)
+        entrada.is_valid(raise_exception=True)
+        datos = entrada.validated_data
+        if "nombre" in datos:
+            self._validar_nombre(datos["nombre"], excluir=formato)
+        conf = self._normalizar_conf(datos["conf"]) if "conf" in datos else None
+
+        with transaction.atomic():
+            if "nombre" in datos and datos["nombre"] != formato.nombre:
+                formato.nombre = datos["nombre"]
+                formato.save(update_fields=["nombre"])
+            if conf is not None:
+                actual = formato.version_actual()
+                VersionFormato.objects.create(
+                    formato=formato,
+                    numero=(actual.numero if actual else 0) + 1,
+                    conf=conf,
+                    creada_por=request.user,
+                )
+        return Response(self.get_serializer(formato).data)
+
+    def destroy(self, request, *args, **kwargs):
+        formato = self.get_object()
+        if formato.organizacion_id is None:
+            raise PermissionDenied("Las plantillas no se archivan.")
+        with transaction.atomic():
+            formato.activo = False
+            formato.predeterminado = False
+            formato.save(update_fields=["activo", "predeterminado"])
+            formato.areas_predeterminado.update(formato_reporte=None)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
+    def duplicar(self, request, pk=None):
+        original = self.get_object()
+        entrada = SolicitudDuplicarFormatoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        base = entrada.validated_data.get("nombre") or f"Copia de {original.nombre}"
+        nombre = self._nombre_libre(base)
+        actual = original.version_actual()
+        conf = actual.conf if actual else {}
+        with transaction.atomic():
+            formato = FormatoReporte.objects.create(
+                organizacion=request.user.organizacion,
+                nombre=nombre,
+                creado_por=request.user,
+            )
+            VersionFormato.objects.create(
+                formato=formato,
+                numero=1,
+                conf=conf,
+                creada_por=request.user,
+            )
+        return Response(self.get_serializer(formato).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def predeterminado(self, request, pk=None):
+        formato = self.get_object()
+        if formato.organizacion_id is None:
+            raise PermissionDenied(
+                "Las plantillas no pueden ser predeterminadas; duplica primero la que quieras usar."
+            )
+        if not formato.activo:
+            raise ValidationError({"formato": "No se puede marcar un formato archivado."})
+        with transaction.atomic():
+            FormatoReporte.objects.filter(
+                organizacion_id=formato.organizacion_id,
+                predeterminado=True,
+            ).exclude(pk=formato.pk).update(predeterminado=False)
+            if not formato.predeterminado:
+                formato.predeterminado = True
+                formato.save(update_fields=["predeterminado"])
+        return Response(self.get_serializer(formato).data)
+
+    @action(detail=True, methods=["post"])
+    def areas(self, request, pk=None):
+        formato = self.get_object()
+        if formato.organizacion_id is None:
+            raise PermissionDenied(
+                "Las plantillas no pueden ser predeterminadas de un área; duplica primero."
+            )
+        if not formato.activo:
+            raise ValidationError({"formato": "No se puede usar un formato archivado."})
+        entrada = SolicitudAreasFormatoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        numeros = set(entrada.validated_data["areas"])
+        areas = Area.objects.filter(
+            pk__in=numeros,
+            organizacion_id=formato.organizacion_id,
+        )
+        if set(areas.values_list("pk", flat=True)) != numeros:
+            raise ValidationError({"areas": "Las áreas deben ser de la misma organización."})
+        with transaction.atomic():
+            formato.areas_predeterminado.exclude(pk__in=numeros).update(formato_reporte=None)
+            Area.objects.filter(pk__in=numeros).update(formato_reporte=formato)
+        return Response(self.get_serializer(formato).data)
+
+    @action(detail=True, methods=["get"])
+    def versiones(self, request, pk=None):
+        formato = self.get_object()
+        versiones = formato.versiones.select_related("creada_por")
+        return Response(VersionFormatoSerializer(versiones, many=True).data)
 
 
 class ProgramacionReporteViewSet(viewsets.ModelViewSet):

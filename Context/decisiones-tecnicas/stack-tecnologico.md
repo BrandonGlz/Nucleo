@@ -38,7 +38,7 @@
 
 **Base de datos**
 
-- Modelo relacional de 16 tablas en `nucleo_db` y la hypertable `lectura` en `nucleo_iot`, creados con migraciones de Django — *Aceptada*. Nombres de tabla y columna del modelo; modelo de usuario propio (`usuarios.Usuario`).
+- Modelo relacional de 18 tablas en `nucleo_db` y la hypertable `lectura` en `nucleo_iot`, creados con migraciones de Django — *Aceptada*. Nombres de tabla y columna del modelo; modelo de usuario propio (`usuarios.Usuario`).
 - Valores por defecto en la base (`db_default`) y restricciones `CHECK` — *Aceptada*. La base impide datos inválidos aunque falle la aplicación.
 - Zona horaria `America/Tijuana` con `USE_TZ` — *Aceptada*. Se guarda en UTC y se muestra en hora local.
 - PostgreSQL 17 en Docker — *Aceptada*. Requisito obligatorio; sin instalación nativa.

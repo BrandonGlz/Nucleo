@@ -1,9 +1,18 @@
 // Reportes (ADMIN, SUPER y ANALISTA)
-export const REPORTES = '/reportes/' // GET; POST {area?, periodo_inicio, periodo_fin}
+export const REPORTES = '/reportes/' // GET; POST {area?, formato?, periodo_inicio, periodo_fin}
 export const REPORTE = (num) => `/reportes/${num}/` // GET
 export const REPORTE_PDF = (num) => `/reportes/${num}/pdf/` // GET: descarga en PDF
+export const REPORTE_FORMATO = (num) => `/reportes/${num}/formato/` // POST {formato}: cambia el formato y regenera el PDF
 export const PROGRAMACIONES_REPORTE = '/programaciones-reporte/' // GET, POST
 export const PROGRAMACION_REPORTE = (num) => `/programaciones-reporte/${num}/` // GET, PATCH, DELETE
+
+// Formatos de reporte (ADMIN y SUPER escriben; ANALISTA solo lee y usa)
+export const FORMATOS_REPORTE = '/formatos-reporte/' // GET; ?archivados=1; POST {nombre, conf}
+export const FORMATO_REPORTE = (num) => `/formatos-reporte/${num}/` // GET, PATCH {nombre?, conf?}, DELETE (archiva)
+export const FORMATO_DUPLICAR = (num) => `/formatos-reporte/${num}/duplicar/` // POST {nombre?}
+export const FORMATO_PREDETERMINADO = (num) => `/formatos-reporte/${num}/predeterminado/` // POST
+export const FORMATO_AREAS = (num) => `/formatos-reporte/${num}/areas/` // POST {areas: [num]}
+export const FORMATO_VERSIONES = (num) => `/formatos-reporte/${num}/versiones/` // GET
 
 // Agente IA: uno por dispositivo. POST {pregunta, dispositivo} → {texto, picos?, serie?, etiquetas?, unidad?, maximo?}
 export const AGENTE = '/agente/'

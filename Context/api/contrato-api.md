@@ -232,11 +232,36 @@ ESP32 (clave X-Puente-Clave, sin sesión)
 └── GET /puente/firmware/archivo/?dispositivo=&version=&ruta=
                                             Un archivo de esa versión
 
+Formatos de reporte (ADMIN, SUPER y ANALISTA leen; ADMIN y SUPER escriben)
+├── GET /formatos-reporte/                  Plantillas + formatos activos de la organización;
+│                                           ?archivados=1 incluye los archivados. Cada uno trae
+│                                           num, nombre, plantilla, predeterminado, activo,
+│                                           es_plantilla, version, conf, creado_por_nombre y
+│                                           areas_predeterminado
+├── POST /formatos-reporte/                 {"nombre", "conf"} → formato con versión 1
+├── GET /formatos-reporte/{num}/            Detalle del formato y su versión actual
+├── PATCH /formatos-reporte/{num}/          {"nombre"?, "conf"?}; si viene conf crea una versión
+│                                           nueva; las plantillas no se editan (403)
+├── DELETE /formatos-reporte/{num}/         Archiva (activo=false), quita el predeterminado y las
+│                                           áreas que lo tenían como suyo
+├── POST /formatos-reporte/{num}/duplicar/  {"nombre"?} → copia en la organización con versión 1;
+│                                           por omisión «Copia de X», luego «Copia de X (2)»
+├── POST /formatos-reporte/{num}/predeterminado/
+│                                           Predeterminado de la organización (no plantillas)
+├── POST /formatos-reporte/{num}/areas/     {"areas": [num de área]} → predeterminado de esas áreas
+└── GET /formatos-reporte/{num}/versiones/  [{numero, fecha, creada_por_nombre}]
+
 Reportes (ADMIN, SUPER y ANALISTA)
-├── GET /reportes/                          Lista y detalle
-├── POST /reportes/                         {"area"?, "periodo_inicio", "periodo_fin"}
+├── GET /reportes/                          Lista y detalle; incluye formato (num), formato_nombre,
+│                                           formato_version y formato_conf. Sin versión, se usa la
+│                                           plantilla Operativo detallado
+├── POST /reportes/                         {"area"?, "formato"?, "periodo_inicio", "periodo_fin"};
+│                                           sin formato usa el predeterminado del área o el de la
+│                                           organización
 ├── GET /reportes/{num}/pdf/                Descarga en PDF; el texto lo redacta IA_PROVEEDOR
 │                                           (local: plantillas con las cifras); sin proveedor, 503
+├── POST /reportes/{num}/formato/           {"formato": num} → usa la versión actual de ese formato
+│                                           y regenera solo el PDF, sin llamar a la IA
 └── /programaciones-reporte/                Reportes periódicos: {"frecuencia" DIARIA|SEMANAL|MENSUAL,
                                             "destinatarios" [num de usuario], "area"?,
                                             "activa"?, "proxima_ejecucion"?}; destinatarios de la

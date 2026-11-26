@@ -230,6 +230,13 @@ button.ui-link {
   color: var(--text-primary);
   font-weight: 600;
 }
+/* Aviso para subir los formatos del navegador: botones del ancho de su texto, a la izquierda. */
+.ui-migracion-formatos__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
 .ui-titulo-fila {
   display: flex;
   flex-direction: column;
@@ -2498,6 +2505,11 @@ article.ui-hoja,
   min-width: 0;
 }
 /* Formatos de reporte */
+.ui-formato-cabeza {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .ui-formato-etiqueta {
   display: block;
   margin-top: 4px;
@@ -2545,54 +2557,6 @@ article.ui-hoja,
   color: var(--text-primary);
   font: inherit;
   font-size: 13px;
-}
-/* Impresión a PDF: solo las hojas A4 del reporte, sin márgenes del navegador */
-#ui-impresion {
-  display: none;
-}
-@media print {
-  @page {
-    size: A4;
-    margin: 0;
-  }
-  html.ui-imprimiendo,
-  html.ui-imprimiendo body {
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    background: #ffffff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  html.ui-imprimiendo body > *:not(#ui-impresion) {
-    display: none !important;
-  }
-  html.ui-imprimiendo #ui-impresion {
-    display: block;
-  }
-  #ui-impresion .ui-hoja {
-    width: 210mm;
-    height: 297mm;
-    min-height: 0;
-    margin: 0;
-    overflow: hidden;
-    border-radius: 0;
-    box-shadow: none;
-    outline: none;
-    break-after: page;
-  }
-  #ui-impresion .ui-hoja:last-child {
-    break-after: auto;
-  }
-  #ui-impresion .ui-editor__etiqueta,
-  #ui-impresion .ui-editor__asa-ancho,
-  #ui-impresion .ui-editor__asa-alto,
-  #ui-impresion .nc-tooltip,
-  #ui-impresion .nc-trend__cursor,
-  #ui-impresion .nc-trend__halo,
-  #ui-impresion .nc-trend__dot {
-    display: none;
-  }
 }
 /* Desplegable propio: misma caja que los campos de Núcleo y lista con su estilo */
 .ui-desplegable {

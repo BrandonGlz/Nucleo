@@ -1,16 +1,15 @@
-// Ediciones de plantillas desde el chat de Nico AI, sin IA: se reconocen con reglas sobre los
-// elementos que cada plantilla define (WIDGETS y tarjetas añadidas) y sus opciones (esquema).
-// Así «quita las alertas» o «pon la humedad en barras» se aplican al instante y sin gastar tokens.
+// Ediciones de formatos desde el chat de Nico AI, sin IA: se reconocen con reglas sobre los
+// elementos de cada formato (WIDGETS y tarjetas añadidas) y sus opciones (esquema). Las
+// operaciones se guardan por la API como una versión nueva.
 import {
-  ESTANDAR,
+  cargarFormatos,
   esquema,
-  formatoDeReporte,
-  guardarFormatos,
-  leerFormatos,
   opcionesDe,
   tarjeta,
   tarjetas,
 } from '../reportes/personalizacion'
+import * as formatosApi from '../../services/formatos'
+import * as reportesApi from '../../services/reportes'
 
 export const normalizar = (t) =>
   ` ${t
@@ -59,9 +58,14 @@ const ANCHOS = [
 const OCULTAR = /\s(quita|quitale|quitar|oculta|ocultale|ocultar|elimina|eliminar|borra|esconde|sin)\s/
 const MOSTRAR = /\s(muestra|mostrar|agrega|agregar|anade|anadir|incluye|incluir|vuelve a poner|pon de nuevo|regresa)\s/
 const VERBO_CAMBIO = /\s(pon|ponle|cambia|cambiala|cambialo|haz|hazla|hazlo|muestra|usa|deja|dejala|convierte)\s/
+const PUEDEN_EDITAR = ['ADMIN', 'SUPER']
 
 const nombreDe = (conf, id) => tarjeta(conf, id)?.nombre ?? id
 const folio = (num) => `R-${String(num).padStart(4, '0')}`
+const formatoDelReporte = (formatos, reporte) =>
+  formatos.find((f) => f.num === Number(reporte?.formato)) ??
+  formatos.find((f) => f.predeterminado) ??
+  formatos[0]
 
 // Elementos que nombra el texto, del alias más largo al más corto.
 function elementosEn(t, conf) {
@@ -96,19 +100,20 @@ function datosEn(t, conf, id) {
 }
 
 // Interpreta una orden de edición. Devuelve null si el texto no es una edición.
-// `num`: el reporte de la conversación sobre el que se trabaja.
-export function interpretar(texto, num) {
-  if (num == null) return null
+// `reporte` es el reporte de la conversación sobre el que se trabaja.
+export async function interpretar(texto, reporte) {
+  if (!reporte?.num) return null
   const t = normalizar(texto)
-  const estado = leerFormatos()
-  const formato = formatoDeReporte(estado, num)
+  const formatos = await cargarFormatos()
+  const formato = formatoDelReporte(formatos, reporte)
+  if (!formato) return null
   const conf = formato.conf
 
   if (/\s(deshaz|deshacer|revierte|como estaba)\s/.test(t)) return { accion: 'deshacer' }
   if (/\s(que|cuales) (elementos|secciones|tarjetas|partes)|elementos de la plantilla|que tiene (el reporte|la plantilla)/.test(t))
     return { accion: 'elementos' }
   if (/\s(plantilla|formato)\s/.test(t) && /\s(usa|usar|cambia|cambiar|aplica|aplicar|con|pasa)\s/.test(t)) {
-    const destino = estado.formatos
+    const destino = formatos
       .filter((f) => f.id !== formato.id)
       .find((f) => t.includes(normalizar(f.nombre)) || t.includes(` ${normalizar(f.nombre).trim()} `))
     if (destino) return { accion: 'plantilla', id: destino.id }
@@ -145,20 +150,6 @@ export function interpretar(texto, num) {
   return null
 }
 
-// Formato editable del reporte: la primera edición hace una copia solo para ese reporte, así las
-// demás plantillas (y los reportes que las usan) no cambian.
-function editable(estado, num) {
-  const actual = formatoDeReporte(estado, num)
-  const compartido = Object.entries(estado.porReporte).some(([n, f]) => f === actual.id && Number(n) !== Number(num))
-  if (actual.id.startsWith('ia-') && !compartido) return { estado, formato: actual, copia: false }
-  const formato = { id: `ia-${num}-${Date.now().toString(36)}`, nombre: `${actual.nombre} · ${folio(num)}`, conf: actual.conf }
-  return {
-    estado: { formatos: [...estado.formatos, formato], porReporte: { ...estado.porReporte, [num]: formato.id } },
-    formato,
-    copia: actual.nombre,
-  }
-}
-
 const listar = (conf) =>
   conf.orden.map((id) => {
     const op = opcionesDe(conf, id)
@@ -173,29 +164,56 @@ const listar = (conf) =>
     }
   })
 
-// Aplica la orden y devuelve la respuesta para el chat: { texto, edicion }.
-// `edicion.previo` guarda el estado anterior para «Deshacer».
-export function aplicar(orden, num, ultimaEdicion) {
-  const previo = leerFormatos()
+// Aplica la orden por la API y devuelve la respuesta para el chat.
+// `edicion.previo` guarda el formato y la configuración anteriores para «Deshacer».
+export async function aplicar(orden, reporte, ultimaEdicion, rol) {
+  if (!PUEDEN_EDITAR.includes(rol) && !['plantilla', 'elementos'].includes(orden.accion)) {
+    return { texto: 'Solo ADMIN y SUPER pueden modificar formatos. Cambiar el formato de un reporte sí puedes hacerlo.' }
+  }
+  const formatos = await cargarFormatos()
+  const actual = formatoDelReporte(formatos, reporte)
+  if (!actual) return { texto: 'No encontré el formato de este reporte.' }
+
   if (orden.accion === 'deshacer') {
     if (!ultimaEdicion?.previo) return { texto: 'No hay cambios recientes que deshacer en este reporte.' }
-    guardarFormatos(ultimaEdicion.previo)
-    return { texto: `Listo, regresé el reporte ${folio(num)} a como estaba.`, edicion: { num, deshecha: true } }
-  }
-  const actual = formatoDeReporte(previo, num)
-  if (orden.accion === 'elementos') {
-    return {
-      texto: `El reporte ${folio(num)} usa la plantilla «${actual.nombre}». Estos son sus elementos; puedo ocultarlos, mostrarlos, cambiar su gráfica, su ancho o su orden.`,
-      edicion: { num, elementos: listar(actual.conf), plantilla: actual.nombre },
+    const previo = ultimaEdicion.previo
+    if (Number(previo.formato) !== Number(actual.num)) {
+      await reportesApi.cambiarFormato(reporte.num, previo.formato)
+      await cargarFormatos()
+      return { texto: `Listo, regresé el reporte ${folio(reporte.num)} al formato anterior.`, edicion: { num: reporte.num, deshecha: true } }
     }
-  }
-  if (orden.accion === 'plantilla') {
-    const destino = previo.formatos.find((f) => f.id === orden.id)
-    guardarFormatos({ ...previo, porReporte: { ...previo.porReporte, [num]: destino.id } })
-    return { texto: `Cambié el reporte ${folio(num)} a la plantilla «${destino.nombre}».`, edicion: { num, previo } }
+    if (actual.esPlantilla) return { texto: 'No puedo volver a una versión de una plantilla; duplícala para editarla.' }
+    await formatosApi.actualizar(actual.num, { conf: previo.conf })
+    await reportesApi.cambiarFormato(reporte.num, actual.num)
+    await cargarFormatos()
+    return { texto: `Listo, regresé el reporte ${folio(reporte.num)} a la versión anterior.`, edicion: { num: reporte.num, deshecha: true } }
   }
 
-  const { estado, formato, copia } = editable(previo, num)
+  if (orden.accion === 'elementos') {
+    return {
+      texto: `El reporte ${folio(reporte.num)} usa el formato «${actual.nombre}». Estos son sus elementos; puedo ocultarlos, mostrarlos, cambiar su gráfica, su ancho o su orden.`,
+      edicion: { num: reporte.num, elementos: listar(actual.conf), plantilla: actual.nombre },
+    }
+  }
+
+  if (orden.accion === 'plantilla') {
+    const destino = formatos.find((f) => f.id === orden.id)
+    if (!destino) return { texto: 'Ese formato ya no está disponible.' }
+    await reportesApi.cambiarFormato(reporte.num, destino.num)
+    await cargarFormatos()
+    return {
+      texto: `Cambié el reporte ${folio(reporte.num)} al formato «${destino.nombre}».`,
+      edicion: { num: reporte.num, previo: { formato: actual.num, conf: actual.conf } },
+    }
+  }
+
+  let formato = actual
+  let copia = null
+  if (actual.esPlantilla) {
+    copia = await formatosApi.duplicar(actual.num)
+    const lista = await cargarFormatos()
+    formato = lista.find((f) => f.num === copia.num) ?? copia
+  }
   const conf = formato.conf
   const nombre = nombreDe(conf, orden.id)
   let nueva = conf
@@ -238,22 +256,26 @@ export function aplicar(orden, num, ultimaEdicion) {
     }
     nueva = { ...conf, opciones: { ...conf.opciones, [orden.id]: { ...op, ...cambio } } }
   }
-  guardarFormatos({
-    ...estado,
-    formatos: estado.formatos.map((f) => (f.id === formato.id ? { ...f, conf: nueva } : f)),
-  })
+
+  await formatosApi.actualizar(formato.num, { conf: nueva })
+  await reportesApi.cambiarFormato(reporte.num, formato.num)
+  await cargarFormatos()
   const nota = copia
-    ? ` Lo guardé como la plantilla «${formato.nombre}» para no cambiar «${copia}» ni tus otros reportes.`
+    ? ` Dupliqué la plantilla «${actual.nombre}» como «${formato.nombre}» para no cambiarla.`
     : ''
-  return { texto: `${hecho} en el reporte ${folio(num)}.${nota}`, edicion: { num, previo } }
+  return {
+    texto: `${hecho} en el reporte ${folio(reporte.num)}.${nota}`,
+    edicion: { num: reporte.num, previo: { formato: actual.num, conf: actual.conf } },
+  }
 }
 
-// Plantillas disponibles con los elementos visibles de cada una (para elegir antes de generar).
-export function plantillas() {
-  return leerFormatos().formatos.map((f) => ({
+// Formatos disponibles con los elementos visibles de cada uno (para elegir antes de generar).
+export async function plantillas() {
+  const formatos = await cargarFormatos()
+  return formatos.map((f) => ({
     id: f.id,
     nombre: f.nombre,
-    estandar: f.id === ESTANDAR,
+    estandar: false,
     elementos: f.conf.orden.filter((id) => !f.conf.ocultos.includes(id)).map((id) => nombreDe(f.conf, id)),
   }))
 }

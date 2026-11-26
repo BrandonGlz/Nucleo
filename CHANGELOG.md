@@ -44,6 +44,15 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Formatos de reporte en el servidor, compartidos por la organización: cuatro plantillas
+  (Ejecutivo, Cumplimiento, Operativo detallado e Incidentes), versiones al guardar,
+  predeterminados de la organización y de cada área, duplicar, archivar y consultar versiones.
+  La web y Nico AI crean y editan formatos por la API; las plantillas se duplican antes de
+  tocarlas.
+- El PDF de los reportes se genera en el servidor con la versión del formato del reporte y la
+  web lo descarga directamente, igual que la app y los correos.
+- Aviso para que ADMIN y SUPER suban a la organización los formatos que quedaron guardados en
+  el navegador, o los descarten.
 - Dictado por voz en los chats de Nico AI de la web y de la app (0.2.7): un micrófono junto al botón de enviar
   transcribe en español lo que se dice y, al terminar de hablar, el mensaje se envía solo; a lo dictado Nico
   siempre contesta en voz alta.

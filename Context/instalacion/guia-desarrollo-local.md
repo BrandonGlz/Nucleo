@@ -72,7 +72,7 @@ BackEnd/.venv/bin/pip install -r BackEnd/requirements-dev.txt
 Daphne está instalado primero); Redis (`docker compose up -d --wait`) debe estar encendido
 para que el canal funcione entre el consumidor MQTT y el servidor web.
 
-`migrate` crea las 16 tablas del modelo relacional en `nucleo_db` y carga los
+`migrate` crea las 18 tablas del modelo relacional en `nucleo_db` y carga los
 catálogos; `migrate --database=iot` crea la hypertable `lectura` en `nucleo_iot` (requiere
 `IOT_DATABASE_URL` en `BackEnd/.env`). `sembrar_demo` crea Grupo Altamira (4 áreas, 14
 usuarios de todos los roles, 15 dispositivos, entre ellos `NUC-001`) y Clínica San Rafael,
@@ -210,7 +210,7 @@ Resultado esperado: `curl` responde un JSON con `status: ok`; `check` muestra
 `All checks passed!`; los lint no muestran avisos; `npm run build` genera `FrontEnd/dist/`;
 `export:android` genera el bundle (no un APK) y `mpremote devs` lista el ESP32 con su puerto.
 
-Para practicar SQL sin tocar las bases reales, `Database/` tiene `nucleo_test` (16 tablas) y
+Para practicar SQL sin tocar las bases reales, `Database/` tiene `nucleo_test` (18 tablas) y
 `nucleo_iot_test` (hypertable de lecturas); los comandos están en
 [`Database/README.md`](../../Database/README.md).
 

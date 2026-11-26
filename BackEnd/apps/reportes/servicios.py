@@ -13,7 +13,7 @@ from apps.avisos import servicios as avisos
 from apps.catalogos.models import VariableAmbiental
 from apps.dispositivos.models import Sensor
 from apps.mediciones.models import Lectura
-from apps.reportes import ia, pdf
+from apps.reportes import formatos, ia, pdf
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.usuarios.models import Usuario
 from common import correo, roles
@@ -134,12 +134,15 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None):
     }
 
 
-def generar_reporte(organizacion, area, inicio, fin, origen, usuario=None):
+def generar_reporte(organizacion, area, inicio, fin, origen, usuario=None, formato=None):
     """Calcula las cifras, pide el texto a la IA y guarda el reporte con su PDF.
 
-    Lanza ``ia.IANoDisponible`` si el servicio de IA falla; en ese caso no se
-    guarda nada.
+    Sin ``formato`` usa el predeterminado del área, el de la organización o la plantilla
+    Operativo detallado. Lanza ``ia.IANoDisponible`` si el servicio de IA falla; en ese
+    caso no se guarda nada.
     """
+    formato = formatos.formato_para(organizacion, area, formato)
+    version = formato.version_actual() if formato is not None else None
     cifras = calcular_cifras(organizacion, area, inicio, fin)
     contenido = ia.redactar(cifras)
     with transaction.atomic():
@@ -148,6 +151,7 @@ def generar_reporte(organizacion, area, inicio, fin, origen, usuario=None):
             area=area,
             generado_por=usuario,
             origen=origen,
+            formato_version=version,
             periodo_inicio=inicio,
             periodo_fin=fin,
             cifras=cifras,

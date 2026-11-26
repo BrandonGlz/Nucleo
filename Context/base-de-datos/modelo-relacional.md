@@ -2,7 +2,7 @@
 
 Dos bases en Docker:
 
-- **`nucleo_db`** (PostgreSQL 17): 16 tablas de negocio que crean las migraciones de
+- **`nucleo_db`** (PostgreSQL 17): 18 tablas de negocio que crean las migraciones de
   Django a partir de los modelos de `BackEnd/apps/`. El mismo esquema, escrito en SQL,
   está en `Database/Web-Mobile/tables.sql` y se carga en `nucleo_test` para practicar.
 - **`nucleo_iot`** (TimescaleDB 2.31): la hypertable `lectura`. Su SQL está en
@@ -28,6 +28,8 @@ organizacion ─┬─ area ─┬─ usuario ─┬─ rol, estado_usuario
               │             └─ estado_dispositivo
               ├─ programacion_reporte
               └─ reporte
+formato_reporte ─┬─ version_formato ─── reporte
+                 └─ area (formato_reporte_num)
 
 umbral ── alerta ── notificacion ─┬─ usuario
                                   └─ telefono_push (solo canal PUSH)
@@ -60,7 +62,8 @@ variable_ambiental   TEMP (°C, −40 a 80), HUM (%HR, 0 a 100), AIRE (ppm, 0 a 
 organizacion   num, nombre, dir_calle, dir_numero, dir_colonia, ciudad, telefono,
                estado (def. ACTIVA), fecha_registro (def. now())
                CHECK estado en ACTIVA, SUSPENDIDA, BAJA
-area           num, organizacion_num, nombre, descripcion
+area           num, organizacion_num, nombre, descripcion,
+               formato_reporte_num (opcional, SET NULL: predeterminado del área)
                UNIQUE (organizacion_num, nombre)
 usuario        num, organizacion_num (opcional), area_num (opcional), rol_codigo,
                estado_usuario_codigo, nombre, primer_apellido, segundo_apellido,
@@ -108,6 +111,18 @@ solicitud_acceso
                ip, fecha_solicitud (def. now()), atendida_por (opcional), fecha_atencion,
                usuario_creado (opcional)
                estado en PENDIENTE, APROBADA, RECHAZADA (choices de Django, sin CHECK en la base)
+formato_reporte
+               num, organizacion_num (opcional; NULL = plantilla del sistema), nombre (≤ 80),
+               plantilla (vacío o EJECUTIVO, CUMPLIMIENTO, OPERATIVO, INCIDENTES),
+               predeterminado (def. FALSE), activo (def. TRUE), creado_por (opcional),
+               fecha_creacion
+               CHECK (plantilla = '') = (organizacion_num IS NOT NULL)
+               UNIQUE PARCIAL (organizacion_num) WHERE predeterminado AND activo
+               UNIQUE PARCIAL (organizacion_num, nombre) WHERE activo
+version_formato
+               num, formato_num (PROTECT), numero (≥ 1), conf JSONB, creada_por (opcional),
+               fecha
+               UNIQUE (formato_num, numero)
 programacion_reporte
                num, organizacion_num, area_num (opcional), creada_por, frecuencia,
                destinatarios (INTEGER[]), activa (def. TRUE), proxima_ejecucion,
@@ -115,6 +130,7 @@ programacion_reporte
                CHECK frecuencia en DIARIA, SEMANAL, MENSUAL; CHECK cardinality(destinatarios) > 0
                ÍNDICE (activa, proxima_ejecucion)
 reporte        num, organizacion_num, area_num (opcional), generado_por (opcional),
+               formato_version_num (opcional, PROTECT: versión con la que se generó),
                origen, periodo_inicio, periodo_fin, cifras JSONB, contenido, archivo_pdf,
                fecha_generacion
                CHECK origen en MANUAL, PROGRAMADO, AGENTE; CHECK periodo_inicio < periodo_fin
