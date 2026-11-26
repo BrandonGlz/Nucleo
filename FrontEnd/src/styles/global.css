@@ -6787,26 +6787,46 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   .ui-reportes__personalizar-texto { display: inline; }
   .ui-reportes__barra-formato .nc-badge { display: inline-flex; }
 }
-@container barra-reporte (max-width: 1000px) {
+@container barra-reporte (max-width: 1100px) {
   .ui-reportes__barra-formato .nc-badge { display: none; }
 }
-@container barra-reporte (max-width: 860px) {
+@container barra-reporte (max-width: 960px) {
   .ui-reportes__personalizar-texto { display: none; }
 }
-@container barra-reporte (max-width: 760px) {
+@container barra-reporte (max-width: 860px) {
   .ui-reportes__csv { display: none; }
 }
-@container barra-reporte (max-width: 700px) {
+@container barra-reporte (max-width: 720px) {
   .ui-reportes__texto-descargar { display: none; }
-  .ui-reportes__barra-formato > .ui-desplegable { max-width: 190px; }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable { max-width: 190px; }
   /* «Ajustar» solo aparece cuando hay zoom manual que deshacer. */
   .ui-reportes__barra .ui-zoom__ajustar.is-activo { display: none; }
 }
-@container barra-reporte (max-width: 540px) {
-  .ui-reportes__barra-formato > .ui-desplegable { min-width: 120px; max-width: 150px; }
+@container barra-reporte (max-width: 600px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable { min-width: 120px; max-width: 150px; }
 }
 /* Ventanas angostas de escritorio: la barra no alcanza; las acciones bajan a un segundo renglón. */
 @media (min-width: 901px) and (max-width: 1150px) {
   .ui-reportes__barra:not(.ui-reportes__barra--edicion) { flex-wrap: wrap; }
   .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones { flex-basis: 100%; }
+}
+/* Barra: aire entre grupos para que nada se vea encimado; una línea fina separa el formato
+   de las acciones del reporte. */
+@media (min-width: 901px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) { gap: 10px 16px; padding: 8px 12px; }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato { gap: 10px; }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones {
+    gap: 8px;
+    padding-left: 16px;
+    border-left: 1px solid var(--border);
+  }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn { padding-inline: 14px; }
+}
+@media (min-width: 901px) and (max-width: 1150px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones { padding-left: 0; border-left: 0; }
+}
+@container barra-reporte (max-width: 680px) {
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable { max-width: 160px; }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones { gap: 6px; padding-left: 12px; }
+  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn { padding-inline: 11px; }
 }
