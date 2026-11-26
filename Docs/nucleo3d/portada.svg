@@ -50,7 +50,7 @@
 <polygon points="259.5,119.0 645.8,209.5 640.3,212.8 254.0,122.3" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="640.3,212.8 645.8,209.5 645.8,516.7 640.3,520.0" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="645.8,219.1 755.6,153.3 755.6,441.3 645.8,507.1" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
-<g transform="matrix(2.1949 -1.3158 0.0000 3.8403 645.84 219.09)"><rect x="16" y="25" width="7" height="8" rx="1.5" fill="#111827"/><text x="19.5" y="38" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB del ESP</text></g>
+<g transform="matrix(2.1949 -1.3158 0.0000 3.8403 645.84 219.09)"><rect x="16" y="25" width="7" height="8" rx="1.5" fill="#111827"/><text x="19.5" y="38" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB del ESP</text><rect x="39.5" y="16.5" width="5.0" height="9.0" rx="1.5" fill="#111827"/><text x="42.0" y="30.5" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB-C carga</text></g>
 <polygon points="746.8,151.2 755.6,153.3 645.8,219.1 637.1,217.0" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="637.1,217.0 645.8,219.1 645.8,507.1 637.1,505.1" fill="#d8dce0" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="374.7,50.0 761.1,140.4 645.8,209.5 259.5,119.0" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>

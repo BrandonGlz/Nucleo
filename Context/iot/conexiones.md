@@ -82,4 +82,4 @@ alimenta de la batería: sin ella no responde y el firmware solo omite el nivel
 - [Firmware y hardware](firmware-y-hardware.md): qué hace cada pieza y cómo la usa el firmware.
 - [IoT/README](../../IoT/README.md): grabar la placa, subir el código y Pymakr.
 - [Núcleo en 3D](../../Docs/nucleo3d/README.md): carcasa beta, dónde va cada pieza y el recorrido
-  de los 43 cables con su pin exacto en la placa de expansión.
+  de los 37 cables con su pin exacto en la placa de expansión.

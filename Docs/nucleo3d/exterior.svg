@@ -6,7 +6,7 @@
 <text x="40" y="70" font-size="14" fill="#64748b">Medidas en cm · cuerpo 11 × 5.5 × 8 · cámara de sensores 2.8 × 5.1 × 7.2, separada 0.6 cm y unida por el puente de cables</text>
 <rect x="6" y="86" width="688" height="568" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
 <text x="24" y="114" font-size="16" font-weight="700" fill="#0f172a">1 · Frente y lado derecho</text>
-<text x="24" y="133" font-size="12" fill="#64748b">Pantalla, anillo RGB, LED de Wi-Fi, buzzer y logo</text>
+<text x="24" y="133" font-size="12" fill="#64748b">Pantalla, anillo RGB, LED de Wi-Fi, buzzer, USB del ESP y USB-C de carga</text>
 <polygon points="186.8,418.6 267.4,437.5 175.6,492.5 95.0,473.6" fill="#d6dce3" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="175.6,492.5 267.4,437.5 267.4,443.8 175.6,498.8" fill="#9fa3a8" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="95.0,473.6 175.6,492.5 175.6,498.8 95.0,479.9" fill="#cdd2d9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
@@ -57,7 +57,7 @@
 <polygon points="193.8,263.1 510.5,337.2 506.0,339.9 189.3,265.8" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="506.0,339.9 510.5,337.2 510.5,589.0 506.0,591.7" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="510.5,345.1 600.5,291.1 600.5,527.2 510.5,581.2" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
-<g transform="matrix(1.7993 -1.0787 0.0000 3.1481 510.54 345.07)"><rect x="16" y="25" width="7" height="8" rx="1.5" fill="#111827"/><text x="19.5" y="38" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB del ESP</text></g>
+<g transform="matrix(1.7993 -1.0787 0.0000 3.1481 510.54 345.07)"><rect x="16" y="25" width="7" height="8" rx="1.5" fill="#111827"/><text x="19.5" y="38" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB del ESP</text><rect x="39.5" y="16.5" width="5.0" height="9.0" rx="1.5" fill="#111827"/><text x="42.0" y="30.5" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB-C carga</text></g>
 <polygon points="593.3,289.4 600.5,291.1 510.5,345.1 503.3,343.4" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="503.3,343.4 510.5,345.1 510.5,581.2 503.3,579.5" fill="#d8dce0" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="288.3,206.4 605.0,280.6 510.5,337.2 193.8,263.1" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
@@ -168,7 +168,7 @@
 <polygon points="439.0,908.8 430.7,907.4 508.1,845.2 516.4,846.6" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="430.7,907.4 439.0,908.8 439.0,1163.5 430.7,1162.0" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="70.0,848.1 435.1,911.9 435.1,1166.6 70.0,1102.8" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
-<g transform="matrix(3.3192 0.5798 0.0000 3.3957 70.00 848.14)"><circle cx="17.5" cy="15" r="11.5" fill="#1f2937"/><circle cx="17.5" cy="15" r="10" fill="none" stroke="#94a3b8" stroke-width="1"/><circle cx="17.5" cy="15" r="7" fill="none" stroke="#94a3b8" stroke-width="1"/><circle cx="17.5" cy="15" r="4" fill="none" stroke="#94a3b8" stroke-width="1"/><line x1="6" y1="15" x2="29" y2="15" stroke="#94a3b8" stroke-width="1"/><line x1="17.5" y1="3.5" x2="17.5" y2="26.5" stroke="#94a3b8" stroke-width="1"/><text x="17.5" y="31.5" font-size="2.8" text-anchor="middle" fill="#334155" font-weight="600">salida de aire</text><circle cx="25" cy="58" r="2.6" fill="#1f2937"/><rect x="23.9" y="58" width="2.2" height="6" rx="1.1" fill="#1f2937"/><circle cx="85" cy="58" r="2.6" fill="#1f2937"/><rect x="83.9" y="58" width="2.2" height="6" rx="1.1" fill="#1f2937"/><text x="55" y="62" font-size="2.8" text-anchor="middle" fill="#334155" font-weight="600">ranuras para colgar</text></g>
+<g transform="matrix(3.3192 0.5798 0.0000 3.3957 70.00 848.14)"><circle cx="65.0" cy="21.0" r="14" fill="#1f2937"/><circle cx="65.0" cy="21.0" r="12" fill="none" stroke="#94a3b8" stroke-width="1"/><circle cx="65.0" cy="21.0" r="8.5" fill="none" stroke="#94a3b8" stroke-width="1"/><circle cx="65.0" cy="21.0" r="5" fill="none" stroke="#94a3b8" stroke-width="1"/><line x1="51.0" y1="21.0" x2="79.0" y2="21.0" stroke="#94a3b8" stroke-width="1"/><line x1="65.0" y1="7.0" x2="65.0" y2="35.0" stroke="#94a3b8" stroke-width="1"/><text x="65.0" y="39.5" font-size="2.8" text-anchor="middle" fill="#334155" font-weight="600">salida de aire</text><circle cx="25" cy="58" r="2.6" fill="#1f2937"/><rect x="23.9" y="58" width="2.2" height="6" rx="1.1" fill="#1f2937"/><circle cx="85" cy="58" r="2.6" fill="#1f2937"/><rect x="83.9" y="58" width="2.2" height="6" rx="1.1" fill="#1f2937"/><text x="55" y="62" font-size="2.8" text-anchor="middle" fill="#334155" font-weight="600">ranuras para colgar</text></g>
 <polygon points="435.1,911.9 70.0,848.1 73.9,845.0 439.0,908.8" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="435.1,911.9 439.0,908.8 439.0,1163.5 435.1,1166.6" fill="#bec1c5" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="435.1,903.4 70.0,839.7 151.3,774.4 516.4,838.2" fill="#e2e5ea" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
@@ -207,7 +207,7 @@
 <polygon points="551.1,934.2 458.1,918.0 461.2,915.5 554.2,931.8" fill="#d6dce3" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <rect x="706" y="666" width="688" height="568" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
 <text x="724" y="694" font-size="16" font-weight="700" fill="#0f172a">4 · Por debajo</text>
-<text x="724" y="713" font-size="12" fill="#64748b">Ranura microSD, interruptor y USB-C de carga</text>
+<text x="724" y="713" font-size="12" fill="#64748b">Ranura de la microSD</text>
 <polygon points="786.6,906.7 872.3,881.2 955.2,968.4 869.6,993.9" fill="#9fa3a8" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="872.3,875.4 955.2,962.7 955.2,968.4 872.3,881.2" fill="#9fa3a8" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="786.6,900.9 872.3,875.4 872.3,881.2 786.6,906.7" fill="#cdd2d9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
@@ -254,14 +254,14 @@
 <polygon points="1223.9,755.0 1228.0,759.3 1228.0,989.1 1223.9,984.8" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="887.4,1084.9 1223.9,984.8 1228.0,989.1 891.4,1089.2" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="1228.0,766.5 1309.3,852.0 1309.3,1067.5 1228.0,981.9" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
-<g transform="matrix(1.6268 1.7109 0.0000 2.8727 1227.99 766.46)"><rect x="16" y="25" width="7" height="8" rx="1.5" fill="#111827"/><text x="19.5" y="38" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB del ESP</text></g>
+<g transform="matrix(1.6268 1.7109 0.0000 2.8727 1227.99 766.46)"><rect x="16" y="25" width="7" height="8" rx="1.5" fill="#111827"/><text x="19.5" y="38" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB del ESP</text><rect x="39.5" y="16.5" width="5.0" height="9.0" rx="1.5" fill="#111827"/><text x="42.0" y="30.5" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB-C carga</text></g>
 <polygon points="1220.3,768.7 1228.0,766.5 1228.0,981.9 1220.3,984.2" fill="#d8dce0" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="1220.3,984.2 1228.0,981.9 1309.3,1067.5 1301.7,1069.7" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="786.6,1107.7 872.3,1082.3 955.2,1169.5 869.6,1195.0" fill="#9fa3a8" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="872.3,1076.5 955.2,1163.8 955.2,1169.5 872.3,1082.3" fill="#9fa3a8" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="786.6,1102.0 872.3,1076.5 872.3,1082.3 786.6,1107.7" fill="#cdd2d9" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="887.4,1084.9 1223.9,984.8 1313.4,1078.9 976.8,1179.0" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
-<g transform="matrix(3.0595 -0.9097 1.6268 1.7109 887.37 1084.89)"><rect x="50" y="5" width="16" height="2.2" rx="0.8" fill="#111827"/><text x="58" y="11" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">microSD</text><rect x="68" y="41" width="10" height="6" rx="1" fill="#475569"/><rect x="69" y="42" width="4.5" height="4" rx="0.6" fill="#f8fafc"/><text x="73" y="51" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">encendido</text><rect x="88.5" y="40" width="9" height="3.4" rx="1.7" fill="#111827"/><text x="93" y="38" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">USB-C carga</text></g>
+<g transform="matrix(3.0595 -0.9097 1.6268 1.7109 887.37 1084.89)"><rect x="50" y="5" width="16" height="2.2" rx="0.8" fill="#111827"/><text x="58" y="11" font-size="2.6" text-anchor="middle" fill="#334155" font-weight="600">microSD</text></g>
 <polygon points="887.4,1077.7 1223.9,977.6 1223.9,984.8 887.4,1084.9" fill="#d8dce0" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 <polygon points="1223.9,977.6 1313.4,1071.7 1313.4,1078.9 1223.9,984.8" fill="#a7aaae" fill-opacity="1" stroke="#1f2937" stroke-width="1" stroke-linejoin="round"/>
 </svg>

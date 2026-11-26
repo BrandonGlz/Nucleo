@@ -44,11 +44,18 @@ sí. Las medidas van en **centímetros**.
 
 ## Cómo está armado
 
+- **El ESP32 va acostado y girado:** antena hacia la cámara de sensores (izquierda), USB a la
+  derecha y la fila de los pines **19, 20 y 21 arriba**. Cada pieza queda del lado de los pines
+  que usa, igual que en el prototipo armado:
+  - **Arriba (lado 19-21):** pantalla OLED, LED RGB, CCS811 y módulo de carga.
+  - **Abajo (lado contrario):** buzzer, lector microSD y DHT22.
 - **Cuerpo:** 11 × 5.5 × 8 cm, paredes de 0.25 cm. Se arma por el frente: la **tapa frontal**
   (11 × 8 × 0.25 cm) se atornilla con 4 tornillos M3 a los postes de las esquinas.
 - **Cámara de sensores:** 2.8 × 5.1 × 7.2 cm a la izquierda, separada 0.6 cm del cuerpo para que
-  no le llegue el calor. Solo la une un **puente hueco** de 1.2 × 1.2 cm por donde pasan los
-  cables del DHT22 y del CCS811. Rejillas al frente, a la izquierda, atrás y arriba.
+  no le llegue el calor. El **CCS811 va arriba** y el **DHT22 abajo** (con los pines hacia
+  arriba): el calor del CCS811 sube y no llega al DHT22. Solo la une un **puente hueco** de
+  1.2 × 1.2 cm por donde pasan los cables de los dos. Rejillas al frente, a la izquierda, atrás y
+  arriba.
 - **Tres capas de fondo**, de adelante hacia atrás:
   1. **Frente** (0.25–1.1 cm): pantalla, LED de Wi-Fi, LED RGB, buzzer y lector microSD, pegados
      a la tapa.
@@ -56,21 +63,27 @@ sí. Las medidas van en **centímetros**.
      **placa de expansión** atornillada con 4 postes al tabique. Cada GPIO de la placa tiene un pin
      macho (blanco) y uno hembra (amarillo), y hay 3V3 y GND en cada extremo de las dos filas: así
      la pantalla y el CCS811 comparten el bus I2C sin empalmes (uno en el macho y otro en la hembra).
-  3. **Energía** (3.8–5.25 cm), detrás del **tabique**: batería, interruptor, TP4056, MT3608,
-     MAX17048, MOSFET y ventilador. El tabique tiene rejilla arriba (el ventilador saca ese aire por
-     atrás) y un pasacables abajo a la derecha.
-- **El ESP32 va girado:** antena hacia la cámara de sensores y USB hacia la energía, igual que en
-  el [diagrama de conexiones](../../Context/iot/conexiones.md).
+  3. **Energía** (3.8–5.25 cm), detrás del **tabique**: arriba a la derecha el **módulo de carga
+     UNIT LiPo Boost & I2C** (cargador, elevador a 5 V y MAX17048 en una placa, sobre una repisa),
+     con su **USB-C de carga por el lado derecho**; abajo a la izquierda la **batería LiPo de
+     1000 mAh** (5 × 3.4 × 0.6 cm) de pie contra su tope; arriba al centro el **ventilador de
+     3 cm** contra la pared trasera, y el MOSFET que lo enciende. El tabique tiene rejilla arriba
+     (el ventilador saca ese aire por atrás) y un pasacables abajo a la derecha.
+- **Jumpers cortos:** la pantalla, el LED RGB, el lector microSD y el buzzer usan jumpers dupont
+  de **10 cm**. Sus recorridos miden menos de 7 cm; lo que sobra se dobla en el canal libre que
+  queda arriba de la fila superior (o abajo de la inferior) de la placa de expansión.
+- Sin interruptor aparte: la batería va en el conector JST del módulo de carga.
 
 ## Piezas
 
 Posición: esquina inferior izquierda delantera de cada pieza, medida desde la esquina inferior
-izquierda del frente del cuerpo (x a la derecha, y hacia atrás, z hacia arriba).
+izquierda del frente del cuerpo (x a la derecha, y hacia atrás, z hacia arriba). La batería, el
+ventilador y el módulo de carga van con medidas estimadas: confírmalas antes de imprimir.
 
 | # | Pieza | Zona | Tamaño x × y × z (cm) | Posición x · y · z (cm) |
 | --- | --- | --- | --- | --- |
-| 1 | DHT22 | Cámara de sensores | 0.8 × 1.6 × 2.6 | -1.8 · 1.7 · 4.4 |
-| 2 | CCS811 | Cámara de sensores | 0.2 × 2.1 × 1.5 | -1.2 · 3 · 1.2 |
+| 1 | CCS811 | Cámara de sensores | 0.2 × 2.1 × 1.5 | -1.2 · 3 · 5 |
+| 2 | DHT22 | Cámara de sensores | 0.8 × 1.6 × 2.6 | -1.8 · 1.7 · 0.8 |
 | 3 | Pantalla OLED | Frente | 2.7 × 0.4 × 2.7 | 0.9 · 0.25 · 4.4 |
 | 4 | LED de Wi-Fi | Frente | 0.5 × 0.65 × 0.5 | 1.3 · 0.25 · 3.4 |
 | 5 | LED RGB KY-016 | Frente | 1.9 × 0.2 × 1.5 | 7.7 · 0.55 · 4.7 |
@@ -78,17 +91,14 @@ izquierda del frente del cuerpo (x a la derecha, y hacia atrás, z hacia arriba)
 | 7 | Lector microSD HW-125 | Frente | 2.4 × 0.6 × 4.2 | 4.6 · 0.4 · 0.25 |
 | 8 | Placa de expansión | Centro | 8 × 0.16 × 5.2 | 1.5 · 3.1 · 2.2 |
 | 9 | ESP32-S3 (girado) | Centro | 6.9 × 0.5 × 2.6 | 2 · 1.75 · 3.5 |
-| 10 | Batería LiPo | Energía | 6 × 1 × 4.95 | 0.6 · 4 · 0.25 |
-| 11 | Interruptor | Energía | 1 × 0.6 × 0.8 | 6.8 · 4.1 · 0 |
-| 12 | Módulo de carga TP4056 | Energía | 2.6 × 0.3 × 1.7 | 8 · 4 · 0.25 |
-| 13 | Elevador MT3608 | Energía | 3.6 × 0.3 × 1.7 | 7 · 4 · 2.2 |
-| 14 | MAX17048 | Energía | 2.3 × 0.2 × 1.8 | 7 · 4 · 4.1 |
-| 15 | Módulo MOSFET | Energía | 1.1 × 0.2 × 1.1 | 9.5 · 4 · 4.1 |
-| 16 | Ventilador 5 V | Energía | 2.5 × 1 × 2.5 | 8 · 4.25 · 5.25 |
+| 10 | Módulo de carga UNIT | Energía | 4.2 × 0.35 × 2.6 | 6.4 · 4 · 4.6 |
+| 11 | Batería LiPo | Energía | 5 × 0.6 × 3.4 | 0.6 · 4 · 0.25 |
+| 12 | Ventilador 5 V | Energía | 3 × 1 × 3 | 3 · 4.25 · 4.4 |
+| 13 | Módulo MOSFET | Energía | 1.1 × 0.2 × 1.1 | 9 · 4 · 3.3 |
 
 ## Cables
 
-43 cables. Se revisaron con el modelo:
+37 cables. Se revisaron con el modelo:
 
 - **Continuidad:** cada cable sale del pin de su componente y llega a su pin, sin cortes.
 - **Sin choques:** ningún cable atraviesa otra pieza ni una pared; solo cruzan por el puente, el
@@ -96,53 +106,61 @@ izquierda del frente del cuerpo (x a la derecha, y hacia atrás, z hacia arriba)
 - **Sin cruces:** ningún cable se cruza con los de otra pieza en el plano de cables del frente.
 
 Los de la placa de expansión llegan con conector dupont: hembra en los pines macho y macho en los
-pines hembra. El largo es aproximado (por el recorrido); deja 2 o 3 cm de holgura.
+pines hembra. El largo de los demás es aproximado (por el recorrido); deja 2 o 3 cm de holgura.
 
-| Pieza | Pin | Va a | Pasa por | Largo |
+| Pieza | Pin | Va a | Pasa por | Cable |
 | --- | --- | --- | --- | --- |
-| DHT22 | + | **3V3** (placa de expansión, fila inferior, pin macho) | puente de cables | 8 cm |
+| DHT22 | + | **3V3** (placa de expansión, fila inferior, pin macho) | puente de cables | 7 cm |
 | DHT22 | out | **GPIO 4** (placa de expansión, fila inferior, pin macho) | puente de cables | 9 cm |
 | DHT22 | − | **GND** (placa de expansión, fila inferior, pin macho) | puente de cables | 9 cm |
 | CCS811 | SCL | **GPIO 42** (placa de expansión, fila superior, pin hembra) | puente de cables | 15 cm |
 | CCS811 | SDA | **GPIO 2** (placa de expansión, fila superior, pin hembra) | puente de cables | 15 cm |
-| CCS811 | GND | **GND** (placa de expansión, fila superior, pin hembra) | puente de cables | 16 cm |
-| CCS811 | VCC | **3V3** (placa de expansión, fila superior, pin hembra) | puente de cables | 15 cm |
-| Pantalla OLED | GND | **GND** (placa de expansión, fila superior, pin macho) | directo | 1 cm |
-| Pantalla OLED | VCC | **3V3** (placa de expansión, fila superior, pin macho) | directo | 1 cm |
-| Pantalla OLED | SCL | **GPIO 42** (placa de expansión, fila superior, pin macho) | directo | 3 cm |
-| Pantalla OLED | SDA | **GPIO 2** (placa de expansión, fila superior, pin macho) | directo | 2 cm |
+| CCS811 | GND | **GND** (placa de expansión, fila superior, pin hembra) | puente de cables | 15 cm |
+| CCS811 | VCC | **3V3** (placa de expansión, fila superior, pin hembra) | puente de cables | 14 cm |
+| Pantalla OLED | GND | **GND** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 1 cm) |
+| Pantalla OLED | VCC | **3V3** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 1 cm) |
+| Pantalla OLED | SCL | **GPIO 42** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 3 cm) |
+| Pantalla OLED | SDA | **GPIO 2** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 2 cm) |
 | LED de Wi-Fi | cátodo | **G** (placa de expansión, fila superior, pin hembra) | directo | 4 cm |
 | LED de Wi-Fi | ánodo + 220 Ω | **GPIO 41** (placa de expansión, fila superior, pin hembra) | directo | 6 cm |
-| LED RGB KY-016 | R | **GPIO 38** (placa de expansión, fila superior, pin macho) | directo | 5 cm |
-| LED RGB KY-016 | G | **GPIO 39** (placa de expansión, fila superior, pin macho) | directo | 6 cm |
-| LED RGB KY-016 | B | **GPIO 40** (placa de expansión, fila superior, pin macho) | directo | 6 cm |
-| LED RGB KY-016 | − | **G** (placa de expansión, fila superior, pin hembra) | directo | 3 cm |
-| Buzzer KY-012 | S | **GPIO 12** (placa de expansión, fila inferior, pin macho) | directo | 2 cm |
-| Buzzer KY-012 | + | **3V3** (placa de expansión, fila inferior, pin macho) | directo | 1 cm |
-| Buzzer KY-012 | − | **GND** (placa de expansión, fila inferior, pin macho) | directo | 1 cm |
-| Lector microSD HW-125 | CS | **GPIO 15** (placa de expansión, fila inferior, pin hembra) | directo | 2 cm |
-| Lector microSD HW-125 | SCK | **GPIO 17** (placa de expansión, fila inferior, pin hembra) | directo | 2 cm |
-| Lector microSD HW-125 | MOSI | **GPIO 16** (placa de expansión, fila inferior, pin hembra) | directo | 2 cm |
-| Lector microSD HW-125 | MISO | **GPIO 18** (placa de expansión, fila inferior, pin hembra) | directo | 2 cm |
-| Lector microSD HW-125 | VCC | **5V** (placa de expansión, fila inferior, pin hembra) | directo | 3 cm |
-| Lector microSD HW-125 | GND | **G** (placa de expansión, fila inferior, pin hembra) | directo | 3 cm |
-| MAX17048 | VIN | **3V3** (placa de expansión, fila superior, pin macho) | sobre el tabique | 7 cm |
-| MAX17048 | GND | **GND** (placa de expansión, fila superior, pin macho) | sobre el tabique | 6 cm |
-| MAX17048 | SDA | **GPIO 47** (placa de expansión, fila superior, pin macho) | sobre el tabique | 7 cm |
-| MAX17048 | SCL | **GPIO 21** (placa de expansión, fila superior, pin macho) | sobre el tabique | 7 cm |
-| MAX17048 | CELL+ | batería + | directo | 1 cm |
-| Módulo MOSFET | SIG | **GPIO 9** (placa de expansión, fila inferior, pin macho) | pasacables del tabique, detrás de la placa | 10 cm |
-| Módulo MOSFET | VIN+ | MT3608 OUT+ | directo | 0 cm |
-| Módulo MOSFET | VIN− | MT3608 OUT− | directo | 0 cm |
-| Ventilador 5 V | + | MOSFET OUT+ | directo | 1 cm |
-| Ventilador 5 V | − | MOSFET OUT− | directo | 1 cm |
-| Batería LiPo | + | interruptor | directo | 5 cm |
-| Batería LiPo | − | TP4056 B− | directo | 7 cm |
-| Interruptor | salida | TP4056 B+ | directo | 1 cm |
-| Módulo de carga TP4056 | OUT+ | MT3608 IN+ | directo | 4 cm |
-| Módulo de carga TP4056 | OUT− | MT3608 IN− | directo | 5 cm |
-| Elevador MT3608 | OUT+ | 5V de la placa | detrás de la placa | 4 cm |
-| Elevador MT3608 | OUT− | GND de la placa | detrás de la placa | 5 cm |
+| LED RGB KY-016 | R | **GPIO 38** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 5 cm) |
+| LED RGB KY-016 | G | **GPIO 39** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 6 cm) |
+| LED RGB KY-016 | B | **GPIO 40** (placa de expansión, fila superior, pin macho) | directo | jumper de 10 cm (recorrido 6 cm) |
+| LED RGB KY-016 | − | **G** (placa de expansión, fila superior, pin hembra) | directo | jumper de 10 cm (recorrido 3 cm) |
+| Buzzer KY-012 | S | **GPIO 12** (placa de expansión, fila inferior, pin macho) | directo | jumper de 10 cm (recorrido 2 cm) |
+| Buzzer KY-012 | + | **3V3** (placa de expansión, fila inferior, pin macho) | directo | jumper de 10 cm (recorrido 1 cm) |
+| Buzzer KY-012 | − | **GND** (placa de expansión, fila inferior, pin macho) | directo | jumper de 10 cm (recorrido 1 cm) |
+| Lector microSD HW-125 | CS | **GPIO 15** (placa de expansión, fila inferior, pin hembra) | directo | jumper de 10 cm (recorrido 2 cm) |
+| Lector microSD HW-125 | SCK | **GPIO 17** (placa de expansión, fila inferior, pin hembra) | directo | jumper de 10 cm (recorrido 2 cm) |
+| Lector microSD HW-125 | MOSI | **GPIO 16** (placa de expansión, fila inferior, pin hembra) | directo | jumper de 10 cm (recorrido 2 cm) |
+| Lector microSD HW-125 | MISO | **GPIO 18** (placa de expansión, fila inferior, pin hembra) | directo | jumper de 10 cm (recorrido 2 cm) |
+| Lector microSD HW-125 | VCC | **5V** (placa de expansión, fila inferior, pin hembra) | directo | jumper de 10 cm (recorrido 3 cm) |
+| Lector microSD HW-125 | GND | **G** (placa de expansión, fila inferior, pin hembra) | directo | jumper de 10 cm (recorrido 3 cm) |
+| Módulo de carga UNIT | SDA | **GPIO 47** (placa de expansión, fila superior, pin macho) | sobre el tabique | 4 cm |
+| Módulo de carga UNIT | SCL | **GPIO 21** (placa de expansión, fila superior, pin macho) | sobre el tabique | 5 cm |
+| Módulo de carga UNIT | STEP + | 5V de la placa | pasacables del tabique, detrás de la placa | 4 cm |
+| Módulo de carga UNIT | STEP − | GND de la placa | pasacables del tabique, detrás de la placa | 4 cm |
+| Módulo MOSFET | VIN+ | STEP + del módulo de carga | directo | 1 cm |
+| Módulo MOSFET | VIN− | STEP − del módulo de carga | directo | 1 cm |
+| Módulo MOSFET | SIG | **GPIO 9** (placa de expansión, fila inferior, pin macho) | pasacables del tabique, detrás de la placa | 8 cm |
+| Ventilador 5 V | + | MOSFET OUT+ | directo | 4 cm |
+| Ventilador 5 V | − | MOSFET OUT− | directo | 5 cm |
+| Batería LiPo | + | JST + del módulo de carga | directo | 2 cm |
+| Batería LiPo | − | JST − del módulo de carga | directo | 2 cm |
 
 - El CCS811 lleva su pin **WAK** puenteado a GND en el propio módulo.
-- El MT3608 se ajusta a **5.0 V** antes de conectarlo a la placa de expansión.
+- La salida **STEP** del módulo de carga se ajusta a **5.0 V** (switch STEP UP en ON) antes de
+  conectarla a la placa de expansión; ver [Conexiones del ESP32](../../Context/iot/conexiones.md#batería).
+
+## Generador
+
+Las hojas y este README salen de `generador/` (Python 3, sin dependencias):
+
+```bash
+cd Docs/nucleo3d/generador
+python3 verificar.py   # continuidad, choques y cruces de los cables
+python3 render2.py     # las 7 hojas SVG
+python3 readme.py      # este README
+```
+
+Las medidas y posiciones de las piezas están en `modelo2.py`.
