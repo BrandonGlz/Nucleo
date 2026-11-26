@@ -1,8 +1,11 @@
 """Cálculo de cifras y generación de reportes."""
 
 import calendar
+import csv
+import zipfile
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from io import BytesIO, StringIO
 
 from django.db import transaction
 from django.db.models import Avg, Count, Max, Min, Sum
@@ -15,7 +18,7 @@ from apps.catalogos.models import VariableAmbiental
 from apps.dispositivos.models import Sensor
 from apps.mediciones.models import Lectura
 from apps.organizaciones.models import Area
-from apps.reportes import formatos, ia, pdf
+from apps.reportes import calculos, formatos, ia, pdf
 from apps.reportes.models import ProgramacionReporte, Reporte
 from apps.usuarios.models import Usuario
 from common import correo, roles
@@ -53,20 +56,22 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=Non
     """
     areas = list(areas or [])
     sensores = Sensor.objects.filter(dispositivo__area__organizacion=organizacion)
-    alertas = Alerta.objects.filter(
+    alertas_scope = Alerta.objects.filter(
         umbral__dispositivo__area__organizacion=organizacion,
-        lectura_fecha_hora__gte=inicio,
-        lectura_fecha_hora__lt=fin,
     )
     if areas:
         sensores = sensores.filter(dispositivo__area__in=areas)
-        alertas = alertas.filter(umbral__dispositivo__area__in=areas)
+        alertas_scope = alertas_scope.filter(umbral__dispositivo__area__in=areas)
     elif area is not None:
         sensores = sensores.filter(dispositivo__area=area)
-        alertas = alertas.filter(umbral__dispositivo__area=area)
+        alertas_scope = alertas_scope.filter(umbral__dispositivo__area=area)
     if dispositivo is not None:  # gráficas que pide un operador: solo su dispositivo
         sensores = sensores.filter(dispositivo=dispositivo)
-        alertas = alertas.filter(umbral__dispositivo=dispositivo)
+        alertas_scope = alertas_scope.filter(umbral__dispositivo=dispositivo)
+    alertas = alertas_scope.filter(
+        lectura_fecha_hora__gte=inicio,
+        lectura_fecha_hora__lt=fin,
+    )
     dispositivo_de = dict(sensores.values_list("num", "dispositivo__codigo_mqtt"))
     catalogo = {v.codigo: v for v in VariableAmbiental.objects.all()}
 
@@ -139,6 +144,25 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=Non
             "minimo": _numero(fila["minimo"]),
             "maximo": _numero(fila["maximo"]),
         }
+    info_dispositivo = {
+        codigo: {"nombre": nombre, "area": area_nombre}
+        for codigo, nombre, area_nombre in sensores.values_list(
+            "dispositivo__codigo_mqtt",
+            "dispositivo__nombre",
+            "dispositivo__area__nombre",
+        )
+    }
+    for codigo, datos in dispositivos.items():
+        datos.update(info_dispositivo.get(codigo, {}))
+
+    previo = calculos.basicas_previas(sensores, alertas_scope, inicio, fin)
+    if previo is not None:
+        for codigo, datos in previo["variables"].items():
+            info = catalogo.get(codigo)
+            if info is not None:
+                datos["nombre"] = info.nombre
+                datos["unidad"] = info.unidad
+    total_alertas = alertas.count()
 
     return {
         "alcance": texto_alcance(organizacion, area, areas),
@@ -147,8 +171,16 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=Non
         "intervalo_serie": "hora" if por_hora else "dia",
         "series": series,
         "dispositivos": dispositivos,
+        "cumplimiento": calculos.cumplimiento(lecturas, sensores),
+        "comparativo": calculos.comparativo(
+            variables, total_alertas, previo, inicio, fin
+        ),
+        "gestion_alertas": calculos.gestion_alertas(alertas),
+        "disponibilidad": calculos.disponibilidad(sensores, inicio, fin),
+        "incidentes": calculos.incidentes(sensores, inicio, fin),
+        "observaciones": calculos.observaciones(alertas),
         "alertas": {
-            "total": alertas.count(),
+            "total": total_alertas,
             "por_estado": dict(alertas.values_list("estado").annotate(n=Count("num"))),
             "por_nivel": dict(alertas.values_list("nivel").annotate(n=Count("num"))),
             "por_tipo": dict(alertas.values_list("tipo").annotate(n=Count("num"))),
@@ -157,6 +189,84 @@ def calcular_cifras(organizacion, area, inicio, fin, dispositivo=None, areas=Non
             ),
         },
     }
+
+
+def _lecturas_csv(reporte):
+    """Lecturas del alcance y periodo del reporte, con sus nombres para el CSV."""
+    sensores = Sensor.objects.filter(
+        dispositivo__area__organizacion=reporte.organizacion,
+    ).select_related("dispositivo__area")
+    if reporte.areas:
+        sensores = sensores.filter(dispositivo__area__in=reporte.areas)
+    elif reporte.area_id:
+        sensores = sensores.filter(dispositivo__area_id=reporte.area_id)
+    equipos = {
+        sensor.num: (sensor.dispositivo.nombre, sensor.dispositivo.area.nombre)
+        for sensor in sensores
+    }
+    if not equipos:
+        return Lectura.objects.none(), {}, {}
+    lecturas = Lectura.objects.filter(
+        sensor_num__in=list(equipos),
+        fecha_hora__gte=reporte.periodo_inicio,
+        fecha_hora__lt=reporte.periodo_fin,
+    ).order_by("fecha_hora", "sensor_num")
+    return lecturas, equipos, VariableAmbiental.objects.in_bulk()
+
+
+def filas_csv(reporte):
+    """Genera las filas del anexo CSV sin cargar todas las lecturas en memoria."""
+    lecturas, equipos, catalogo = _lecturas_csv(reporte)
+    buffer = StringIO()
+    escritor = csv.writer(buffer, lineterminator="\n")
+    escritor.writerow(
+        [
+            "Fecha y hora local",
+            "Dispositivo",
+            "Área",
+            "Variable",
+            "Valor",
+            "Unidad",
+            "Estabilizada",
+        ]
+    )
+    yield "\ufeff" + buffer.getvalue()
+    buffer.seek(0)
+    buffer.truncate(0)
+    for lectura in lecturas.iterator(chunk_size=2000):
+        dispositivo, area = equipos[lectura.sensor_num]
+        info = catalogo.get(lectura.variable_codigo)
+        escritor.writerow(
+            [
+                timezone.localtime(lectura.fecha_hora).strftime("%Y-%m-%d %H:%M:%S"),
+                dispositivo,
+                area,
+                info.nombre if info is not None else lectura.variable_codigo,
+                f"{lectura.valor:.2f}",
+                info.unidad if info is not None else "",
+                "Sí" if lectura.estabilizada else "No",
+            ]
+        )
+        yield buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
+
+
+def contenido_csv(reporte):
+    """El CSV completo, para adjuntarlo a un correo."""
+    return "".join(filas_csv(reporte)).encode("utf-8")
+
+
+def adjunto_csv(reporte):
+    """Nombre, contenido y tipo del CSV; comprimido si supera 5 MB."""
+    contenido = contenido_csv(reporte)
+    nombre = f"reporte-{reporte.num}.csv"
+    if len(contenido) > 5 * 1024 * 1024:
+        memoria = BytesIO()
+        with zipfile.ZipFile(memoria, "w", zipfile.ZIP_DEFLATED) as comprimido:
+            comprimido.writestr(nombre, contenido)
+        return f"{nombre}.zip", memoria.getvalue(), "application/zip"
+    return nombre, contenido, "text/csv"
 
 
 def generar_reporte(
@@ -296,6 +406,16 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
             reporte.area.nombre if reporte.area_id else "Todas las áreas"
         )
         periodo = periodo_texto(reporte.periodo_inicio, reporte.periodo_fin)
+        adjuntos = [
+            (f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf"),
+        ]
+        conf = (
+            reporte.formato_version.conf
+            if reporte.formato_version_id
+            else formatos.CONF_OPERATIVO
+        )
+        if ((conf or {}).get("hoja") or {}).get("adjuntar_csv"):
+            adjuntos.append(adjunto_csv(reporte))
         correo.enviar(
             correos,
             asunto or f"Reporte de {org} · {periodo}",
@@ -310,7 +430,7 @@ def enviar_reporte(reporte, destinatarios, asunto=None):
             parrafos=[reporte.contenido],
             boton=("Consultar reportes", correo.url_web("/reportes")),
             motivo="Recibe este reporte porque figura entre sus destinatarios en Núcleo.",
-            adjuntos=[(f"reporte-{reporte.num}.pdf", pdf.construir(reporte), "application/pdf")],
+            adjuntos=adjuntos,
         )
         avisos.reporte_enviado(reporte, destinatarios)
     return correos

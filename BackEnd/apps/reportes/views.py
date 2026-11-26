@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, StreamingHttpResponse
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -163,6 +163,17 @@ class ReporteViewSet(viewsets.ReadOnlyModelViewSet):
         reporte = self.get_object()
         respuesta = HttpResponse(pdf.construir(reporte), content_type="application/pdf")
         respuesta["Content-Disposition"] = f'attachment; filename="reporte-{reporte.num}.pdf"'
+        return respuesta
+
+    @action(detail=True, methods=["get"], url_path="csv")
+    def descargar_csv(self, request, pk=None):
+        """Anexo con las lecturas del alcance y periodo, en streaming."""
+        reporte = self.get_object()
+        respuesta = StreamingHttpResponse(
+            servicios.filas_csv(reporte),
+            content_type="text/csv; charset=utf-8",
+        )
+        respuesta["Content-Disposition"] = f'attachment; filename="reporte-{reporte.num}.csv"'
         return respuesta
 
     @action(detail=True, methods=["post"], url_path="formato")

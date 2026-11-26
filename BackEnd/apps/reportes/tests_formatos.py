@@ -17,6 +17,7 @@ from apps.reportes.formatos import (
     CONF_EJECUTIVO,
     CONF_INCIDENTES,
     CONF_OPERATIVO,
+    CONF_OPERATIVO_AMPLIADO,
     formato_para,
     validar_conf,
 )
@@ -24,13 +25,19 @@ from apps.reportes.models import FormatoReporte, Reporte, VersionFormato
 from common.testing import Escenario, PruebaBase, cliente_de
 
 VISIBLES_PLANTILLAS = {
-    FormatoReporte.Plantilla.EJECUTIVO: ["cifras", "serie", "analisis"],
-    FormatoReporte.Plantilla.CUMPLIMIENTO: [
+    FormatoReporte.Plantilla.EJECUTIVO: [
         "cifras",
-        "alertas",
-        "var:TEMP",
-        "var:HUM",
-        "var:AIRE",
+        "cumplimiento",
+        "comparativo",
+        "serie",
+        "analisis",
+    ],
+    FormatoReporte.Plantilla.CUMPLIMIENTO: [
+        "cumplimiento",
+        "disponibilidad",
+        "incidentes",
+        "gestion_alertas",
+        "observaciones",
         "analisis",
     ],
     FormatoReporte.Plantilla.OPERATIVO: [
@@ -41,8 +48,16 @@ VISIBLES_PLANTILLAS = {
         "serie",
         "alertas",
         "analisis",
+        "dispositivos",
+        "gestion_alertas",
+        "disponibilidad",
     ],
-    FormatoReporte.Plantilla.INCIDENTES: ["alertas", "serie", "analisis"],
+    FormatoReporte.Plantilla.INCIDENTES: [
+        "incidentes",
+        "alertas",
+        "gestion_alertas",
+        "observaciones",
+    ],
 }
 
 
@@ -55,10 +70,11 @@ class ValidarConfTests(PruebaBase):
         self.assertEqual(normalizada["ocultos"], [])
         self.assertEqual(normalizada["opciones"]["cifras"]["ancho"], "12")
 
-    def test_cumplimiento_usa_alertas_a_todo_lo_ancho(self):
+    def test_las_plantillas_traen_sus_tarjetas_nuevas(self):
         normalizada = validar_conf(CONF_CUMPLIMIENTO)
 
-        self.assertEqual(normalizada["opciones"]["alertas"]["ancho"], "12")
+        self.assertEqual(normalizada["opciones"]["cumplimiento"]["grafica"], "tabla")
+        self.assertIn("incidentes", normalizada["orden"])
 
     def test_rechaza_un_alto_invalido(self):
         for alto in ("x", 10, True):
@@ -88,6 +104,16 @@ class ValidarConfTests(PruebaBase):
         with self.assertRaisesMessage(ValidationError, "no existe"):
             validar_conf(conf)
 
+    def test_valida_el_adjunto_csv_de_la_hoja(self):
+        normalizada = validar_conf(
+            {**CONF_OPERATIVO, "hoja": {"adjuntar_csv": True}}
+        )
+        self.assertTrue(normalizada["hoja"]["adjuntar_csv"])
+        self.assertFalse(validar_conf(CONF_OPERATIVO)["hoja"]["adjuntar_csv"])
+
+        with self.assertRaisesMessage(ValidationError, "adjuntar_csv"):
+            validar_conf({**CONF_OPERATIVO, "hoja": {"adjuntar_csv": "sí"}})
+
     def test_rechaza_una_opcion_invalida(self):
         conf = {**CONF_OPERATIVO, "opciones": {"serie": {"grafica": "pastel"}}}
 
@@ -110,7 +136,7 @@ class ValidarConfTests(PruebaBase):
 
 
 class PlantillasTests(PruebaBase):
-    def test_las_cuatro_plantillas_existen_con_su_version_uno(self):
+    def test_las_cuatro_plantillas_existen_con_su_version_dos(self):
         plantillas = FormatoReporte.objects.filter(organizacion__isnull=True)
 
         self.assertEqual(
@@ -125,7 +151,7 @@ class PlantillasTests(PruebaBase):
         for formato in plantillas:
             version = formato.version_actual()
             self.assertIsNotNone(version)
-            self.assertEqual(version.numero, 1)
+            self.assertEqual(version.numero, 2)
             normalizada = validar_conf(version.conf)
             self.assertEqual(normalizada["orden"], version.conf["orden"])
             self.assertEqual(normalizada["ocultos"], version.conf["ocultos"])
@@ -133,8 +159,8 @@ class PlantillasTests(PruebaBase):
             self.assertEqual(visibles, VISIBLES_PLANTILLAS[formato.plantilla])
             if formato.plantilla == FormatoReporte.Plantilla.CUMPLIMIENTO:
                 self.assertEqual(
-                    version.conf["opciones"]["alertas"].get("ancho"),
-                    "12",
+                    version.conf["opciones"]["cumplimiento"]["grafica"],
+                    "tabla",
                 )
 
     def test_no_hay_dos_predeterminados_activos_en_una_organizacion(self):
@@ -479,7 +505,84 @@ class PdfFormatoTests(PruebaBase):
             "variables": variables,
             "intervalo_serie": "dia",
             "series": series,
-            "dispositivos": {"NC-0501": {"TEMP": {"promedio": 24.5}}},
+            "dispositivos": {
+                "NC-0501": {
+                    "nombre": "Núcleo L-01",
+                    "area": "Laboratorio",
+                    "TEMP": {"minimo": 20.0, "promedio": 24.5, "maximo": 31.0},
+                    "HUM": {"minimo": 40.0, "promedio": 55.0, "maximo": 70.0},
+                }
+            },
+            "cumplimiento": {
+                "TEMP": {"dentro_pct": 92.5, "fuera_min": 12.0, "lecturas": 120},
+                "HUM": {"dentro_pct": 98.0, "fuera_min": 3.0, "lecturas": 120},
+            },
+            "comparativo": {
+                "periodo": {"inicio": ahora.isoformat(), "fin": ahora.isoformat()},
+                "variables": [
+                    {
+                        "variable": "TEMP",
+                        "nombre": "Temperatura",
+                        "unidad": "°C",
+                        "promedio": 24.5,
+                        "minimo": 20.0,
+                        "maximo": 31.0,
+                        "promedio_previo": 23.3,
+                        "minimo_previo": 19.0,
+                        "maximo_previo": 30.0,
+                        "dif_promedio": 1.2,
+                        "dif_promedio_pct": 5.15,
+                        "mejora": False,
+                    }
+                ],
+                "alertas": {
+                    "total": 4,
+                    "total_previo": 5,
+                    "diferencia": -1,
+                    "diferencia_pct": -20.0,
+                    "mejora": True,
+                },
+            },
+            "gestion_alertas": {
+                "estados": {"ATENDIDA": 2, "DESCARTADA": 1, "PENDIENTE": 1},
+                "total": 4,
+                "tiempo_medio_min": 18.5,
+                "responsables": [{"usuario": "Ana López", "total": 3}],
+            },
+            "disponibilidad": {
+                "NC-0501": {
+                    "nombre": "Núcleo L-01",
+                    "area": "Laboratorio",
+                    "pct": 98.2,
+                    "recibidas": 1178,
+                    "esperadas": 1200,
+                    "huecos": [{"inicio": ahora.isoformat(), "minutos": 22.0}],
+                }
+            },
+            "incidentes": [
+                {
+                    "dispositivo": "Núcleo L-01",
+                    "dispositivo_codigo": "NC-0501",
+                    "area": "Laboratorio",
+                    "variable": "TEMP",
+                    "inicio": ahora.isoformat(),
+                    "duracion_min": 45.0,
+                    "valor_pico": 31.0,
+                    "nivel": "PELIGRO",
+                }
+            ],
+            "observaciones": [
+                {
+                    "fecha": ahora.isoformat(),
+                    "dispositivo": "Núcleo L-01",
+                    "dispositivo_codigo": "NC-0501",
+                    "area": "Laboratorio",
+                    "variable": "Temperatura",
+                    "variable_codigo": "TEMP",
+                    "usuario": "Ana López",
+                    "texto": "Se abrió la puerta para ventilar.",
+                }
+            ],
             "alertas": {
                 "total": 4,
                 "por_estado": {"PENDIENTE": 4},
@@ -518,6 +621,13 @@ class PdfFormatoTests(PruebaBase):
             "alertas": ["barras", "dona", "columnas", "tabla"],
             "analisis": [None],
             "resumen": ["tabla"],
+            "cumplimiento": ["barras", "tabla", "cifra"],
+            "comparativo": ["tabla", "cifra"],
+            "dispositivos": ["tabla"],
+            "gestion_alertas": ["dona", "barras", "tabla"],
+            "disponibilidad": ["barras", "tabla"],
+            "incidentes": ["tabla", "lista"],
+            "observaciones": ["tabla", "lista"],
         }
         personalizadas = []
         opciones = {}
@@ -551,7 +661,7 @@ class PdfFormatoTests(PruebaBase):
 
     def test_construye_pdf_con_las_cuatro_plantillas(self):
         for conf in (
-            CONF_OPERATIVO,
+            CONF_OPERATIVO_AMPLIADO,
             CONF_EJECUTIVO,
             CONF_CUMPLIMIENTO,
             CONF_INCIDENTES,
@@ -565,6 +675,22 @@ class PdfFormatoTests(PruebaBase):
 
         self.assertTrue(datos.startswith(b"%PDF"))
         self.assertGreater(datos.count(b"/Type /Page"), 1)
+
+    def test_reporte_viejo_sin_las_claves_nuevas_sigue_generando_pdf(self):
+        reporte = self._reporte(CONF_EJECUTIVO)
+        for clave in (
+            "cumplimiento",
+            "comparativo",
+            "gestion_alertas",
+            "disponibilidad",
+            "incidentes",
+            "observaciones",
+        ):
+            reporte.cifras.pop(clave, None)
+
+        datos = pdf.construir(reporte)
+
+        self.assertTrue(datos.startswith(b"%PDF"))
 
     def test_escala_linea_deja_margen_vertical(self):
         minimo, maximo = pdf._escala_linea([48.0, 48.3])

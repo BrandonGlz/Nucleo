@@ -196,6 +196,152 @@ export const FUENTES = {
       CAMPOS,
     ],
   },
+  cumplimiento: {
+    nombre: 'Cumplimiento',
+    opciones: [
+      {
+        clave: 'grafica',
+        tipo: 'uno',
+        etiqueta: 'Tipo de gráfica',
+        valores: [
+          ['barras', 'Barras'],
+          ['tabla', 'Tabla'],
+          ['cifra', 'Cifras'],
+        ],
+      },
+      {
+        clave: 'datos',
+        tipo: 'varios',
+        etiqueta: 'Información',
+        valores: [
+          ['pct', 'Porcentaje'],
+          ['fuera', 'Tiempo fuera'],
+        ],
+      },
+    ],
+  },
+  comparativo: {
+    nombre: 'Comparativo',
+    opciones: [
+      {
+        clave: 'grafica',
+        tipo: 'uno',
+        etiqueta: 'Tipo de gráfica',
+        valores: [
+          ['tabla', 'Tabla'],
+          ['cifra', 'Cifras'],
+        ],
+      },
+      {
+        clave: 'datos',
+        tipo: 'varios',
+        etiqueta: 'Información',
+        valores: [
+          ['promedio', 'Promedio'],
+          ['extremos', 'Mínimo y máximo'],
+          ['alertas', 'Alertas'],
+        ],
+      },
+    ],
+  },
+  dispositivos: {
+    nombre: 'Dispositivos',
+    opciones: [
+      {
+        clave: 'grafica',
+        tipo: 'uno',
+        etiqueta: 'Tipo de gráfica',
+        valores: [['tabla', 'Tabla']],
+      },
+      {
+        clave: 'datos',
+        tipo: 'varios',
+        etiqueta: 'Información',
+        valores: [
+          ['minimo', 'Mínimo'],
+          ['promedio', 'Promedio'],
+          ['maximo', 'Máximo'],
+          ['area', 'Área'],
+        ],
+      },
+    ],
+  },
+  gestion_alertas: {
+    nombre: 'Gestión de alertas',
+    opciones: [
+      {
+        clave: 'grafica',
+        tipo: 'uno',
+        etiqueta: 'Tipo de gráfica',
+        valores: [
+          ['dona', 'Dona'],
+          ['barras', 'Barras'],
+          ['tabla', 'Tabla'],
+        ],
+      },
+      {
+        clave: 'datos',
+        tipo: 'varios',
+        etiqueta: 'Información',
+        valores: [
+          ['estados', 'Estados'],
+          ['tiempo', 'Tiempo medio'],
+          ['responsables', 'Responsables'],
+        ],
+      },
+    ],
+  },
+  disponibilidad: {
+    nombre: 'Disponibilidad',
+    opciones: [
+      {
+        clave: 'grafica',
+        tipo: 'uno',
+        etiqueta: 'Tipo de gráfica',
+        valores: [
+          ['barras', 'Barras'],
+          ['tabla', 'Tabla'],
+        ],
+      },
+      {
+        clave: 'datos',
+        tipo: 'varios',
+        etiqueta: 'Información',
+        valores: [
+          ['pct', 'Porcentaje'],
+          ['huecos', 'Huecos'],
+        ],
+      },
+    ],
+  },
+  incidentes: {
+    nombre: 'Incidentes',
+    opciones: [
+      {
+        clave: 'grafica',
+        tipo: 'uno',
+        etiqueta: 'Tipo de gráfica',
+        valores: [
+          ['tabla', 'Tabla'],
+          ['lista', 'Lista'],
+        ],
+      },
+    ],
+  },
+  observaciones: {
+    nombre: 'Observaciones',
+    opciones: [
+      {
+        clave: 'grafica',
+        tipo: 'uno',
+        etiqueta: 'Tipo de gráfica',
+        valores: [
+          ['lista', 'Lista'],
+          ['tabla', 'Tabla'],
+        ],
+      },
+    ],
+  },
 }
 
 // Tarjetas de la configuración: las de siempre más las que añadió la persona.
@@ -387,6 +533,9 @@ export function useEdicion(reporte) {
       ...b,
       opciones: { ...b.opciones, [id]: { ...opcionesDe(b, id), [clave]: valor } },
     }))
+  // Opciones generales de la hoja (hoy: adjuntar el CSV al correo).
+  const cambiarHoja = (cambios) =>
+    setBorrador((b) => ({ ...b, hoja: { ...(b.hoja ?? {}), ...cambios } }))
   // Añade una tarjeta nueva al final y deja abiertas sus opciones; quitar la elimina.
   const agregar = (fuente, nombre, opciones) => {
     const id = `p${Date.now().toString(36)}`
@@ -515,6 +664,7 @@ export function useEdicion(reporte) {
     opcion,
     agregar,
     quitar,
+    cambiarHoja,
     formatos,
     formato,
     formatoDe,

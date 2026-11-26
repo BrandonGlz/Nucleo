@@ -44,6 +44,12 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Reportes con contenido nuevo: cumplimiento contra los límites de advertencia, comparativo
+  contra el periodo anterior, tabla por dispositivo, gestión de alertas, disponibilidad,
+  incidentes principales y observaciones. Las cuatro plantillas incluyen estas tarjetas en una
+  versión nueva y los reportes viejos muestran «Sin datos para este reporte».
+- Anexo CSV de las lecturas de cada reporte, descargable y opcional adjunto al correo desde la
+  configuración del formato (comprimido en ZIP si pasa de 5 MB).
 - Reportes con alcance flexible (un área, varias áreas o toda la organización), periodo
   personalizado de hasta 31 días y un asistente de tres pasos con vista previa de las cifras
   reales sin llamar a la IA. «Uno por cada área» conserva el comportamiento anterior.

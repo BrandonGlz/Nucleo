@@ -248,7 +248,7 @@ function Alertas({ variables, op }) {
 }
 
 // Gráfica genérica para las tarjetas nuevas: `puntos` son [{ label, value }] con su unidad.
-export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto }) {
+export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto, resaltarMax = true }) {
   if (!puntos.length) return <p className="ui-muted">Elige al menos un dato.</p>
   const max = Math.max(...puntos.map((x) => x.value)) || 1
   const f = (x) => Number(x).toFixed(dec)
@@ -310,11 +310,11 @@ export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto }) 
   return (
     <div className="ui-barras">
       {puntos.map((x) => (
-        <div key={x.label} className={`ui-barras__fila ui-barras__fila--ancha${x.value === max ? ' is-max' : ''}`}>
+        <div key={x.label} className={`ui-barras__fila ui-barras__fila--ancha${resaltarMax && x.value === max ? ' is-max' : ''}`}>
           <span className="ui-barras__etiqueta">{x.label}</span>
           <span className="ui-barras__pista">
             <span
-              className={`ui-barras__barra${color ? ` ui-barras__barra--${color}` : ''}`}
+              className={`ui-barras__barra${(x.color ?? color) ? ` ui-barras__barra--${x.color ?? color}` : ''}`}
               style={{ width: `${(x.value / max) * 100}%` }}
             />
           </span>
@@ -330,8 +330,469 @@ export function GraficaLibre({ grafica, puntos, unidad, dec = 1, color, alto }) 
 const CAMPO = { minimo: 'Mínimo', promedio: 'Promedio', maximo: 'Máximo', alertas: 'Alertas' }
 
 // Tarjeta añadida por la persona: arma los puntos según su fuente y opciones.
+// Texto para los reportes anteriores a la etapa 4, que no guardaron estas claves.
+const SIN_DATOS_NUEVO = 'Sin datos para este reporte (generado antes de esta función)'
+const SIN_DATOS_PERIODO = 'Sin datos en el periodo.'
+const sinDatosNuevo = () => <p className="ui-muted">{SIN_DATOS_NUEVO}</p>
+
+const ESTADOS_ALERTA = {
+  ATENDIDA: 'Atendidas',
+  DESCARTADA: 'Descartadas',
+  PENDIENTE: 'Pendientes',
+}
+const nombreVariable = (codigo) => VARIABLE[codigo]?.corta ?? codigo
+const nombreEstado = (estado) => ESTADOS_ALERTA[estado] ?? estado
+const conSigno = (valor, decimales = 1, unidad = '') => {
+  if (valor == null) return '—'
+  const signo = valor > 0 ? '+' : valor < 0 ? '−' : ''
+  return `${signo}${Math.abs(Number(valor)).toFixed(decimales)}${unidad ? ` ${unidad}` : ''}`
+}
+const conPorcentaje = (valor) => {
+  if (valor == null) return ''
+  const signo = valor > 0 ? '+' : valor < 0 ? '−' : ''
+  return ` (${signo}${Math.abs(Number(valor)).toFixed(1)} %)`
+}
+
+function Cumplimiento({ c, op }) {
+  if (!c.cumplimiento) return sinDatosNuevo()
+  const filas = ['TEMP', 'HUM', 'AIRE']
+    .filter((codigo) => c.cumplimiento[codigo])
+    .map((codigo) => ({ variable: codigo, ...c.cumplimiento[codigo] }))
+  if (!filas.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  if (op.grafica === 'tabla') {
+    const datos = op.datos ?? ['pct', 'fuera']
+    return (
+      <div className="ui-tabla-scroll">
+        <table className="nc-table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              {datos.includes('pct') && <th>Cumplimiento</th>}
+              {datos.includes('fuera') && <th>Fuera</th>}
+              <th>Lecturas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila) => (
+              <tr key={fila.variable}>
+                <td>{nombreVariable(fila.variable)}</td>
+                {datos.includes('pct') && <td className="ui-num">{Number(fila.dentro_pct).toFixed(1)} %</td>}
+                {datos.includes('fuera') && <td className="ui-num">{Number(fila.fuera_min).toFixed(1)} min</td>}
+                <td className="ui-num">{miles(fila.lecturas)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+  if (op.grafica === 'cifra') {
+    const datos = op.datos ?? ['pct', 'fuera']
+    return (
+      <div className="ui-dash__cifras ui-dash__cifras--tarjeta" style={{ gridTemplateColumns: `repeat(${filas.length}, minmax(0, 1fr))` }}>
+        {filas.map((fila) => (
+          <div key={fila.variable} className="ui-dash__cifra">
+            <span className="ui-eyebrow">{nombreVariable(fila.variable)}</span>
+            <strong className="ui-num">
+              {datos.includes('pct') ? `${Number(fila.dentro_pct).toFixed(0)} %` : ''}
+            </strong>
+            {datos.includes('fuera') && (
+              <span className="ui-muted" style={{ fontSize: 11 }}>
+                {Number(fila.fuera_min).toFixed(1)} min fuera
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+  const puntos = filas.map((fila) => ({
+    label: nombreVariable(fila.variable),
+    value: Number(fila.dentro_pct),
+  }))
+  return <GraficaLibre grafica="barras" puntos={puntos} unidad="%" dec={0} />
+}
+
+function Comparativo({ c, op }) {
+  if (!c.comparativo) return sinDatosNuevo()
+  if (c.comparativo.sin_datos_previos)
+    return <p className="ui-muted">Sin datos del periodo anterior para comparar.</p>
+  const filas = c.comparativo.variables ?? []
+  const alertas = c.comparativo.alertas
+  if (!filas.length && !alertas) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  const datos = op.datos ?? ['promedio', 'extremos', 'alertas']
+  const cambio = (fila) => (
+    <span className={`ui-comparativo__cambio ${fila.mejora ? 'is-bueno' : 'is-aviso'}`}>
+      {conSigno(fila.dif_promedio, VARIABLE[fila.variable]?.decimales ?? 1, fila.unidad)}
+      {conPorcentaje(fila.dif_promedio_pct)}
+    </span>
+  )
+  if (op.grafica === 'cifra') {
+    return (
+      <div className="ui-dash__cifras" style={{ gridTemplateColumns: `repeat(${Math.max(1, filas.length + (alertas ? 1 : 0))}, minmax(0, 1fr))` }}>
+        {datos.includes('promedio') &&
+          filas.map((fila) => (
+            <div key={fila.variable} className="ui-dash__cifra">
+              <span className="ui-eyebrow">{nombreVariable(fila.variable)}</span>
+              <strong className="ui-num">{Number(fila.promedio ?? 0).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)}</strong>
+              <span className="ui-muted" style={{ fontSize: 11 }}>
+                {cambio(fila)}
+              </span>
+            </div>
+          ))}
+        {datos.includes('alertas') && alertas && (
+          <div className="ui-dash__cifra">
+            <span className="ui-eyebrow">Alertas</span>
+            <strong className="ui-num">{alertas.total}</strong>
+            <span className={`ui-comparativo__cambio ${alertas.mejora ? 'is-bueno' : 'is-aviso'}`}>
+              {conSigno(alertas.diferencia, 0)}
+              {conPorcentaje(alertas.diferencia_pct)}
+            </span>
+          </div>
+        )}
+      </div>
+    )
+  }
+  return (
+    <div className="ui-comparativo">
+      <div className="ui-tabla-scroll">
+        <table className="nc-table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              {datos.includes('promedio') && <th>Promedio</th>}
+              {datos.includes('extremos') && <th>Mín. / Máx.</th>}
+              <th>Cambio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila) => (
+              <tr key={fila.variable}>
+                <td>{nombreVariable(fila.variable)}</td>
+                {datos.includes('promedio') && (
+                  <td className="ui-num">
+                    {Number(fila.promedio ?? 0).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)} {fila.unidad}
+                  </td>
+                )}
+                {datos.includes('extremos') && (
+                  <td className="ui-num">
+                    {Number(fila.minimo ?? 0).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)} /{' '}
+                    {Number(fila.maximo ?? 0).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)} {fila.unidad}
+                  </td>
+                )}
+                <td>{cambio(fila)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {datos.includes('alertas') && alertas && (
+        <p className="ui-muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
+          Alertas: {alertas.total} contra {alertas.total_previo}.{' '}
+          <span className={`ui-comparativo__cambio ${alertas.mejora ? 'is-bueno' : 'is-aviso'}`}>
+            {conSigno(alertas.diferencia, 0)}
+            {conPorcentaje(alertas.diferencia_pct)}
+          </span>
+        </p>
+      )}
+    </div>
+  )
+}
+
+function Dispositivos({ c, op }) {
+  if (!c.por_dispositivo) return sinDatosNuevo()
+  const filas = c.por_dispositivo
+  if (!filas.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  const datos = op.datos ?? ['minimo', 'promedio', 'maximo', 'area']
+  const campos = [
+    ['minimo', 'Mín.'],
+    ['promedio', 'Prom.'],
+    ['maximo', 'Máx.'],
+  ].filter(([clave]) => datos.includes(clave))
+  const variables = ['TEMP', 'HUM', 'AIRE'].filter((codigo) => filas.some((fila) => fila[codigo]))
+  return (
+    <div className="ui-tabla-scroll">
+      <table className="nc-table" style={{ width: '100%' }}>
+        <thead>
+          <tr>
+            <th>Dispositivo</th>
+            {datos.includes('area') && <th>Área</th>}
+            {variables.map((codigo) => (
+              <th key={codigo}>{nombreVariable(codigo)}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((fila) => (
+            <tr key={fila.codigo}>
+              <td>{fila.nombre || fila.codigo}</td>
+              {datos.includes('area') && <td>{fila.area || '—'}</td>}
+              {variables.map((codigo) => {
+                const info = fila[codigo]
+                if (!info) return <td key={codigo}>—</td>
+                const dec = VARIABLE[codigo]?.decimales ?? 1
+                return (
+                  <td key={codigo} className="ui-num">
+                    {campos.map(([clave]) => Number(info[clave]).toFixed(dec)).join(' / ')}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function GestionAlertas({ c, op }) {
+  if (!c.gestion_alertas) return sinDatosNuevo()
+  const datos = c.gestion_alertas
+  if (!datos.total) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  const estados = Object.entries(datos.estados ?? {}).map(([estado, total]) => ({
+    label: nombreEstado(estado),
+    value: total,
+  }))
+  const responsables = (datos.responsables ?? []).map((fila) => ({
+    label: fila.usuario,
+    value: fila.total,
+  }))
+  const conEstados = op.datos?.includes('estados')
+  const conResponsables = op.datos?.includes('responsables')
+  const conTiempo = op.datos?.includes('tiempo')
+  if (!conEstados && !conResponsables && !conTiempo)
+    return <p className="ui-muted">Elige al menos un dato.</p>
+  if (op.grafica === 'dona') {
+    const puntos = conEstados ? estados : responsables
+    if (!puntos.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+    return <GraficaLibre grafica="dona" puntos={puntos} dec={0} />
+  }
+  if (op.grafica === 'barras') {
+    const puntos = conEstados ? estados : responsables
+    return (
+      <div>
+        {puntos.length ? <GraficaLibre grafica="barras" puntos={puntos} dec={0} /> : <p className="ui-muted">{SIN_DATOS_PERIODO}</p>}
+        {conTiempo && datos.tiempo_medio_min != null && (
+          <p className="ui-muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
+            Tiempo medio de atención: {Number(datos.tiempo_medio_min).toFixed(1)} min
+          </p>
+        )}
+      </div>
+    )
+  }
+  return (
+    <div>
+      <div className="ui-tabla-scroll">
+        <table className="nc-table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              {conEstados && <th>Estado</th>}
+              {conResponsables && <th>Responsable</th>}
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(conEstados ? estados : []).map((fila) => (
+              <tr key={`e-${fila.label}`}>
+                {conEstados && <td>{fila.label}</td>}
+                {conResponsables && <td />}
+                <td className="ui-num">{fila.value}</td>
+              </tr>
+            ))}
+            {(conResponsables ? responsables : []).map((fila) => (
+              <tr key={`r-${fila.label}`}>
+                {conEstados && <td />}
+                {conResponsables && <td>{fila.label}</td>}
+                <td className="ui-num">{fila.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {conTiempo && (
+        <p className="ui-muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
+          Tiempo medio de atención: {datos.tiempo_medio_min == null ? '—' : `${Number(datos.tiempo_medio_min).toFixed(1)} min`}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function Disponibilidad({ c, op }) {
+  if (!c.disponibilidad) return sinDatosNuevo()
+  const filas = Object.entries(c.disponibilidad).map(([codigo, datos]) => ({ codigo, ...datos }))
+  if (!filas.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  const conPct = op.datos?.includes('pct')
+  const conHuecos = op.datos?.includes('huecos')
+  if (!conPct && !conHuecos) return <p className="ui-muted">Elige al menos un dato.</p>
+  if (op.grafica === 'barras') {
+    return (
+      <div>
+        {conPct && (
+          <GraficaLibre
+            grafica="barras"
+            puntos={filas.map((fila) => ({
+              label: fila.nombre || fila.codigo,
+              value: fila.pct,
+              color: fila.pct < 90 ? 'aviso' : 'exito',
+            }))}
+            unidad="%"
+            dec={0}
+            resaltarMax={false}
+          />
+        )}
+        {conHuecos && (
+          <p className="ui-muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
+            {((total) => (total ? `${total} huecos registrados.` : 'Sin huecos en el periodo.'))(
+              filas.reduce((total, fila) => total + (fila.huecos?.length ?? 0), 0),
+            )}
+          </p>
+        )}
+      </div>
+    )
+  }
+  return (
+    <div className="ui-tabla-scroll">
+      <table className="nc-table" style={{ width: '100%' }}>
+        <thead>
+          <tr>
+            <th>Dispositivo</th>
+            <th>Área</th>
+            {conPct && <th>Disponibilidad</th>}
+            {conHuecos && <th>Huecos</th>}
+          </tr>
+        </thead>
+      <tbody>
+        {filas.map((fila) => (
+          <tr key={fila.codigo}>
+            <td>{fila.nombre || fila.codigo}</td>
+            <td>{fila.area || '—'}</td>
+            {conPct && <td className="ui-num">{Number(fila.pct).toFixed(1)} %</td>}
+            {conHuecos && (
+              <td className="ui-num">
+                {fila.huecos?.length
+                  ? `${fila.huecos[0].minutos} min (${fila.huecos.length})`
+                  : '—'}
+              </td>
+            )}
+          </tr>
+        ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function Incidentes({ c, op }) {
+  if (!c.incidentes) return sinDatosNuevo()
+  if (!c.incidentes.length) return <p className="ui-muted">{SIN_DATOS_PERIODO}</p>
+  const nivel = (valor) => (valor === 'PELIGRO' ? 'danger' : 'warning')
+  if (op.grafica === 'lista') {
+    return (
+      <ul className="ui-dash__lista">
+        {c.incidentes.map((fila, i) => (
+          <li key={`${fila.dispositivo_codigo}-${fila.variable}-${fila.inicio}-${i}`}>
+            <Icon name="triangle-alert" size={16} />
+            <span style={{ flex: 1 }}>
+              <strong>{fila.dispositivo}</strong> · {fila.variable_nombre || nombreVariable(fila.variable)} ·{' '}
+              {fechaLarga(fila.inicio)} {hora(fila.inicio)}
+            </span>
+            <span className="ui-muted">{Number(fila.duracion_min).toFixed(1)} min</span>
+            <Badge tone={nivel(fila.nivel)}>{fila.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia'}</Badge>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+  return (
+    <div className="ui-tabla-scroll">
+      <table className="nc-table" style={{ width: '100%' }}>
+        <thead>
+          <tr>
+            <th>Dispositivo</th>
+            <th>Variable</th>
+            <th>Inicio</th>
+            <th>Duración</th>
+            <th>Pico</th>
+            <th>Nivel</th>
+          </tr>
+        </thead>
+        <tbody>
+          {c.incidentes.map((fila, i) => (
+            <tr key={`${fila.dispositivo_codigo}-${fila.variable}-${fila.inicio}-${i}`}>
+              <td>{fila.dispositivo}</td>
+              <td>{fila.variable_nombre || nombreVariable(fila.variable)}</td>
+              <td>{fechaLarga(fila.inicio)} {hora(fila.inicio)}</td>
+              <td className="ui-num">{Number(fila.duracion_min).toFixed(1)} min</td>
+              <td className="ui-num">
+                {Number(fila.valor_pico).toFixed(VARIABLE[fila.variable]?.decimales ?? 1)} {UNIDAD[fila.variable] ?? ''}
+              </td>
+              <td>{fila.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function Observaciones({ c, op }) {
+  if (!c.observaciones) return sinDatosNuevo()
+  if (!c.observaciones.length) return <p className="ui-muted">Sin observaciones en el periodo.</p>
+  if (op.grafica === 'tabla') {
+    return (
+      <div className="ui-tabla-scroll ui-tabla-observaciones">
+        <table className="nc-table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Dispositivo</th>
+              <th>Variable</th>
+              <th>Quién</th>
+              <th>Observación</th>
+            </tr>
+          </thead>
+          <tbody>
+            {c.observaciones.map((fila, i) => (
+              <tr key={`${fila.fecha}-${i}`}>
+                <td>{fechaLarga(fila.fecha)} {hora(fila.fecha)}</td>
+                <td>{fila.dispositivo}</td>
+                <td>{fila.variable_nombre || fila.variable}</td>
+                <td>{fila.usuario}</td>
+                <td className="ui-observacion__texto">{fila.texto}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+  return (
+    <ul className="ui-dash__lista">
+      {c.observaciones.map((fila, i) => (
+        <li key={`${fila.fecha}-${i}`}>
+          <Icon name="message-square-text" size={16} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <strong>{fila.dispositivo}</strong> · {fila.variable_nombre || fila.variable} · {fila.usuario}
+            <span className="ui-muted ui-observacion__texto" style={{ display: 'block', fontSize: 11, whiteSpace: 'normal' }}>
+              {fechaLarga(fila.fecha)} {hora(fila.fecha)} · {fila.texto}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function Personalizada({ w, r, op }) {
   const c = r.cifras
+  if (w.fuente === 'cumplimiento') return <Cumplimiento c={c} op={op} />
+  if (w.fuente === 'comparativo') return <Comparativo c={c} op={op} />
+  if (w.fuente === 'dispositivos') return <Dispositivos c={c} op={op} />
+  if (w.fuente === 'gestion_alertas') return <GestionAlertas c={c} op={op} />
+  if (w.fuente === 'disponibilidad') return <Disponibilidad c={c} op={op} />
+  if (w.fuente === 'incidentes') return <Incidentes c={c} op={op} />
+  if (w.fuente === 'observaciones') return <Observaciones c={c} op={op} />
   if (w.fuente === 'serie') {
     if (!c.serie) return <p className="ui-muted">Este reporte no tiene datos del periodo.</p>
     const v = c.serie.variable
@@ -535,7 +996,7 @@ function NuevaTarjeta({ agregar, cerrar }) {
 
 // Lista de tarjetas con sus opciones; ocupa el lugar de la lista de reportes mientras se edita.
 export function ListaTarjetas({ ed }) {
-  const { borrador, abierta, setAbierta, arrastre, mover, alternar, opcion, agregar, quitar } = ed
+  const { borrador, abierta, setAbierta, arrastre, mover, alternar, opcion, agregar, quitar, cambiarHoja } = ed
   const [nueva, setNueva] = useState(false)
   return (
     <div className="ui-editor__lista nc-scroll">
@@ -543,6 +1004,14 @@ export function ListaTarjetas({ ed }) {
       <p className="ui-muted" style={{ margin: 0, fontSize: 13, lineHeight: '18px' }}>
         Arrastra para ordenar, usa el ojo para mostrar u ocultar y el ajuste para elegir la gráfica y la información.
       </p>
+      <label className="ui-editor__casilla">
+        <input
+          type="checkbox"
+          checked={borrador.hoja?.adjuntar_csv ?? false}
+          onChange={(e) => cambiarHoja({ adjuntar_csv: e.target.checked })}
+        />
+        <span>Adjuntar CSV de lecturas al correo</span>
+      </label>
       <ol>
         {borrador.orden.map((id, i) => {
           const w = tarjeta(borrador, id)

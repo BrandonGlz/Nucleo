@@ -3,6 +3,7 @@ export const REPORTES = '/reportes/' // GET; POST {area?, areas?, formato?, peri
 export const REPORTE = (num) => `/reportes/${num}/` // GET
 export const REPORTE_VISTA_PREVIA = '/reportes/vista-previa/' // GET ?areas=1,2&desde=…&hasta=…
 export const REPORTE_PDF = (num) => `/reportes/${num}/pdf/` // GET: descarga en PDF
+export const REPORTE_CSV = (num) => `/reportes/${num}/csv/` // GET: anexo CSV de lecturas
 export const REPORTE_FORMATO = (num) => `/reportes/${num}/formato/` // POST {formato}: cambia el formato y regenera el PDF
 export const PROGRAMACIONES_REPORTE = '/programaciones-reporte/' // GET, POST
 // GET, PATCH {activa} para pausar/reanudar; DELETE deshabilitado (405)

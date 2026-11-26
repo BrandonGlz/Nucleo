@@ -210,6 +210,21 @@ export function ReportesPage() {
                       >
                         Descargar PDF
                       </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon="download"
+                        onClick={() =>
+                          reportesApi
+                            .descargarCsv(
+                              actual.num,
+                              `${actual.cifras.titulo} · ${actual.formato_nombre ?? ed.formato.nombre}`,
+                            )
+                            .catch(() => window.alert('No se pudo descargar el CSV. Intenta de nuevo.'))
+                        }
+                      >
+                        Descargar CSV
+                      </Button>
                     </div>
                   </>
                 )}

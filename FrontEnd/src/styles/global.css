@@ -5562,3 +5562,80 @@ button.ui-menuitem:not(:disabled):hover svg {
 button.ui-link.foto-perfil__quitar { color: var(--text-muted); }
 .foto-perfil__error { max-width: 180px; font-size: 12px; line-height: 16px; text-align: center; color: var(--danger); }
 @media (prefers-reduced-motion: reduce) { .foto-perfil__giro { animation-duration: 2.4s; } }
+
+/* Comparativo de los reportes: subidas y bajadas con color, sin flechas. */
+.ui-comparativo__cambio {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ui-comparativo__cambio.is-bueno {
+  color: var(--success);
+}
+.ui-comparativo__cambio.is-aviso {
+  color: var(--warning);
+}
+
+/* Casilla general del editor de formatos (por ejemplo, adjuntar el CSV). */
+.ui-editor__casilla {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.ui-editor__casilla input {
+  accent-color: var(--accent-secondary);
+}
+
+/* Disponibilidad: verde dentro del objetivo y ámbar por debajo. */
+.ui-barras__barra--exito {
+  background: var(--success);
+}
+.ui-barras__barra--aviso {
+  background: var(--warning);
+}
+/* Tablas nuevas: cada tarjeta conserva su borde y la tabla se desplaza dentro. */
+.ui-tabla-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+.ui-tabla-scroll > .nc-table {
+  min-width: max-content;
+}
+/* En la hoja (papel) las tablas no se desplazan: se ajustan al ancho y el texto baja de línea. */
+.ui-hoja .ui-tabla-scroll > .nc-table {
+  min-width: 100%;
+  width: 100%;
+}
+.ui-hoja .ui-tabla-scroll .nc-table th,
+.ui-hoja .ui-tabla-scroll .nc-table td {
+  padding-inline: 6px;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+.ui-hoja .ui-tabla-scroll .nc-table th {
+  letter-spacing: 0.04em;
+}
+.ui-observacion__texto {
+  overflow-wrap: anywhere;
+}
+/* Cumplimiento como cifras: marco de tarjeta y tres columnas. */
+.ui-hoja .ui-dash__widget:has(> .ui-dash__cifras--tarjeta) {
+  padding: 16px 18px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.ui-hoja .ui-dash__cifras--tarjeta {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px;
+  border-top: 0;
+  border-bottom: 0;
+}
+
+/* Observaciones: la tabla no se desplaza, el texto largo se ajusta a la celda. */
+.ui-tabla-observaciones > .nc-table {
+  min-width: 100%;
+  table-layout: fixed;
+}

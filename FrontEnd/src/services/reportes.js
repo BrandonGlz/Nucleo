@@ -5,6 +5,7 @@ import {
   PROGRAMACION_PROBAR,
   PROGRAMACION_REPORTE,
   REPORTE,
+  REPORTE_CSV,
   REPORTE_FORMATO,
   REPORTE_PDF,
   REPORTE_VISTA_PREVIA,
@@ -109,8 +110,23 @@ export async function descargarArchivo(num, nombre) {
         if (!r.ok) throw new Error(`La API respondió con el estado ${r.status}.`)
         return r.blob()
       })
+  descargarBlob(blob, `${nombre}.pdf`)
+}
+
+// Anexo CSV de lecturas; el servidor lo entrega en streaming.
+export async function descargarCsv(num, nombre) {
+  const blob = USAR_MOCKS
+    ? await mock.descargarReporteCsv(num)
+    : await fetch(`${API_BASE_URL}${REPORTE_CSV(num)}`, OPCIONES_SESION).then((r) => {
+        if (!r.ok) throw new Error(`La API respondió con el estado ${r.status}.`)
+        return r.blob()
+      })
+  descargarBlob(blob, `${nombre}.csv`)
+}
+
+function descargarBlob(blob, nombre) {
   const url = URL.createObjectURL(blob)
-  const a = Object.assign(document.createElement('a'), { href: url, download: `${nombre}.pdf` })
+  const a = Object.assign(document.createElement('a'), { href: url, download: nombre })
   document.body.appendChild(a)
   a.click()
   a.remove()

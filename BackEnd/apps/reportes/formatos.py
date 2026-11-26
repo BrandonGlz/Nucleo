@@ -211,7 +211,164 @@ FUENTES = {
             CAMPOS,
         ],
     },
+    "cumplimiento": {
+        "nombre": "Cumplimiento",
+        "opciones": [
+            {
+                "clave": "grafica",
+                "tipo": "uno",
+                "etiqueta": "Tipo de gráfica",
+                "valores": [
+                    ("barras", "Barras"),
+                    ("tabla", "Tabla"),
+                    ("cifra", "Cifras"),
+                ],
+            },
+            {
+                "clave": "datos",
+                "tipo": "varios",
+                "etiqueta": "Información",
+                "valores": [
+                    ("pct", "Porcentaje"),
+                    ("fuera", "Tiempo fuera"),
+                ],
+            },
+        ],
+    },
+    "comparativo": {
+        "nombre": "Comparativo",
+        "opciones": [
+            {
+                "clave": "grafica",
+                "tipo": "uno",
+                "etiqueta": "Tipo de gráfica",
+                "valores": [
+                    ("tabla", "Tabla"),
+                    ("cifra", "Cifras"),
+                ],
+            },
+            {
+                "clave": "datos",
+                "tipo": "varios",
+                "etiqueta": "Información",
+                "valores": [
+                    ("promedio", "Promedio"),
+                    ("extremos", "Mínimo y máximo"),
+                    ("alertas", "Alertas"),
+                ],
+            },
+        ],
+    },
+    "dispositivos": {
+        "nombre": "Dispositivos",
+        "opciones": [
+            {
+                "clave": "grafica",
+                "tipo": "uno",
+                "etiqueta": "Tipo de gráfica",
+                "valores": [("tabla", "Tabla")],
+            },
+            {
+                "clave": "datos",
+                "tipo": "varios",
+                "etiqueta": "Información",
+                "valores": [
+                    ("minimo", "Mínimo"),
+                    ("promedio", "Promedio"),
+                    ("maximo", "Máximo"),
+                    ("area", "Área"),
+                ],
+            },
+        ],
+    },
+    "gestion_alertas": {
+        "nombre": "Gestión de alertas",
+        "opciones": [
+            {
+                "clave": "grafica",
+                "tipo": "uno",
+                "etiqueta": "Tipo de gráfica",
+                "valores": [
+                    ("dona", "Dona"),
+                    ("barras", "Barras"),
+                    ("tabla", "Tabla"),
+                ],
+            },
+            {
+                "clave": "datos",
+                "tipo": "varios",
+                "etiqueta": "Información",
+                "valores": [
+                    ("estados", "Estados"),
+                    ("tiempo", "Tiempo medio"),
+                    ("responsables", "Responsables"),
+                ],
+            },
+        ],
+    },
+    "disponibilidad": {
+        "nombre": "Disponibilidad",
+        "opciones": [
+            {
+                "clave": "grafica",
+                "tipo": "uno",
+                "etiqueta": "Tipo de gráfica",
+                "valores": [
+                    ("barras", "Barras"),
+                    ("tabla", "Tabla"),
+                ],
+            },
+            {
+                "clave": "datos",
+                "tipo": "varios",
+                "etiqueta": "Información",
+                "valores": [
+                    ("pct", "Porcentaje"),
+                    ("huecos", "Huecos"),
+                ],
+            },
+        ],
+    },
+    "incidentes": {
+        "nombre": "Incidentes",
+        "opciones": [
+            {
+                "clave": "grafica",
+                "tipo": "uno",
+                "etiqueta": "Tipo de gráfica",
+                "valores": [
+                    ("tabla", "Tabla"),
+                    ("lista", "Lista"),
+                ],
+            },
+        ],
+    },
+    "observaciones": {
+        "nombre": "Observaciones",
+        "opciones": [
+            {
+                "clave": "grafica",
+                "tipo": "uno",
+                "etiqueta": "Tipo de gráfica",
+                "valores": [
+                    ("lista", "Lista"),
+                    ("tabla", "Tabla"),
+                ],
+            },
+        ],
+    },
 }
+
+# Tarjetas nuevas que pueden usar las plantillas y los formatos personalizados.
+PERSONALIZADAS = [
+    {"id": "cumplimiento", "fuente": "cumplimiento", "nombre": "Cumplimiento"},
+    {"id": "comparativo", "fuente": "comparativo", "nombre": "Comparativo"},
+    {"id": "dispositivos", "fuente": "dispositivos", "nombre": "Dispositivos"},
+    {"id": "gestion_alertas", "fuente": "gestion_alertas", "nombre": "Gestión de alertas"},
+    {"id": "disponibilidad", "fuente": "disponibilidad", "nombre": "Disponibilidad"},
+    {"id": "incidentes", "fuente": "incidentes", "nombre": "Incidentes"},
+    {"id": "observaciones", "fuente": "observaciones", "nombre": "Observaciones"},
+]
 
 
 def grupo(id_tarjeta):
@@ -358,6 +515,10 @@ def validar_conf(conf):
     hoja = conf.get("hoja") or {}
     if not isinstance(hoja, dict):
         raise ValidationError("La hoja del formato debe ser un objeto.")
+    adjuntar_csv = hoja.get("adjuntar_csv", False)
+    if not isinstance(adjuntar_csv, bool):
+        raise ValidationError("«adjuntar_csv» debe ser verdadero o falso.")
+    hoja = {**hoja, "adjuntar_csv": adjuntar_csv}
 
     return {
         "version_esquema": VERSION_ESQUEMA,
@@ -370,9 +531,10 @@ def validar_conf(conf):
     }
 
 
-def _conf(visibles, opciones=None):
+def _conf(visibles, opciones=None, personalizadas=None):
     """Configuración de una plantilla: las visibles primero y el resto ocultas."""
-    ids = [w["id"] for w in WIDGETS]
+    personalizadas = personalizadas or []
+    ids = [w["id"] for w in WIDGETS] + [p["id"] for p in personalizadas]
     return {
         "version_esquema": VERSION_ESQUEMA,
         "base": True,
@@ -382,30 +544,53 @@ def _conf(visibles, opciones=None):
         ],
         "ocultos": [id_tarjeta for id_tarjeta in ids if id_tarjeta not in visibles],
         "opciones": opciones or {},
-        "personalizadas": [],
+        "personalizadas": personalizadas,
         "hoja": {},
     }
 
 
 # Operativo detallado = la configuración BASE de la web: las 7 tarjetas de siempre.
 CONF_OPERATIVO = _conf([w["id"] for w in WIDGETS])
-# Las demás plantillas usan solo las tarjetas que existen hoy.
+CONF_OPERATIVO_AMPLIADO = _conf(
+    [w["id"] for w in WIDGETS] + ["dispositivos", "gestion_alertas", "disponibilidad"],
+    {},
+    PERSONALIZADAS,
+)
+# Las demás plantillas usan las tarjetas nuevas declaradas arriba.
 CONF_EJECUTIVO = _conf(
-    ["cifras", "serie", "analisis"],
-    {"serie": {"grafica": "linea"}},
+    ["cifras", "cumplimiento", "comparativo", "serie", "analisis"],
+    {
+        "cumplimiento": {"grafica": "cifra"},
+        "comparativo": {"grafica": "tabla"},
+        "serie": {"grafica": "linea"},
+    },
+    PERSONALIZADAS,
 )
 CONF_CUMPLIMIENTO = _conf(
-    ["cifras", "alertas", "var:TEMP", "var:HUM", "var:AIRE", "analisis"],
+    [
+        "cumplimiento",
+        "incidentes",
+        "gestion_alertas",
+        "observaciones",
+        "disponibilidad",
+        "analisis",
+    ],
     {
-        "alertas": {"grafica": "dona", "ancho": "12"},
-        "var:TEMP": {"datos": ["minmax", "alertas"]},
-        "var:HUM": {"datos": ["minmax", "alertas"]},
-        "var:AIRE": {"datos": ["minmax", "alertas"]},
+        "cumplimiento": {"grafica": "tabla"},
+        "incidentes": {"grafica": "tabla", "ancho": "12"},
+        "gestion_alertas": {"grafica": "dona"},
+        "disponibilidad": {"grafica": "barras"},
     },
+    PERSONALIZADAS,
 )
 CONF_INCIDENTES = _conf(
-    ["alertas", "serie", "analisis"],
-    {"alertas": {"grafica": "barras"}, "serie": {"grafica": "columnas"}},
+    ["incidentes", "alertas", "gestion_alertas", "observaciones"],
+    {
+        "incidentes": {"grafica": "tabla", "ancho": "12"},
+        "alertas": {"grafica": "barras"},
+        "gestion_alertas": {"grafica": "barras"},
+    },
+    PERSONALIZADAS,
 )
 
 

@@ -250,6 +250,8 @@ Formatos de reporte (ADMIN, SUPER y ANALISTA leen; ADMIN y SUPER escriben)
 │                                           Predeterminado de la organización (no plantillas)
 ├── POST /formatos-reporte/{num}/areas/     {"areas": [num de área]} → predeterminado de esas áreas
 └── GET /formatos-reporte/{num}/versiones/  [{numero, fecha, creada_por_nombre}]
+                                            En conf, hoja.adjuntar_csv (bool, por omisión false)
+                                            adjunta el CSV de lecturas al correo del reporte
 
 Reportes (ADMIN, SUPER y ANALISTA)
 ├── GET /reportes/                          Lista y detalle; incluye area, areas, formato (num),
@@ -266,6 +268,9 @@ Reportes (ADMIN, SUPER y ANALISTA)
 │                                           áreas visibles. Sin areas, el área del usuario
 ├── GET /reportes/{num}/pdf/                Descarga en PDF; el texto lo redacta IA_PROVEEDOR
 │                                           (local: plantillas con las cifras); sin proveedor, 503
+├── GET /reportes/{num}/csv/                Anexo CSV en streaming con las lecturas del alcance y
+│                                           periodo: fecha local, dispositivo, área, variable,
+│                                           valor, unidad y estabilizada
 ├── POST /reportes/{num}/formato/           {"formato": num} → usa la versión actual de ese formato
 │                                           y regenera solo el PDF, sin llamar a la IA
 ├── /programaciones-reporte/                Reportes periódicos: {"frecuencia" DIARIA|SEMANAL|MENSUAL,

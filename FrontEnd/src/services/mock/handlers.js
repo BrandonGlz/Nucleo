@@ -472,6 +472,120 @@ function nombreAlcance(numeros) {
   return nombres[0]
 }
 
+const NOMBRES_VARIABLE = { TEMP: 'Temperatura', HUM: 'Humedad relativa', AIRE: 'Calidad del aire' }
+
+function completarCifrasNuevas(cifras, dispositivos) {
+  const variables = Object.entries(cifras.variables ?? {})
+  const alertas = cifras.alertas?.total ?? 0
+  const porDispositivo = Object.entries(cifras.dispositivos ?? {}).map(([codigo], i) => {
+    const equipo = dispositivos.find((d) => d.codigo_mqtt === codigo)
+    const fila = { codigo, nombre: equipo?.nombre ?? codigo, area: equipo?.area_nombre ?? '' }
+    for (const [variable, info] of variables) {
+      const dec = variable === 'AIRE' ? 0 : 1
+      fila[variable] = {
+        minimo: +(info.promedio - (i + 1) * 0.3).toFixed(dec),
+        promedio: info.promedio,
+        maximo: +(info.promedio + (i + 1) * 0.4).toFixed(dec),
+      }
+    }
+    return fila
+  })
+  return {
+    cumplimiento: Object.fromEntries(
+      variables.map(([variable, info]) => [
+        variable,
+        {
+          dentro_pct: +(100 - (cifras.alertas?.por_variable?.[variable] ?? 0) * 1.5).toFixed(1),
+          fuera_min: +((cifras.alertas?.por_variable?.[variable] ?? 0) * 3.5).toFixed(1),
+          lecturas: info.muestras,
+        },
+      ]),
+    ),
+    comparativo: {
+      periodo: cifras.periodo,
+      variables: variables.map(([variable, info], i) => {
+        const anterior = +(info.promedio - 0.4 * (i + 1)).toFixed(variable === 'AIRE' ? 0 : 1)
+        const cambio = +(info.promedio - anterior).toFixed(variable === 'AIRE' ? 0 : 1)
+        return {
+          variable,
+          nombre: info.nombre,
+          unidad: info.unidad,
+          promedio: info.promedio,
+          minimo: info.minimo,
+          maximo: info.maximo,
+          promedio_previo: anterior,
+          minimo_previo: info.minimo,
+          maximo_previo: info.maximo,
+          dif_promedio: cambio,
+          dif_promedio_pct: anterior ? +((cambio / anterior) * 100).toFixed(1) : null,
+          mejora: cambio <= 0,
+        }
+      }),
+      alertas: {
+        total: alertas,
+        total_previo: alertas + 2,
+        diferencia: -2,
+        diferencia_pct: alertas ? +((-2 / (alertas + 2)) * 100).toFixed(1) : null,
+        mejora: true,
+      },
+    },
+    por_dispositivo: porDispositivo,
+    gestion_alertas: {
+      estados: {
+        ATENDIDA: Math.max(0, alertas - 1),
+        DESCARTADA: 1,
+        PENDIENTE: 1,
+      },
+      total: alertas + 1,
+      tiempo_medio_min: 24.5,
+      responsables: [{ usuario: 'Ana López', total: Math.max(1, alertas - 1) }],
+    },
+    disponibilidad: Object.fromEntries(
+      porDispositivo.map((fila) => [
+        fila.codigo,
+        {
+          nombre: fila.nombre,
+          area: fila.area,
+          pct: 98.4,
+          recibidas: 850,
+          esperadas: 864,
+          huecos: [{ inicio: cifras.periodo?.inicio, minutos: 12 }],
+        },
+      ]),
+    ),
+    incidentes: porDispositivo.length
+      ? [
+          {
+            dispositivo: porDispositivo[0].nombre,
+            dispositivo_codigo: porDispositivo[0].codigo,
+            area: porDispositivo[0].area,
+            variable: variables[0]?.[0] ?? 'TEMP',
+            variable_nombre: NOMBRES_VARIABLE[variables[0]?.[0]] ?? 'Temperatura',
+            inicio: cifras.periodo?.inicio,
+            duracion_min: 42,
+            valor_pico: variables[0]?.[1]?.maximo ?? 0,
+            nivel: 'ADVERTENCIA',
+          },
+        ]
+      : [],
+    observaciones: porDispositivo.length
+      ? [
+          {
+            fecha: cifras.periodo?.inicio,
+            dispositivo: porDispositivo[0].nombre,
+            dispositivo_codigo: porDispositivo[0].codigo,
+            area: porDispositivo[0].area,
+            variable: variables[0]?.[1]?.nombre ?? 'Temperatura',
+            variable_codigo: variables[0]?.[0] ?? 'TEMP',
+            variable_nombre: NOMBRES_VARIABLE[variables[0]?.[0]] ?? 'Temperatura',
+            usuario: 'Ana López',
+            texto: 'Se revisó el área y se cerró la puerta del andén.',
+          },
+        ]
+      : [],
+  }
+}
+
 function cifrasDeVista(numeros, desde, hasta) {
   const dias = Math.max(1, Math.round((new Date(hasta) - new Date(desde)) / 86400000))
   const fin = new Date(hasta)
@@ -480,7 +594,14 @@ function cifrasDeVista(numeros, desde, hasta) {
   const dispositivos = db.dispositivos.filter((d) => !numeros.length || numeros.includes(d.area))
   cifras.alcance = nombreAlcance(numeros)
   cifras.periodo = { inicio: desde, fin: hasta }
-  cifras.dispositivos = Object.fromEntries(dispositivos.map((d) => [d.codigo_mqtt, {}]))
+  cifras.dispositivos = Object.fromEntries(
+    dispositivos.map((d) => [
+      d.codigo_mqtt,
+      { nombre: d.nombre, area: db.areas.find((a) => a.num === d.area)?.nombre ?? '' },
+    ]),
+  )
+  const equipos = dispositivos.map((d) => ({ ...d, area_nombre: db.areas.find((a) => a.num === d.area)?.nombre ?? '' }))
+  Object.assign(cifras, completarCifrasNuevas(cifras, equipos))
   return cifras
 }
 
@@ -556,6 +677,16 @@ export async function cambiarFormatoReporte(num, formato) {
 export async function descargarReporte() {
   await esperar()
   return new Blob(['%PDF-1.4\n% Reporte simulado de Núcleo\n'], { type: 'application/pdf' })
+}
+
+export async function descargarReporteCsv() {
+  await esperar()
+  const filas = [
+    'Fecha y hora local,Dispositivo,Área,Variable,Valor,Unidad,Estabilizada',
+    '2026-11-20 10:00:00,Núcleo T-01,Moldeo,Temperatura,23.60,°C,Sí',
+    '2026-11-20 10:00:00,Núcleo T-01,Moldeo,Humedad relativa,46.00,%HR,Sí',
+  ]
+  return new Blob([`\ufeff${filas.join('\n')}\n`], { type: 'text/csv;charset=utf-8' })
 }
 
 // Formatos de reporte

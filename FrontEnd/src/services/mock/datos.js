@@ -259,6 +259,133 @@ export const reportes = [
   },
 ]
 
+// Completa los reportes de ejemplo con las cifras nuevas de la etapa 4 para que las tarjetas
+// tengan datos en el modo simulado.
+const NOMBRES_VARIABLE = { TEMP: 'Temperatura', HUM: 'Humedad relativa', AIRE: 'Calidad del aire' }
+
+function completarCifras(reporte, indice) {
+  const c = reporte.cifras
+  const variables = c.variables ?? []
+  const alertas = variables.reduce((total, variable) => total + variable.alertas, 0)
+  const dispositivos = c.dispositivos ?? []
+  const cumplimiento = {}
+  const comparativoVariables = []
+  const porDispositivo = []
+  for (const [i, variable] of variables.entries()) {
+    const dec = variable.variable === 'AIRE' ? 0 : 1
+    const previo = Number(variable.promedio) - 0.4 * (i + 1)
+    const cambio = Number(variable.promedio) - previo
+    const pct = previo ? (cambio / previo) * 100 : null
+    cumplimiento[variable.variable] = {
+      dentro_pct: +(100 - variable.alertas * 1.5).toFixed(1),
+      fuera_min: +(variable.alertas * 3.5).toFixed(1),
+      lecturas: c.lecturas / Math.max(1, variables.length),
+    }
+    comparativoVariables.push({
+      variable: variable.variable,
+      nombre: variable.variable,
+      unidad: variable.variable === 'TEMP' ? '°C' : variable.variable === 'HUM' ? '%HR' : 'ppm',
+      promedio: variable.promedio,
+      minimo: variable.minimo,
+      maximo: variable.maximo,
+      promedio_previo: +previo.toFixed(dec),
+      minimo_previo: +(Number(variable.minimo) - 0.3).toFixed(dec),
+      maximo_previo: +(Number(variable.maximo) + 0.2).toFixed(dec),
+      dif_promedio: +cambio.toFixed(dec),
+      dif_promedio_pct: pct == null ? null : +pct.toFixed(1),
+      mejora: cambio <= 0,
+    })
+  }
+  dispositivos.forEach((nombre, i) => {
+    const fila = {
+      codigo: `NC-${String(indice + 1).padStart(2, '0')}${i + 1}`,
+      nombre,
+      area: c.alcance,
+    }
+    for (const variable of variables) {
+      fila[variable.variable] = {
+        minimo: variable.minimo,
+        promedio: +(variable.promedio + (i - 1) * 0.2).toFixed(variable.variable === 'AIRE' ? 0 : 1),
+        maximo: variable.maximo,
+      }
+    }
+    porDispositivo.push(fila)
+  })
+  return {
+    cumplimiento,
+    comparativo: {
+      periodo: { inicio: c.periodo?.inicio, fin: c.periodo?.fin },
+      variables: comparativoVariables,
+      alertas: {
+        total: alertas,
+        total_previo: alertas + 2,
+        diferencia: -2,
+        diferencia_pct: alertas ? -100 / (alertas + 2) : null,
+        mejora: true,
+      },
+    },
+    por_dispositivo: porDispositivo,
+    gestion_alertas: {
+      estados: { ATENDIDA: Math.max(0, alertas - 1), DESCARTADA: 1, PENDIENTE: 1 },
+      total: alertas + 1,
+      tiempo_medio_min: 24.5,
+      responsables: [{ usuario: 'Ana López', total: Math.max(1, alertas - 1) }],
+    },
+    disponibilidad: Object.fromEntries(
+      porDispositivo.map((fila) => [
+        fila.codigo,
+        {
+          nombre: fila.nombre,
+          area: fila.area,
+          pct: 98.4,
+          recibidas: 850,
+          esperadas: 864,
+          huecos: [{ inicio: c.periodo?.inicio, minutos: 12 }],
+        },
+      ]),
+    ),
+    incidentes: porDispositivo.length
+      ? [
+          {
+            dispositivo: porDispositivo[0].nombre,
+            dispositivo_codigo: porDispositivo[0].codigo,
+            area: c.alcance,
+            variable: variables[0]?.variable ?? 'TEMP',
+            variable_nombre: NOMBRES_VARIABLE[variables[0]?.variable] ?? 'Temperatura',
+            inicio: c.periodo?.inicio,
+            duracion_min: 42,
+            valor_pico: variables[0]?.maximo ?? 0,
+            nivel: 'ADVERTENCIA',
+          },
+        ]
+      : [],
+    observaciones: porDispositivo.length
+      ? [
+          {
+            fecha: c.periodo?.inicio,
+            dispositivo: porDispositivo[0].nombre,
+            dispositivo_codigo: porDispositivo[0].codigo,
+            area: c.alcance,
+            variable: variables[0]?.variable ?? 'TEMP',
+            variable_codigo: variables[0]?.variable ?? 'TEMP',
+            variable_nombre: NOMBRES_VARIABLE[variables[0]?.variable] ?? 'Temperatura',
+            usuario: 'Ana López',
+            texto: 'Se revisó el área y se cerró la puerta del andén.',
+          },
+        ]
+      : [],
+  }
+}
+
+reportes.forEach((reporte, indice) => {
+  reporte.cifras.periodo = {
+    inicio: reporte.periodo_inicio,
+    fin: reporte.periodo_fin,
+  }
+  reporte.cifras = { ...reporte.cifras, ...completarCifras(reporte, indice) }
+})
+
+
 export const programaciones = [
   {
     num: 4, organizacion: 1, area: 2, areas: [], creada_por: 2, frecuencia: 'SEMANAL',

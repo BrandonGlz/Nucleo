@@ -51,20 +51,20 @@ USUARIOS = [
 # (área, nombre, código MQTT, operador (nombre) o None, intervalo, batería, horas sin conexión)
 # NUC-001 es el código del ESP32 real (IoT/micropython/secrets.example.py).
 DISPOSITIVOS = [
-    ("Moldeo", "Núcleo T-01", "NC-0341", "Luis", 30, 86, 0),
-    ("Moldeo", "Núcleo T-02", "NC-0342", None, 30, 64, 0),
-    ("Moldeo", "Núcleo T-03", "NC-0343", None, 30, 78, 0),
-    ("Moldeo", "Núcleo T-04", "NC-0344", None, 60, 52, 0),
-    ("Laboratorio", "Núcleo L-07", "NC-0417", "Diana", 15, 22, 0),
-    ("Laboratorio", "Núcleo L-08", "NC-0418", "Elena", 15, 70, 0),
-    ("Laboratorio", "Núcleo L-09", "NC-0419", None, 30, 88, 0),
-    ("Laboratorio", "Núcleo ESP32 piloto", "NUC-001", None, 30, 95, 0),
-    ("Guardería", "Núcleo E-03", "NC-0288", "Paola", 60, 91, 0),
-    ("Guardería", "Núcleo E-04", "NC-0289", None, 60, 67, 0),
-    ("Guardería", "Núcleo E-05", "NC-0290", None, 60, 12, 0),
-    ("Guardería", "Núcleo E-06", "NC-0291", None, 60, 31, 2),
-    ("Almacén", "Núcleo A-01", "NC-0501", "Iván", 60, 81, 0),
-    ("Almacén", "Núcleo A-02", "NC-0502", None, 60, 58, 0),
+    ("Moldeo", "Núcleo T-01", "NC-0341", "Luis", 120, 86, 0),
+    ("Moldeo", "Núcleo T-02", "NC-0342", None, 120, 64, 0),
+    ("Moldeo", "Núcleo T-03", "NC-0343", None, 120, 78, 0),
+    ("Moldeo", "Núcleo T-04", "NC-0344", None, 120, 52, 0),
+    ("Laboratorio", "Núcleo L-07", "NC-0417", "Diana", 120, 22, 0),
+    ("Laboratorio", "Núcleo L-08", "NC-0418", "Elena", 120, 70, 0),
+    ("Laboratorio", "Núcleo L-09", "NC-0419", None, 120, 88, 0),
+    ("Laboratorio", "Núcleo ESP32 piloto", "NUC-001", None, 120, 95, 0),
+    ("Guardería", "Núcleo E-03", "NC-0288", "Paola", 120, 91, 0),
+    ("Guardería", "Núcleo E-04", "NC-0289", None, 120, 67, 0),
+    ("Guardería", "Núcleo E-05", "NC-0290", None, 120, 12, 0),
+    ("Guardería", "Núcleo E-06", "NC-0291", None, 120, 31, 2),
+    ("Almacén", "Núcleo A-01", "NC-0501", "Iván", 120, 81, 0),
+    ("Almacén", "Núcleo A-02", "NC-0502", None, 120, 58, 0),
     ("Almacén", "Núcleo A-03", "NC-0503", None, 120, 40, 26),
 ]
 
@@ -96,7 +96,9 @@ OBSERVACIONES = {
         "Lectura durante mantenimiento del equipo.",
     ],
 }
-PASO = timedelta(minutes=10)
+# La tabla limita el intervalo a 5–120 s; la demo usa el máximo para que la
+# disponibilidad sea realista.
+PASO = timedelta(seconds=120)
 
 
 def correo(nombre, apellido, dominio):
@@ -110,7 +112,7 @@ class Command(BaseCommand):
     help = (
         "Crea datos de demostración de volumen mediano: dos organizaciones, áreas, un usuario "
         "de cada rol (y varios operadores), 17 dispositivos con sus sensores y umbrales, "
-        "días de lecturas cada 10 minutos, las alertas que provocan, notificaciones, "
+        "días de lecturas cada 2 minutos, las alertas que provocan, notificaciones, "
         "reportes y programaciones. Todas las cuentas usan la misma contraseña."
     )
 
@@ -135,6 +137,7 @@ class Command(BaseCommand):
         self.azar = random.Random(semilla)
         self.password = password
         self.ahora = timezone.now().replace(second=0, microsecond=0)
+        self.dias = dias
         if reiniciar:
             self._reiniciar()
         with transaction.atomic():
@@ -255,8 +258,8 @@ class Command(BaseCommand):
     def _dispositivos(self):
         lista = [
             *DISPOSITIVOS,
-            ("Urgencias", "Núcleo U-01", "NC-0901", "Raúl", 30, 74, 0),
-            ("Urgencias", "Núcleo U-02", "NC-0902", None, 30, 63, 0),
+            ("Urgencias", "Núcleo U-01", "NC-0901", "Raúl", 120, 74, 0),
+            ("Urgencias", "Núcleo U-02", "NC-0902", None, 120, 63, 0),
         ]
         self.dispositivos = []
         for area, nombre, codigo, operador, intervalo, bateria, horas_sin in lista:
@@ -276,6 +279,7 @@ class Command(BaseCommand):
                 operador=self.usuarios.get(operador),
                 registrado_por=admin,
                 intervalo_muestreo_seg=intervalo,
+                fecha_alta=self.ahora - timedelta(days=self.dias + 1),
                 nivel_bateria=bateria,
                 ultima_conexion=ultima,
                 ultimo_arranque=self.ahora - timedelta(days=self.azar.randint(2, 9)),

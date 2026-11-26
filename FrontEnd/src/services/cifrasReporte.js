@@ -28,6 +28,23 @@ export function cifrasHoja(c, { area = 'todas las áreas', nombres = {}, variabl
     alcance,
     lecturas: codigos.reduce((s, v) => s + (c.variables[v].muestras ?? 0), 0),
     dispositivos: Object.keys(c.dispositivos ?? {}).map((codigo) => nombres[codigo] ?? codigo),
+    por_dispositivo: Object.entries(c.dispositivos ?? {}).map(([codigo, valores]) => {
+      const detalle = {
+        codigo,
+        nombre: valores.nombre ?? nombres[codigo] ?? codigo,
+        area: valores.area ?? '',
+      }
+      for (const variable of ORDEN) {
+        if (valores[variable]) detalle[variable] = valores[variable]
+      }
+      return detalle
+    }),
+    cumplimiento: c.cumplimiento ?? null,
+    comparativo: c.comparativo ?? null,
+    gestion_alertas: c.gestion_alertas ?? null,
+    disponibilidad: c.disponibilidad ?? null,
+    incidentes: c.incidentes ?? null,
+    observaciones: c.observaciones ?? null,
     variables: codigos.map((v) => ({
       variable: v,
       minimo: c.variables[v].minimo,

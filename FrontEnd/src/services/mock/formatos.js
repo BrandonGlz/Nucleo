@@ -9,14 +9,35 @@ const base = {
   hoja: {},
 }
 
-const conVisibles = (visibles, opciones = {}) => ({
+// Mismas tarjetas nuevas que la migración 0011.
+const NUEVAS = [
+  { id: 'cumplimiento', fuente: 'cumplimiento', nombre: 'Cumplimiento' },
+  { id: 'comparativo', fuente: 'comparativo', nombre: 'Comparativo' },
+  { id: 'dispositivos', fuente: 'dispositivos', nombre: 'Dispositivos' },
+  { id: 'gestion_alertas', fuente: 'gestion_alertas', nombre: 'Gestión de alertas' },
+  { id: 'disponibilidad', fuente: 'disponibilidad', nombre: 'Disponibilidad' },
+  { id: 'incidentes', fuente: 'incidentes', nombre: 'Incidentes' },
+  { id: 'observaciones', fuente: 'observaciones', nombre: 'Observaciones' },
+]
+const idsBase = [...base.orden, ...NUEVAS.map((tarjeta) => tarjeta.id)]
+const baseAmpliada = {
   ...base,
-  orden: [...visibles, ...base.orden.filter((id) => !visibles.includes(id))],
-  ocultos: base.orden.filter((id) => !visibles.includes(id)),
+  orden: idsBase,
+  personalizadas: NUEVAS,
+}
+
+const conVisibles = (visibles, opciones = {}) => ({
+  ...baseAmpliada,
+  orden: [...visibles, ...idsBase.filter((id) => !visibles.includes(id))],
+  ocultos: idsBase.filter((id) => !visibles.includes(id)),
   opciones,
 })
 
 const ahora = '2026-11-20T10:00:00Z'
+const versiones = [
+  { numero: 1, fecha: ahora, creada_por_nombre: 'Sistema' },
+  { numero: 2, fecha: ahora, creada_por_nombre: 'Sistema' },
+]
 
 export const formatos = [
   {
@@ -26,11 +47,15 @@ export const formatos = [
     predeterminado: false,
     activo: true,
     es_plantilla: true,
-    version: 1,
-    conf: conVisibles(['cifras', 'serie', 'analisis'], { serie: { grafica: 'linea' } }),
+    version: 2,
+    conf: conVisibles(['cifras', 'cumplimiento', 'comparativo', 'serie', 'analisis'], {
+      cumplimiento: { grafica: 'cifra' },
+      comparativo: { grafica: 'tabla' },
+      serie: { grafica: 'linea' },
+    }),
     creado_por_nombre: 'Sistema',
     areas_predeterminado: [],
-    versiones: [{ numero: 1, fecha: ahora, creada_por_nombre: 'Sistema' }],
+    versiones,
   },
   {
     num: 2,
@@ -39,19 +64,26 @@ export const formatos = [
     predeterminado: false,
     activo: true,
     es_plantilla: true,
-    version: 1,
+    version: 2,
     conf: conVisibles(
-      ['cifras', 'alertas', 'var:TEMP', 'var:HUM', 'var:AIRE', 'analisis'],
+      [
+        'cumplimiento',
+        'disponibilidad',
+        'incidentes',
+        'gestion_alertas',
+        'observaciones',
+        'analisis',
+      ],
       {
-        alertas: { grafica: 'dona', ancho: '12' },
-        'var:TEMP': { datos: ['minmax', 'alertas'] },
-        'var:HUM': { datos: ['minmax', 'alertas'] },
-        'var:AIRE': { datos: ['minmax', 'alertas'] },
+        cumplimiento: { grafica: 'tabla' },
+        incidentes: { grafica: 'tabla', ancho: '12' },
+        gestion_alertas: { grafica: 'dona' },
+        disponibilidad: { grafica: 'barras' },
       },
     ),
     creado_por_nombre: 'Sistema',
     areas_predeterminado: [],
-    versiones: [{ numero: 1, fecha: ahora, creada_por_nombre: 'Sistema' }],
+    versiones,
   },
   {
     num: 3,
@@ -60,11 +92,22 @@ export const formatos = [
     predeterminado: false,
     activo: true,
     es_plantilla: true,
-    version: 1,
-    conf: { ...base },
+    version: 2,
+    conf: conVisibles([
+      'cifras',
+      'var:TEMP',
+      'var:HUM',
+      'var:AIRE',
+      'serie',
+      'alertas',
+      'analisis',
+      'dispositivos',
+      'gestion_alertas',
+      'disponibilidad',
+    ]),
     creado_por_nombre: 'Sistema',
     areas_predeterminado: [],
-    versiones: [{ numero: 1, fecha: ahora, creada_por_nombre: 'Sistema' }],
+    versiones,
   },
   {
     num: 4,
@@ -73,14 +116,15 @@ export const formatos = [
     predeterminado: false,
     activo: true,
     es_plantilla: true,
-    version: 1,
-    conf: conVisibles(['alertas', 'serie', 'analisis'], {
+    version: 2,
+    conf: conVisibles(['incidentes', 'alertas', 'gestion_alertas', 'observaciones'], {
+      incidentes: { grafica: 'tabla', ancho: '12' },
       alertas: { grafica: 'barras' },
-      serie: { grafica: 'columnas' },
+      gestion_alertas: { grafica: 'barras' },
     }),
     creado_por_nombre: 'Sistema',
     areas_predeterminado: [],
-    versiones: [{ numero: 1, fecha: ahora, creada_por_nombre: 'Sistema' }],
+    versiones,
   },
   {
     num: 5,
