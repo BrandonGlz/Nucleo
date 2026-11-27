@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert, Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
@@ -9,7 +9,7 @@ import { useDatos } from '../../hooks/useDatos'
 import { umbralDe, useOperador } from '../../hooks/useOperador'
 import * as lecturasApi from '../../services/lecturas'
 import { UNIDAD, VARIABLE } from '../../utils/convertir'
-import { cuando, fechaCorta, hora } from '../../utils/formato'
+import { cuando, fechaCorta, hora, periodo } from '../../utils/formato'
 import { colors, marca } from '../../theme'
 
 const HORA = 3600 * 1000
@@ -23,14 +23,27 @@ const VARIABLES = ['TEMP', 'HUM', 'AIRE']
 
 // Histórico: una variable del dispositivo a la vista en 24 h, 7 o 30 días, con su umbral, el promedio,
 // mínimo, máximo y tiempo en rango (en una fila, sin scroll) y el CSV para compartir.
-export function HistoricoScreen() {
+export function HistoricoScreen({ navigation, route }) {
   const { c } = useTema()
   const { estado: estadoOp, datos: op, elegir } = useOperador()
+  const fijo = route?.params?.desde && route?.params?.hasta
+    ? {
+        id: 'fuente',
+        label: 'Rango de Nico',
+        intervalo: 'hora',
+        desde: route.params.desde,
+        hasta: route.params.hasta,
+        largo: new Date(route.params.hasta) - new Date(route.params.desde) > 36 * HORA,
+      }
+    : null
+  useEffect(() => {
+    if (route?.params?.dispositivo) elegir(Number(route.params.dispositivo))
+  }, [route?.params?.dispositivo, elegir])
   const d = op?.dispositivo
   const [variable, setVariable] = useState('TEMP')
   const [rangoId, setRangoId] = useState('24h')
   const [exportando, setExportando] = useState(false)
-  const rango = RANGOS.find((x) => x.id === rangoId)
+  const rango = fijo ?? RANGOS.find((x) => x.id === rangoId)
   const u = umbralDe(op, variable)
   const info = VARIABLE[variable]
   const unidad = UNIDAD[variable]
@@ -38,9 +51,9 @@ export function HistoricoScreen() {
   const serie = useDatos(
     () =>
       d
-        ? lecturasApi.serie(d.num, variable, { intervalo: rango.intervalo, desde: new Date(Date.now() - rango.ms).toISOString() })
+        ? lecturasApi.serie(d.num, variable, { intervalo: rango.intervalo, desde: fijo ? fijo.desde : new Date(Date.now() - rango.ms).toISOString(), hasta: fijo?.hasta })
         : new Promise(() => {}),
-    [d?.num, variable, rangoId],
+    [d?.num, variable, rangoId, fijo?.desde, fijo?.hasta],
   )
   const puntos = serie.datos
   // Solo números finitos: un promedio vacío no debe dar NaN en las cifras ni en la gráfica.
@@ -58,7 +71,7 @@ export function HistoricoScreen() {
   const compartir = async () => {
     setExportando(true)
     try {
-      await lecturasApi.compartirCsv(d.num, variable, new Date(Date.now() - rango.ms).toISOString())
+      await lecturasApi.compartirCsv(d.num, variable, fijo ? fijo.desde : new Date(Date.now() - rango.ms).toISOString())
     } catch (e) {
       Alert.alert('No se pudo exportar', e.message)
     } finally {
@@ -109,11 +122,28 @@ export function HistoricoScreen() {
   return (
     <Pantalla zona={zona} onRecargar={serie.reintentar}>
       <View style={s.chips}>
-        {RANGOS.map((r) => (
-          <Chip key={r.id} selected={rangoId === r.id} onPress={() => setRangoId(r.id)}>
-            {r.label}
-          </Chip>
-        ))}
+        {fijo ? (
+          <View style={[s.rangoFijo, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Icon name="sparkles" size={13} color={c.accent} />
+            <T size={12} peso={600} style={{ flex: 1 }} numberOfLines={1}>
+              {`Rango de Nico · ${periodo(fijo.desde, fijo.hasta)}`}
+            </T>
+            <Pressable
+              onPress={() => navigation?.setParams({ desde: null, hasta: null })}
+              accessibilityRole="button"
+              accessibilityLabel="Quitar el rango de Nico"
+              hitSlop={6}
+            >
+              <T size={12} peso={700} color={c.accent}>Quitar</T>
+            </Pressable>
+          </View>
+        ) : (
+          RANGOS.map((r) => (
+            <Chip key={r.id} selected={rangoId === r.id} onPress={() => setRangoId(r.id)}>
+              {r.label}
+            </Chip>
+          ))
+        )}
       </View>
       {serie.estado === 'error' ? (
         <EstadoError onReintentar={serie.reintentar} />
@@ -138,7 +168,7 @@ export function HistoricoScreen() {
             ) : puntos ? (
               <TrendChart
                 data={puntos.map((p, i) => ({
-                  label: i % Math.max(1, Math.ceil(puntos.length / 5)) === 0 ? (rango.intervalo === 'dia' || rangoId === '7d' ? fechaCorta(p.periodo) : hora(p.periodo)) : '',
+                  label: i % Math.max(1, Math.ceil(puntos.length / 5)) === 0 ? (rango.intervalo === 'dia' || rangoId === '7d' || fijo?.largo ? fechaCorta(p.periodo) : hora(p.periodo)) : '',
                   time: cuando(p.periodo),
                   value: Number(p.promedio),
                 }))}
@@ -190,6 +220,7 @@ const s = StyleSheet.create({
   entre: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   csv: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(243,245,242,0.08)' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  rangoFijo: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, maxWidth: '100%' },
   tres: { flexDirection: 'row', gap: 10 },
   cifra: { flex: 1, gap: 2, padding: 14, borderRadius: 20 },
 })

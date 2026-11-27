@@ -1,6 +1,7 @@
 import { Linking, Platform } from 'react-native'
 import { cacheDirectory, downloadAsync } from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
+import * as mock from './mock/handlers'
 import { AREAS, REPORTE_PDF, REPORTES } from '../api'
 import { API_BASE_URL } from './api/client'
 import { pagina } from '../utils/convertir'
@@ -12,9 +13,9 @@ export const puedeVerReportes = (u) => !!u?.organizacion && ROLES_REPORTES.inclu
 
 // Reportes a la vista de la cuenta (la API ya filtra: el administrador, los de su organización;
 // supervisor y analista, los de su área), del más reciente al más antiguo, con el nombre del área.
-export async function lista() {
-  if (USAR_MOCKS) return []
-  const [reportes, areas] = await Promise.all([pedir(REPORTES), pedir(AREAS).then(pagina).catch(() => [])])
+export async function lista(params = {}) {
+  if (USAR_MOCKS) return pagina(await mock.reportes(params))
+  const [reportes, areas] = await Promise.all([pedir(REPORTES, { params }), pedir(AREAS).then(pagina).catch(() => [])])
   const nombres = Object.fromEntries(areas.map((a) => [a.num, a.nombre]))
   return pagina(reportes)
     .map((r) => ({

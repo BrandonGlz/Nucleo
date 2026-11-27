@@ -91,6 +91,10 @@ export async function organizacion(num) {
   await esperar()
   return copia(db.organizaciones.find((o) => o.num === Number(num)) ?? noEncontrado())
 }
+export async function areas() {
+  await esperar()
+  return pagina(copia(db.areas))
+}
 export async function area(num) {
   await esperar()
   return copia(db.areas.find((a) => a.num === Number(num)) ?? noEncontrado())
@@ -227,10 +231,118 @@ export async function quitarFoto() {
   return copia(u)
 }
 
-// Agente IA: uno por dispositivo; responde con los datos del dispositivo elegido.
-export async function preguntarAgente(pregunta, dispositivo) {
+// Estado del alcance de Nico en la app: el ESP del área y su conexión.
+export async function estadoAgente({ alcance = 'DISPOSITIVO', area = null } = {}) {
+  await esperar()
+  const base = { puente: false, activos: [], disponibles: [], exige_puente: false }
+  if (alcance === 'DISPOSITIVO') return base
+  if (usuarioEnSesion()?.rol === 'ADMIN') return { ...base, disponible: true, motivo: '' }
+  const areas = alcance === 'ORGANIZACION' ? db.areas : db.areas.filter((a) => a.num === Number(area))
+  const candidatas = areas.map((a) => ({ area: a, dispositivo: db.dispositivos.find((d) => d.num === a.puente_nico) }))
+  const activa = candidatas.find((c) => c.dispositivo?.puente_ia && c.dispositivo.estado_dispositivo === 'LINEA')
+  if (activa) return { ...base, disponible: true, motivo: '' }
+  const primera = candidatas[0]
+  const motivo = primera?.dispositivo?.puente_ia
+    ? `El ESP de Nico de ${primera.area.nombre} está sin conexión.`
+    : 'Esta área no tiene un ESP de Nico asignado. Pídele a un administrador que lo elija en Empresa y áreas.'
+  return { ...base, disponible: false, motivo }
+}
+
+// Sugerencias del inicio con los datos del dispositivo y su área (misma forma que la web).
+export async function sugerenciasAgente(dispositivo) {
   await esperar()
   const d = db.dispositivos.find((x) => x.num === Number(dispositivo)) ?? db.dispositivos[0]
+  const area = db.areas.find((a) => a.num === d.area)
+  const nombreArea = area?.nombre ?? 'tu área'
+  const equipos = db.dispositivos.filter((x) => x.area === d.area)
+  const alertas = db.alertas.filter((a) => equipos.some((e) => e.num === a.dispositivo))
+  const pendientes = alertas.filter((a) => a.estado === 'PENDIENTE').length
+  const inicio = []
+  inicio.push(pendientes
+    ? { icono: 'bell', titulo: 'Alertas pendientes', texto: `${pendientes === 1 ? 'Queda' : 'Quedan'} ${pendientes} alerta${pendientes === 1 ? '' : 's'} sin atender en ${nombreArea}` }
+    : { icono: 'bell', titulo: 'Alertas del área', texto: `¿Hubo alertas este mes en ${nombreArea}?` })
+  const sinConexion = equipos.find((e) => e.estado_dispositivo !== 'LINEA')
+  inicio.push(sinConexion
+    ? { icono: 'wifi-off', titulo: 'Equipo sin conexión', texto: `¿Desde cuándo ${sinConexion.nombre} está sin conexión?` }
+    : { icono: 'signal', titulo: 'Conexión del área', texto: `¿Qué dispositivos están en línea en ${nombreArea}?` })
+  const porVariable = alertas.reduce((total, a) => ({ ...total, [a.variable]: (total[a.variable] ?? 0) + 1 }), {})
+  const variable = Object.entries(porVariable).sort((a, b) => b[1] - a[1])[0]?.[0]
+  const nombreVariable = { TEMP: 'temperatura', HUM: 'humedad', AIRE: 'calidad del aire' }[variable]
+  inicio.push(variable
+    ? { icono: 'activity', titulo: 'Variable con más alertas', texto: `¿Cuántas alertas de ${nombreVariable} hubo este mes en ${nombreArea}?` }
+    : { icono: 'activity', titulo: 'Lecturas del área', texto: `¿Cómo estuvo la temperatura este mes en ${nombreArea}?` })
+  const mes = new Date().getMonth()
+  const reporte = db.reportes.find((r) => r.area === d.area && new Date(r.periodo_inicio).getMonth() === mes)
+  inicio.push({
+    icono: 'file-text',
+    titulo: 'Reporte del mes',
+    texto: reporte ? `¿Cómo salió el reporte de este mes de ${nombreArea}?` : `Genera el reporte de este mes de ${nombreArea}`,
+  })
+  return { activas: false, maximo: 6, sugerencias: [], inicio }
+}
+
+// Reportes: filtra por texto, origen y solapamiento de periodo como la API.
+export async function reportes(params = {}) {
+  await esperar()
+  let lista = copia(db.reportes)
+  if (params.q) {
+    const q = String(params.q).toLowerCase()
+    lista = lista.filter((r) => `${r.titulo ?? ''} ${r.cifras?.titulo ?? ''}`.toLowerCase().includes(q))
+  }
+  if (params.origen) lista = lista.filter((r) => r.origen === params.origen)
+  if (params.desde) lista = lista.filter((r) => r.periodo_fin > params.desde)
+  if (params.hasta) lista = lista.filter((r) => r.periodo_inicio < params.hasta)
+  const nombres = Object.fromEntries(db.areas.map((a) => [a.num, a.nombre]))
+  return pagina(
+    lista.map((r) => ({
+      ...r,
+      area_nombre: r.area ? nombres[r.area] ?? `Área ${r.area}` : 'Todas las áreas',
+      titulo: r.titulo || r.cifras?.titulo || `Reporte R-${String(r.num).padStart(4, '0')}`,
+    })),
+  )
+}
+
+// Agente IA: uno por dispositivo; responde con los datos del dispositivo elegido.
+export async function preguntarAgente(pregunta, dispositivo, { alcance = 'DISPOSITIVO', area = null } = {}) {
+  await esperar()
+  const d = db.dispositivos.find((x) => x.num === Number(dispositivo)) ?? db.dispositivos[0]
+  const t = pregunta.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  if (/(alertas?|avisos?) pendientes|que alertas|alertas tengo|hay alertas/.test(t)) {
+    const equipos = alcance === 'ORGANIZACION' ? db.dispositivos : alcance === 'AREA' ? db.dispositivos.filter((x) => x.area === Number(area)) : [d]
+    const pendientes = db.alertas.filter((a) => a.estado === 'PENDIENTE' && equipos.some((e) => e.num === a.dispositivo))
+    return {
+      texto: pendientes.length
+        ? `Hay ${pendientes.length} alerta${pendientes.length === 1 ? '' : 's'} pendiente${pendientes.length === 1 ? '' : 's'}.`
+        : 'No hay alertas pendientes.',
+      alertas: pendientes.map((a) => ({
+        num: a.num,
+        nivel: a.nivel,
+        variable: a.variable,
+        variable_nombre: { TEMP: 'Temperatura', HUM: 'Humedad relativa', AIRE: 'Calidad del aire' }[a.variable],
+        dispositivo: a.dispositivo_nombre,
+        dispositivo_nombre: a.dispositivo_nombre,
+        area: db.areas.find((x) => x.num === db.dispositivos.find((e) => e.num === a.dispositivo)?.area)?.nombre ?? '',
+        fecha: a.fecha_hora,
+        fecha_hora: a.fecha_hora,
+        valor: Number(a.lectura_valor),
+        lectura_valor: a.lectura_valor,
+        unidad: a.unidad,
+        estado: a.estado,
+      })),
+    }
+  }
+  if (alcance === 'AREA' || alcance === 'ORGANIZACION') {
+    const equipos = alcance === 'AREA' ? db.dispositivos.filter((x) => x.area === Number(area)) : db.dispositivos
+    const areaAlcance = db.areas.find((a) => a.num === Number(area))
+    const nombreAlcance = alcance === 'AREA' ? areaAlcance?.nombre ?? 'tu área' : 'Toda la organización'
+    const variable = /temperatura/i.test(pregunta) ? 'TEMP' : /aire/i.test(pregunta) ? 'AIRE' : 'HUM'
+    const lecturas = equipos.flatMap((e) => db.ultimas[e.num] ?? []).filter((l) => l.variable === variable)
+    const promedio = lecturas.reduce((total, l) => total + Number(l.valor), 0) / (lecturas.length || 1)
+    return {
+      texto: `Esta semana, la ${variable === 'TEMP' ? 'temperatura' : variable === 'AIRE' ? 'calidad del aire' : 'humedad'} de ${nombreAlcance} promedió ${promedio.toFixed(variable === 'AIRE' ? 0 : 1)} ${db.UNIDAD[variable]}.`,
+      fuente: { lecturas: lecturas.length * 120, desde: db.hace(7 * 86400), hasta: new Date().toISOString(), dispositivo: null, area: alcance === 'AREA' ? Number(area) : null, alcance: nombreAlcance },
+    }
+  }
   if (!/humedad|temperatura|aire|sensor|alerta|dispositivo|pico|bater|conex|lectura/i.test(pregunta)) {
     return { texto: `Solo puedo responder sobre ${d.nombre} y sus sensores.` }
   }
@@ -246,6 +358,7 @@ export async function preguntarAgente(pregunta, dispositivo) {
         ? `Está fuera del rango recomendado (${Number(u.advertencia_min)}–${Number(u.advertencia_max)} ${l.unidad}); avisa a tu supervisor si sigue subiendo.`
         : `Se mantiene dentro del rango (${Number(u.advertencia_min)}–${Number(u.advertencia_max)} ${l.unidad}) y no hubo picos en la última hora.`
     } La batería está al ${d.nivel_bateria} %.`,
+    fuente: { lecturas: 1420, desde: db.hace(7 * 86400), hasta: new Date().toISOString(), dispositivo: d.num, dispositivo_nombre: d.nombre, area: db.areas.find((a) => a.num === d.area)?.nombre ?? '' },
   }
 }
 

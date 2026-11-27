@@ -20,9 +20,9 @@ export const organizaciones = [
 ]
 
 export const areas = [
-  { num: 1, organizacion: 1, nombre: 'Moldeo', descripcion: 'Línea 1 · Línea 2 · Línea 3 · Almacén' },
-  { num: 2, organizacion: 1, nombre: 'Laboratorio', descripcion: 'Sala limpia · Esclusa · Bodega fría · Control de calidad' },
-  { num: 3, organizacion: 1, nombre: 'Guardería', descripcion: 'Aula 1 · Aula 3 · Comedor · Patio techado' },
+  { num: 1, organizacion: 1, nombre: 'Moldeo', descripcion: 'Línea 1 · Línea 2 · Línea 3 · Almacén', puente_nico: 1 },
+  { num: 2, organizacion: 1, nombre: 'Laboratorio', descripcion: 'Sala limpia · Esclusa · Bodega fría · Control de calidad', puente_nico: 5 },
+  { num: 3, organizacion: 1, nombre: 'Guardería', descripcion: 'Aula 1 · Aula 3 · Comedor · Patio techado', puente_nico: null },
 ]
 
 const U = (num, area, rol, nombre, primer, segundo, estado = 'ACT') => ({
@@ -52,6 +52,7 @@ const SENSORES = [
 const D = (num, area, operador, nombre, codigo, bateria, intervalo) => ({
   num, area, estado_dispositivo: 'LINEA', operador, registrado_por: 1, nombre,
   codigo_mqtt: codigo, intervalo_muestreo_seg: intervalo, nivel_bateria: bateria, ultima_conexion: hace(12),
+  puente_ia: true,
   ultimo_arranque: hace(3 * DIA), fecha_alta: '2026-08-10T16:00:00Z',
   sensores: SENSORES.map(([modelo, funcion], i) => ({
     num: num * 10 + i, dispositivo: num, estado_sensor: 'OPERA', modelo, funcion,
@@ -131,6 +132,60 @@ export const avisos = [
   V(9007, 'DISPOSITIVO', 'INFO', 'Núcleo T-01 reconectado', 'Moldeo · NC-0341 volvió a enviar lecturas.', '/dispositivos/1', 5 * HORA, true),
   V(9006, 'USUARIO', 'ADVERTENCIA', 'Cambio de rol', 'Mariana Cruz León ahora es Supervisor de Moldeo.', '/usuarios', 26 * HORA, true),
   V(9004, 'REPORTE', 'INFO', 'Reporte listo', 'Laboratorio · octubre de 2026.', '/reportes', 2 * DIA + 3 * HORA, true),
+]
+
+// Reportes de la app (mismas formas que la API: cifras resumidas, formato, envíos).
+export const reportes = [
+  {
+    num: 101, organizacion: 1, area: 1, areas: [], generado_por: 3, origen: 'MANUAL',
+    periodo_inicio: '2026-11-01T07:00:00Z', periodo_fin: '2026-11-20T07:00:00Z',
+    formato_nombre: 'Ejecutivo', titulo: 'Ejecutivo · Moldeo · 1–19 nov 2026',
+    cifras: {
+      lecturas: 8640, alertas: { total: 4 },
+      variables: {
+        TEMP: { nombre: 'Temperatura', unidad: '°C', muestras: 2880, promedio: 24.6, minimo: 20.8, maximo: 28.4 },
+        HUM: { nombre: 'Humedad relativa', unidad: '%HR', muestras: 2880, promedio: 47.9, minimo: 38.2, maximo: 58.1 },
+        AIRE: { nombre: 'Calidad del aire', unidad: 'ppm', muestras: 2880, promedio: 710, minimo: 340, maximo: 1280 },
+      },
+    },
+    contenido: 'La temperatura se mantuvo estable y el aire tuvo dos picos en la Línea 1.',
+    fecha_generacion: hace(6 * HORA), estado: 'LISTO', archivado: false,
+    envios: [
+      { num: 1, fecha: hace(5 * HORA), origen: 'MANUAL', enviado_por_nombre: 'Mariana Cruz León', destinatarios: [{ num: 1, nombre: 'Andrés Villalobos Ruiz' }], resultado: 'OK', error: '' },
+      { num: 2, fecha: hace(4 * HORA), origen: 'PROGRAMADO', enviado_por_nombre: '', destinatarios: [{ num: 5, nombre: 'Karla Méndez Soto' }], resultado: 'FALLO', error: 'El servidor de correo no respondió.' },
+    ],
+  },
+  {
+    num: 100, organizacion: 1, area: 2, areas: [], generado_por: null, origen: 'PROGRAMADO',
+    periodo_inicio: '2026-10-01T07:00:00Z', periodo_fin: '2026-10-20T07:00:00Z',
+    formato_nombre: 'Cumplimiento', titulo: 'Cumplimiento · Laboratorio · 1–19 oct 2026',
+    cifras: {
+      lecturas: 6050, alertas: { total: 2 },
+      variables: {
+        TEMP: { nombre: 'Temperatura', unidad: '°C', muestras: 2016, promedio: 20.3, minimo: 18.4, maximo: 23.2 },
+        HUM: { nombre: 'Humedad relativa', unidad: '%HR', muestras: 2016, promedio: 49.6, minimo: 39.0, maximo: 66.1 },
+        AIRE: { nombre: 'Calidad del aire', unidad: 'ppm', muestras: 2016, promedio: 390, minimo: 330, maximo: 520 },
+      },
+    },
+    contenido: 'Hubo dos lecturas sobre el máximo de humedad en Sala limpia.',
+    fecha_generacion: hace(15 * DIA), estado: 'ENVIADO', archivado: false, envios: [],
+  },
+  {
+    num: 99, organizacion: 1, area: 1, areas: [], generado_por: 3, origen: 'AGENTE',
+    periodo_inicio: '2026-11-19T07:00:00Z', periodo_fin: '2026-11-26T07:00:00Z',
+    formato_nombre: 'Incidentes', titulo: 'Incidentes · Moldeo · 19–25 nov 2026',
+    cifras: {
+      lecturas: 2880, alertas: { total: 1 },
+      variables: {
+        TEMP: { nombre: 'Temperatura', unidad: '°C', muestras: 960, promedio: 24.1, minimo: 21.0, maximo: 26.4 },
+        HUM: { nombre: 'Humedad relativa', unidad: '%HR', muestras: 960, promedio: 48.2, minimo: 40.0, maximo: 56.0 },
+        AIRE: { nombre: 'Calidad del aire', unidad: 'ppm', muestras: 960, promedio: 760, minimo: 600, maximo: 900 },
+      },
+    },
+    contenido: 'Una alerta de temperatura se atendió el mismo día.',
+    fecha_generacion: hace(2 * HORA), estado: 'LISTO', archivado: false,
+    envios: [{ num: 3, fecha: hace(90 * MIN), origen: 'NICO', enviado_por_nombre: 'Andrés Villalobos Ruiz', destinatarios: [{ num: 3, nombre: 'Mariana Cruz León' }], resultado: 'OK', error: '' }],
+  },
 ]
 
 // Notificaciones: push al teléfono, una por alerta.

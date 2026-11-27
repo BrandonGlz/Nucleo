@@ -3,19 +3,25 @@ import { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Animated, Easing, Image, Keyboard, KeyboardAvoidingView, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as Clipboard from 'expo-clipboard'
 import { ReporteChat } from '../../components/ReporteChat'
-import { SelectorDispositivo } from '../../components/SelectorDispositivo'
+import { SelectorAlcance } from '../../components/SelectorAlcance'
 import { Aparece, Icon, T } from '../../components/ui'
 import { useAnimaciones, usePreferencias } from '../../context/PreferenciasContext'
 import { useSesion } from '../../context/SesionContext'
 import { TemaFijo, useTema } from '../../context/TemaContext'
 import { useOperador } from '../../hooks/useOperador'
 import * as agenteApi from '../../services/agente'
+import * as organizacionesApi from '../../services/organizaciones'
+import { useResolver } from '../alertas/HojaResolver'
+import { puedeResolver } from '../alertas/AlertasScreen'
 import { planDe, respuestaRapida, siguientes } from './proceso'
+import { ConversacionesScreen } from './ConversacionesScreen'
 import { ComparativaChat, GraficaChat } from './Piezas'
 import { useDictado } from './dictado'
 import { useVozNico } from './voz'
-import { diaCorto, hora } from '../../utils/formato'
+import { diaCorto, hora, miles, periodo } from '../../utils/formato'
+import { UNIDAD, VARIABLE } from '../../utils/convertir'
 import { font, marca } from '../../theme'
 
 // Cara de Nico (recorte redondo con fondo transparente) para el avatar del encabezado y el saludo.
@@ -30,19 +36,25 @@ const SUGERENCIAS = [
 const SUGERENCIA_ALERTAS = { icono: 'bell', titulo: 'Alertas', texto: '¿Cuántas alertas hubo esta semana?' }
 const SUGERENCIA_REPORTE = { icono: 'file-text', titulo: 'Reporte', texto: 'Genera el reporte de esta semana', destacada: true }
 const ROLES_REPORTE = ['ADMIN', 'SUPER', 'ANALISTA']
-// Conversaciones recientes: se guardan en el teléfono (las 12 últimas de la cuenta).
-const MAX_CONVERSACIONES = 12
+// Conversaciones recientes: se guardan en el teléfono (las 50 últimas de la cuenta).
+const MAX_CONVERSACIONES = 50
 const claveConversaciones = (usuario) => `nucleo.conversaciones.${usuario}`
+// Cada alcance tiene su propio hilo: no se mezclan las respuestas del dispositivo con las del área.
+const claveDeConversacion = (conv) =>
+  conv.alcance === 'AREA' ? `a:${conv.area ?? ''}` : conv.alcance === 'ORGANIZACION' ? 'org' : `d:${conv.dispositivo}`
 
 // Nico AI en la app: hay un agente por dispositivo. El operador habla con el de su dispositivo;
 // las demás cuentas lo eligen en un select. Solo aparece para las cuentas autorizadas.
 // Con el teclado abierto el campo sube sobre él y la conversación se recorre al final.
-export function AgenteScreen() {
+export function AgenteScreen({ navigation }) {
   const { c } = useTema()
   const { usuario } = useSesion()
   const inset = useSafeAreaInsets()
   const hilo = useRef(null)
   const [elegido, setElegido] = useState(null)
+  const [alcance, setAlcance] = useState('DISPOSITIVO')
+  const [areaElegida, setAreaElegida] = useState(null)
+  const [areas, setAreas] = useState([])
   const [texto, setTexto] = useState('')
   // Dictado por voz: `porVoz` indica que el texto del campo salió (al menos en parte) del
   // micrófono; si se envía así, Nico lee su respuesta en voz alta. Al terminar de hablar, el
@@ -71,6 +83,9 @@ export function AgenteScreen() {
   }
   const [mensajes, setMensajes] = useState({})
   const [pensando, setPensando] = useState(false)
+  const [sugerenciasInicio, setSugerenciasInicio] = useState(null)
+  const [copiado, setCopiado] = useState(null)
+  const [verConversaciones, setVerConversaciones] = useState(false)
   // Conversación abierta por dispositivo (su id) y las guardadas.
   const [abierta, setAbierta] = useState({})
   const [guardadas, setGuardadas] = useState([])
@@ -82,21 +97,53 @@ export function AgenteScreen() {
   // Con el puente encendido, solo responde el agente cuyo ESP32 está conectado. El servidor
   // decide quién puede usarlo sin él (`disponibles`): el administrador, en modo de pruebas.
   const [puente, setPuente] = useState({ puente: false, activos: [], disponibles: [] })
-  const { datos: op } = useOperador()
+  const { datos: op, refrescar } = useOperador()
   const dispositivos = op?.dispositivos ?? []
   const d = dispositivos.find((x) => x.num === elegido) ?? op?.dispositivo ?? dispositivos[0]
-  const lista = d ? (mensajes[d.num] ?? []) : []
-  const enLinea = !puente.puente || (d && puente.activos.includes(d.num))
+  const areaActual = areas.find((a) => a.num === areaElegida) ?? areas.find((a) => a.num === (usuario.area ?? d?.area)) ?? null
+  const claveHilo = alcance === 'AREA' ? `a:${areaActual?.num ?? ''}` : alcance === 'ORGANIZACION' ? 'org' : `d:${d?.num ?? ''}`
+  const lista = d ? (mensajes[claveHilo] ?? []) : []
+  const porDispositivo = alcance === 'DISPOSITIVO'
+  const enLinea = porDispositivo
+    ? !puente.puente || (d && puente.activos.includes(d.num))
+    : puente.disponible === true
   // `activo`: se puede preguntar. `modoPruebas`: el ESP32 está sin conexión pero el usuario
   // (administrador) puede usar a Nico igual; supervisores, analistas y operadores, no.
-  const activo = enLinea || (d && (puente.disponibles ?? []).includes(d.num))
-  const modoPruebas = Boolean(activo && !enLinea)
+  const activo = porDispositivo
+    ? enLinea || (d && (puente.disponibles ?? []).includes(d.num))
+    : puente.disponible !== false
+  const modoPruebas = Boolean(porDispositivo && activo && !enLinea)
+  const motivo = puente.motivo || ''
+  const nombreAlcance = alcance === 'AREA' ? areaActual?.nombre ?? 'tu área' : alcance === 'ORGANIZACION' ? 'toda la organización' : d?.nombre ?? 'tu dispositivo'
+  const puedeOrganizacion = ['ADMIN', 'SUPER'].includes(usuario.rol)
+  const horaActual = new Date().getHours()
+  const saludo = `${horaActual < 12 ? 'Buenos días' : horaActual < 19 ? 'Buenas tardes' : 'Buenas noches'}, ${usuario.nombre ?? 'equipo'}`
+  const elegirAlcance = ({ alcance: nuevo, area, dispositivo }) => {
+    setAlcance(nuevo)
+    setAreaElegida(area ?? null)
+    if (dispositivo) setElegido(dispositivo)
+  }
+  // Las sugerencias de `inicio` hablan del área del dispositivo: en otra área o en toda la
+  // organización se usan las generales.
+  const inicioAplica = porDispositivo || (alcance === 'AREA' && areaActual?.num === d?.area)
+  const tarjetasInicio = inicioAplica && sugerenciasInicio?.length
+    ? sugerenciasInicio
+    : [...SUGERENCIAS, ROLES_REPORTE.includes(usuario.rol) ? SUGERENCIA_REPORTE : SUGERENCIA_ALERTAS]
+
+  useEffect(() => {
+    if (usuario.rol === 'OPER') return undefined
+    let vivo = true
+    organizacionesApi.areas().then((r) => vivo && setAreas(r?.results ?? r ?? [])).catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [usuario.rol])
 
   useEffect(() => {
     let vivo = true
     const leer = () =>
       agenteApi
-        .estado()
+        .estado({ alcance, area: areaActual?.num ?? null })
         .then((r) => vivo && setPuente(r))
         .catch(() => {})
     leer()
@@ -105,7 +152,19 @@ export function AgenteScreen() {
       vivo = false
       clearInterval(t)
     }
-  }, [])
+  }, [alcance, areaActual?.num])
+
+  useEffect(() => {
+    if (!d?.num) {
+      setSugerenciasInicio(null)
+      return undefined
+    }
+    let vivo = true
+    agenteApi.sugerencias(d.num).then((r) => vivo && setSugerenciasInicio(r.inicio ?? null)).catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [d?.num])
 
   useEffect(() => {
     AsyncStorage.getItem(claveConversaciones(usuario.num))
@@ -114,35 +173,60 @@ export function AgenteScreen() {
   }, [usuario.num])
 
   // Cada respuesta guarda la conversación abierta (su título es la primera pregunta).
-  const guardar = (num, lista_) => {
-    if (!lista_.length) return
-    const id = abierta[num] ?? `${num}-${Date.now()}`
-    if (!abierta[num]) setAbierta((x) => ({ ...x, [num]: id }))
+  const guardar = (clave, lista_) => {
+    if (!lista_.length || !d) return
+    const id = abierta[clave] ?? `${clave.replace(':', '-')}-${Date.now()}`
+    if (!abierta[clave]) setAbierta((x) => ({ ...x, [clave]: id }))
     setGuardadas((todas) => {
-      const conv = { id, dispositivo: num, titulo: lista_.find((m) => m.de === 'yo')?.texto ?? 'Conversación', fecha: new Date().toISOString(), mensajes: lista_ }
+      const conv = { id, dispositivo: d.num, dispositivo_nombre: d.nombre, alcance, area: areaActual?.num ?? null, area_nombre: areaActual?.nombre ?? '', titulo: lista_.find((m) => m.de === 'yo')?.texto ?? 'Conversación', fecha: new Date().toISOString(), mensajes: lista_ }
       const nuevas = [conv, ...todas.filter((x) => x.id !== id)].slice(0, MAX_CONVERSACIONES)
       AsyncStorage.setItem(claveConversaciones(usuario.num), JSON.stringify(nuevas)).catch(() => {})
       return nuevas
     })
   }
   useEffect(() => {
-    if (d && !pensando && lista.length && lista.at(-1).de !== 'yo') guardar(d.num, lista)
+    if (d && !pensando && lista.length && lista.at(-1).de !== 'yo') guardar(claveHilo, lista)
     // Solo al terminar cada respuesta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lista.length, pensando])
 
+  const actualizarGuardadas = (fn) => {
+    setGuardadas((todas) => {
+      const nuevas = fn(todas)
+      AsyncStorage.setItem(claveConversaciones(usuario.num), JSON.stringify(nuevas)).catch(() => {})
+      return nuevas
+    })
+  }
+  const renombrarGuardada = (id, titulo) => {
+    const limpio = String(titulo ?? '').trim().slice(0, 80)
+    if (!limpio) return
+    actualizarGuardadas((todas) => todas.map((c) => (c.id === id ? { ...c, titulo: limpio } : c)))
+  }
+  const borrarGuardada = (id) => {
+    actualizarGuardadas((todas) => todas.filter((c) => c.id !== id))
+  }
+
   const nuevaConversacion = () => {
     if (!d || pensando) return
     voz.callar()
-    setMensajes((x) => ({ ...x, [d.num]: [] }))
-    setAbierta((x) => ({ ...x, [d.num]: null }))
+    setMensajes((x) => ({ ...x, [claveHilo]: [] }))
+    setAbierta((x) => ({ ...x, [claveHilo]: null }))
   }
   const abrirConversacion = (conv) => {
     setElegido(conv.dispositivo)
-    setMensajes((x) => ({ ...x, [conv.dispositivo]: conv.mensajes }))
-    setAbierta((x) => ({ ...x, [conv.dispositivo]: conv.id }))
+    setAlcance(conv.alcance ?? 'DISPOSITIVO')
+    setAreaElegida(conv.area ?? null)
+    const clave = claveDeConversacion({ ...conv, alcance: conv.alcance ?? 'DISPOSITIVO' })
+    setMensajes((x) => ({ ...x, [clave]: conv.mensajes }))
+    setAbierta((x) => ({ ...x, [clave]: conv.id }))
   }
-  const recientes = guardadas.filter((x) => x.dispositivo === d?.num && x.id !== abierta[d?.num]).slice(0, 4)
+  const recientes = guardadas
+    .filter((x) => {
+      const deAlcance = (x.alcance ?? 'DISPOSITIVO') === alcance
+      const mismo = alcance === 'ORGANIZACION' || (alcance === 'AREA' ? x.area === areaActual?.num : x.dispositivo === d?.num)
+      return deAlcance && mismo && x.id !== abierta[claveHilo]
+    })
+    .slice(0, 4)
 
   useEffect(() => {
     if (!plan) return undefined
@@ -171,25 +255,28 @@ export function AgenteScreen() {
     if (conVoz || leerRef.current) voz.preparar()
     porVoz.current = false
     const num = d.num
-    const agregar = (m) => setMensajes((x) => ({ ...x, [num]: [...(x[num] ?? []), m] }))
-    const anteriores = (mensajes[num] ?? []).filter((m) => m.de === 'yo')
+    const clave = claveHilo
+    const agregar = (m) => setMensajes((x) => ({ ...x, [clave]: [...(x[clave] ?? []), m] }))
+    const anteriores = (mensajes[clave] ?? []).filter((m) => m.de === 'yo')
     setTexto('')
     agregar({ de: 'yo', texto: p })
     // Saludos y ayuda se contestan en el teléfono, sin servidor.
     // Con un reporte preparado, «ok» o «cancela» los responde el servidor (confirma o descarta).
-    const rapida = (mensajes[num] ?? []).at(-1)?.accion ? null : respuestaRapida(p, { nombre: usuario.nombre?.split(' ')[0], dispositivo: d.nombre })
+    const rapida = alcance === 'DISPOSITIVO' && !(mensajes[clave] ?? []).at(-1)?.accion
+      ? respuestaRapida(p, { nombre: usuario.nombre?.split(' ')[0], dispositivo: d.nombre })
+      : null
     if (rapida && !rapida.ir) {
       agregar({ de: 'agente', texto: rapida.texto, hora: hora(new Date().toISOString()) })
       if (conVoz || leerRef.current) voz.hablar(rapida.texto)
       return
     }
-    const nuevo = planDe(p, d.nombre, anteriores.at(-1)?.texto ?? '')
+    const nuevo = planDe(p, nombreAlcance, anteriores.at(-1)?.texto ?? '')
     setPaso(0)
     setPlan(nuevo)
     setPensando(true)
     const pausa = new Promise((listo) => setTimeout(listo, nuevo.ms))
     try {
-      const r = await agenteApi.preguntar(p, num, anteriores.at(-1)?.texto ?? '')
+      const r = await agenteApi.preguntar(p, num, anteriores.at(-1)?.texto ?? '', { alcance, area: areaActual?.num ?? null })
       await pausa
       agregar({
         de: 'agente',
@@ -201,6 +288,13 @@ export function AgenteScreen() {
         via: r.via,
         pasos: r.pasos ?? [],
         accion: r.accion ?? null,
+        fuente: r.fuente ?? null,
+        picos: r.picos ?? null,
+        serie: r.serie ?? null,
+        etiquetas: r.etiquetas ?? null,
+        unidad: r.unidad ?? null,
+        maximo: r.maximo ?? null,
+        alertas: r.alertas ?? null,
         hora: hora(new Date().toISOString()),
       })
       if ((conVoz || leerRef.current) && r.texto) voz.hablar(r.texto)
@@ -214,11 +308,11 @@ export function AgenteScreen() {
         }))
       agregar({
         de: 'error',
-        texto: e.datos?.inactivo
+        texto: e.datos?.motivo || e.datos?.detail || (e.datos?.inactivo
           ? `Nico AI no está disponible: ${d.nombre} no está activo (su ESP32 no está conectado).`
           : e.status === 503
             ? 'El agente no está disponible por ahora.'
-            : 'No se pudo obtener la respuesta.',
+            : 'No se pudo obtener la respuesta.'),
       })
     } finally {
       setPensando(false)
@@ -232,11 +326,66 @@ export function AgenteScreen() {
 
   // 👍/👎: se guarda en el teléfono y en el servidor, donde Nico AI aprende de ellas.
   const calificar = (i, voto) => {
-    const num = d.num
-    setMensajes((x) => ({ ...x, [num]: x[num].map((m, j) => (j === i ? { ...m, voto } : m)) }))
+    const clave = claveHilo
+    setMensajes((x) => ({ ...x, [clave]: (x[clave] ?? []).map((m, j) => (j === i ? { ...m, voto } : m)) }))
     const m = lista[i]
     if (m?.registro) agenteApi.calificar(m.registro, voto).catch(() => {})
   }
+
+  const copiar = async (texto, i) => {
+    try {
+      await Clipboard.setStringAsync(texto)
+      setCopiado(i)
+      setTimeout(() => setCopiado((x) => (x === i ? null : x)), 1500)
+    } catch {
+      // Sin permiso de portapapeles no se copia.
+    }
+  }
+  const regenerar = (i) => {
+    const previa = lista.slice(0, i).findLast((m) => m.de === 'yo')
+    if (previa) preguntar(previa.texto)
+  }
+  const verHistorico = (m) => {
+    if (!m.fuente?.dispositivo) return
+    navigation.navigate('Historico', {
+      dispositivo: m.fuente.dispositivo,
+      desde: m.fuente.desde,
+      hasta: m.fuente.hasta,
+    })
+  }
+  const paraHoja = (a) => {
+    // La API manda el nombre de la variable («Humedad relativa», «Calidad del aire»).
+    const nombreVar = String(a.variable ?? '').toLowerCase()
+    const codigo = VARIABLE[a.variable] ? a.variable : Object.keys(VARIABLE).find(
+      (k) => nombreVar.startsWith(VARIABLE[k].etiqueta.toLowerCase()) || nombreVar.startsWith(VARIABLE[k].corta.toLowerCase()),
+    ) ?? a.variable_codigo ?? 'TEMP'
+    return {
+      ...a,
+      variable: codigo,
+      variable_nombre: a.variable_nombre ?? VARIABLE[codigo]?.etiqueta ?? String(a.variable),
+      dispositivo_nombre: a.dispositivo_nombre ?? a.dispositivo ?? '',
+      lectura_valor: a.lectura_valor ?? a.valor ?? 0,
+      fecha_hora: a.fecha_hora ?? a.fecha,
+      estado: a.estado ?? 'PENDIENTE',
+      tipo: a.tipo ?? 'POR_ENCIMA',
+    }
+  }
+  const resolver = useResolver((pedido, ok) => {
+    refrescar()
+    if (!ok) return
+    const { a, accion } = pedido ?? {}
+    if (!a || !d) return
+    const estado = accion === 'atender' ? 'ATENDIDA' : 'DESCARTADA'
+    setMensajes((x) => {
+      const actuales = (x[claveHilo] ?? []).map((m) => m.alertas
+        ? { ...m, alertas: m.alertas.map((al) => (al.num === a.num ? { ...al, estado } : al)) }
+        : m)
+      return {
+        ...x,
+        [claveHilo]: [...actuales, { de: 'agente', texto: `Listo, la alerta de ${a.variable_nombre} en ${a.dispositivo_nombre} quedó ${estado === 'ATENDIDA' ? 'atendida' : 'descartada'}.`, hora: hora(new Date().toISOString()) }],
+      }
+    })
+  })
 
   const ultimo = lista.at(-1)
   const sugerencias =
@@ -261,10 +410,19 @@ export function AgenteScreen() {
               <T peso={700} size={22} lh={28} style={{ letterSpacing: -0.5 }}>
                 Nico AI
               </T>
-              <T size={12} color={marca.tenue}>
-                {d ? `Responde con los datos de ${d.nombre}` : 'Cargando tu dispositivo…'}
+              <T size={12} color={marca.tenue} numberOfLines={2}>
+                {d ? `Responde con los datos de ${nombreAlcance}` : 'Cargando tu dispositivo…'}
               </T>
             </View>
+            <Pressable
+              onPress={() => setVerConversaciones(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Conversaciones"
+              hitSlop={6}
+              style={({ pressed }) => [s.nueva, { backgroundColor: 'rgba(43,196,122,0.16)' }, pressed && { opacity: 0.6 }]}
+            >
+              <Icon name="history" size={18} color={marca.verde} />
+            </Pressable>
             {lista.length > 0 && (
               <Pressable
                 onPress={nuevaConversacion}
@@ -278,8 +436,16 @@ export function AgenteScreen() {
               </Pressable>
             )}
           </View>
-          {dispositivos.length > 1 && !teclado && (
-            <SelectorDispositivo dispositivos={dispositivos} valor={d?.num} onElegir={setElegido} etiqueta="Preguntar sobre" />
+          {usuario.rol !== 'OPER' && !teclado && (dispositivos.length > 1 || areas.length > 0) && (
+            <SelectorAlcance
+              dispositivos={dispositivos}
+              areas={areas}
+              alcance={alcance}
+              area={areaActual}
+              valor={d?.num}
+              onElegir={elegirAlcance}
+              puedeOrganizacion={puedeOrganizacion}
+            />
           )}
         </View>
       </TemaFijo>
@@ -292,14 +458,15 @@ export function AgenteScreen() {
                   <Image source={CARA_NICO} style={s.cara} accessibilityIgnoresInvertColors />
                 </View>
                 <T peso={800} size={24} lh={30} style={{ textAlign: 'center', letterSpacing: -0.6 }}>
-                  Hola, <T peso={800} size={24} color={c.success}>{usuario.nombre}</T>
+                  {saludo}
                 </T>
                 <T size={14} lh={20} color={c.textMuted} style={{ textAlign: 'center' }}>
-                  {d ? `¿Qué quieres saber hoy de ${d.nombre}?` : ' '}
+                  {d ? `Pregunta sobre lecturas, alertas y reportes de ${nombreAlcance}` : ' '}
                 </T>
               </View>
+              {porDispositivo && d && <ResumenInicio lecturas={op?.lecturas} alertas={op?.alertas} d={d} />}
               <View style={s.rejilla}>
-                {[...SUGERENCIAS, ROLES_REPORTE.includes(usuario.rol) ? SUGERENCIA_REPORTE : SUGERENCIA_ALERTAS].map((x, i) => (
+                {tarjetasInicio.map((x, i) => (
                   <Aparece key={x.texto} indice={i} style={s.celda}>
                     <Pressable
                       onPress={() => preguntar(x.texto)}
@@ -366,44 +533,85 @@ export function AgenteScreen() {
                   {m.pasos?.length > 0 && <Pasos pasos={m.pasos} />}
                   {m.hora && (
                     <T size={11} color={c.textMuted}>
-                      {`Nico AI · ${d?.nombre} · ${m.hora}`}
+                      {`Nico AI · ${alcance === 'AREA' ? areaActual?.nombre ?? 'Área' : alcance === 'ORGANIZACION' ? 'Toda la organización' : d?.nombre} · ${m.hora}`}
                     </T>
                   )}
-                  {m.de === 'agente' && (
-                    <View style={s.acciones}>
-                      {[
-                        ['si', 'thumbs-up', 'Buena respuesta'],
-                        ['no', 'thumbs-down', 'Mala respuesta'],
-                      ].map(([v, icono, etiqueta]) => (
-                        <Pressable
-                          key={v}
-                          accessibilityRole="button"
-                          accessibilityLabel={etiqueta}
-                          accessibilityState={{ selected: m.voto === v }}
-                          hitSlop={8}
-                          onPress={() => calificar(i, m.voto === v ? null : v)}
-                          style={[s.voto, m.voto === v && { backgroundColor: c.accentSoft }]}
-                        >
-                          <Icon name={icono} size={15} color={m.voto === v ? c.accent : c.textMuted} />
-                        </Pressable>
+                  <FuenteRespuesta m={m} />
+                  {m.alertas?.length > 0 && (
+                    <View style={{ gap: 6 }}>
+                      {m.alertas.map((a) => (
+                        <View key={a.num} style={[s.alerta, { borderColor: c.border, backgroundColor: c.surfaceMuted }]}>
+                          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                            <T peso={700} size={12} numberOfLines={2}>{`${a.variable_nombre ?? a.variable} · ${a.dispositivo ?? a.dispositivo_nombre}`}</T>
+                            <T size={11} color={c.textMuted} numberOfLines={1}>
+                              {[
+                                a.nivel === 'PELIGRO' ? 'Peligro' : 'Advertencia',
+                                a.valor != null ? `${Number(a.valor).toFixed(1)} ${a.unidad ?? ''}`.trim() : null,
+                                hora(a.fecha ?? a.fecha_hora),
+                                { ATENDIDA: 'Atendida', DESCARTADA: 'Descartada' }[a.estado],
+                              ].filter(Boolean).join(' · ')}
+                            </T>
+                          </View>
+                          {(a.estado ?? 'PENDIENTE') === 'PENDIENTE' && puedeResolver(usuario) && (
+                            <View style={s.alertaBotones}>
+                              <Pressable accessibilityRole="button" onPress={() => resolver.abrir(paraHoja(a), 'atender')} style={[s.alertaBoton, { borderColor: c.accent }]}>
+                                <T size={11} peso={700} color={c.accent}>Atender</T>
+                              </Pressable>
+                              <Pressable accessibilityRole="button" onPress={() => resolver.abrir(paraHoja(a), 'descartar')} style={[s.alertaBoton, { borderColor: c.border }]}>
+                                <T size={11} peso={700} color={c.textSecondary}>Descartar</T>
+                              </Pressable>
+                            </View>
+                          )}
+                        </View>
                       ))}
-                      {m.via === 'IA' && <T size={11} peso={600} color={c.accent} style={[s.via, { backgroundColor: c.accentSoft }]}>Redactada con IA</T>}
-                      {m.via === 'ENRUTADA' && (
-                        <T size={11} peso={600} color={c.accent} style={[s.via, { backgroundColor: c.accentSoft }]}>
-                          Interpretada con IA
-                        </T>
-                      )}
-                      {m.via === 'BANCO' && (
-                        <T size={11} peso={600} color={c.accent} style={[s.via, { backgroundColor: c.accentSoft }]}>
-                          Aprendida de tus reacciones
-                        </T>
-                      )}
-                      {i === lista.length - 1 && (
-                        <T size={11} color={c.textMuted} style={{ flexBasis: '100%' }}>
-                          {m.voto ? '¡Gracias! Nico AI mejora con tus reacciones.' : 'La mejora de Nico AI se basa en tus reacciones.'}
-                        </T>
-                      )}
                     </View>
+                  )}
+                  {m.de === 'agente' && (
+                    <>
+                      {(m.via === 'IA' || m.via === 'ENRUTADA' || m.via === 'BANCO') && (
+                        <View style={s.viaFila}>
+                          <T size={11} peso={600} color={c.accent} style={[s.via, { backgroundColor: c.accentSoft }]}>
+                            {m.via === 'IA' ? 'Redactada con IA' : m.via === 'ENRUTADA' ? 'Interpretada con IA' : 'Aprendida de tus reacciones'}
+                          </T>
+                        </View>
+                      )}
+                      <View style={s.acciones}>
+                        <Pressable accessibilityRole="button" accessibilityLabel={copiado === i ? 'Copiado' : 'Copiar respuesta'} hitSlop={8} onPress={() => copiar(m.texto, i)} style={s.voto}>
+                          <Icon name={copiado === i ? 'check' : 'copy'} size={15} color={copiado === i ? c.accent : c.textMuted} />
+                        </Pressable>
+                        <Pressable accessibilityRole="button" accessibilityLabel="Volver a generar" hitSlop={8} onPress={() => regenerar(i)} style={s.voto}>
+                          <Icon name="rotate-ccw" size={15} color={c.textMuted} />
+                        </Pressable>
+                        {[
+                          ['si', 'thumbs-up', 'Buena respuesta'],
+                          ['no', 'thumbs-down', 'Mala respuesta'],
+                        ].map(([v, icono, etiqueta]) => (
+                          <Pressable
+                            key={v}
+                            accessibilityRole="button"
+                            accessibilityLabel={etiqueta}
+                            accessibilityState={{ selected: m.voto === v, disabled: Boolean(m.voto) }}
+                            disabled={Boolean(m.voto)}
+                            hitSlop={8}
+                            onPress={() => calificar(i, v)}
+                            style={[s.voto, m.voto === v && { backgroundColor: c.accentSoft }]}
+                          >
+                            <Icon name={icono} size={15} color={m.voto === v ? c.accent : c.textMuted} />
+                          </Pressable>
+                        ))}
+                        {m.fuente?.dispositivo && m.fuente?.desde && (
+                          <>
+                            <View style={[s.accionDivisor, { backgroundColor: c.border }]} />
+                            <Pressable accessibilityRole="button" onPress={() => verHistorico(m)} style={s.accionTexto}>
+                              <Icon name="history" size={13} color={c.textSecondary} />
+                              <T size={11} peso={700} color={c.textSecondary}>Ver en Histórico</T>
+                            </Pressable>
+                          </>
+                        )}
+                      </View>
+                      {copiado === i && <T size={10} color={c.accent}>Copiado</T>}
+                      {m.voto && <T size={10} color={c.textMuted}>La mejora de Nico AI se basa en tus reacciones.</T>}
+                    </>
                   )}
                 </Aparece>
               ),
@@ -450,6 +658,12 @@ export function AgenteScreen() {
             </Pressable>
           </View>
         )}
+        {!activo && motivo ? (
+          <View style={[s.aviso, { backgroundColor: c.warningSoft }]} accessibilityRole="alert">
+            <Icon name="triangle-alert" size={15} color={c.warning} />
+            <T size={12} lh={17} color={c.warning} style={{ flex: 1 }}>{motivo}</T>
+          </View>
+        ) : null}
         {modoPruebas && (
           <View style={s.pruebas} accessibilityLabel={`${d.nombre}: ESP32 sin conexión, modo de pruebas del administrador`}>
             <Icon name="wifi-off" size={13} color={c.textMuted} />
@@ -468,7 +682,7 @@ export function AgenteScreen() {
             value={texto}
             onChangeText={cambiarTexto}
             placeholder={
-              d && !activo ? `Nico AI no disponible: ${d.nombre} no está activo` : dictado.escuchando ? 'Te escucho… habla ahora' : 'Pregunta sobre tu dispositivo…'
+              !activo ? 'Nico AI no disponible para este alcance' : dictado.escuchando ? 'Te escucho… habla ahora' : `Pregunta sobre ${nombreAlcance}…`
             }
             placeholderTextColor={c.textMuted}
             style={[s.entrada, { color: c.textPrimary, fontFamily: font[500] }]}
@@ -516,7 +730,56 @@ export function AgenteScreen() {
           </Pressable>
         </View>
       </View>
+      {resolver.hoja}
+      <ConversacionesScreen
+        visible={verConversaciones}
+        conversaciones={guardadas}
+        onCerrar={() => setVerConversaciones(false)}
+        onAbrir={abrirConversacion}
+        onRenombrar={renombrarGuardada}
+        onBorrar={borrarGuardada}
+      />
     </KeyboardAvoidingView>
+  )
+}
+
+// Resumen compacto del inicio, solo con alcance de dispositivo.
+function ResumenInicio({ lecturas, alertas, d }) {
+  const { c } = useTema()
+  const ultimas = ['TEMP', 'HUM', 'AIRE'].map((v) => [v, (lecturas ?? []).find((l) => l.variable === v)])
+  const pendientes = (alertas ?? []).filter((a) => a.dispositivo === d.num && a.estado === 'PENDIENTE').length
+  const estado = { LINEA: 'En línea', SINCONEX: 'Sin conexión', CALENT: 'Calentando' }[d.estado_dispositivo] ?? 'Sin conexión'
+  return (
+    <View style={{ gap: 8 }} accessibilityLabel="Resumen del equipo">
+      <View style={[s.resumen, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <T mayus color={c.textMuted} size={10}>Últimas lecturas</T>
+        {ultimas.some(([, l]) => l) ? (
+          <View style={s.resumenFila}>
+            {ultimas.map(([v, l]) => (
+              <View key={v} style={{ flex: 1, minWidth: 0, gap: 1 }}>
+                <T size={10} color={c.textMuted}>{VARIABLE[v].corta}</T>
+                <T peso={700} size={14} num numberOfLines={1}>
+                  {l ? `${Number(l.valor).toFixed(VARIABLE[v].decimales)} ${UNIDAD[v]}` : '—'}
+                </T>
+                <T size={10} color={c.textMuted}>{l ? hora(l.fecha_hora) : 'Sin lectura'}</T>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <T peso={700} size={13} color={c.textMuted}>Sin lecturas recientes</T>
+        )}
+      </View>
+      <View style={s.resumenFila}>
+        <View style={[s.resumenMitad, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <T mayus color={c.textMuted} size={10}>Pendientes · este dispositivo</T>
+          <T peso={800} size={20} num>{pendientes}</T>
+        </View>
+        <View style={[s.resumenMitad, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <T mayus color={c.textMuted} size={10}>Conexión</T>
+          <T peso={800} size={15} color={estado === 'En línea' ? c.success : c.warning} numberOfLines={1}>{estado}</T>
+        </View>
+      </View>
+    </View>
   )
 }
 
@@ -589,6 +852,41 @@ function BotonMicrofono({ escuchando, deshabilitado, alTocar }) {
   )
 }
 
+// Fila única «Basado en»: lecturas y rango primero, luego promedios y umbral si vienen.
+function FuenteRespuesta({ m }) {
+  const { c } = useTema()
+  // `fuente` puede venir vacía ({}) cuando no hubo lecturas: entonces no hay chip.
+  const fuente = m.fuente?.lecturas != null ? m.fuente : null
+  if (!fuente && !m.picos) return null
+  return (
+    <View style={s.fuenteFila} accessibilityLabel="Basado en">
+      <T size={11} color={c.textMuted}>Basado en</T>
+      {fuente && (
+        <View style={[s.fuenteChip, { backgroundColor: c.surfaceMuted }]}>
+          <Icon name="activity" size={11} color={c.textSecondary} />
+          <T size={11} peso={600} color={c.textSecondary} numberOfLines={1}>
+            {`${miles(fuente.lecturas)} lecturas · ${periodo(fuente.desde, fuente.hasta)}${fuente.alcance ? ` · ${fuente.alcance}` : ''}`}
+          </T>
+        </View>
+      )}
+      {m.picos && (
+        <View style={[s.fuenteChip, { backgroundColor: c.surfaceMuted }]}>
+          <T size={11} peso={600} color={c.textSecondary}>
+            {`${m.serie?.length ?? m.picos.length} ${m.etiquetas ? 'máximos diarios' : 'promedios'}`}
+          </T>
+        </View>
+      )}
+      {m.picos && m.maximo != null && (
+        <View style={[s.fuenteChip, { backgroundColor: c.surfaceMuted }]}>
+          <T size={11} peso={600} color={c.textSecondary} numberOfLines={1}>
+            {`Umbral máx ${m.maximo} ${m.unidad ?? ''}`}
+          </T>
+        </View>
+      )}
+    </View>
+  )
+}
+
 // «Cómo lo resolví»: pasos reales que siguió el agente (los arma el backend), plegados.
 function Pasos({ pasos }) {
   const { c } = useTema()
@@ -629,7 +927,18 @@ const s = StyleSheet.create({
   suyo: { alignSelf: 'flex-start', maxWidth: '90%', gap: 6, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 20, borderBottomLeftRadius: 6, borderWidth: 1 },
   compositor: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginHorizontal: 16, padding: 6, paddingLeft: 16, borderRadius: 26, borderWidth: 1 },
   entrada: { flex: 1, minHeight: 40, maxHeight: 110, paddingTop: 10, paddingBottom: 10, fontSize: 15 },
-  acciones: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 },
+  acciones: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 4, marginTop: 2 },
+  accionTexto: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, height: 30 },
+  accionDivisor: { width: 1, height: 18, marginHorizontal: 3 },
+  viaFila: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  fuenteFila: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginTop: 2 },
+  fuenteChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, maxWidth: '100%' },
+  alerta: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, borderRadius: 12, borderWidth: 1 },
+  alertaBotones: { flexDirection: 'row', gap: 4 },
+  alertaBoton: { paddingHorizontal: 7, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
+  resumen: { gap: 7, padding: 12, borderRadius: 16, borderWidth: 1 },
+  resumenFila: { flexDirection: 'row', gap: 8 },
+  resumenMitad: { flex: 1, minWidth: 0, gap: 3, padding: 10, borderRadius: 14, borderWidth: 1 },
   voto: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   via: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, overflow: 'hidden' },
   seguir: { gap: 8, paddingHorizontal: 16, paddingBottom: 8 },

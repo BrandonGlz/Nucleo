@@ -124,7 +124,7 @@ export function TabBar({ items, active, onChange }) {
             }}
             style={({ pressed }) => [
               s.item,
-              activo && { paddingLeft: 14, paddingRight: 18 },
+              activo && { paddingLeft: 10, paddingRight: 14 },
               activo && !pastilla && { backgroundColor: c.accent },
               pressed && !activo && { transform: [{ scale: 0.92 }] },
             ]}
@@ -150,6 +150,6 @@ const s = StyleSheet.create({
   // left: -1 compensa el borde de la barra (las medidas de onLayout lo incluyen)
   tapa: { position: 'absolute', top: 8, left: -1, width: ALTO, height: ALTO, borderRadius: ALTO / 2 },
   centro: { position: 'absolute', top: 8, left: -1, width: BASE, height: ALTO },
-  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, minWidth: 52, paddingHorizontal: 14, borderRadius: 999 },
+  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 52, minWidth: 46, paddingHorizontal: 9, borderRadius: 999 },
   punto: { position: 'absolute', top: -1, right: -2, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
 })

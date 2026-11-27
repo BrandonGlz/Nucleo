@@ -492,11 +492,11 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             </ol>
           </details>
         )}
-        {completa && (m.fuente || m.picos) && (
+        {completa && (m.fuente?.lecturas != null || m.picos) && (
           <div className="ui-ia-fuentes ui-ia-fuentes--respuesta">
             <span className="ui-muted">Basado en</span>
             <span className="ui-ia-fuente-sep" aria-hidden>·</span>
-            {m.fuente &&
+            {m.fuente?.lecturas != null &&
               (m.fuente.dispositivo ? (
                 <button
                   type="button"
@@ -561,7 +561,7 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
             >
               <ThumbsDown size={16} />
             </button>
-            {m.fuente?.dispositivo && (
+            {m.fuente?.dispositivo && m.fuente?.desde && (
               <>
                 <span className="ui-ia-acciones__divisor" aria-hidden />
                 <button

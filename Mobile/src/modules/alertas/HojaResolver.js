@@ -64,11 +64,11 @@ function HojaResolver({ pedido, alCerrar, alTerminar }) {
     try {
       await alertasApi.resolver(pedido.a.num, pedido.accion, limpia)
       alCerrar()
-      alTerminar?.()
+      alTerminar?.(pedido, true)
     } catch (e) {
       setError(mensajeError(e))
       // Si alguien más la resolvió, la lista se pone al día.
-      if (e?.status === 409) alTerminar?.()
+      if (e?.status === 409) alTerminar?.(pedido, false)
     } finally {
       setEnviando(false)
     }

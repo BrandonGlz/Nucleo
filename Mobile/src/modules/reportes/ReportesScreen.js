@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, StyleSheet, View } from 'react-native'
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Cabecera } from '../../components/Cabecera'
 import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
@@ -7,13 +7,14 @@ import { Aparece, Badge, Button, Chip, IconCircle, Input, Skeleton, T } from '..
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
 import * as reportesApi from '../../services/reportes'
-import { cuando, miles, periodo } from '../../utils/formato'
+import { cuando, fechaLarga, hora, miles, periodo } from '../../utils/formato'
 import { colors } from '../../theme'
 
 const ORIGEN = {
   MANUAL: { icono: 'user', texto: 'Manual' },
   PROGRAMADO: { icono: 'calendar-clock', texto: 'Programado' },
   AGENTE: { icono: 'sparkles', texto: 'Nico AI' },
+  NICO: { icono: 'sparkles', texto: 'Nico AI' },
 }
 // Estado real de la generación en segundo plano.
 const ESTADOS = {
@@ -24,10 +25,24 @@ const ESTADOS = {
 }
 const estadoDe = (r) => ESTADOS[r.estado] ?? (r.origen === 'PROGRAMADO' ? ESTADOS.ENVIADO : ESTADOS.LISTO)
 const lecturasDe = (r) => Object.values(r.cifras?.variables ?? {}).reduce((s, v) => s + (v?.muestras ?? 0), 0)
+const PERIODOS = [
+  ['todos', 'Todos'],
+  ['mes', 'Este mes'],
+  ['pasado', 'Mes pasado'],
+  ['7d', 'Últimos 7 días'],
+]
+function rangoDe(id) {
+  const hoy = new Date()
+  const inicioMes = (f) => new Date(f.getFullYear(), f.getMonth(), 1)
+  if (id === 'mes') return { desde: inicioMes(hoy).toISOString(), hasta: new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1).toISOString() }
+  if (id === 'pasado') return { desde: new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString(), hasta: inicioMes(hoy).toISOString() }
+  if (id === '7d') return { desde: new Date(hoy.getTime() - 7 * 86400000).toISOString(), hasta: new Date(hoy.getTime() + 86400000).toISOString() }
+  return {}
+}
 
 // Un reporte en una tarjeta (sin tablas): periodo, estado, origen, cifras clave, un extracto del
 // texto de la IA y el PDF. `resaltar` marca el que abrió el aviso de la campana.
-function TarjetaReporte({ r, resaltar, abriendo, onPdf }) {
+function TarjetaReporte({ r, resaltar, abriendo, onPdf, onEnvios }) {
   const { c } = useTema()
   const origen = ORIGEN[r.origen] ?? ORIGEN.MANUAL
   const alertas = r.cifras?.alertas?.total ?? 0
@@ -66,15 +81,20 @@ function TarjetaReporte({ r, resaltar, abriendo, onPdf }) {
           {r.error}
         </T>
       ) : null}
-      <Button
-        variant={resaltar ? 'primary' : 'secondary'}
-        size="sm"
-        icon="download"
-        disabled={abriendo || r.estado === 'GENERANDO' || r.estado === 'FALLO'}
-        onPress={onPdf}
-      >
-        {abriendo ? 'Descargando…' : r.estado === 'GENERANDO' ? 'Generando…' : 'Abrir PDF'}
-      </Button>
+      <View style={s.acciones}>
+        <Button
+          variant={resaltar ? 'primary' : 'secondary'}
+          size="sm"
+          icon="download"
+          disabled={abriendo || r.estado === 'GENERANDO' || r.estado === 'FALLO'}
+          onPress={onPdf}
+        >
+          {abriendo ? 'Descargando…' : r.estado === 'GENERANDO' ? 'Generando…' : 'Abrir PDF'}
+        </Button>
+        <Button variant="ghost" size="sm" icon="send" onPress={onEnvios}>
+          Envíos
+        </Button>
+      </View>
     </View>
   )
 }
@@ -84,10 +104,12 @@ function TarjetaReporte({ r, resaltar, abriendo, onPdf }) {
 export function ReportesScreen({ navigation, route }) {
   const { c } = useTema()
   const resaltado = route?.params?.num ?? null
-  const { estado, datos, reintentar } = useDatos(() => reportesApi.lista(), [], { esVacio: (d) => !d.length })
+  const [periodo, setPeriodo] = useState('todos')
+  const { estado, datos, reintentar } = useDatos(() => reportesApi.lista(rangoDe(periodo)), [periodo], { esVacio: (d) => !d.length })
   const [abriendo, setAbriendo] = useState(null)
   const [busqueda, setBusqueda] = useState('')
   const [origen, setOrigen] = useState('')
+  const [envios, setEnvios] = useState(null)
   const filtrados = (datos ?? []).filter((r) => {
     const texto = busqueda.trim().toLowerCase()
     const coincide = !texto || `${r.titulo ?? ''} ${r.area_nombre}`.toLowerCase().includes(texto)
@@ -138,6 +160,13 @@ export function ReportesScreen({ navigation, route }) {
           </Chip>
         ))}
       </View>
+      <View style={s.filtros}>
+        {PERIODOS.map(([valor, etiqueta]) => (
+          <Chip key={valor} selected={periodo === valor} onPress={() => setPeriodo(valor)}>
+            {etiqueta}
+          </Chip>
+        ))}
+      </View>
     </>
   )
 
@@ -154,7 +183,7 @@ export function ReportesScreen({ navigation, route }) {
           <T size={13} color={c.textMuted}>No hay reportes con ese filtro.</T>
         ) : filtrados.map((r, i) => (
           <Aparece key={r.num} indice={i}>
-            <TarjetaReporte r={r} resaltar={r.num === resaltado} abriendo={abriendo === r.num} onPdf={() => abrir(r.num)} />
+            <TarjetaReporte r={r} resaltar={r.num === resaltado} abriendo={abriendo === r.num} onPdf={() => abrir(r.num)} onEnvios={() => setEnvios(r)} />
           </Aparece>
         ))
       )}
@@ -163,7 +192,44 @@ export function ReportesScreen({ navigation, route }) {
           {`El reporte ${resaltado} ya no está a tu alcance.`}
         </T>
       ) : null}
+      <HojaEnvios reporte={envios} onCerrar={() => setEnvios(null)} />
     </Pantalla>
+  )
+}
+
+function HojaEnvios({ reporte, onCerrar }) {
+  const { c } = useTema()
+  const envios = reporte?.envios ?? []
+  return (
+    <Modal visible={!!reporte} transparent animationType="slide" statusBarTranslucent onRequestClose={onCerrar}>
+      <Pressable style={s.fondo} onPress={onCerrar} accessibilityLabel="Cerrar envíos" />
+      <View style={[s.hoja, { backgroundColor: c.background }]}>
+        <View style={[s.asa, { backgroundColor: c.border }]} />
+        <T peso={700} size={18} style={{ paddingHorizontal: 20 }}>Historial de envíos</T>
+        <T size={12} color={c.textMuted} style={{ paddingHorizontal: 20 }} numberOfLines={2}>{reporte?.titulo ?? ''}</T>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 8 }}>
+          {envios.length === 0 ? (
+            <T size={13} color={c.textMuted}>Este reporte no se ha enviado por correo</T>
+          ) : envios.map((e) => (
+            <View key={e.num} style={[s.envio, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <View style={s.fila}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <T peso={700} size={13}>{`${fechaLarga(e.fecha)} · ${hora(e.fecha)}`}</T>
+                  <T size={11} color={c.textMuted}>{`${ORIGEN[e.origen]?.texto ?? e.origen}${e.enviado_por_nombre ? ` · ${e.enviado_por_nombre}` : ''}`}</T>
+                </View>
+                <Badge tone={e.resultado === 'OK' ? 'success' : 'danger'} icon={e.resultado === 'OK' ? 'circle-check' : 'triangle-alert'}>
+                  {e.resultado === 'OK' ? 'Enviado' : 'Falló'}
+                </Badge>
+              </View>
+              <T size={12} color={c.textSecondary} numberOfLines={2}>
+                {(e.destinatarios ?? []).map((d) => d.nombre).join(', ') || 'Sin destinatarios'}
+              </T>
+              {e.error ? <T size={11} color={c.danger}>{e.error}</T> : null}
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    </Modal>
   )
 }
 
@@ -172,4 +238,9 @@ const s = StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   filtros: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  fondo: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  hoja: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '78%', paddingTop: 10, borderTopLeftRadius: 28, borderTopRightRadius: 28, gap: 8 },
+  asa: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 6 },
+  envio: { gap: 6, padding: 12, borderRadius: 16, borderWidth: 1 },
 })

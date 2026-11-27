@@ -24,7 +24,7 @@ Cada componente conserva su propio número porque se publica por separado.
 | Componente | Versión actual |
 | --- | --- |
 | Proyecto | 0.9.0 |
-| App Android | 0.2.7 (código 19) |
+| App Android | 0.2.16 (código 28) |
 | Firmware del ESP32 | 1.1.4 |
 | Web | 0.1.0 |
 | API | 0.1.0 |
@@ -44,6 +44,14 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- App Android 0.2.16 (código 28): Nico AI estrena un solo selector de alcance con hoja inferior
+  (Dispositivos, Áreas y Toda la organización para ADMIN y SUPER), saludo y respuestas por área u
+  organización, resumen de últimas lecturas, pendientes y conexión en el inicio, sugerencias
+  reales de `inicio` (con «Queda/Quedan»), fuente y acciones en cada respuesta (copiar, regenerar,
+  calificar y «Ver en Histórico» con el rango aplicado), atención de alertas desde el chat y la
+  pantalla «Conversaciones» con 50 guardadas, buscador, grupos por fecha y renombrar/borrar con
+  pulsación larga. Reportes incorpora los chips de periodo (Todos, Este mes, Mes pasado y Últimos
+  7 días) y la hoja de historial de envíos con destinatarios, origen, resultado y error.
 - Etapa 9 de Reportes y Nico AI: las cuatro plantillas se acomodan en una sola hoja (filas sin
   huecos, altos parejos, tablas sin palabras partidas y listas de dos renglones en media fila),
   con topes de 5 incidentes, 4 observaciones y 8 dispositivos, duraciones legibles, serie en línea

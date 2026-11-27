@@ -2,6 +2,7 @@
 // Para agregar uno: búscalo en lucide.dev, impórtalo aquí y regístralo con su nombre en kebab-case.
 import {
   Share2,
+  Copy,
   Monitor,
   Check,
   KeyRound,
@@ -135,6 +136,7 @@ const ICONS = {
   'share-2': Share2,
   'monitor': Monitor,
   'check': Check,
+  'copy': Copy,
   'key-round': KeyRound,
   'message-square': MessageSquare,
   'square-pen': SquarePen,
