@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { RotateCcw } from 'lucide-react'
 import {
-  Badge, Button, Card, Icon, Skeleton, Tabs,
+  Badge, Button, Card, Skeleton, Tabs,
 } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { aviso, confirmar } from '../../components/confirmacion'
@@ -25,7 +25,7 @@ import * as formatosApi from '../../services/formatos'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as reportesApi from '../../services/reportes'
 import { pagina } from '../../utils/convertir'
-import { fechaLarga, hora, periodo } from '../../utils/formato'
+import { fechaLarga, haceCuanto, hora, miles, periodo } from '../../utils/formato'
 
 async function cargar(filtros = {}) {
   const params = {
@@ -317,21 +317,49 @@ export function ReportesPage() {
 
   const divisor = <span className="ui-reportes__divisor" aria-hidden />
   const barraRef = useRef(null)
-  const [anchoBarra, setAnchoBarra] = useState(1200)
+  // Compactación de la barra por pasos, según lo que de verdad cabe (el ancho depende del
+  // nombre del formato): 1 «Opciones» solo ícono, 2 «Duplicar» solo ícono, 3 sin distintivo,
+  // 4 sin la etiqueta «Formato» (el selector ya puede angostarse), 5 ambos al menú «⋯».
+  // Al cambiar el ancho, el reporte o el formato se vuelve a medir desde el paso 0.
+  const [nivelBarra, setNivelBarra] = useState(0)
+  // `medida` cambia en cada reinicio para que la revisión corra aunque el nivel ya fuera 0.
+  const [medida, setMedida] = useState(0)
   useLayoutEffect(() => {
     const el = barraRef.current
     if (!el) return undefined
-    const medir = () => setAnchoBarra(el.clientWidth)
-    medir()
-    const observador = new ResizeObserver(medir)
+    const reiniciar = () => {
+      setNivelBarra(0)
+      setMedida((m) => m + 1)
+    }
+    reiniciar()
+    let ancho = el.clientWidth
+    const observador = new ResizeObserver(() => {
+      if (Math.abs(el.clientWidth - ancho) < 1) return
+      ancho = el.clientWidth
+      reiniciar()
+    })
     observador.observe(el)
-    return () => observador.disconnect()
-  }, [movil, edPagina.editando, actual?.num])
-  const barraAngosta = anchoBarra < 420
-  const opcionesSoloIcono = anchoBarra < 760
-  const duplicarSoloIcono = anchoBarra < 680
-  const ocultarMarca = anchoBarra < 600
-  const ocultarEtiquetaFormato = anchoBarra < 440
+    // Con la fuente ya cargada los textos cambian de ancho: se mide otra vez.
+    let vivo = true
+    document.fonts?.ready.then(() => vivo && reiniciar())
+    return () => {
+      vivo = false
+      observador.disconnect()
+    }
+  }, [movil, edPagina.editando, actual?.num, ed.formato.id])
+  useLayoutEffect(() => {
+    const el = barraRef.current
+    if (!el || movil || edPagina.editando || nivelBarra >= 5) return
+    // Un grupo que se aprieta por debajo de su contenido se encima con el siguiente sin que la
+    // barra se desborde: se revisan la barra y cada grupo.
+    const desborda = [el, ...el.querySelectorAll('.ui-reportes__barra-grupo')].some((x) => x.scrollWidth > x.clientWidth + 1)
+    if (desborda) setNivelBarra((n) => Math.min(5, n + 1))
+  }, [nivelBarra, medida, movil, edPagina.editando])
+  const barraAngosta = nivelBarra >= 5
+  const opcionesSoloIcono = nivelBarra >= 1
+  const duplicarSoloIcono = nivelBarra >= 2
+  const ocultarMarca = nivelBarra >= 3
+  const ocultarEtiquetaFormato = nivelBarra >= 4
   const listo = (r) => ['LISTO', 'ENVIADO'].includes(r?.estado ?? 'LISTO')
   const badgeEstado = (r) =>
     r?.archivado ? (
@@ -399,19 +427,25 @@ export function ReportesPage() {
           >
             PDF
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="download"
+            className="ui-reportes__csv"
+            disabled={!listo(actual)}
+            onClick={() =>
+              reportesApi
+                .descargarCsv(actual.num, tituloDe(actual))
+                .catch(() => aviso('No se pudo descargar el CSV. Intenta de nuevo.', { tipo: 'error' }))
+            }
+          >
+            CSV
+          </Button>
           <MenuAcciones
             label="Más acciones del reporte"
             items={[
               { label: 'Formato…', icon: 'file-text', onClick: () => setModalFormatoReporte(true) },
-              {
-                label: 'Descargar CSV',
-                icon: 'download',
-                disabled: !listo(actual),
-                onClick: () =>
-                  reportesApi
-                    .descargarCsv(actual.num, tituloDe(actual))
-                    .catch(() => aviso('No se pudo descargar el CSV. Intenta de nuevo.', { tipo: 'error' })),
-              },
+              { label: 'Historial de envíos', icon: 'send', onClick: () => setModalEnvios(actual) },
               { label: 'Generar de nuevo', icon: 'refresh-cw', onClick: () => repetir(actual) },
               {
                 label: actual.archivado ? 'Desarchivar' : 'Archivar',
@@ -425,7 +459,10 @@ export function ReportesPage() {
       ) : null}
     </div>
   ) : (
-    <div ref={barraRef} className={`ui-reportes__barra${edPagina.editando ? ' ui-reportes__barra--edicion' : ''}`}>
+    <div
+      ref={barraRef}
+      className={`ui-reportes__barra${edPagina.editando ? ' ui-reportes__barra--edicion' : ''}${nivelBarra >= 4 ? ' is-apretada' : ''}${nivelBarra >= 5 ? ' is-angosta' : ''}`}
+    >
       {edPagina.editando ? (
         <>
           <div className="ui-reportes__barra-titulo">
@@ -454,19 +491,14 @@ export function ReportesPage() {
           <div className="ui-reportes__barra-grupo ui-reportes__barra-formato">
             {!ocultarEtiquetaFormato && <span className="ui-reportes__etiqueta">Formato</span>}
             <Desplegable
-              icon="file-text"
               value={ed.formato.id}
               onChange={async (v) => ed.asignar(actual.num, v)}
               options={ed.formatos.map((f) => ({ value: f.id, label: f.nombre }))}
             />
             {!ocultarMarca && ed.formato.num && (
-              <span className="ui-reportes__marca-formato">
-                {ed.formato.esPlantilla ? (
-                  <><Icon name="copy" size={13} /> Plantilla</>
-                ) : (
-                  `Versión ${ed.formato.version ?? 1}`
-                )}
-              </span>
+              <Badge tone="neutral" className="ui-reportes__marca-formato">
+                {ed.formato.esPlantilla ? 'Plantilla' : `Versión ${ed.formato.version ?? 1}`}
+              </Badge>
             )}
             {puedeEditar && ed.formato.num && !barraAngosta && (
               <MenuAcciones
@@ -549,10 +581,41 @@ export function ReportesPage() {
     </div>
   )
 
+  // Banda de cifras como en las demás pantallas: cuántos reportes hay, los de este mes, las
+  // programaciones activas y cómo van los correos.
+  const [inicioMes] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+  const listos = reportes.filter((r) => ['LISTO', 'ENVIADO'].includes(r.estado ?? 'LISTO') && !r.archivado)
+  const delMes = reportes.filter((r) => new Date(r.fecha_generacion) >= inicioMes).length
+  const programadas = (datos?.programaciones ?? []).filter((p) => p.activa !== false).length
+  const envios = reportes.flatMap((r) => r.envios ?? [])
+  const fallidos = envios.filter((e) => e.resultado !== 'OK').length
+  const ultimo = reportes[0]
+  const cifras = datos
+    ? {
+        principal: {
+          etiqueta: 'Reportes',
+          valor: miles(reportes.length),
+          unidad: reportes.length === 1 ? 'reporte' : 'reportes',
+          sub: `${listos.length} listos${ultimo ? ` · el último ${haceCuanto(ultimo.fecha_generacion).toLowerCase()}` : ''}`,
+        },
+        cifras: [
+          { etiqueta: 'Este mes', valor: miles(delMes), sub: 'generados' },
+          { etiqueta: 'Programados', valor: miles(programadas), sub: programadas === 1 ? 'activo' : 'activos', tono: 'verde' },
+          {
+            etiqueta: 'Correos',
+            valor: miles(envios.length - fallidos),
+            sub: fallidos ? `${fallidos} sin enviar` : 'enviados',
+            tono: fallidos ? 'peligro' : undefined,
+          },
+        ],
+      }
+    : { principal: { etiqueta: 'Reportes', valor: '—', tonoValor: 'apagado' } }
+
   return (
     <Pantalla
-      eyebrow={`${organizacion} · cifras del sistema, texto redactado con IA`}
+      eyebrow={datos ? `${organizacion} · ${reportes.length} reportes · ${programadas} programados` : organizacion}
       titulo="Reportes"
+      cifras={movil && vistaAbierta ? null : cifras}
       acciones={
         <Button
           icon="sparkles"
@@ -656,12 +719,14 @@ export function ReportesPage() {
                               <span className="ui-reciente__periodo">
                                 {periodo(r.periodo_inicio, r.periodo_fin)}
                               </span>
-                              <Badge
-                                tone={r.archivado ? 'neutral' : estado.tone}
-                                icon={r.archivado ? 'circle-x' : estado.icon}
-                              >
-                                {r.archivado ? 'Archivado' : estado.label}
-                              </Badge>
+                              {(r.archivado || !['LISTO', 'ENVIADO'].includes(r.estado ?? 'LISTO')) && (
+                                <Badge
+                                  tone={r.archivado ? 'neutral' : estado.tone}
+                                  icon={r.archivado ? 'circle-x' : estado.icon}
+                                >
+                                  {r.archivado ? 'Archivado' : estado.label}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <span className="ui-reportes__item-menu" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>

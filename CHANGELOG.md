@@ -44,7 +44,13 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
-- Reportes web (Etapa 11): el visor abre al 100 % con scroll propio y centrado, y el control de
+- Reportes web con el diseño del resto de Núcleo: banda de cifras (reportes, este mes, programados
+  y correos) y subtítulo con datos; la barra pasa a ser el encabezado de la tarjeta de la vista,
+  con todos los controles en píldoras de 36 px y el mismo contorno (formato y sus herramientas a la
+  izquierda, PDF, CSV y ⋯ a la derecha). La compactación mide lo que de verdad cabe según el nombre
+  del formato. La lista ya no repite «Listo» y en celular PDF y CSV salen con sus colores y la banda
+  se oculta mientras se ve un reporte.
+- Reportes web (Etapa 11): el visor abre al 100 % con scroll propio desde el borde izquierdo, y el control de
   zoom flota abajo a la derecha, a 12 px de los bordes y sin tapar la barra de scroll, también en
   edición. La barra ya no muestra «Listo», usa PDF rojo (`--danger`/`--danger-soft`) y CSV verde
   (`--success`/`--success-soft`) con el mismo tamaño y texto visible, y ordena Formato (nombre

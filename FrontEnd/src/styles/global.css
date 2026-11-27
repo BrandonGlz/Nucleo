@@ -6712,41 +6712,6 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   font-weight: 600;
 }
 
-/* 8.8 · Barra normal sin título: estado, formato y acciones en un solo renglón. */
-@media (min-width: 901px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) {
-    flex-wrap: nowrap;
-    gap: 6px 8px;
-    padding: 6px 8px;
-  }
-  .ui-reportes__barra-estado--inicio {
-    flex: none;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato {
-    flex: 1 1 240px;
-    min-width: 180px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
-    flex: 1;
-    min-width: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones {
-    flex: none;
-    flex-wrap: nowrap;
-    gap: 4px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn {
-    padding-inline: 10px;
-  }
-}
-@media (min-width: 901px) and (max-width: 1500px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato .nc-badge {
-    display: none;
-  }
-  .ui-reportes__personalizar-texto {
-    display: none;
-  }
-}
 
 /* 8.8 · Lista de reportes en dos renglones: formato · lugar / periodo + estado. */
 .ui-item.ui-reciente--compacta {
@@ -6792,41 +6757,6 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
 .ui-reciente--compacta .ui-reportes__item-menu {
   align-self: center;
 }
-@media (min-width: 901px) and (max-width: 1500px) {
-  /* El icono decorativo del selector se va para que el nombre completo quepa. */
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato .ui-desplegable__boton > .nc-icon:first-child {
-    display: none;
-  }
-}
-@media (min-width: 901px) and (max-width: 1500px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-estado--inicio .nc-badge {
-    padding-inline: 6px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato .ui-desplegable__boton {
-    padding-inline: 10px 8px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn--sm {
-    padding-inline: 6px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .ui-menu-acciones > button {
-    width: 34px;
-    min-width: 34px;
-    padding: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .ui-zoom--compacto {
-    gap: 1px;
-    padding: 1px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .ui-zoom--compacto .ui-zoom__ajustar {
-    padding: 4px 4px;
-    font-size: 10.5px;
-  }
-}
-@media (min-width: 901px) and (max-width: 1500px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato .ui-desplegable__valor {
-    font-size: 13px;
-  }
-}
 
 /* Los modales especiales del asistente conservan su ancho; el estándar de 640/880 es para
    los formularios de Modal. */
@@ -6860,131 +6790,6 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   letter-spacing: 0.02em;
 }
 
-/* Barra de acciones: el selector de formato toma el ancho de su contenido y el espacio libre
-   va a las opciones con texto; el zoom queda pegado a la derecha. Según el ancho real de la
-   barra (no de la ventana) las opciones se compactan para quedar siempre en un renglón. */
-@media (min-width: 901px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) {
-    flex-wrap: nowrap;
-    container: barra-reporte / inline-size;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato {
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
-    flex: 0 1 auto;
-    width: auto;
-    min-width: 140px;
-    max-width: 260px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones > :last-child {
-    margin-left: auto;
-  }
-  .ui-reportes__personalizar-texto { display: inline; }
-  .ui-reportes__barra-formato .nc-badge { display: inline-flex; }
-}
-@container barra-reporte (max-width: 1100px) {
-  .ui-reportes__barra-formato .nc-badge { display: none; }
-}
-@container barra-reporte (max-width: 960px) {
-  .ui-reportes__personalizar-texto { display: none; }
-}
-@container barra-reporte (max-width: 860px) {
-  .ui-reportes__csv { display: none; }
-}
-@container barra-reporte (max-width: 720px) {
-  .ui-reportes__texto-descargar { display: none; }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable { max-width: 190px; }
-  /* «Ajustar» solo aparece cuando hay zoom manual que deshacer. */
-  .ui-reportes__barra .ui-zoom__ajustar.is-activo { display: none; }
-}
-@container barra-reporte (max-width: 600px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable { min-width: 120px; max-width: 150px; }
-}
-/* Barra: aire entre grupos para que nada se vea encimado; una línea fina separa el formato
-   de las acciones del reporte. */
-@media (min-width: 901px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) { gap: 10px 16px; padding: 8px 12px; }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato { gap: 10px; }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones {
-    gap: 8px;
-    padding-left: 16px;
-    border-left: 1px solid var(--border);
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn { padding-inline: 14px; }
-}
-@media (min-width: 901px) and (max-width: 1150px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones { padding-left: 0; border-left: 0; }
-}
-@container barra-reporte (max-width: 680px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable { max-width: 160px; }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones { gap: 6px; padding-left: 12px; }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn { padding-inline: 11px; }
-}
-
-/* Etapa 9.3 · Barra de Reportes por grupos con divisores finos. */
-.ui-reportes__barra-grupo {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.ui-reportes__divisor {
-  flex: none;
-  align-self: center;
-  width: 1px;
-  height: 24px;
-  background: var(--border);
-}
-.ui-reportes__etiqueta {
-  flex: none;
-  font-size: 10.5px;
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.ui-reportes__marca-formato {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  font-size: 10.5px;
-  line-height: 1.2;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.ui-reportes__barra-vista {
-  flex: none;
-  margin-left: auto;
-}
-@media (min-width: 901px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato {
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones {
-    flex: none;
-    flex-wrap: nowrap;
-  }
-}
-@container barra-reporte (max-width: 1100px) {
-  /* La etiqueta «Formato» es lo primero que se oculta al compactar. */
-  .ui-reportes__etiqueta { display: none; }
-}
-@container barra-reporte (max-width: 860px) {
-  .ui-reportes__marca-formato { display: none; }
-}
-@media (min-width: 901px) {
-  .ui-reportes__barra-grupo > :last-child { margin-left: 0; }
-}
 
 /* Etapa 9.4 · Filtro por periodo e historial de envíos. */
 .ui-reportes__fechas {
@@ -7384,98 +7189,6 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   line-height: 1.2;
 }
 
-/* Etapa 9 · corrección 5: la barra nunca parte en dos renglones. */
-@media (min-width: 901px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) {
-    flex-wrap: nowrap;
-    gap: 6px;
-    overflow: visible;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-grupo {
-    flex-wrap: nowrap;
-    gap: 4px;
-  }
-}
-@container barra-reporte (max-width: 600px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
-    min-width: 96px;
-    max-width: 116px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-estado--inicio .nc-badge {
-    padding-inline: 4px;
-    font-size: 10px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn {
-    padding-inline: 6px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-zoom--compacto .ui-zoom__boton {
-    width: 22px;
-    min-width: 22px;
-  }
-}
-@media (min-width: 901px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) > .ui-reportes__barra-grupo {
-    height: 32px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) > .ui-reportes__divisor {
-    align-self: center;
-  }
-}
-@container barra-reporte (max-width: 620px) {
-  .ui-reportes__barra-estado--inicio .nc-badge {
-    gap: 0;
-    padding: 0 6px;
-    font-size: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn {
-    gap: 0;
-    padding-inline: 5px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn .ui-reportes__texto-descargar {
-    display: none;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn:not(.ui-reportes__csv) span {
-    display: none;
-  }
-}
-@media (min-width: 901px) {
-  .ui-reportes__barra.is-compacta {
-    gap: 2px;
-    padding-inline: 6px;
-  }
-  .ui-reportes__barra.is-compacta .ui-reportes__barra-grupo {
-    gap: 2px;
-  }
-  .ui-reportes__barra.is-compacta .ui-reportes__barra-estado--inicio .nc-badge {
-    gap: 0;
-    padding: 0 5px;
-    font-size: 0;
-  }
-  /* El nombre del formato tiene prioridad: «Cumplimiento» completo antes que el texto de los botones. */
-  .ui-reportes__barra.is-compacta .ui-reportes__barra-formato > .ui-desplegable {
-    min-width: 136px;
-    max-width: 150px;
-  }
-  .ui-reportes__barra.is-compacta .ui-reportes__csv,
-  .ui-reportes__barra.is-compacta .ui-reportes__texto-descargar,
-  .ui-reportes__barra.is-compacta .ui-reportes__texto-pdf,
-  .ui-reportes__barra.is-compacta .ui-zoom__ajustar {
-    display: none;
-  }
-  .ui-reportes__barra.is-compacta .ui-reportes__barra-acciones .nc-btn {
-    gap: 0;
-    padding-inline: 5px;
-  }
-  .ui-reportes__barra.is-compacta .ui-zoom--compacto {
-    gap: 0;
-    padding: 0;
-  }
-  .ui-reportes__barra.is-compacta .ui-zoom--compacto .ui-zoom__boton {
-    width: 20px;
-    min-width: 20px;
-    padding: 0;
-  }
-}
 
 /* Etapa 9 · correcciones 9 y 10: una sola fila «Basado en» y acciones en un renglón. */
 .ui-ia-fuentes--respuesta {
@@ -7582,134 +7295,151 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   color: var(--accent-secondary);
 }
 
-/* Etapa 11.2 · barra de Reportes: un renglón, sin «Listo», PDF rojo, CSV verde y grupos
-   en el orden Formato | Editar | Archivos. Las reglas de etapas anteriores que ocultaban
-   textos se neutralizan aquí porque ahora decide el ancho medido en React. */
-@media (min-width: 901px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) {
-    flex-wrap: nowrap;
-    gap: 4px;
-    padding: 6px 8px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-grupo {
-    flex: none;
-    flex-wrap: nowrap;
-    gap: 4px;
-    min-width: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato {
-    flex: 0 1 auto;
-    gap: 5px;
-    min-width: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
-    flex: 0 1 auto;
-    width: auto;
-    min-width: 96px;
-    max-width: 280px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones {
-    flex: none;
-    flex-wrap: nowrap;
-    gap: 4px;
-    padding-left: 0;
-    border-left: 0;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__divisor {
-    height: 24px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__etiqueta,
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__marca-formato {
-    display: inline-flex;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__personalizar-texto {
-    display: inline;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__csv,
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__pdf {
-    display: inline-flex;
-    min-width: 64px;
-    height: 36px;
-    gap: 6px;
-    justify-content: center;
-    padding: 0 8px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn.ui-reportes__pdf,
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn.ui-reportes__csv {
-    gap: 6px;
-    padding-inline: 8px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn.ui-reportes__pdf span,
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn.ui-reportes__csv span {
-    display: inline;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__pdf {
-    background: var(--danger-soft);
-    border-color: var(--danger);
-    color: var(--danger);
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__pdf:hover {
-    background: color-mix(in srgb, var(--danger-soft) 72%, var(--danger) 8%);
-    border-color: var(--danger);
-    color: var(--danger);
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__csv {
-    background: var(--success-soft);
-    border-color: var(--success);
-    color: var(--success);
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__csv:hover {
-    background: color-mix(in srgb, var(--success-soft) 72%, var(--success) 8%);
-    border-color: var(--success);
-    color: var(--success);
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__opciones .ui-menu-acciones__boton-texto {
-    height: 36px;
-    gap: 5px;
-    padding: 0 8px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__duplicar {
-    height: 36px;
-    padding-inline: 10px;
-  }
-}
-
-/* El selector se angosta antes de que PDF/CSV pierdan su texto. */
-@container barra-reporte (max-width: 740px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
-    min-width: 110px;
-    max-width: 178px;
-  }
-}
-@container barra-reporte (max-width: 560px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
-    min-width: 96px;
-    max-width: 150px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-desplegable__boton {
-    gap: 6px;
-    padding-inline: 8px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-desplegable__boton > .nc-icon:first-child {
-    display: none;
-  }
-}
-@container barra-reporte (max-width: 380px) {
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-formato > .ui-desplegable {
-    min-width: 78px;
-    max-width: 98px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__pdf,
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__csv {
-    min-width: 58px;
-    padding-inline: 7px;
-  }
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn.ui-reportes__pdf,
-  .ui-reportes__barra:not(.ui-reportes__barra--edicion) .ui-reportes__barra-acciones .nc-btn.ui-reportes__csv {
-    padding-inline: 7px;
-  }
-}
 
 @media (max-width: 900px) {
   .ui-reportes.is-vista .ui-visor-control { flex: 1; min-height: 320px; }
+}
+
+/* Reportes · vista y barra unificadas (un solo bloque; sustituye las capas de las etapas 8–11).
+   La vista es una tarjeta como las demás de Núcleo: la barra es su encabezado y la hoja va en
+   el pozo de abajo. Todos los controles miden 36 px y son píldoras con el mismo contorno; el
+   selector de formato y sus herramientas van a la izquierda y los archivos a la derecha. Qué
+   texto se oculta al faltar ancho lo decide ReportesPage con el ancho medido de la barra. */
+@media (min-width: 901px) {
+  .ui-reportes__vista {
+    gap: 12px;
+    padding: var(--tarjeta-relleno);
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+  .ui-reportes__vista .ui-visor-hoja { border-radius: var(--radius-md); }
+  .ui-reportes__barra .ui-menu-acciones__boton-texto { gap: 6px; padding: 0 11px; }
+  .ui-reportes__vista > .ui-reportes__pendiente.nc-card {
+    border-radius: var(--radius-md);
+    background: var(--surface-muted);
+    box-shadow: none;
+  }
+
+  .ui-reportes__barra,
+  .ui-reportes__barra.ui-reportes__barra--edicion {
+    container: barra-reporte / inline-size;
+    flex: none;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .ui-reportes__barra-grupo {
+    display: flex;
+    flex: none;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  /* El nombre del formato va completo; solo se angosta en el paso 4 de la compactación. */
+  .ui-reportes__barra-formato > .ui-desplegable {
+    flex: none;
+    width: auto;
+    max-width: 300px;
+  }
+  .ui-reportes__barra.is-apretada .ui-reportes__barra-formato { flex: 0 1 auto; }
+  .ui-reportes__barra.is-apretada .ui-reportes__barra-formato > .ui-desplegable {
+    flex: 0 1 auto;
+    min-width: 170px;
+  }
+  /* Paso 5: «Opciones» y «Duplicar» ya están en «⋯»; el selector puede angostarse más. */
+  .ui-reportes__barra.is-angosta .ui-reportes__barra-formato > .ui-desplegable { min-width: 96px; }
+  .ui-reportes__barra-acciones { margin-left: auto; }
+  .ui-reportes__barra--edicion .ui-reportes__barra-titulo { flex: 1 1 auto; }
+  .ui-reportes__barra--edicion .ui-reportes__barra-acciones { flex-wrap: nowrap; gap: 8px; }
+
+  /* Un divisor fino entre el formato y la edición; antes de los archivos basta el espacio. */
+  .ui-reportes__divisor {
+    flex: none;
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+  }
+  .ui-reportes__divisor:has(+ .ui-reportes__barra-acciones) { display: none; }
+  .ui-reportes__etiqueta {
+    flex: none;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .ui-reportes__marca-formato { flex: none; }
+
+  /* Selector, botones, «Opciones» y «⋯»: misma altura, radio y contorno. */
+  .ui-reportes__barra .ui-desplegable .nc-input {
+    --campo-borde: var(--border-strong);
+    height: 36px;
+    gap: 8px;
+    padding: 0 10px 0 14px;
+    border-radius: var(--radius-full);
+    box-shadow: none;
+  }
+  .ui-reportes__barra .ui-desplegable__valor { font-size: 13px; font-weight: 600; }
+  .ui-reportes__barra .nc-btn {
+    height: 36px;
+    gap: 6px;
+    padding: 0 11px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+  }
+  .ui-reportes__barra .ui-menu-acciones__boton-texto,
+  .ui-reportes__barra .nc-iconbtn {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+  .ui-reportes__barra .ui-menu-acciones__boton-texto:hover,
+  .ui-reportes__barra .nc-iconbtn:hover { background: var(--surface-muted); }
+  .ui-reportes__barra .nc-iconbtn {
+    width: 36px;
+    height: 36px;
+  }
+  .ui-reportes__duplicar:not(:has(.ui-reportes__personalizar-texto)) {
+    width: 36px;
+    padding: 0;
+  }
+}
+
+
+/* Archivos: PDF en rojo y CSV en verde, de contorno, mismo ancho (escritorio y celular). */
+.ui-reportes__barra .ui-reportes__pdf,
+.ui-reportes__barra .ui-reportes__csv {
+  display: inline-flex;
+  min-width: 72px;
+  gap: 6px;
+  padding: 0 12px;
+}
+.ui-reportes__barra .ui-reportes__pdf {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 70%, transparent);
+  color: var(--danger);
+}
+.ui-reportes__barra .ui-reportes__csv {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 70%, transparent);
+  color: var(--success);
+}
+.ui-reportes__barra .ui-reportes__pdf:hover { background: color-mix(in srgb, var(--danger-soft) 80%, var(--danger) 12%); }
+.ui-reportes__barra .ui-reportes__csv:hover { background: color-mix(in srgb, var(--success-soft) 80%, var(--success) 12%); }
+.ui-reportes__barra .ui-reportes__pdf:disabled,
+.ui-reportes__barra .ui-reportes__csv:disabled {
+  background: var(--surface-muted);
+  border-color: var(--border);
+  color: var(--text-muted);
 }
