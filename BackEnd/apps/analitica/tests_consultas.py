@@ -7,8 +7,9 @@ from django.utils import timezone
 
 from apps.alertas.models import Alerta
 from apps.analitica import consultas, filtros
+from apps.dispositivos.models import Sensor
 from apps.mediciones.models import Lectura
-from apps.reportes import servicios
+from apps.reportes import calculos, servicios
 from common.testing import Escenario, PruebaBase
 
 
@@ -176,6 +177,8 @@ class AgregacionesTests(PruebaBase):
             resumen["recibidas"],
             cifras["disponibilidad"][codigo]["recibidas"],
         )
+        datos = consultas.disponibilidad_datos(self.consulta)
+        self.assertEqual(datos[codigo]["huecos"], cifras["disponibilidad"][codigo]["huecos"])
 
     def test_valores_por_entidad_y_ranking(self):
         valores = consultas.valores_por_entidad(
@@ -197,3 +200,42 @@ class AgregacionesTests(PruebaBase):
         por_variable = {fila["dimension_valor"]: fila["valor"] for fila in valores}
         self.assertEqual(por_variable["TEMP"], 20.0)
         self.assertEqual(por_variable["HUM"], 55.0)
+
+
+class DisponibilidadHuecosTests(PruebaBase):
+    def setUp(self):
+        self.e = Escenario()
+        self.e.dispositivo.intervalo_muestreo_seg = 60
+        self.inicio = timezone.make_aware(datetime(2026, 11, 2, 0, 0))
+        self.fin = self.inicio + timedelta(minutes=120)
+        self.e.dispositivo.fecha_alta = self.inicio - timedelta(days=1)
+        self.e.dispositivo.save(update_fields=["intervalo_muestreo_seg", "fecha_alta"])
+        self.consulta = filtros.resolver_filtros(
+            self.e.admin,
+            {
+                "periodo": "personalizado",
+                "desde": self.inicio.isoformat(),
+                "hasta": self.fin.isoformat(),
+            },
+        )
+        # Un hueco interno de 80 minutos y huecos de 10 minutos en los extremos.
+        for minutos, valor in ((10, 20), (20, 21), (100, 22), (110, 23)):
+            Lectura.objects.create(
+                sensor_num=self.e.dht22.pk,
+                variable_codigo="TEMP",
+                valor=valor,
+                fecha_hora=self.inicio + timedelta(minutes=minutos),
+                estabilizada=True,
+            )
+
+    def test_los_huecos_coinciden_con_los_reportes(self):
+        esperado = calculos.disponibilidad(
+            Sensor.objects.filter(num__in=self.consulta.sensor_ids),
+            self.inicio,
+            self.fin,
+        )
+        datos = consultas.disponibilidad_datos(self.consulta)
+        codigo = self.e.dispositivo.codigo_mqtt
+        self.assertEqual(datos[codigo]["pct"], esperado[codigo]["pct"])
+        self.assertEqual(datos[codigo]["huecos"], esperado[codigo]["huecos"])
+        self.assertGreaterEqual(len(datos[codigo]["huecos"]), 2)

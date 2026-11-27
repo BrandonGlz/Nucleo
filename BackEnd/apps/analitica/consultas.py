@@ -21,8 +21,6 @@ from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
 from django.db.models.functions import ExtractHour, ExtractIsoWeekDay
 from django.utils import timezone
 
-from apps.dispositivos.models import Sensor
-from apps.mediciones.models import Lectura
 from apps.reportes import calculos
 
 from .filtros import INTERVALOS_SQL, VARIABLES
@@ -31,11 +29,6 @@ HORAS = list(range(24))
 DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
 NIVELES = ("DENTRO", "ADVERTENCIA", "PELIGRO")
 ESTADISTICOS = {"promedio": "AVG", "maximo": "MAX", "minimo": "MIN"}
-AGRUPACIONES = {
-    "area": "m.area_id",
-    "dispositivo": "m.dispositivo_id",
-    "variable": "l.variable_codigo",
-}
 
 
 def _numero(valor):
@@ -106,14 +99,6 @@ def _intervalo_sql(consulta):
     return INTERVALOS_SQL[consulta.intervalo]
 
 
-def _grupo(agrupar):
-    if agrupar not in ("total", *AGRUPACIONES):
-        raise ValueError(f"Agrupación desconocida: {agrupar}")
-    if agrupar == "total":
-        return "NULL::integer", None
-    return AGRUPACIONES[agrupar], agrupar
-
-
 def _entidad(consulta, agrupar, valor):
     if agrupar == "area":
         area = next((item for item in consulta.areas if item.num == valor), None)
@@ -150,53 +135,131 @@ def _etiqueta(consulta, agrupar, valor):
     }
 
 
-def resumen(consulta, variable, inicio=None, fin=None):
-    """Lecturas, promedio, mínimo y máximo de una variable en el periodo."""
-    inicio = inicio or consulta.inicio
-    fin = fin or consulta.fin
-    if not consulta.sensor_ids or variable not in consulta.variables:
+def _combinar(actual, total, suma, minimo, maximo):
+    """Combina ``[count, suma, mínimo, máximo]`` de dos agregados."""
+    if actual is None:
+        return [total, suma, minimo, maximo]
+    return [
+        actual[0] + total,
+        actual[1] + suma,
+        minimo if actual[2] is None else min(actual[2], minimo),
+        maximo if actual[3] is None else max(actual[3], maximo),
+    ]
+
+
+def _resumen_de(agregado):
+    if not agregado or not agregado[0]:
         return {"lecturas": 0, "promedio": None, "minimo": None, "maximo": None}
-    sql = """
-        SELECT COUNT(*), AVG(l.valor), MIN(l.valor), MAX(l.valor)
-        FROM lectura l
-        WHERE l.sensor_num = ANY(%s)
-          AND l.fecha_hora >= %s AND l.fecha_hora < %s
-          AND l.estabilizada
-          AND l.variable_codigo = %s
-    """
-    filas = _ejecutar(sql, [list(consulta.sensor_ids), inicio, fin, variable])
-    total, promedio, minimo, maximo = filas[0]
+    count, suma, minimo, maximo = agregado
     return {
-        "lecturas": int(total or 0),
-        "promedio": _numero(promedio),
+        "lecturas": int(count),
+        "promedio": _numero(suma / count),
         "minimo": _numero(minimo),
         "maximo": _numero(maximo),
     }
 
 
-def resumen_por_variable(consulta, inicio=None, fin=None):
-    """El resumen de ``resumen`` para cada variable del alcance."""
+def _base_agregada(consulta, variable=None, inicio=None, fin=None):
+    """Un solo barrido por rango, agrupado por sensor, variable e intervalo.
+
+    Devuelve por variable los agregados ``[count, suma, mínimo, máximo]`` de todo el
+    periodo y por dispositivo y tramo. Los KPIs, la tendencia y las barras de la misma
+    variable comparten este resultado (``consulta.memo``).
+    """
     inicio = inicio or consulta.inicio
     fin = fin or consulta.fin
+    clave = ("base_agregada", variable, inicio, fin)
+    if clave in consulta.memo:
+        return consulta.memo[clave]
     if not consulta.sensor_ids:
+        consulta.memo[clave] = {}
         return {}
-    sql = """
-        SELECT l.variable_codigo, COUNT(*), AVG(l.valor), MIN(l.valor), MAX(l.valor)
+    filtro_variable = "AND l.variable_codigo = %s" if variable else ""
+    parametros_extra = [variable] if variable else []
+    sql = f"""
+        SELECT l.sensor_num, l.variable_codigo,
+               time_bucket('{_intervalo_sql(consulta)}', l.fecha_hora, %s) AS tramo,
+               COUNT(*), SUM(l.valor), MIN(l.valor), MAX(l.valor)
         FROM lectura l
         WHERE l.sensor_num = ANY(%s)
           AND l.fecha_hora >= %s AND l.fecha_hora < %s
           AND l.estabilizada
-        GROUP BY l.variable_codigo
+          {filtro_variable}
+        GROUP BY l.sensor_num, l.variable_codigo, tramo
+        ORDER BY tramo
     """
-    filas = _ejecutar(sql, [list(consulta.sensor_ids), inicio, fin])
-    return {
-        variable: {
-            "lecturas": int(total or 0),
-            "promedio": _numero(promedio),
-            "minimo": _numero(minimo),
-            "maximo": _numero(maximo),
+    filas = _ejecutar(
+        sql,
+        [settings.TIME_ZONE, list(consulta.sensor_ids), inicio, fin, *parametros_extra],
+    )
+    sensor_meta = {sensor.num: sensor.dispositivo_id for sensor in consulta.sensores}
+    datos = {}
+    for sensor_num, variable, tramo, total, suma, minimo, maximo in filas:
+        dispositivo_id = sensor_meta.get(sensor_num)
+        if dispositivo_id is None:
+            continue
+        por_variable = datos.setdefault(
+            variable,
+            {"total": None, "por_dispositivo": {}},
+        )
+        por_variable["total"] = _combinar(
+            por_variable["total"], total, suma, minimo, maximo
+        )
+        por_dispositivo = por_variable["por_dispositivo"]
+        por_tramo = por_dispositivo.setdefault(dispositivo_id, {})
+        por_tramo[tramo] = _combinar(
+            por_tramo.get(tramo), total, suma, minimo, maximo
+        )
+    for por_variable in datos.values():
+        por_variable["tramos"] = sorted(
+            {
+                tramo
+                for por_tramo in por_variable["por_dispositivo"].values()
+                for tramo in por_tramo
+            }
+        )
+    consulta.memo[clave] = datos
+    return datos
+
+
+def _agregados(consulta, variable, inicio=None, fin=None):
+    """Resumen y series por estadístico de una variable desde ``_base_agregada``."""
+    datos = _base_agregada(consulta, variable, inicio, fin).get(variable)
+    if not datos:
+        return {
+            "resumen": {"lecturas": 0, "promedio": None, "minimo": None, "maximo": None},
+            "series": {"promedio": [], "minimo": [], "maximo": [], "lecturas": []},
         }
-        for variable, total, promedio, minimo, maximo in filas
+    resumen = _resumen_de(datos["total"])
+    series = {"promedio": [], "minimo": [], "maximo": [], "lecturas": []}
+    por_tramo = {}
+    for dispositivo in datos["por_dispositivo"].values():
+        for tramo, agregado in dispositivo.items():
+            por_tramo[tramo] = _combinar(
+                por_tramo.get(tramo), *agregado
+            )
+    for tramo in sorted(por_tramo):
+        agregado = por_tramo[tramo]
+        count, suma, minimo, maximo = agregado
+        series["promedio"].append(
+            {"x": _iso(tramo), "y": _numero(suma / count) if count else None}
+        )
+        series["minimo"].append({"x": _iso(tramo), "y": _numero(minimo)})
+        series["maximo"].append({"x": _iso(tramo), "y": _numero(maximo)})
+        series["lecturas"].append({"x": _iso(tramo), "y": int(count or 0)})
+    return {"resumen": resumen, "series": series}
+
+
+def resumen(consulta, variable, inicio=None, fin=None):
+    """Lecturas, promedio, mínimo y máximo de una variable en el periodo."""
+    return _agregados(consulta, variable, inicio, fin)["resumen"]
+
+
+def resumen_por_variable(consulta, inicio=None, fin=None):
+    """El resumen de ``resumen`` para cada variable del alcance."""
+    return {
+        variable: _resumen_de(datos["total"])
+        for variable, datos in _base_agregada(consulta, None, inicio, fin).items()
     }
 
 
@@ -211,54 +274,52 @@ def serie(consulta, variable, estadistico="promedio", agrupar="total", inicio=No
         raise ValueError(f"Estadístico desconocido: {estadistico}")
     if not consulta.sensor_ids or variable not in consulta.variables:
         return []
-    sensor_meta = {
-        sensor.num: (sensor.dispositivo_id, sensor.dispositivo.area_id)
-        for sensor in consulta.sensores
-    }
-    sql = f"""
-        SELECT time_bucket('{_intervalo_sql(consulta)}', l.fecha_hora, %s) AS tramo,
-               l.sensor_num,
-               {ESTADISTICOS[estadistico]}(l.valor) AS valor,
-               COUNT(*) AS muestras
-        FROM lectura l
-        WHERE l.sensor_num = ANY(%s)
-          AND l.fecha_hora >= %s AND l.fecha_hora < %s
-          AND l.estabilizada
-          AND l.variable_codigo = %s
-        GROUP BY tramo, l.sensor_num
-        ORDER BY tramo
-    """
-    filas = _ejecutar(
-        sql,
-        [settings.TIME_ZONE, list(consulta.sensor_ids), inicio, fin, variable],
-    )
-    if not filas:
+    if agrupar == "total":
+        puntos = _agregados(consulta, variable, inicio, fin)["series"][estadistico]
+        if not puntos:
+            return []
+        return [
+            {
+                "nombre": "Total",
+                "dimension": None,
+                "dimension_valor": None,
+                "puntos": puntos,
+            }
+        ]
+    datos_variable = _base_agregada(consulta, variable, inicio, fin).get(variable)
+    if not datos_variable:
         return []
-
+    areas = {dispositivo.num: dispositivo.area_id for dispositivo in consulta.dispositivos}
     por_grupo = defaultdict(dict)
     muestras_grupo = defaultdict(int)
-    for tramo, sensor_num, valor, muestras in filas:
-        dispositivo_id, area_id = sensor_meta.get(sensor_num, (None, None))
+    for dispositivo_id, por_tramo in datos_variable["por_dispositivo"].items():
+        area_id = areas.get(dispositivo_id)
         if agrupar == "area":
             grupo = area_id
-        elif agrupar == "dispositivo":
+        else:
             grupo = dispositivo_id
-        else:
-            grupo = None
-        anterior = por_grupo[grupo].get(tramo)
-        if anterior is None:
-            por_grupo[grupo][tramo] = (valor, muestras)
-        elif estadistico == "promedio":
-            total = anterior[1] + muestras
-            por_grupo[grupo][tramo] = (
-                (anterior[0] * anterior[1] + valor * muestras) / total,
-                total,
-            )
-        elif estadistico == "maximo":
-            por_grupo[grupo][tramo] = (max(anterior[0], valor), anterior[1] + muestras)
-        else:
-            por_grupo[grupo][tramo] = (min(anterior[0], valor), anterior[1] + muestras)
-        muestras_grupo[grupo] += muestras
+        for tramo, agregado in por_tramo.items():
+            count, suma, minimo, maximo = agregado
+            if estadistico == "promedio":
+                valor = suma / count
+            elif estadistico == "maximo":
+                valor = maximo
+            else:
+                valor = minimo
+            anterior = por_grupo[grupo].get(tramo)
+            if anterior is None:
+                por_grupo[grupo][tramo] = (valor, count)
+            elif estadistico == "promedio":
+                total = anterior[1] + count
+                por_grupo[grupo][tramo] = (
+                    (anterior[0] * anterior[1] + valor * count) / total,
+                    total,
+                )
+            elif estadistico == "maximo":
+                por_grupo[grupo][tramo] = (max(anterior[0], valor), anterior[1] + count)
+            else:
+                por_grupo[grupo][tramo] = (min(anterior[0], valor), anterior[1] + count)
+            muestras_grupo[grupo] += count
 
     if agrupar == "total":
         grupos = [None]
@@ -335,25 +396,7 @@ def serie_previa(consulta, variable, estadistico, series_actuales):
 
 def serie_lecturas(consulta, variable, inicio=None, fin=None):
     """Conteo de lecturas por intervalo para el sparkline de un KPI."""
-    inicio = inicio or consulta.inicio
-    fin = fin or consulta.fin
-    valores, parametros = _mapeo(consulta)
-    if not valores or variable not in consulta.variables:
-        return []
-    sql = f"""
-        SELECT time_bucket('{_intervalo_sql(consulta)}', l.fecha_hora, %s) AS tramo,
-               COUNT(*) AS total
-        FROM lectura l
-        JOIN (VALUES {valores}) AS m(sensor_num, dispositivo_id, area_id, intervalo)
-          ON l.sensor_num = m.sensor_num
-        WHERE l.fecha_hora >= %s AND l.fecha_hora < %s
-          AND l.estabilizada
-          AND l.variable_codigo = %s
-        GROUP BY tramo
-        ORDER BY tramo
-    """
-    filas = _ejecutar(sql, [settings.TIME_ZONE, *parametros, inicio, fin, variable])
-    return [{"x": _iso(tramo), "y": int(total)} for tramo, total in filas]
+    return _agregados(consulta, variable, inicio, fin)["series"]["lecturas"]
 
 
 def serie_alertas(consulta, inicio=None, fin=None, estado=None, nivel=None):
@@ -770,64 +813,52 @@ def gestion_atencion_grupos(consulta, por="area", inicio=None, fin=None):
     return resultado
 
 
-def disponibilidad_datos(consulta, inicio=None, fin=None):
-    """Disponibilidad por dispositivo con la misma función que los reportes."""
+def _disponibilidad_base(consulta, inicio=None, fin=None):
+    """Conteos y porcentaje por dispositivo en un solo barrido.
+
+    No calcula huecos: los comparte con el KPI y el medidor. Los huecos se añaden en
+    ``disponibilidad_datos`` solo a los dispositivos que los necesitan.
+    """
     inicio = inicio or consulta.inicio
     fin = fin or consulta.fin
-    clave = ("disponibilidad", inicio, fin)
+    clave = ("disponibilidad_base", inicio, fin)
     if clave in consulta.memo:
         return consulta.memo[clave]
     if not consulta.sensor_ids:
         consulta.memo[clave] = {}
         return {}
-    sensores = Sensor.objects.filter(num__in=consulta.sensor_ids)
-    datos = calculos.disponibilidad(sensores, inicio, fin)
-    consulta.memo[clave] = datos
-    return datos
-
-
-def disponibilidad_resumen(consulta, inicio=None, fin=None):
-    """Disponibilidad total para un KPI, sin calcular los huecos.
-
-    Solo cuenta lecturas y esperadas; el cálculo con franjas de huecos de la tarjeta
-    ``disponibilidad`` sigue usando ``calculos.disponibilidad`` para coincidir con Reportes.
+    sql = """
+        SELECT l.sensor_num, COUNT(*), MIN(l.fecha_hora), MAX(l.fecha_hora)
+        FROM lectura l
+        WHERE l.sensor_num = ANY(%s)
+          AND l.fecha_hora >= %s AND l.fecha_hora < %s
+          AND l.estabilizada
+        GROUP BY l.sensor_num
     """
-    inicio = inicio or consulta.inicio
-    fin = fin or consulta.fin
-    clave = ("disponibilidad_resumen", inicio, fin)
-    if clave in consulta.memo:
-        return consulta.memo[clave]
-    if not consulta.sensor_ids or not consulta.dispositivos:
-        return {"pct": None, "recibidas": 0, "esperadas": 0, "datos": {}}
-    sensor_a_dispositivo = {sensor.num: sensor.dispositivo_id for sensor in consulta.sensores}
-    filas = (
-        Lectura.objects.filter(
-            sensor_num__in=consulta.sensor_ids,
-            fecha_hora__gte=inicio,
-            fecha_hora__lt=fin,
-            estabilizada=True,
-        )
-        .values("sensor_num", "variable_codigo")
-        .annotate(total=Count("num"))
-    )
-    recibidas = defaultdict(int)
-    variables_leidas = defaultdict(set)
-    for fila in filas:
-        dispositivo_id = sensor_a_dispositivo.get(fila["sensor_num"])
-        if dispositivo_id is None:
+    filas = _ejecutar(sql, [list(consulta.sensor_ids), inicio, fin])
+    sensor_meta = {sensor.num: sensor.dispositivo for sensor in consulta.sensores}
+    por_dispositivo = {}
+    for sensor_num, total, primero, ultimo in filas:
+        dispositivo = sensor_meta.get(sensor_num)
+        if dispositivo is None:
             continue
-        recibidas[dispositivo_id] += fila["total"]
-        variables_leidas[dispositivo_id].add(fila["variable_codigo"])
+        datos = por_dispositivo.setdefault(
+            dispositivo.num,
+            {"recibidas": 0, "primero": None, "ultimo": None},
+        )
+        datos["recibidas"] += int(total)
+        datos["primero"] = primero if datos["primero"] is None else min(datos["primero"], primero)
+        datos["ultimo"] = ultimo if datos["ultimo"] is None else max(datos["ultimo"], ultimo)
     configuradas = defaultdict(set)
     for umbral in consulta.umbrales():
         configuradas[umbral.dispositivo_id].add(umbral.variable_id)
     datos = {}
-    total_recibidas = 0
-    total_esperadas = 0.0
     for dispositivo in consulta.dispositivos:
+        lecturas = por_dispositivo.get(dispositivo.num, {})
+        recibidas = lecturas.get("recibidas", 0)
         variables = configuradas.get(dispositivo.num)
         if not variables:
-            variables = {1} if variables_leidas.get(dispositivo.num) else set()
+            variables = {1} if recibidas else set()
         desde = max(inicio, dispositivo.fecha_alta)
         duracion = max(0.0, (fin - desde).total_seconds())
         esperadas = (
@@ -835,26 +866,100 @@ def disponibilidad_resumen(consulta, inicio=None, fin=None):
             if dispositivo.intervalo_muestreo_seg and variables
             else 0
         )
-        recibidas_dispositivo = recibidas.get(dispositivo.num, 0)
-        pct = min(100.0, recibidas_dispositivo / esperadas * 100) if esperadas else 0.0
+        pct = min(100.0, recibidas / esperadas * 100) if esperadas else 0.0
         datos[dispositivo.codigo_mqtt] = {
             "nombre": dispositivo.nombre,
             "area": dispositivo.area.nombre,
             "area_num": dispositivo.area_id,
             "pct": _numero(pct),
-            "recibidas": recibidas_dispositivo,
+            "recibidas": recibidas,
             "esperadas": _numero(esperadas),
+            "primero": lecturas.get("primero"),
+            "ultimo": lecturas.get("ultimo"),
+            "intervalo": dispositivo.intervalo_muestreo_seg,
+            "variables": len(variables),
+            "desde": desde,
         }
-        total_recibidas += recibidas_dispositivo
-        total_esperadas += esperadas
-    pct = min(100.0, total_recibidas / total_esperadas * 100) if total_esperadas else None
-    resultado = {
+    consulta.memo[clave] = datos
+    return datos
+
+
+def disponibilidad_resumen(consulta, inicio=None, fin=None):
+    """Disponibilidad total para un KPI o medidor, sin calcular los huecos."""
+    inicio = inicio or consulta.inicio
+    fin = fin or consulta.fin
+    datos = _disponibilidad_base(consulta, inicio, fin)
+    recibidas = sum(fila["recibidas"] for fila in datos.values())
+    esperadas = sum(float(fila["esperadas"] or 0) for fila in datos.values())
+    pct = min(100.0, recibidas / esperadas * 100) if esperadas else None
+    return {
         "pct": _numero(pct),
-        "recibidas": int(total_recibidas),
-        "esperadas": _numero(total_esperadas),
+        "recibidas": int(recibidas),
+        "esperadas": _numero(esperadas),
         "datos": datos,
     }
-    consulta.memo[clave] = resultado
+
+
+def _huecos_frontera(fila, inicio, fin):
+    intervalo = max(fila["intervalo"] or 1, 1)
+    huecos = []
+    if fila["primero"] is not None:
+        minutos = (fila["primero"] - inicio).total_seconds() / 60
+        if (fila["primero"] - inicio).total_seconds() > 2 * intervalo:
+            huecos.append({"inicio": _iso(inicio), "minutos": _numero(minutos)})
+    if fila["ultimo"] is not None:
+        minutos = (fin - fila["ultimo"]).total_seconds() / 60
+        if (fin - fila["ultimo"]).total_seconds() > 2 * intervalo:
+            huecos.append({"inicio": _iso(fila["ultimo"]), "minutos": _numero(minutos)})
+    return sorted(huecos, key=lambda hueco: hueco["minutos"], reverse=True)[:3]
+
+
+def disponibilidad_datos(consulta, inicio=None, fin=None):
+    """Disponibilidad por dispositivo y sus huecos, en SQL.
+
+    Los conteos salen de un barrido; los huecos internos solo se consultan para los
+    dispositivos cuyo faltante no se explica por los extremos del periodo.
+    """
+    inicio = inicio or consulta.inicio
+    fin = fin or consulta.fin
+    datos = _disponibilidad_base(consulta, inicio, fin)
+    if not datos:
+        return {}
+    claves = ("nombre", "area", "area_num", "pct", "recibidas", "esperadas")
+    resultado = {codigo: {clave: fila[clave] for clave in claves} for codigo, fila in datos.items()}
+    sospechosos = []
+    for codigo, fila in datos.items():
+        if not fila["recibidas"]:
+            desde = fila["desde"]
+            duracion = max(0.0, (fin - desde).total_seconds() / 60)
+            resultado[codigo]["huecos"] = [{"inicio": _iso(desde), "minutos": _numero(duracion)}]
+            continue
+        resultado[codigo]["huecos"] = _huecos_frontera(fila, inicio, fin)
+        intervalo = max(fila["intervalo"] or 1, 1)
+        frontera = (
+            (fila["primero"] - fila["desde"]).total_seconds()
+            + (fin - fila["ultimo"]).total_seconds()
+        ) / intervalo * fila["variables"]
+        faltan = (fila["esperadas"] or 0) - fila["recibidas"]
+        if faltan > frontera + max(1, fila["variables"]):
+            sospechosos.append(codigo)
+    if sospechosos:
+        sensores = [
+            sensor
+            for sensor in consulta.sensores
+            if sensor.dispositivo.codigo_mqtt in sospechosos
+        ]
+        mapeo = [
+            (
+                sensor.num,
+                sensor.dispositivo.codigo_mqtt,
+                sensor.dispositivo.intervalo_muestreo_seg or 0,
+            )
+            for sensor in sensores
+        ]
+        huecos = calculos._huecos(mapeo, inicio, fin)
+        for codigo in sospechosos:
+            resultado[codigo]["huecos"] = huecos.get(codigo, [])
     return resultado
 
 
@@ -1141,58 +1246,47 @@ def histograma(consulta, variable, inicio=None, fin=None):
     }
 
 
+def _agregado_por_entidad(consulta, variable, agrupar, inicio, fin):
+    """Agregados [count, suma, mínimo, máximo] por área, dispositivo o variable."""
+    if agrupar == "variable":
+        return {
+            codigo: datos["total"]
+            for codigo, datos in _base_agregada(consulta, None, inicio, fin).items()
+        }
+    if variable not in consulta.variables:
+        return {}
+    datos = _base_agregada(consulta, variable, inicio, fin).get(variable)
+    if not datos:
+        return {}
+    areas = {dispositivo.num: dispositivo.area_id for dispositivo in consulta.dispositivos}
+    acumulado = {}
+    for dispositivo_id, por_tramo in datos["por_dispositivo"].items():
+        grupo = areas.get(dispositivo_id) if agrupar == "area" else dispositivo_id
+        total = None
+        for agregado in por_tramo.values():
+            total = _combinar(total, *agregado)
+        acumulado[grupo] = _combinar(acumulado.get(grupo), *total)
+    return acumulado
+
+
 def _valores_lecturas(consulta, variable, agrupar, inicio, fin):
-    valores, parametros = _mapeo(consulta)
-    if not valores:
-        return []
-    grupo_sql, _ = _grupo(agrupar)
-    filtro_variable = "AND l.variable_codigo = %s" if variable else ""
-    parametros_extra = [variable] if variable else []
-    sql = f"""
-        SELECT {grupo_sql} AS grupo, COUNT(*) AS total
-        FROM lectura l
-        JOIN (VALUES {valores}) AS m(sensor_num, dispositivo_id, area_id, intervalo)
-          ON l.sensor_num = m.sensor_num
-        WHERE l.fecha_hora >= %s AND l.fecha_hora < %s
-          AND l.estabilizada
-          {filtro_variable}
-        GROUP BY grupo
-    """
-    filas = _ejecutar(sql, [*parametros, inicio, fin, *parametros_extra])
+    agregados = _agregado_por_entidad(consulta, variable, agrupar, inicio, fin)
     return [
-        {**_entidad(consulta, agrupar, grupo), "valor": int(total)}
-        for grupo, total in filas
+        {**_entidad(consulta, agrupar, grupo), "valor": int(agregado[0])}
+        for grupo, agregado in agregados.items()
     ]
 
 
 def _valores_estadistico(consulta, variable, agrupar, estadistico, inicio, fin):
-    valores, parametros = _mapeo(consulta)
-    if not valores:
-        return []
-    if agrupar == "variable":
-        filtro_variable = ""
-        parametros_extra = []
-    elif variable in consulta.variables:
-        filtro_variable = "AND l.variable_codigo = %s"
-        parametros_extra = [variable]
-    else:
-        return []
-    grupo_sql, _ = _grupo(agrupar)
-    sql = f"""
-        SELECT {grupo_sql} AS grupo, {ESTADISTICOS[estadistico]}(l.valor) AS valor
-        FROM lectura l
-        JOIN (VALUES {valores}) AS m(sensor_num, dispositivo_id, area_id, intervalo)
-          ON l.sensor_num = m.sensor_num
-        WHERE l.fecha_hora >= %s AND l.fecha_hora < %s
-          AND l.estabilizada
-          {filtro_variable}
-        GROUP BY grupo
-    """
-    filas = _ejecutar(sql, [*parametros, inicio, fin, *parametros_extra])
-    return [
-        {**_entidad(consulta, agrupar, grupo), "valor": _numero(valor)}
-        for grupo, valor in filas
-    ]
+    agregados = _agregado_por_entidad(consulta, variable, agrupar, inicio, fin)
+    resultado = []
+    for grupo, agregado in agregados.items():
+        count, suma, minimo, maximo = agregado
+        valor = suma / count if estadistico == "promedio" and count else (
+            maximo if estadistico == "maximo" else minimo
+        )
+        resultado.append({**_entidad(consulta, agrupar, grupo), "valor": _numero(valor)})
+    return resultado
 
 
 def _valores_cumplimiento(consulta, variable, agrupar, inicio, fin):
