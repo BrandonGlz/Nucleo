@@ -1,6 +1,6 @@
 import React from 'react'
 import { cx, fmt, useWidth } from '../core/nc-lib.js'
-import { ChartTooltip, colorSerie, colorTono, esSeleccion } from './comun.js'
+import { ChartTooltip, colorRelleno, colorSerie, esSeleccion } from './comun.js'
 
 const h = React.createElement
 const { useState } = React
@@ -60,7 +60,7 @@ function StackedBarChart(p) {
   const ancho = iw / Math.max(1, filas.length)
   const bw = Math.min(46, ancho * 0.62)
   const valor = (seg, total) => (porcentaje ? (total ? seg.value / total * 100 : 0) : seg.value)
-  const color = (seg) => seg.color || (seg.tono ? colorTono(seg.tono) : colorSerie(etiquetas.indexOf(seg.label)))
+  const color = (seg) => seg.color || (seg.tono ? colorRelleno(seg.tono) : colorSerie(etiquetas.indexOf(seg.label)))
   const seleccionado = (seg) => p.seleccion && esSeleccion(p.seleccion, seg.dimension, seg.dimensionValor)
   return h('div', {
     ref,
@@ -90,7 +90,7 @@ function StackedBarChart(p) {
         ? { opacity: 0.35 }
         : undefined,
       ...props,
-    }, h('i', { style: { background: primera?.color || (primera?.tono ? colorTono(primera.tono) : colorSerie(i)) } }), etiqueta)
+    }, h('i', { style: { background: primera?.color || (primera?.tono ? colorRelleno(primera.tono) : colorSerie(i)) } }), etiqueta)
   })) : null,
   h('svg', {
     width: W,
@@ -116,6 +116,9 @@ function StackedBarChart(p) {
         const alto = porcentaje ? v / 100 * ih : v / mayor * ih
         const y = padT + ih - acumulado - alto
         acumulado += alto
+        const esTope = !fila.segmentos.slice(j + 1).some((siguiente) => valor(siguiente, total) > 0)
+        const radio = Math.min(bw / 2, 12, alto / 2)
+        const camino = `M${x} ${y + alto} L${x} ${y + radio} Q${x} ${y} ${x + radio} ${y} L${x + bw - radio} ${y} Q${x + bw} ${y} ${x + bw} ${y + radio} L${x + bw} ${y + alto} Z`
         const opacidad = p.seleccion && !seleccionado(seg) ? 0.32 : 1
         const props = p.alSeleccionar && seg.dimension && seg.dimensionValor != null ? {
           role: 'button',
@@ -132,7 +135,14 @@ function StackedBarChart(p) {
           },
         } : {}
         return h('g', { key: `seg${j}`, ...props, style: { opacity: opacidad } },
-          h('rect', {
+          esTope ? h('path', {
+            d: camino,
+            fill: color(seg),
+            onMouseEnter: (e) => {
+              const r = e.currentTarget.ownerSVGElement.getBoundingClientRect()
+              setHover({ i, j, x: x + bw / 2, y, cliente: e.clientX - r.left })
+            },
+          }) : h('rect', {
             x,
             y,
             width: bw,

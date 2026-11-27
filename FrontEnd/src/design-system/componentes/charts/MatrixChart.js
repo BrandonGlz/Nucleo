@@ -1,6 +1,6 @@
 import React from 'react'
 import { cx, fmt, useWidth } from '../core/nc-lib.js'
-import { ChartTooltip, colorTono, esSeleccion, atenuado } from './comun.js'
+import { ChartTooltip, colorRelleno, esSeleccion, atenuado } from './comun.js'
 
 const h = React.createElement
 const { useState } = React
@@ -114,8 +114,8 @@ function MatrixChart(p) {
       width: Math.max(1, cw - 2),
       height: Math.max(1, ch - 2),
       rx: Math.min(4, cw / 6),
-      fill: tiene ? (t ? colorTono(`${t}-soft`) : 'var(--chart-area)') : 'var(--surface-muted)',
-      fillOpacity: tiene && !t ? intensidad : 1,
+      fill: tiene ? (t ? colorRelleno(t) : 'var(--chart-area)') : 'var(--surface-muted)',
+      fillOpacity: tiene ? (t ? 0.28 : intensidad) : 1,
     }), tiene ? h('text', {
       x: padL + j * cw + cw / 2,
       y: padT + i * ch + ch / 2 + fuente * 0.35,
@@ -123,7 +123,7 @@ function MatrixChart(p) {
       style: {
         fontSize: fuente,
         fontWeight: 700,
-        fill: t ? colorTono(t) : 'var(--text-primary)',
+        fill: t ? colorRelleno(t) : 'var(--text-primary)',
         fontFamily: 'var(--font-sans)',
       },
     }, fmt(valor, dec)) : null)

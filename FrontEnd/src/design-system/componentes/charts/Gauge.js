@@ -1,6 +1,6 @@
 import React from 'react'
 import { cx, fmt, useWidth } from '../core/nc-lib.js'
-import { colorTono } from './comun.js'
+import { colorRelleno, estadoMeta } from './comun.js'
 
 const h = React.createElement
 
@@ -15,6 +15,7 @@ function Gauge(p) {
   const maximo = p.max == null ? 100 : p.max
   const valor = p.valor == null || !Number.isFinite(Number(p.valor)) ? null : Number(p.valor)
   const meta = p.meta && typeof p.meta === 'object' ? p.meta.valor : p.meta
+  const tono = p.tono || estadoMeta(valor, p.meta) || 'chart-line'
   const cx0 = 100
   const cy0 = 100
   const r = 76
@@ -31,7 +32,7 @@ function Gauge(p) {
   }
   const fraccion = valor == null ? 0 : Math.max(0, Math.min(1, (valor - minimo) / (maximo - minimo || 1)))
   const marca = meta == null ? null : Math.max(0, Math.min(1, (meta - minimo) / (maximo - minimo || 1)))
-  const color = colorTono(p.tono || 'chart-line')
+  const color = colorRelleno(tono)
   const ancho = Math.max(180, W)
   const alto = Math.min(H, ancho * 0.6)
   return h('div', {
@@ -58,25 +59,20 @@ function Gauge(p) {
   }) : null, marca != null ? (() => {
     const a = 180 + marca * 180
     const rad = a * Math.PI / 180
-    const x1 = cx0 + (r - sw / 2 - 3) * Math.cos(rad)
-    const y1 = cy0 + (r - sw / 2 - 3) * Math.sin(rad)
-    const x2 = cx0 + (r + sw / 2 + 3) * Math.cos(rad)
-    const y2 = cy0 + (r + sw / 2 + 3) * Math.sin(rad)
+    const x1 = cx0 + (r - sw / 2) * Math.cos(rad)
+    const y1 = cy0 + (r - sw / 2) * Math.sin(rad)
+    const x2 = cx0 + (r + sw / 2) * Math.cos(rad)
+    const y2 = cy0 + (r + sw / 2) * Math.sin(rad)
     return h('line', { x1, y1, x2, y2, className: 'nc-gauge2__meta' })
   })() : null,
   h('text', {
     x: cx0,
-    y: 78,
+    y: 80,
     textAnchor: 'middle',
     className: 'nc-gauge2__numero',
     style: { fill: color },
-  }, valor == null ? '—' : fmt(valor, dec)),
-  unidad ? h('text', {
-    x: cx0,
-    y: 94,
-    textAnchor: 'middle',
-    className: 'nc-gauge2__unidad',
-  }, unidad) : null,
+  }, valor == null ? '—' : fmt(valor, dec),
+    unidad ? h('tspan', { className: 'nc-gauge2__unidad', dx: 4 }, unidad) : null),
   meta != null ? h('text', {
     x: cx0,
     y: 108,

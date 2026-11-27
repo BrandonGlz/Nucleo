@@ -1,6 +1,6 @@
 import React from 'react'
 import { cx, fmt, useWidth } from '../core/nc-lib.js'
-import { ChartTooltip, colorSerie, colorTono, esSeleccion, atenuado } from './comun.js'
+import { ChartTooltip, colorRelleno, colorSerie, esSeleccion, atenuado } from './comun.js'
 
 const h = React.createElement
 const { useState } = React
@@ -11,7 +11,7 @@ function DonutChart(p) {
   const datos = (p.datos || p.partes || []).map((d) => ({
     label: d.label ?? d.etiqueta ?? d.variable ?? '',
     value: Number(d.value ?? d.valor ?? d.alertas ?? 0),
-    color: d.color || (d.tono ? colorTono(d.tono) : null),
+    color: d.color || (d.tono ? colorRelleno(d.tono) : null),
     tono: d.tono || null,
     dimension: d.dimension,
     dimensionValor: d.dimensionValor ?? d.dimension_valor,
@@ -32,7 +32,7 @@ function DonutChart(p) {
   const largo = 2 * Math.PI * r
   const tramos = datos.map((d) => (Math.max(0, d.value) / total) * largo)
   const inicios = tramos.map((_, i) => tramos.slice(0, i).reduce((s, x) => s + x, 0))
-  const color = (d, i) => d.color || (d.tono ? colorTono(d.tono) : colorSerie(i))
+  const color = (d, i) => d.color || (d.tono ? colorRelleno(d.tono) : colorSerie(i))
   const svg = h('svg', {
     ref: interactivo ? ref : undefined,
     className: cx('ui-dona', p.svgClassName),

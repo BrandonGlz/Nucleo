@@ -15,6 +15,8 @@ function Heatmap(p) {
   const [hover, setHover] = useState(null)
   const H = p.height || 210
   const unit = p.unit || ''
+  const leyenda = p.leyenda !== false
+  const altoLeyenda = leyenda ? 18 : 0
   const dec = p.decimals == null ? 1 : p.decimals
   const numeros = valores.flat().filter((v) => v != null && Number.isFinite(Number(v))).map(Number)
   if (!numeros.length) {
@@ -32,7 +34,8 @@ function Heatmap(p) {
   const padT = 6
   const padB = 20
   const iw = Math.max(20, W - padL - padR)
-  const ih = Math.max(20, H - padT - padB)
+  const altoSvg = Math.max(60, H - altoLeyenda)
+  const ih = Math.max(20, altoSvg - padT - padB)
   const cw = iw / 24
   const ch = ih / 7
   const color = colorTono(p.tono || (p.alertas ? 'warning' : 'chart-area'))
@@ -42,9 +45,9 @@ function Heatmap(p) {
     style: { height: H },
   }, h('svg', {
     width: W,
-    height: H,
-    viewBox: `0 0 ${W} ${H}`,
-    style: { width: '100%', height: H },
+    height: altoSvg,
+    viewBox: `0 0 ${W} ${altoSvg}`,
+    style: { width: '100%', height: altoSvg },
     role: 'img',
     'aria-label': p.label || `Mapa de calor por día y hora; mínimo ${fmt(minimo, dec)}, máximo ${fmt(maximo, dec)}${unit ? ` ${unit}` : ''}`,
     onMouseLeave: () => setHover(null),
@@ -59,7 +62,7 @@ function Heatmap(p) {
   [0, 3, 6, 9, 12, 15, 18, 21, 23].map((hora) => h('text', {
     key: `h${hora}`,
     x: padL + hora * cw + cw / 2,
-    y: H - 5,
+    y: altoSvg - 5,
     textAnchor: 'middle',
     className: 'nc-trend__axis',
   }, hora)),
@@ -101,9 +104,16 @@ function Heatmap(p) {
     x: hover.x,
     y: hover.y,
     ancho: W,
-    alto: H,
+    alto: altoSvg,
   }, h('span', { className: 'nc-tooltip__time' }, `${DIAS[hover.dia]} · ${hover.hora}:00`),
-    h('span', { className: 'nc-tooltip__value' }, hover.valor == null ? 'Sin datos' : fmt(hover.valor, dec), unit ? h('small', null, ` ${unit}`) : null)) : null)
+    h('span', { className: 'nc-tooltip__value' }, hover.valor == null ? 'Sin datos' : fmt(hover.valor, dec), unit ? h('small', null, ` ${unit}`) : null)) : null,
+  leyenda ? h('div', { className: 'nc-heatmap__escala' },
+    h('span', null, fmt(minimo, dec)),
+    h('span', {
+      className: 'nc-heatmap__gradiente',
+      style: { background: `linear-gradient(90deg, transparent, ${color})` },
+    }),
+    h('span', null, `${fmt(maximo, dec)}${unit ? ` ${unit}` : ''}`)) : null)
 }
 
 export { Heatmap }

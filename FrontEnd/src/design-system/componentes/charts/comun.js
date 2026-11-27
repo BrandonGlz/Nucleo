@@ -59,6 +59,21 @@ export const PALETA = [
 ]
 export const colorSerie = (i) => PALETA[i % PALETA.length]
 export const colorTono = (tono) => (tono ? `var(--${tono})` : 'var(--chart-line)')
+const RELLENO = { success: 'chart-ok', warning: 'chart-warn', danger: 'chart-danger' }
+// Los estados tienen un token de relleno propio: los de texto (--warning, --danger) se ven
+// apagados o alarmantes en áreas grandes.
+export const colorRelleno = (tono) => `var(--${RELLENO[tono] || tono || 'chart-line'})`
+export function estadoMeta(valor, meta) {
+  const objetivo = meta && typeof meta === 'object' ? meta.valor : meta
+  if (objetivo == null || valor == null || !Number.isFinite(Number(valor))) return null
+  const sentido = (meta && typeof meta === 'object' ? meta.sentido : null) || 'mayor'
+  const tolerancia = meta && typeof meta === 'object' ? (meta.tolerancia == null ? 5 : Number(meta.tolerancia)) : 5
+  const numero = Number(valor)
+  const cumple = sentido === 'menor' ? numero <= Number(objetivo) : numero >= Number(objetivo)
+  if (cumple) return 'success'
+  const diferencia = Math.abs(numero - Number(objetivo)) / (Math.abs(Number(objetivo)) || 1) * 100
+  return diferencia <= tolerancia ? 'warning' : 'danger'
+}
 
 // Un filtro cruzado guarda `{dimension, valor}`. Las tarjetas comparan por cadena para que un id
 // numérico de la API y el mismo id del DOM se consideren iguales.
