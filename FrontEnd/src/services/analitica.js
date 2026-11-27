@@ -1,4 +1,4 @@
-import { ANALITICA_CONSULTA, ANALITICA_CONSULTA_CSV, ANALITICA_HALLAZGOS, TABLEROS_ANALITICA } from '../api'
+import { ANALITICA_CONSULTA, ANALITICA_CONSULTA_CSV, ANALITICA_HALLAZGOS, TABLEROS_ANALITICA, TABLERO_VERSIONES } from '../api'
 import { API_BASE_URL, OPCIONES_SESION } from './api/client'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/analitica'
@@ -8,6 +8,11 @@ import { guardarArchivo } from './seguridad'
 export async function tableros() {
   if (USAR_MOCKS) return mock.tableros()
   return pedir(TABLEROS_ANALITICA)
+}
+
+export async function versionesTablero(num) {
+  if (USAR_MOCKS) return mock.versionesTablero(num)
+  return pedir(TABLERO_VERSIONES(num))
 }
 
 export async function crearTablero({ nombre, desde } = {}) {

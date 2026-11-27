@@ -13,7 +13,7 @@ import * as organizacionesApi from '../../services/organizaciones'
 import * as analiticaApi from '../../services/analitica'
 import { EVENTO, escucharPanel } from '../../services/tiempoReal'
 import { pagina } from '../../utils/convertir'
-import { periodo as periodoTexto } from '../../utils/formato'
+import { fechaLarga, periodo as periodoTexto } from '../../utils/formato'
 import { BarraFiltros } from './BarraFiltros'
 import { Lienzo } from './Lienzo'
 import { ListaTableros } from './ListaTableros'
@@ -130,7 +130,7 @@ export function AnaliticaPage() {
   const [paginaId, setPaginaId] = useState(inicial.pagina)
   const [filtros, setFiltros] = useState(inicial.filtros)
   const [cruzado, setCruzado] = useState(null)
-  const [listaAbierta, setListaAbierta] = useState(() => window.innerWidth >= 1280)
+  const [listaAbierta, setListaAbierta] = useState(() => window.innerWidth >= 1600)
   const [nuevoAbierto, setNuevoAbierto] = useState(false)
   const [nombreNuevo, setNombreNuevo] = useState('')
   const [desdeNuevo, setDesdeNuevo] = useState('')
@@ -142,6 +142,8 @@ export function AnaliticaPage() {
   const [errorHallazgos, setErrorHallazgos] = useState({})
   const [impresion, setImpresion] = useState(null)
   const [pendientePrint, setPendientePrint] = useState(false)
+  const [versionesAbiertas, setVersionesAbiertas] = useState(false)
+  const [versiones, setVersiones] = useState(null)
   const lienzo = useRef(null)
 
   const tablerosConsulta = useDatos(() => analiticaApi.tableros().then(pagina), [])
@@ -193,7 +195,7 @@ export function AnaliticaPage() {
   }, [cruzado])
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1279px)')
+    const mq = window.matchMedia('(max-width: 1599px)')
     const cambiar = () => setListaAbierta(!mq.matches)
     mq.addEventListener('change', cambiar)
     return () => mq.removeEventListener('change', cambiar)
@@ -219,7 +221,7 @@ export function AnaliticaPage() {
     setPaginaId(siguiente.conf?.paginas?.[0]?.id || null)
     setFiltros(filtrosDelTablero(siguiente))
     setCruzado(null)
-    if (window.innerWidth < 900) setListaAbierta(false)
+    if (window.innerWidth < 1600) setListaAbierta(false)
   }
   const cambiarPagina = (id) => {
     setPaginaId(id)
@@ -266,6 +268,15 @@ export function AnaliticaPage() {
       }
     } catch (error) {
       setAviso(error.message || 'No se pudo exportar.')
+    }
+  }
+  const verVersiones = async () => {
+    setVersionesAbiertas(true)
+    setVersiones(null)
+    try {
+      setVersiones(await analiticaApi.versionesTablero(tablero.num))
+    } catch {
+      setVersiones([])
     }
   }
   const exportarCsv = async (tarjeta) => {
@@ -323,7 +334,7 @@ export function AnaliticaPage() {
   }
 
   const acciones = ['ADMIN', 'SUPER'].includes(rol) ? (
-    <Button icon="plus" onClick={() => setNuevoAbierto(true)}>Nuevo tablero</Button>
+    <Button className="ui-analitica__nuevo-tablero" icon="plus" onClick={() => setNuevoAbierto(true)}>Nuevo tablero</Button>
   ) : undefined
   return (
     <Pantalla eyebrow={`${organizacion || ''} · Analítica`} titulo={tablero?.nombre || 'Analítica'} acciones={acciones}>
@@ -352,6 +363,7 @@ export function AnaliticaPage() {
             alQuitarCruzado={() => setCruzado(null)}
             alExportar={exportar}
             alRefrescar={consulta.refrescar}
+            alVerVersiones={verVersiones}
             generado={generado}
             actualizando={consulta.estado === 'cargando' && !datosPagina}
           />
@@ -373,13 +385,31 @@ export function AnaliticaPage() {
               errorHallazgos={errorHallazgos}
               alReintentar={consulta.refrescar}
               innerRef={lienzo}
+              pie={paginas.length > 1 ? <PaginasTablero paginas={paginas} actual={paginaActual?.id} onCambiar={cambiarPagina} /> : null}
             />
           )}
-          <PaginasTablero paginas={paginas} actual={paginaActual?.id} onCambiar={cambiarPagina} />
           </Card>
         </section>
       </div>
       {impresion && <Impresion {...impresion} hallazgos={hallazgos} />}
+      {versionesAbiertas && (
+        <Modal titulo="Versiones del tablero" sub={tablero?.nombre} cerrar={() => setVersionesAbiertas(false)} cerrarConEscape acciones={null}>
+          {versiones === null ? (
+            <p className="ui-muted">Cargando versiones…</p>
+          ) : versiones.length === 0 ? (
+            <p className="ui-muted">Este tablero no tiene versiones.</p>
+          ) : (
+            <div className="ui-analitica__versiones">
+              {versiones.map((version) => (
+                <div key={version.numero} className="ui-analitica__version">
+                  <strong>Versión {version.numero}</strong>
+                  <span>· {fechaLarga(version.fecha)} · {version.creada_por_nombre || 'Sistema'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
       {nuevoAbierto && (
         <Modal
           titulo="Nuevo tablero"

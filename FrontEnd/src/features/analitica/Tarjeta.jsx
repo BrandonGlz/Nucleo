@@ -56,7 +56,7 @@ export function Tarjeta({
   const altoFinal = impresion ? Math.max(60, alto || 100) : altoCuerpo > 30 ? altoCuerpo : Math.max(80, alto || 120)
   return (
     <Card
-      className={`ui-analitica__tarjeta${impresion ? ' ui-analitica__tarjeta--impresa' : ''}`}
+      className={`ui-analitica__tarjeta${tarjeta.tipo === 'kpi' && tarjeta.w <= 3 ? ' ui-analitica__tarjeta--kpi-corta' : ''}${impresion ? ' ui-analitica__tarjeta--impresa' : ''}`}
       style={{
         gridColumn: `${tarjeta.x + 1} / span ${tarjeta.w}`,
         gridRow: `${tarjeta.y + 1} / span ${tarjeta.h}`,
@@ -87,7 +87,8 @@ export function Tarjeta({
             tarjeta={tarjeta}
             datos={datos}
             alto={altoFinal}
-            cruzado={cruzado}
+            // Solo la tarjeta de origen resalta su elemento; las demás ya vienen filtradas y no se atenúan.
+            cruzado={cruzado?.origen === tarjeta.id ? cruzado : null}
             alSeleccionar={alSeleccionar}
             alGenerar={() => alGenerarHallazgos?.(tarjeta)}
             generando={generandoHallazgos}

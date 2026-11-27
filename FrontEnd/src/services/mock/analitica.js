@@ -180,6 +180,18 @@ export async function tableros() {
   return pagina(copia(TABLEROS))
 }
 
+export async function versionesTablero(num) {
+  await esperar()
+  const t = TABLEROS.find((item) => item.num === Number(num))
+  if (!t) throw new ApiError('Tablero no encontrado.', 404)
+  const total = Math.max(1, Number(t.version) || 1)
+  return Array.from({ length: total }, (_, i) => ({
+    numero: total - i,
+    fecha: i === 0 ? iso(new Date()) : t.fecha_creacion,
+    creada_por_nombre: i === 0 ? t.creado_por_nombre : 'Sistema',
+  }))
+}
+
 export async function crearTablero({ nombre, desde } = {}) {
   await esperar()
   const origen = TABLEROS.find((t) => t.num === Number(desde))
@@ -422,7 +434,15 @@ function datosRanking(tarjeta, contexto, filtros) {
     previo: format(99 - i * 2, 1),
     variacion: variacion(98 - i * 2.1, 99 - i * 2, 'mayor', '%'),
   }))
-  return { metrica: tarjeta.opciones?.metrica || 'cumplimiento', por, variable, sentido: tarjeta.opciones?.sentido || 'peores', unidad: '%', decimales: 1, filas, maximo: filas.length ? Math.max(...filas.map((f) => f.valor)) : null, sin_datos: !filas.length }
+  const metrica = tarjeta.opciones?.metrica || 'cumplimiento'
+  const sentido = tarjeta.opciones?.sentido || 'peores'
+  // Para cumplimiento/disponibilidad/lecturas, más es mejor; alertas y tiempo de atención, menos.
+  const masEsMejor = !['alertas', 'tiempo_atencion'].includes(metrica)
+  filas.sort((a, b) => {
+    if (sentido === 'mejores') return masEsMejor ? b.valor - a.valor : a.valor - b.valor
+    return masEsMejor ? a.valor - b.valor : b.valor - a.valor
+  })
+  return { metrica, por, variable, sentido, unidad: '%', decimales: 1, filas, maximo: filas.length ? Math.max(...filas.map((f) => f.valor)) : null, sin_datos: !filas.length }
 }
 function datosApiladas(tarjeta, contexto, filtros) {
   const por = tarjeta.opciones?.por || 'area'

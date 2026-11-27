@@ -132,13 +132,18 @@ function BarChartVertical(p) {
       height: bh,
       rx: Math.min(bw / 2, 12),
       className: on ? 'nc-bars__bar is-active' : 'nc-bars__bar'
-    }), on ? h('text', {
-      x: x + bw / 2,
-      y: valorDentro ? y + 14 : y - 8,
-      textAnchor: 'middle',
-      className: 'nc-bars__value',
-      style: valorDentro ? { fill: 'var(--surface)' } : undefined
-    }, valorTexto) : null, h('text', {
+    }), on ? (function () {
+      // El valor activo se queda dentro del ancho visible aunque la barra esté en un extremo.
+      var ancho = valorTexto.length * 5.8;
+      var xValor = Math.min(W - ancho / 2 - 2, Math.max(ancho / 2 + 2, x + bw / 2));
+      return h('text', {
+        x: xValor,
+        y: valorDentro ? y + 14 : y - 8,
+        textAnchor: 'middle',
+        className: 'nc-bars__value',
+        style: valorDentro ? { fill: 'var(--surface)' } : undefined
+      }, valorTexto);
+    })() : null, h('text', {
       x: x + bw / 2,
       y: H - 6,
       textAnchor: 'middle',

@@ -148,14 +148,17 @@ function Apiladas({ datos, alto, alSeleccionar, cruzado }) {
 }
 
 function Dona({ datos, alto, alSeleccionar, cruzado }) {
-  const datosDona = (datos.sectores || []).map((s, i) => ({
-    label: s.etiqueta,
-    value: s.valor,
-    tono: datos.por === 'variable' ? undefined : tonoDe(s.dimension_valor) || tonoDe(s.etiqueta),
-    color: datos.por === 'variable' ? `var(--chart-series-${(i % 6) + 1})` : undefined,
-    dimension: s.dimension,
-    dimensionValor: s.dimension_valor,
-  }))
+  const datosDona = (datos.sectores || []).map((s, i) => {
+    const tono = datos.por === 'variable' ? undefined : tonoDe(s.dimension_valor) || tonoDe(s.etiqueta)
+    return {
+      label: s.etiqueta,
+      value: s.valor,
+      tono: tono === 'neutral' ? undefined : tono,
+      color: datos.por === 'variable' ? `var(--chart-series-${(i % 6) + 1})` : tono === 'neutral' ? 'var(--text-muted)' : undefined,
+      dimension: s.dimension,
+      dimensionValor: s.dimension_valor,
+    }
+  })
   return (
     <DonutChart
       datos={datosDona}

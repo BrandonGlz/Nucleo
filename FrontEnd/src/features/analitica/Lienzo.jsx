@@ -16,16 +16,21 @@ export function Lienzo({
   errorHallazgos,
   alReintentar,
   innerRef,
+  pie,
   impresion = false,
 }) {
   const area = useRef(null)
+  const pieRef = useRef(null)
   const [tam, setTam] = useState({ ancho: 0, alto: 0 })
+  const hayPie = Boolean(pie)
   useEffect(() => {
     const nodo = area.current
     if (impresion || !nodo || typeof ResizeObserver === 'undefined') return undefined
     const observar = () => {
       const ancho = Math.max(0, nodo.clientWidth)
-      const alto = Math.max(0, nodo.clientHeight)
+      // El pie (pestañas) vive dentro del área: se descuenta para que el lienzo no lo empuje.
+      const altoPie = hayPie ? (pieRef.current?.offsetHeight || 36) + 10 : 0
+      const alto = Math.max(0, nodo.clientHeight - altoPie)
       if (!ancho || !alto) return
       const razon = 16 / 9
       if (ancho / alto > razon) setTam({ ancho: Math.round(alto * razon), alto: Math.round(alto) })
@@ -35,7 +40,7 @@ export function Lienzo({
     const observer = new ResizeObserver(observar)
     observer.observe(nodo)
     return () => observer.disconnect()
-  }, [impresion])
+  }, [impresion, hayPie])
   const altoTarjeta = (fila) => {
     const alto = tam.alto || 540
     return Math.round(((alto - 40) / 6) * fila)
@@ -72,6 +77,7 @@ export function Lienzo({
           </div>
         )}
       </div>
+      {hayPie && <div className="ui-analitica__pie" ref={pieRef}>{pie}</div>}
     </div>
   )
 }

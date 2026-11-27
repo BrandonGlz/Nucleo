@@ -273,7 +273,8 @@ input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
 .nc-histogram__umbral text { fill: var(--danger); font-size: 9px; font-weight: 700; font-family: var(--font-sans); }
 .nc-gauge2 { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; }
 .nc-gauge2 svg { display: block; }
-.nc-gauge2__track { fill: none; stroke: var(--chart-bar); stroke-linecap: round; }
+.nc-gauge2__track { fill: none; stroke: var(--chart-grid); stroke-linecap: round; }
+[data-theme="dark"] .nc-gauge2__track { stroke: var(--chart-bar); }
 .nc-gauge2__valor { fill: none; stroke-linecap: round; transition: stroke-dashoffset var(--duration-slow) var(--ease-standard); }
 .nc-gauge2__meta { stroke: var(--text-muted); stroke-width: 2; stroke-linecap: round; }
 .nc-gauge2__numero { font-size: 26px; font-weight: 800; font-family: var(--font-sans); font-variant-numeric: tabular-nums; }

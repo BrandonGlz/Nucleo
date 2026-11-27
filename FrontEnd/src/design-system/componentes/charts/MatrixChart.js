@@ -42,7 +42,7 @@ function MatrixChart(p) {
   const ih = Math.max(20, H - padT - padB)
   const cw = iw / columnas.length
   const ch = ih / filas.length
-  const fuente = Math.max(9, Math.min(13, ch * 0.42))
+  const fuente = Math.max(11, Math.min(14, ch * 0.42))
   const tono = (c) => {
     if (c.tono) return c.tono
     if (modo !== 'semaforo') return null
