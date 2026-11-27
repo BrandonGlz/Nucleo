@@ -19,7 +19,7 @@ import { EsperaReporte } from './EsperaReporte'
 import { MigracionFormatos } from './MigracionFormatos'
 import { Programaciones } from './Programaciones'
 import { etiquetaFormato, useEdicion } from './personalizacion'
-import { ControlZoom, ProveedorZoom } from './VisorHoja'
+import { ProveedorZoom } from './VisorHoja'
 import { Pantalla } from '../../components/Pantalla'
 import * as formatosApi from '../../services/formatos'
 import * as organizacionesApi from '../../services/organizaciones'
@@ -327,9 +327,36 @@ export function ReportesPage() {
     observador.observe(el)
     return () => observador.disconnect()
   }, [movil, edPagina.editando, actual?.num])
-  const ocultarEditar = anchoBarra < 560
-  const ocultarMenuFormato = anchoBarra < 470
-  const barraCompacta = anchoBarra < 620
+  const barraAngosta = anchoBarra < 420
+  const opcionesSoloIcono = anchoBarra < 760
+  const duplicarSoloIcono = anchoBarra < 680
+  const ocultarMarca = anchoBarra < 600
+  const ocultarEtiquetaFormato = anchoBarra < 440
+  const listo = (r) => ['LISTO', 'ENVIADO'].includes(r?.estado ?? 'LISTO')
+  const badgeEstado = (r) =>
+    r?.archivado ? (
+      <Badge tone="neutral" icon="circle-x">Archivado</Badge>
+    ) : r && !listo(r) ? (
+      <Badge tone={estadoDe(r).tone} icon={estadoDe(r).icon}>{estadoDe(r).label}</Badge>
+    ) : null
+  const accionesFormato = [
+    {
+      label: 'Hacer predeterminado',
+      icon: 'circle-check',
+      disabled: ed.formato.esPlantilla || ed.formato.predeterminado,
+      nota: ed.formato.esPlantilla ? 'Duplica la plantilla primero' : undefined,
+      onClick: hacerPredeterminado,
+    },
+    { label: 'Predeterminado de áreas…', icon: 'map-pin', disabled: ed.formato.esPlantilla, onClick: abrirAreas },
+    { label: 'Archivar formato', icon: 'circle-x', peligro: true, disabled: ed.formato.esPlantilla, onClick: archivarFormato },
+    { label: 'Ver versiones', icon: 'history', onClick: verVersiones },
+  ]
+  const accionEditar = {
+    label: ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar',
+    icon: ed.formato.esPlantilla ? 'copy' : 'sliders-horizontal',
+    onClick: ed.formato.esPlantilla ? ed.duplicar : ed.abrir,
+  }
+  const accionEstado = actual ? badgeEstado(actual) : null
   const barra = movil ? (
     <div className={`ui-reportes__barra ui-reportes__barra--movil${edPagina.editando ? ' ui-reportes__barra--edicion' : ''}`}>
       <Button variant="ghost" size="sm" icon="arrow-left" onClick={() => setVistaAbierta(false)}>
@@ -344,12 +371,7 @@ export function ReportesPage() {
         ) : actual ? (
           <>
             <strong>{tituloDe(actual)}</strong>
-            <div className="ui-reportes__barra-estado">
-              <Badge tone={estadoDe(actual).tone} icon={estadoDe(actual).icon}>
-                {estadoDe(actual).label}
-              </Badge>
-              {actual.archivado && <Badge tone="neutral" icon="circle-x">Archivado</Badge>}
-            </div>
+            {accionEstado && <div className="ui-reportes__barra-estado">{accionEstado}</div>}
           </>
         ) : null}
       </div>
@@ -360,14 +382,15 @@ export function ReportesPage() {
           </Button>
           <Button variant="secondary" size="sm" onClick={ed.cancelar}>Cancelar</Button>
           <Button size="sm" icon="circle-check" onClick={ed.guardar}>Guardar</Button>
-          <ControlZoom compacto />
         </div>
       ) : actual ? (
         <div className="ui-reportes__barra-acciones">
           <Button
+            variant="secondary"
             size="sm"
             icon="download"
-            disabled={!['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO')}
+            className="ui-reportes__pdf"
+            disabled={!listo(actual)}
             onClick={() =>
               reportesApi
                 .descargarArchivo(actual.num, tituloDe(actual))
@@ -383,7 +406,7 @@ export function ReportesPage() {
               {
                 label: 'Descargar CSV',
                 icon: 'download',
-                disabled: !['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO'),
+                disabled: !listo(actual),
                 onClick: () =>
                   reportesApi
                     .descargarCsv(actual.num, tituloDe(actual))
@@ -398,12 +421,11 @@ export function ReportesPage() {
               },
             ]}
           />
-          <ControlZoom compacto />
         </div>
       ) : null}
     </div>
   ) : (
-    <div ref={barraRef} className={`ui-reportes__barra${barraCompacta ? ' is-compacta' : ''}${edPagina.editando ? ' ui-reportes__barra--edicion' : ''}`}>
+    <div ref={barraRef} className={`ui-reportes__barra${edPagina.editando ? ' ui-reportes__barra--edicion' : ''}`}>
       {edPagina.editando ? (
         <>
           <div className="ui-reportes__barra-titulo">
@@ -418,60 +440,45 @@ export function ReportesPage() {
             <Button variant="secondary" size="sm" onClick={ed.cancelar}>Cancelar</Button>
             <Button size="sm" icon="circle-check" onClick={ed.guardar}>Guardar</Button>
           </div>
-          {divisor}
-          <div className="ui-reportes__barra-grupo ui-reportes__barra-vista">
-            <ControlZoom compacto />
-          </div>
         </>
       ) : actual ? (
         <>
-          <div className="ui-reportes__barra-estado ui-reportes__barra-estado--inicio ui-reportes__barra-grupo">
-            <Badge
-              tone={actual.archivado ? 'neutral' : estadoDe(actual).tone}
-              icon={actual.archivado ? 'circle-x' : estadoDe(actual).icon}
-            >
-              {actual.archivado ? 'Archivado' : estadoDe(actual).label}
-            </Badge>
-          </div>
-          {divisor}
+          {accionEstado && (
+            <>
+              <div className="ui-reportes__barra-estado ui-reportes__barra-estado--inicio ui-reportes__barra-grupo">
+                {accionEstado}
+              </div>
+              {divisor}
+            </>
+          )}
           <div className="ui-reportes__barra-grupo ui-reportes__barra-formato">
-            <span className="ui-reportes__etiqueta">Formato</span>
+            {!ocultarEtiquetaFormato && <span className="ui-reportes__etiqueta">Formato</span>}
             <Desplegable
               icon="file-text"
               value={ed.formato.id}
               onChange={async (v) => ed.asignar(actual.num, v)}
               options={ed.formatos.map((f) => ({ value: f.id, label: f.nombre }))}
             />
-            {ed.formato.esPlantilla && (
+            {!ocultarMarca && ed.formato.num && (
               <span className="ui-reportes__marca-formato">
-                <Icon name="copy" size={13} /> Plantilla
+                {ed.formato.esPlantilla ? (
+                  <><Icon name="copy" size={13} /> Plantilla</>
+                ) : (
+                  `Versión ${ed.formato.version ?? 1}`
+                )}
               </span>
             )}
-            {ed.formato.predeterminado && (
-              <span className="ui-reportes__marca-formato">
-                <Icon name="circle-check" size={13} /> Predeterminado
-              </span>
-            )}
-            {puedeEditar && ed.formato.num && !ocultarMenuFormato && (
+            {puedeEditar && ed.formato.num && !barraAngosta && (
               <MenuAcciones
                 icon="settings"
                 label="Opciones del formato"
-                items={[
-                  {
-                    label: 'Hacer predeterminado',
-                    icon: 'circle-check',
-                    disabled: ed.formato.esPlantilla || ed.formato.predeterminado,
-                    nota: ed.formato.esPlantilla ? 'Duplica la plantilla primero' : undefined,
-                    onClick: hacerPredeterminado,
-                  },
-                  { label: 'Predeterminado de áreas…', icon: 'map-pin', disabled: ed.formato.esPlantilla, onClick: abrirAreas },
-                  { label: 'Archivar', icon: 'circle-x', peligro: true, disabled: ed.formato.esPlantilla, onClick: archivarFormato },
-                  { label: 'Ver versiones', icon: 'history', onClick: verVersiones },
-                ]}
+                className="ui-reportes__opciones"
+                texto={opcionesSoloIcono ? undefined : 'Opciones'}
+                items={accionesFormato}
               />
             )}
           </div>
-          {puedeEditar && !ocultarEditar && (
+          {puedeEditar && !barraAngosta && (
             <>
               {divisor}
               <div className="ui-reportes__barra-grupo ui-reportes__barra-editar">
@@ -480,11 +487,14 @@ export function ReportesPage() {
                   size="sm"
                   icon={ed.formato.esPlantilla ? 'copy' : 'sliders-horizontal'}
                   aria-label={ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar'}
+                  className="ui-reportes__duplicar"
                   onClick={ed.formato.esPlantilla ? ed.duplicar : ed.abrir}
                 >
-                  <span className="ui-reportes__personalizar-texto">
-                    {ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar'}
-                  </span>
+                  {!duplicarSoloIcono && (
+                    <span className="ui-reportes__personalizar-texto">
+                      {ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar'}
+                    </span>
+                  )}
                 </Button>
               </div>
             </>
@@ -492,23 +502,25 @@ export function ReportesPage() {
           {divisor}
           <div className="ui-reportes__barra-grupo ui-reportes__barra-acciones">
             <Button
+              variant="secondary"
               size="sm"
               icon="download"
-              disabled={!['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO')}
+              className="ui-reportes__pdf"
+              disabled={!listo(actual)}
               onClick={() =>
                 reportesApi
                   .descargarArchivo(actual.num, tituloDe(actual))
                   .catch(() => aviso('No se pudo descargar el PDF. Intenta de nuevo.', { tipo: 'error' }))
               }
             >
-              <><span className="ui-reportes__texto-descargar">Descargar </span><span className="ui-reportes__texto-pdf">PDF</span></>
+              PDF
             </Button>
             <Button
               variant="secondary"
               size="sm"
               icon="download"
               className="ui-reportes__csv"
-              disabled={!['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO')}
+              disabled={!listo(actual)}
               onClick={() =>
                 reportesApi
                   .descargarCsv(actual.num, tituloDe(actual))
@@ -520,38 +532,7 @@ export function ReportesPage() {
             <MenuAcciones
               label="Más acciones del reporte"
               items={[
-                ...(ocultarEditar && puedeEditar
-                  ? [
-                      {
-                        label: ed.formato.esPlantilla ? 'Duplicar para editar' : 'Personalizar',
-                        icon: ed.formato.esPlantilla ? 'copy' : 'sliders-horizontal',
-                        onClick: ed.formato.esPlantilla ? ed.duplicar : ed.abrir,
-                      },
-                    ]
-                  : []),
-                ...(ocultarMenuFormato && puedeEditar && ed.formato.num
-                  ? [
-                      {
-                        label: 'Hacer predeterminado',
-                        icon: 'circle-check',
-                        disabled: ed.formato.esPlantilla || ed.formato.predeterminado,
-                        nota: ed.formato.esPlantilla ? 'Duplica la plantilla primero' : undefined,
-                        onClick: hacerPredeterminado,
-                      },
-                      { label: 'Predeterminado de áreas…', icon: 'map-pin', disabled: ed.formato.esPlantilla, onClick: abrirAreas },
-                      { label: 'Opciones del formato: archivar', icon: 'circle-x', peligro: true, disabled: ed.formato.esPlantilla, onClick: archivarFormato },
-                      { label: 'Ver versiones', icon: 'history', onClick: verVersiones },
-                    ]
-                  : []),
-                {
-                  label: 'Descargar CSV',
-                  icon: 'download',
-                  disabled: !['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO'),
-                  onClick: () =>
-                    reportesApi
-                      .descargarCsv(actual.num, tituloDe(actual))
-                      .catch(() => aviso('No se pudo descargar el CSV. Intenta de nuevo.', { tipo: 'error' })),
-                },
+                ...(barraAngosta && puedeEditar ? [accionEditar, ...accionesFormato] : []),
                 { label: 'Historial de envíos', icon: 'send', onClick: () => setModalEnvios(actual) },
                 { label: 'Generar de nuevo', icon: 'refresh-cw', onClick: () => repetir(actual) },
                 {
@@ -562,10 +543,6 @@ export function ReportesPage() {
                 },
               ]}
             />
-          </div>
-          {divisor}
-          <div className="ui-reportes__barra-grupo ui-reportes__barra-vista">
-            <ControlZoom compacto />
           </div>
         </>
       ) : null}
@@ -713,11 +690,11 @@ export function ReportesPage() {
             </Card>
           </aside>
           <section className="ui-reportes__vista">
-            <ProveedorZoom>
+            <ProveedorZoom zoomInicial={1}>
               {barra}
               {actual && ['LISTO', 'ENVIADO'].includes(actual.estado ?? 'LISTO') ? (
                 <div className={`ui-reportes__hoja${entrando ? ' is-entrando' : ''}`}>
-                  <DashboardReporte r={actual} areas={datos.areas} ed={edPagina} />
+                  <DashboardReporte r={actual} areas={datos.areas} ed={edPagina} controlZoom />
                 </div>
               ) : actual && ['GENERANDO', 'FALLO'].includes(actual.estado ?? '') ? (
                 <EsperaReporte reporte={actual} onRepetir={() => repetir(actual)} />

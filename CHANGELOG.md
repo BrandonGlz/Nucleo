@@ -44,6 +44,13 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Agregado
 
+- Reportes web (Etapa 11): el visor abre al 100 % con scroll propio y centrado, y el control de
+  zoom flota abajo a la derecha, a 12 px de los bordes y sin tapar la barra de scroll, también en
+  edición. La barra ya no muestra «Listo», usa PDF rojo (`--danger`/`--danger-soft`) y CSV verde
+  (`--success`/`--success-soft`) con el mismo tamaño y texto visible, y ordena Formato (nombre
+  completo, «Plantilla»/«Versión N» y «Opciones» con engrane) | Duplicar para editar | PDF, CSV y
+  ⋯. Al faltar espacio se compacta en orden hasta llevar Duplicar y Opciones al menú ⋯, sin pasar
+  nunca a dos renglones.
 - App Android 0.2.16 (código 28): Nico AI estrena un solo selector de alcance con hoja inferior
   (Dispositivos, Áreas y Toda la organización para ADMIN y SUPER), saludo y respuestas por área u
   organización, resumen de últimas lecturas, pendientes y conexión en el inicio, sugerencias

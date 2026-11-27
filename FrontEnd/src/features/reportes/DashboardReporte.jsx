@@ -1687,18 +1687,18 @@ function paginar(altos, nFilas, medida) {
 
 // Hojas de la vista previa. `VisorHoja` mide la caja y controla el zoom; aquí se reparten
 // las filas en páginas sin cortar ninguna.
-function Paginas(props) {
+function Paginas({ controlZoom = false, ...props }) {
   const contexto = useZoomHoja()
   return contexto ? (
-    <PaginasInterno {...props} />
+    <PaginasInterno {...props} controlZoom={controlZoom} />
   ) : (
     <ProveedorZoom>
-      <PaginasInterno {...props} />
+      <PaginasInterno {...props} controlZoom={controlZoom} />
     </ProveedorZoom>
   )
 }
 
-function PaginasInterno({ cabeza, bloques, vacio, editando, hoja, portada, firmas, marca }) {
+function PaginasInterno({ cabeza, bloques, vacio, editando, hoja, portada, firmas, marca, controlZoom = false }) {
   const medidor = useRef(null)
   const [altos, setAltos] = useState(null)
   const filas = agrupar(bloques).map((fila) => {
@@ -1744,7 +1744,7 @@ function PaginasInterno({ cabeza, bloques, vacio, editando, hoja, portada, firma
         <div data-cabeza>{cabeza}</div>
         {filas.map((_, i) => fila(i))}
       </div>
-      <VisorHoja editando={editando}>
+      <VisorHoja editando={editando} controlZoom={controlZoom}>
         {portada && (
           <article className="ui-hoja ui-hoja--portada" style={estilo} aria-label="Portada">
             {portada}
@@ -1850,7 +1850,7 @@ function bloquesEdicion(r, ed, areas) {
 
 // Vista previa del reporte tal como sale en el PDF. Con `ed.editando` las tarjetas se pueden
 // arrastrar y elegir; la elección vale para todos los reportes en este navegador.
-export function DashboardReporte({ r, areas, ed }) {
+export function DashboardReporte({ r, areas, ed, controlZoom = false }) {
   const c = r.cifras
   const titulo = r.titulo || c.titulo
   const origen = ORIGEN[r.origen] ?? ORIGEN.MANUAL
@@ -1975,6 +1975,7 @@ export function DashboardReporte({ r, areas, ed }) {
 
   return (
     <Paginas
+      controlZoom={controlZoom}
       cabeza={cabeza}
       bloques={bloques}
       editando={ed.editando}

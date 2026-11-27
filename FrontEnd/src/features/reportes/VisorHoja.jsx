@@ -57,6 +57,13 @@ export function ProveedorZoom({ children, zoomInicial = null, alAjustar, ajusteA
     alAjustar?.(ajuste)
   }, [ajuste, alAjustar])
 
+  // Al abrir a 100 % la hoja puede ser más ancha que el visor: arranca en el borde izquierdo
+  // (logo, título y folio a la vista) y el visor tiene scroll propio hasta el otro extremo.
+  useLayoutEffect(() => {
+    const visor = visorRef.current
+    if (visor) visor.scrollLeft = 0
+  }, [nodoVisor])
+
   // Al cambiar el zoom se conserva el centro de lo que se estaba viendo.
   useLayoutEffect(() => {
     const visor = visorRef.current
@@ -132,10 +139,10 @@ export function useZoomHoja() {
 }
 
 // Contenedor del visor: solo él desplaza la hoja. El primer hoja queda completa con «Ajustar».
-export function VisorHoja({ children, editando = false, className = '' }) {
+export function VisorHoja({ children, editando = false, className = '', controlZoom = false }) {
   const contexto = useZoomHoja()
   if (!contexto) return null
-  return (
+  const visor = (
     <div ref={contexto.visorRef} className={`ui-visor-hoja ${className}`.trim()}>
       <div
         className={`ui-paginas${editando ? ' is-editando' : ''}`}
@@ -145,14 +152,23 @@ export function VisorHoja({ children, editando = false, className = '' }) {
       </div>
     </div>
   )
+  if (!controlZoom) return visor
+  // El control vive fuera del área que desplaza la hoja: queda fijo en la esquina y no tapa
+  // la barra de scroll del visor.
+  return (
+    <div className="ui-visor-control">
+      {visor}
+      <ControlZoom flotante />
+    </div>
+  )
 }
 
-export function ControlZoom({ compacto = false }) {
+export function ControlZoom({ compacto = false, flotante = false }) {
   const contexto = useZoomHoja()
   if (!contexto) return null
   const { porcentaje, manual, cambiarPaso, ajustar } = contexto
   return (
-    <div className={`ui-zoom${compacto ? ' ui-zoom--compacto' : ''}`} role="group" aria-label="Zoom de la hoja">
+    <div className={`ui-zoom${compacto ? ' ui-zoom--compacto' : ''}${flotante ? ' ui-zoom--flotante' : ''}`} role="group" aria-label="Zoom de la hoja">
       <button type="button" className="ui-zoom__boton" aria-label="Reducir zoom" onClick={() => cambiarPaso(-1)}>
         −
       </button>

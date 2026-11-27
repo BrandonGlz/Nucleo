@@ -7,7 +7,7 @@ const ANCHO = 260
 // Botón «⋯» con su lista de acciones. items: [{ label, icon, onClick, peligro, disabled, nota }].
 // La lista se coloca con position: fixed para que el scroll de la tabla no la recorte; se cierra
 // al elegir, al hacer clic fuera, con Escape o al desplazar la página.
-export function MenuAcciones({ items, label = 'Más opciones', icon = 'ellipsis' }) {
+export function MenuAcciones({ items, label = 'Más opciones', icon = 'ellipsis', texto, className = '' }) {
   const [abierto, setAbierto] = useState(false)
   const [pos, setPos] = useState(null)
   const boton = useRef(null)
@@ -40,20 +40,37 @@ export function MenuAcciones({ items, label = 'Más opciones', icon = 'ellipsis'
   }, [abierto])
 
   return (
-    <span ref={boton} className="ui-menu-acciones" onClick={(e) => e.stopPropagation()}>
-      <IconButton
-        icon={icon}
-        label={label}
-        variant="ghost"
-        size="sm"
-        aria-haspopup="menu"
-        aria-expanded={abierto}
-        className={abierto ? 'is-abierto' : ''}
-        onClick={() => {
-          setPos(null)
-          setAbierto((a) => !a)
-        }}
-      />
+    <span ref={boton} className={`ui-menu-acciones${className ? ` ${className}` : ''}`} onClick={(e) => e.stopPropagation()}>
+      {texto ? (
+        <button
+          type="button"
+          className={`nc-btn nc-btn--ghost nc-btn--sm ui-menu-acciones__boton-texto${abierto ? ' is-abierto' : ''}`}
+          aria-label={label}
+          aria-haspopup="menu"
+          aria-expanded={abierto}
+          onClick={() => {
+            setPos(null)
+            setAbierto((a) => !a)
+          }}
+        >
+          <Icon name={icon} size={16} />
+          <span className="ui-menu-acciones__texto-boton">{texto}</span>
+        </button>
+      ) : (
+        <IconButton
+          icon={icon}
+          label={label}
+          variant="ghost"
+          size="sm"
+          aria-haspopup="menu"
+          aria-expanded={abierto}
+          className={abierto ? 'is-abierto' : ''}
+          onClick={() => {
+            setPos(null)
+            setAbierto((a) => !a)
+          }}
+        />
+      )}
       {salida.montado && (
         <div
           ref={lista}
