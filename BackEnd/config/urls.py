@@ -20,6 +20,7 @@ urlpatterns = [
                 path("", include("apps.alertas.urls")),
                 path("", include("apps.avisos.urls")),
                 path("", include("apps.reportes.urls")),
+                path("", include("apps.analitica.urls")),
                 path("nico/", include("apps.nico.urls")),
                 path("consola/", include("apps.consola.urls")),
                 path("", include("apps.auditoria.urls")),

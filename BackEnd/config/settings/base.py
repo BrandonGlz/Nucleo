@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "apps.alertas",
     "apps.avisos",
     "apps.reportes",
+    "apps.analitica",
     "apps.nico",
     "apps.tiempo_real",
     "apps.auditoria",

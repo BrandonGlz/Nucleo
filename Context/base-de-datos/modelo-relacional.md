@@ -2,7 +2,7 @@
 
 Dos bases en Docker:
 
-- **`nucleo_db`** (PostgreSQL 17): 18 tablas de negocio que crean las migraciones de
+- **`nucleo_db`** (PostgreSQL 17): 20 tablas de negocio que crean las migraciones de
   Django a partir de los modelos de `BackEnd/apps/`. El mismo esquema, escrito en SQL,
   está en `Database/Web-Mobile/tables.sql` y se carga en `nucleo_test` para practicar.
 - **`nucleo_iot`** (TimescaleDB 2.31): la hypertable `lectura`. Su SQL está en
@@ -35,6 +35,7 @@ usuario ── notificacion_nico, preferencia_avisos_nico (consola de Nico AI)
 formato_reporte ─┬─ version_formato ─── reporte
                  ├─ programacion_reporte (formato_num)
                  └─ area (formato_reporte_num)
+tablero_analitica ─── version_tablero
 
 umbral ── alerta ── notificacion ─┬─ usuario
                                   └─ telefono_push (solo canal PUSH)
@@ -131,6 +132,18 @@ version_formato
                num, formato_num (PROTECT), numero (≥ 1), conf JSONB, creada_por (opcional),
                fecha
                UNIQUE (formato_num, numero)
+tablero_analitica
+               num, organizacion_num (opcional; NULL = plantilla del sistema), nombre (≤ 80),
+               descripcion (≤ 200, def. ''), plantilla (vacío o EJECUTIVO, AMBIENTAL, ALERTAS,
+               OPERACION), predeterminado (def. FALSE), activo (def. TRUE), creado_por (opcional),
+               fecha_creacion
+               CHECK (plantilla = '') = (organizacion_num IS NOT NULL)
+               UNIQUE PARCIAL (organizacion_num) WHERE predeterminado AND activo
+               UNIQUE PARCIAL (organizacion_num, nombre) WHERE activo
+version_tablero
+               num, tablero_num (PROTECT), numero (≥ 1), conf JSONB, creada_por (opcional),
+               fecha
+               UNIQUE (tablero_num, numero)
 programacion_reporte
                num, organizacion_num, area_num (opcional), areas (INTEGER[], vacío = toda la
                organización; varias áreas dejan area_num nula), creada_por, formato_num
@@ -254,6 +267,8 @@ calentamiento del CCS811: no generan alertas ni entran en los reportes.
 - Una notificación push siempre apunta a un teléfono registrado; el correo no.
 - Una alerta y sus notificaciones se registran juntas en una transacción de `nucleo_db`.
 - Una lectura tiene variable conocida y valor en el rango físico.
+- Un tablero de la organización tiene a lo sumo un predeterminado activo y no repite
+  nombre entre sus tableros activos; las plantillas del sistema no tienen organización.
 - `lectura.fecha_hora`, `lectura.recibida_en` y `notificacion.fecha_envio` permiten
   comprobar el límite de 2 minutos entre la medición y el aviso.
 

@@ -269,6 +269,31 @@ Formatos de reporte (ADMIN, SUPER y ANALISTA leen; ADMIN y SUPER escriben)
                                             En conf, hoja.adjuntar_csv (bool, por omisión false)
                                             adjunta el CSV de lecturas al correo del reporte
 
+Analítica (ADMIN, SUPER y ANALISTA leen; ADMIN y SUPER escriben)
+├── GET /tableros-analitica/                Plantillas + tableros activos de la organización;
+│                                           ?archivados=1 incluye los archivados. Cada uno trae
+│                                           num, nombre, descripcion, plantilla, predeterminado,
+│                                           activo, es_plantilla, version, conf, creado_por_nombre
+│                                           y fecha_creacion
+├── POST /tableros-analitica/               {"nombre"?, "descripcion"?, "conf"?, "desde"?} →
+│                                           tablero con versión 1. Sin conf usa una página vacía;
+│                                           con desde copia la versión actual de ese tablero o
+│                                           plantilla; sin nombre usa «Copia de X» y «(2)», «(3)»…
+│                                           si ya existe
+├── GET /tableros-analitica/{num}/          Detalle y conf de su versión actual
+├── PATCH /tableros-analitica/{num}/        {"nombre"?, "descripcion"?, "conf"?}; si viene conf crea
+│                                           una versión nueva; las plantillas no se editan (403)
+├── DELETE /tableros-analitica/{num}/       Archiva (activo=false) y quita el predeterminado
+├── POST /tableros-analitica/{num}/predeterminar/
+│                                           Predeterminado de la organización (no plantillas)
+├── POST /tableros-analitica/{num}/restaurar/
+│                                           {"numero"} → crea una versión nueva igual a esa
+└── GET /tableros-analitica/{num}/versiones/
+                                            [{numero, fecha, creada_por_nombre}]
+                                            En conf: esquema, filtros {periodo, variable} y
+                                            paginas [{id, nombre, tarjetas [{id, tipo, x, y, w,
+                                            h, titulo, opciones, meta?}]}] en una rejilla 12 × 6
+
 Reportes (ADMIN, SUPER y ANALISTA)
 ├── GET /reportes/                          Lista y detalle; incluye area, areas, formato (num),
 │                                           formato_nombre, formato_version y formato_conf,
