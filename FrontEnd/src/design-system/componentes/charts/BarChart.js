@@ -32,7 +32,17 @@ function BarChartVertical(p) {
   var metaTexto = meta == null ? '' : 'Meta ' + fmt(meta, p.decimals == null ? 1 : p.decimals) + (p.unit ? ' ' + p.unit : '');
   var metaAncho = Math.max(54, Math.min(W - 8, metaTexto.length * 5.8 + 10));
   var yMeta = padT + ih - (meta == null ? 0 : meta / mx * ih);
-  var metaPill = meta == null ? null : { x0: W - 4 - metaAncho, x1: W - 4, y0: Math.max(0, yMeta - 18), y1: Math.max(0, yMeta - 18) + 15 };
+  var datoActivo = data[activa] || null;
+  var valorActivo = datoActivo ? fmt(datoActivo.value, p.decimals == null ? 1 : p.decimals) + (p.unit ? ' ' + p.unit : '') : '';
+  var centroActivo = activa >= 0 ? activa * slot + slot / 2 : 0;
+  var anchoValorActivo = valorActivo.length * 5.8;
+  var yActivo = datoActivo ? padT + ih - Math.max(4, datoActivo.value / mx * ih) : 0;
+  var metaDerecha = { x0: W - 4 - metaAncho, x1: W - 4, y0: Math.max(0, yMeta - 18), y1: Math.max(0, yMeta - 18) + 15 };
+  var chocaActivo = datoActivo && centroActivo + anchoValorActivo / 2 > metaDerecha.x0 && centroActivo - anchoValorActivo / 2 < metaDerecha.x1 && yActivo - 20 < metaDerecha.y1 && yActivo - 4 > metaDerecha.y0;
+  var metaIzquierda = meta != null && chocaActivo && anchoValorActivo > bw - 4;
+  var metaX = metaIzquierda ? 4 : W - 4 - metaAncho;
+  var metaTextoX = metaIzquierda ? 6 : W - 6;
+  var metaPill = meta == null ? null : { x0: metaX, x1: metaX + metaAncho, y0: Math.max(0, yMeta - 18), y1: Math.max(0, yMeta - 18) + 15 };
   if (!data.length && p.vacio) {
     return h('div', {
       ref: wr[0],
@@ -75,16 +85,16 @@ function BarChartVertical(p) {
     y1: padT + ih - meta / mx * ih,
     y2: padT + ih - meta / mx * ih
   }), h('rect', {
-    x: W - 4 - metaAncho,
+    x: metaX,
     y: Math.max(0, yMeta - 18),
     width: metaAncho,
     height: 15,
     rx: 4,
     fill: 'var(--surface)'
   }), h('text', {
-    x: W - 6,
+    x: metaTextoX,
     y: Math.max(11, yMeta - 6),
-    textAnchor: 'end'
+    textAnchor: metaIzquierda ? 'start' : 'end'
   }, metaTexto)) : null, data.map(function (d, i) {
     var bh = Math.max(4, d.value / mx * ih);
     var x = i * slot + (slot - bw) / 2;
@@ -97,7 +107,7 @@ function BarChartVertical(p) {
       var anchoValor = valorTexto.length * 5.8;
       var chocaX = centro + anchoValor / 2 > metaPill.x0 && centro - anchoValor / 2 < metaPill.x1;
       var chocaY = y - 20 < metaPill.y1 && y - 4 > metaPill.y0;
-      valorDentro = chocaX && chocaY;
+      valorDentro = chocaX && chocaY && anchoValor <= bw - 4;
     }
     var sel = propsSeleccion(p, d);
     var props = {

@@ -22,12 +22,18 @@ function RankingList(p) {
   const max = p.max || Math.max(...filas.map((f) => Math.abs(f.valor))) || 1
   return h('ul', {
     className: cx('nc-ranking', p.className),
+    style: p.style,
     role: 'list',
     'aria-label': p.label || `Ranking de ${filas.length} elementos`,
   }, filas.map((fila, i) => {
     const seleccionado = esSeleccion(p.seleccion, fila.dimension, fila.dimensionValor)
     const clic = p.alSeleccionar && fila.dimension && fila.dimensionValor != null
-    const cambio = fila.variacion == null ? null : Number(fila.variacion)
+    const variacion = fila.variacion
+    const cambio = variacion == null
+      ? null
+      : typeof variacion === 'object'
+        ? (variacion.unidad === 'pts' ? variacion.abs : variacion.pct ?? variacion.abs)
+        : Number(variacion)
     const tono = cambio == null || cambio === 0 ? 'neutral' : (sentido === 'menor' ? cambio < 0 : cambio > 0) ? 'success' : 'danger'
     const props = clic ? {
       type: 'button',

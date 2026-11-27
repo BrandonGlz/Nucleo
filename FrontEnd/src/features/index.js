@@ -13,6 +13,7 @@ const NotificacionesPage = lazy(() => import('./notificaciones/NotificacionesPag
 const PanelPage = lazy(() => import('./panel/PanelPage').then((m) => ({ default: m.PanelPage })))
 const PerfilPage = lazy(() => import('./perfil/PerfilPage').then((m) => ({ default: m.PerfilPage })))
 const ReportesPage = lazy(() => import('./reportes/ReportesPage').then((m) => ({ default: m.ReportesPage })))
+const AnaliticaPage = lazy(() => import('./analitica/AnaliticaPage').then((m) => ({ default: m.AnaliticaPage })))
 const UmbralesPage = lazy(() => import('./umbrales/UmbralesPage').then((m) => ({ default: m.UmbralesPage })))
 const RecuperarPage = lazy(() => import('./acceso/RecuperarPage').then((m) => ({ default: m.RecuperarPage })))
 const SolicitarAccesoPage = lazy(() => import('./acceso/SolicitarAccesoPage').then((m) => ({ default: m.SolicitarAccesoPage })))
@@ -32,6 +33,7 @@ export const modulos = [
   { ruta: '/mediciones', titulo: 'Histórico', Pagina: MedicionesPage, seccion: 'Monitoreo', icono: 'history' },
   { ruta: '/alertas', titulo: 'Alertas', Pagina: AlertasPage, seccion: 'Monitoreo', icono: 'bell' },
   { ruta: '/reportes', titulo: 'Reportes', Pagina: ReportesPage, seccion: 'Análisis', icono: 'file-text', roles: ['ADMIN', 'SUPER', 'ANALISTA'] },
+  { ruta: '/analitica', titulo: 'Analítica', Pagina: AnaliticaPage, seccion: 'Análisis', icono: 'layout-dashboard', roles: ['ADMIN', 'SUPER', 'ANALISTA'] },
   { ruta: '/agente', titulo: 'Nico AI', Pagina: AgentePage, seccion: 'Análisis', icono: 'sparkles' },
   { ruta: '/umbrales', titulo: 'Umbrales', Pagina: UmbralesPage, seccion: 'Configuración', icono: 'sliders-horizontal' },
   { ruta: '/usuarios', titulo: 'Usuarios', Pagina: UsuariosPage, seccion: 'Configuración', icono: 'users', roles: ['ADMIN', 'SUPER'] },

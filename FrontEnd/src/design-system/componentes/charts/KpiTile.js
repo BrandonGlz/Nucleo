@@ -19,30 +19,37 @@ function KpiTile(p) {
   const tonoCambio = cambio == null || cambio === 0 ? 'neutral' : (sentido === 'menor' ? cambio < 0 : cambio > 0) ? 'success' : 'danger'
   const signo = cambio == null ? '' : cambio > 0 ? '+' : cambio < 0 ? '−' : ''
   const flecha = cambio == null || cambio === 0 ? '■' : cambio > 0 ? '▲' : '▼'
-  const textoCambio = cambio == null ? '' : `${flecha} ${signo}${Math.abs(cambio).toFixed(1)} ${tipo === 'pts' ? 'pts' : '%'}`
+  const sufijo = tipo === 'pts' ? 'pts' : tipo === 'pct' || tipo === '%' ? '%' : tipo
+  const textoCambioBase = cambio == null ? '' : `${flecha} ${signo}${Math.abs(cambio).toFixed(1)}`
+  const textoCambio = cambio == null ? '' : `${textoCambioBase}${sufijo ? ` ${sufijo}` : ''}`
   const puntos = (p.sparkline || []).map((d) => (typeof d === 'number' ? d : Number(d.value ?? d.y ?? 0)))
-  const etiquetaMeta = meta == null ? '' : `Meta ${sentido === 'menor' ? '≤' : '≥'} ${fmt(Number(meta), dec)}${p.unidad ? ` ${p.unidad}` : ''}`
+  const metaTexto = meta == null ? '' : `Meta ${sentido === 'menor' ? '≤' : '≥'} ${fmt(Number(meta), dec)}`
+  const etiquetaMeta = metaTexto ? `${metaTexto}${p.unidad ? ` ${p.unidad}` : ''}` : ''
   const etiqueta = `${p.titulo || 'Indicador'}: ${valor == null ? 'sin datos' : fmt(valor, dec)}${p.unidad ? ` ${p.unidad}` : ''}${textoCambio ? `, ${textoCambio}` : ''}${etiquetaMeta ? `, ${etiquetaMeta}` : ''}`
   return h('div', {
     className: cx('nc-kpi', p.className),
     role: 'group',
     'aria-label': etiqueta,
+    'data-unidad': p.unidad || '',
   },
-  h('div', { className: 'nc-kpi__cabeza' },
+  p.titulo || p.cargando ? h('div', { className: 'nc-kpi__cabeza' },
     h('span', { className: 'nc-kpi__titulo' }, p.titulo || ''),
-    p.cargando ? h('span', { className: 'nc-kpi__cargando' }, 'Cargando…') : null),
+    p.cargando ? h('span', { className: 'nc-kpi__cargando' }, 'Cargando…') : null) : null,
   h('div', { className: 'nc-kpi__cuerpo' },
     h('strong', { className: 'nc-kpi__valor ui-num' }, valor == null ? '—' : fmt(valor, dec),
       p.unidad ? h('small', { className: 'nc-kpi__unidad' }, p.unidad) : null),
     cambio != null || semaforo ? h('div', { className: 'nc-kpi__linea' },
       cambio != null ? h('span', {
         className: cx('nc-kpi__variacion', `is-${tonoCambio}`),
-      }, textoCambio, h('small', null, ' vs anterior')) : null,
+      }, textoCambioBase,
+      sufijo ? h('small', { className: 'nc-kpi__sufijo' }, ` ${sufijo}`) : null,
+      h('small', { className: 'nc-kpi__vs' }, ' vs anterior')) : null,
       semaforo ? h('span', { className: 'nc-kpi__semaforo' },
-        h('i', { style: { background: colorRelleno(semaforo) } }), etiquetaMeta) : null) : null),
+        h('i', { style: { background: colorRelleno(semaforo) } }), metaTexto,
+        p.unidad ? h('small', { className: 'nc-kpi__unidad-meta' }, ` ${p.unidad}`) : null) : null) : null),
   h('div', { className: 'nc-kpi__pie' },
     p.sparkline?.length > 1 ? h('span', { className: 'nc-kpi__spark' },
-      h(Sparkline, { data: puntos, width: p.sparkAncho || 120, height: 34 })) : null),
+      h(Sparkline, { data: puntos, width: p.sparkAncho || 120, height: p.sparkAlto || 34 })) : null),
   valor == null && !p.cargando ? h('span', { className: 'nc-kpi__sin-datos' }, p.vacio || 'Sin datos en el periodo') : null)
 }
 
