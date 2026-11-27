@@ -16,8 +16,9 @@ reportes, y expone una API REST que consumen la web y la app móvil.
   - Consumidor MQTT que valida y guarda lecturas y genera alertas de advertencia y peligro.
   - Canal en vivo (WebSocket `ws/panel/`, Django Channels y Redis) y notificaciones push con Expo.
   - Reportes con cifras calculadas en el backend, texto de IA, PDF y programaciones.
-  - Nico AI: un agente por dispositivo que responde con sus lecturas y alertas y genera
-    reportes cuando se le piden ([Nico AI](../agente/nico-ai.md)).
+  - Nico AI: un agente por dispositivo (o por área u organización, con el ESP de Nico de cada
+    área) que responde con sus lecturas y alertas, dice en qué datos se basa y genera reportes
+    cuando se le piden ([Nico AI](../agente/nico-ai.md)).
 - **`FrontEnd/`**
   - Web React: Panel (gráficas de temperatura, humedad y aire por periodo), Dispositivos
     (estado, batería, señal y «Calentando»), Detalle de dispositivo, Histórico (tabla del
@@ -33,7 +34,8 @@ reportes, y expone una API REST que consumen la web y la app móvil.
 - **`Mobile/`**
   - App Expo/React Native (Android): acceso con Nico y solicitud de cuenta, Inicio con el
     dispositivo en vivo (selector si hay varios), Detalle de variable, Alertas y su detalle,
-    Histórico, Nico AI, Notificaciones y Perfil.
+    Histórico, Nico AI (por dispositivo, área u organización, con Conversaciones), Reportes
+    (PDF e historial de envíos), Notificaciones y Perfil.
   - Canal en vivo con la app abierta y push con la app cerrada (las de peligro suenan y
     vibran); opción para reducir animaciones. Se instala con el APK de https://app.bynucleo.com.
 - **`IoT/`**

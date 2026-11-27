@@ -27,7 +27,11 @@ organizacion ─┬─ area ─┬─ usuario ─┬─ rol, estado_usuario
               │             │          └─ (operador y registrado_por → usuario)
               │             └─ estado_dispositivo
               ├─ programacion_reporte
-              └─ reporte
+              ├─ reporte ─── envio_reporte (intentos de correo)
+              └─ respuesta_aprendida (banco de Nico AI)
+area ── puente_nico_num → dispositivo (ESP de Nico del área)
+usuario, dispositivo ── pregunta_agente (registro de Nico AI)
+usuario ── notificacion_nico, preferencia_avisos_nico (consola de Nico AI)
 formato_reporte ─┬─ version_formato ─── reporte
                  ├─ programacion_reporte (formato_num)
                  └─ area (formato_reporte_num)
@@ -64,7 +68,9 @@ organizacion   num, nombre, dir_calle, dir_numero, dir_colonia, ciudad, telefono
                estado (def. ACTIVA), fecha_registro (def. now())
                CHECK estado en ACTIVA, SUSPENDIDA, BAJA
 area           num, organizacion_num, nombre, descripcion,
-               formato_reporte_num (opcional, SET NULL: predeterminado del área)
+               formato_reporte_num (opcional, SET NULL: predeterminado del área),
+               puente_nico_num (opcional, SET NULL: dispositivo con puente_ia que habilita
+               a Nico AI en esa área para SUPER, ANALISTA y OPER)
                UNIQUE (organizacion_num, nombre)
 usuario        num, organizacion_num (opcional), area_num (opcional), rol_codigo,
                estado_usuario_codigo, nombre, primer_apellido, segundo_apellido,
@@ -79,7 +85,8 @@ telefono_push  num, usuario_num, token_expo (único), plataforma, fecha_registro
 dispositivo    num, area_num, estado_dispositivo_codigo, operador_num (opcional),
                registrado_por, nombre, codigo_mqtt (único), intervalo_muestreo_seg
                (def. 30), nivel_bateria, voltaje_bateria, intervalo_reportado_seg, ultima_conexion, ultimo_arranque, recibe_ota
-               (def. FALSE, la elige la consola de administración), version_firmware y
+               (def. FALSE, la elige la consola de administración), puente_ia (def. FALSE: ESP32
+               físico que sirve de llave de Nico AI), version_firmware y
                version_reportada_en (las informa el ESP al revisar la OTA), fecha_alta
                CHECK intervalo_muestreo_seg entre 5 y 120; CHECK nivel_bateria entre 0 y 100
 sensor         num, dispositivo_num, estado_sensor_codigo, modelo, funcion,
@@ -137,9 +144,25 @@ programacion_reporte
 reporte        num, organizacion_num, area_num (opcional), areas (INTEGER[], vacío = toda la
                organización; varias áreas dejan area_num nula), generado_por (opcional),
                formato_version_num (opcional, PROTECT: versión con la que se generó),
-               origen, periodo_inicio, periodo_fin, cifras JSONB, contenido, archivo_pdf,
-               fecha_generacion
-               CHECK origen en MANUAL, PROGRAMADO, AGENTE; CHECK periodo_inicio < periodo_fin
+               origen, periodo_inicio, periodo_fin, estado (def. LISTO), error, archivado
+               (def. FALSE), destinatarios (INTEGER[], los del programado), asunto, cifras
+               JSONB, contenido, archivo_pdf, fecha_generacion
+               CHECK origen en MANUAL, PROGRAMADO, AGENTE; CHECK periodo_inicio < periodo_fin;
+               CHECK estado en GENERANDO, LISTO, ENVIADO, FALLO
+envio_reporte  num, reporte_num (CASCADE), fecha (def. now()), origen (MANUAL, PROGRAMADO,
+               NICO), enviado_por (opcional, SET NULL), destinatarios JSONB ([{num, nombre}]
+               congelados al enviar), resultado (OK, FALLO), error
+               ÍNDICE (reporte_num, fecha DESC); la API muestra los 10 más recientes
+respuesta_aprendida
+               num, organizacion_num (CASCADE), pregunta, pregunta_normalizada, tema, plantilla,
+               votos_si (def. 1), votos_no (def. 0), activa, fecha_creacion
+pregunta_agente
+               num (bigint), usuario_num (CASCADE), dispositivo_num (CASCADE; en alcance de área
+               u organización, el puente del área o el primer dispositivo visible), pregunta,
+               pregunta_normalizada, tema, via (PREDEFINIDA, BANCO, IA, ENRUTADA, REPETIDA,
+               NO_ENTENDIDA), respuesta, datos JSONB (p. ej. {alcance, area}), aprendida y
+               ensenada (opcionales, SET NULL → respuesta_aprendida), fecha_ensenada,
+               calificacion (1, −1 o NULL), milisegundos, tokens_entrada, tokens_salida, fecha
 segundo_factor num, usuario_num (único), secreto (cifrado), activo (def. FALSE), ultimo_paso
                (el último código TOTP usado no vale otra vez), codigos_recuperacion JSONB
                (SHA-256 de los pendientes), fecha_activacion, fecha_registro
@@ -178,6 +201,25 @@ notificacion_seguridad
 preferencia_avisos_seguridad
                usuario_num (PK, CASCADE), niveles_consola JSONB (def. ambos), niveles_correo
                JSONB (def. critico), actualizado
+
+Consola de Nico AI (apps.nico)
+notificacion_nico
+               num (bigint), usuario_num (CASCADE), tipo (NO_ENTENDIDA, NEGATIVA, PUENTE, CARGA,
+               APRENDIDA), nivel (INFO, OK, ADVERTENCIA, PELIGRO; def. INFO), titulo, texto,
+               enlace, leida, correo_enviado, fecha
+preferencia_avisos_nico
+               usuario_num (PK, CASCADE), tipos JSONB ({TIPO: {consola, correo}}), actualizado
+marca_aviso_nico
+               clave (PK), valor, fecha (evita repetir el mismo aviso)
+ajuste_herramienta
+               nombre (PK), descripcion, proposito, ejemplo, activa, actualizado,
+               actualizado_por (opcional, SET NULL)
+ajuste_sugerencias
+               num (una sola fila, def. 1), activas, maximo (def. 6), usar_banco,
+               usar_incluidas, usar_herramientas, usar_frecuentes, fijadas JSONB, ocultas JSONB,
+               actualizado, actualizado_por (opcional, SET NULL)
+documento_nico num, clave (única), descripcion, contenido, activo (def. FALSE), orden,
+               actualizado, actualizado_por (opcional, SET NULL)
 ```
 
 Además existe `dispositivo (area_num)` como índice propio y las tablas internas de

@@ -27,10 +27,16 @@ simulados.
   alrededor del evento, su línea de tiempo y, para quien puede, «Atender» y «Descartar».
 - **Histórico:** una variable del dispositivo en 24 h, 7 o 30 días con su umbral, mínimo,
   promedio, máximo y el tiempo en rango; el botón CSV comparte las lecturas.
-- **Nico AI:** preguntas sobre el dispositivo elegido, con tarjetas de inicio y las
-  conversaciones recientes (guardadas en el teléfono). Supervisores, analistas y
+- **Nico AI:** preguntas sobre un dispositivo, un área o toda la organización (ADMIN y SUPER),
+  elegidos en una hoja inferior; inicio con resumen del equipo y sugerencias reales; cada
+  respuesta dice en qué se basa, se puede copiar, regenerar, calificar y abrir en Histórico;
+  las alertas pendientes se atienden desde el chat y «Conversaciones» guarda las 50 últimas en
+  el teléfono (buscador, renombrar y borrar). Supervisores, analistas y
   administradores también le piden reportes: el resumen aparece en el chat, con el PDF
   (se abre con el menú de compartir del teléfono) y el enlace al reporte en la web.
+- **Reportes** (ADMIN, SUPER y ANALISTA, desde Mi perfil o un aviso): tarjetas con periodo,
+  origen y cifras, filtros por origen y periodo, el PDF con el menú de compartir y «Envíos» con
+  el historial de correos del reporte (destinatarios, resultado y error).
 - **Notificaciones:** cada alerta nueva y cada alerta atendida o descartada, con «sin leer» y
   «Marcar todo como leído» (lo leído se guarda en el teléfono).
 - **Mi perfil:** cuenta y supervisor; preferencias guardadas en el teléfono (reducir

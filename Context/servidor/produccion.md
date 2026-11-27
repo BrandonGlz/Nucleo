@@ -42,11 +42,12 @@ flowchart LR
         D["nucleo-daphne<br/>Daphne :8001"]
         MQ["nucleo-mqtt"]
         SC["nucleo-sin-conexion"]
+        RQ["nucleo-reportes-cola<br/>procesar_reportes"]
         RP["nucleo-reportes.timer<br/>cada 15 min"]
     end
     subgraph DK["Docker · solo 127.0.0.1"]
         direction TB
-        M["Mosquitto<br/>WebSocket :9001"]
+        M["Mosquitto<br/>WebSocket 127.0.0.1:51884"]
         subgraph BD["Bases de datos"]
             PG[("PostgreSQL")]
             TDB[("TimescaleDB")]
@@ -91,8 +92,9 @@ flowchart LR
   `nucleo-daphne`; Redis reparte los eventos en vivo.
 - **Lecturas:** `nucleo-mqtt` recibe las lecturas del broker Mosquitto y las guarda en
   TimescaleDB; `nucleo-sin-conexion` marca los dispositivos que dejan de reportar.
-- **Reportes:** `nucleo-reportes.timer` genera cada 15 minutos los reportes programados, con el
-  texto redactado por `IA_PROVEEDOR=local`.
+- **Reportes:** `nucleo-reportes-cola` (`procesar_reportes`) termina en segundo plano los reportes
+  pedidos (cifras, texto con `IA_PROVEEDOR=local` y PDF) y `nucleo-reportes.timer` pone en la cola
+  cada 15 minutos los programados que vencen; cada correo queda en el historial de envíos.
 - **Correo:** Gmail por SMTP con una contraseña de aplicación de la cuenta del proyecto.
 - **Push:** `NUCLEO_PUSH_HABILITADO=true`; el backend envía a Expo, que entrega por Firebase
   (proyecto `nucleo-firebase`) a los teléfonos registrados al iniciar sesión en la app.

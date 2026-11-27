@@ -86,17 +86,19 @@ misma guía.
 
 - **Backend:** API con permisos por rol y por organización; recibe las lecturas por MQTT,
   crea alertas, avisa por correo y push a los supervisores del área, los administradores de la
-  organización y el operador asignado, y transmite en vivo; reportes con gráficas y PDF.
+  organización y el operador asignado, y transmite en vivo; reportes en cola con 4 plantillas de una hoja, formatos propios, PDF, CSV e historial de envíos.
 - **Web:** panel en vivo, dispositivos, histórico, alertas, reportes, Nico AI, umbrales,
   usuarios y empresa; además, administración de organizaciones para la plataforma.
-- **App Android:** dispositivo en vivo, alertas, Nico AI y perfil, con notificaciones push.
-- **Nico AI:** responde con las lecturas y alertas de cada dispositivo y genera reportes cuando
-  se le piden, en la web y en la app. Su consola tiene panel, banco de respuestas, registro de
+- **App Android:** dispositivo en vivo, alertas, histórico, Nico AI, reportes (con historial de
+  envíos) y perfil, con notificaciones push.
+- **Nico AI:** responde con las lecturas y alertas de cada dispositivo, de un área o de toda la
+  organización (cada área tiene su ESP de Nico), dice en qué datos se basa, deja atender alertas
+  desde el chat y genera reportes cuando se le piden, en la web y en la app. Su consola tiene panel, banco de respuestas, registro de
   preguntas (con «Enseñar»), herramientas y notificaciones.
 - **Consola de administración:** panel, alertas de seguridad con notificaciones, auditoría,
   políticas, usuarios, sesiones abiertas por dispositivo, dispositivos, integraciones y carga del
   firmware al ESP32 por USB desde el navegador.
-- **IoT:** firmware 1.1.3 de MicroPython con DHT22, CCS811, pantalla OLED, LED RGB, buzzer, cola
+- **IoT:** firmware 1.1.6 de MicroPython con DHT22, CCS811, pantalla OLED, LED RGB, buzzer, cola
   sin conexión, microSD y actualización remota (OTA). Un ESP32-S3 físico (`NC-0501`) ya publica
   temperatura, humedad y calidad del aire reales y es la llave de Nico AI; los demás equipos de la
   demostración vienen del simulador. Falta probar la batería y la microSD en la placa.

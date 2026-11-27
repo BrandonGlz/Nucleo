@@ -1,6 +1,6 @@
 # Nico AI
 
-Agente de cada dispositivo que responde en lenguaje natural sobre sus lecturas, alertas,
+Agente de cada dispositivo (o de un área u organización) que responde en lenguaje natural sobre sus lecturas, alertas,
 sensores, umbrales y reportes. Es de solo lectura y las cifras siempre salen del backend; la IA
 solo interpreta y redacta.
 
@@ -87,6 +87,31 @@ que también usa la consola), así que vale para la web, la app y la consola. `G
 cuyo agente ese usuario puede usar ahora); la web y la app solo leen esos datos. En modo de
 pruebas el punto de estado sigue gris (es el estado del ESP) y se muestra el aviso discreto
 «ESP32 sin conexión · modo de pruebas del administrador».
+
+### Alcance por área u organización
+
+Además del dispositivo, el chat (web y app) tiene un solo selector de alcance: **Dispositivo**,
+**Área** u **Toda la organización** (esta última solo ADMIN y SUPER; el OPER no ve selector).
+`POST /agente/` recibe `alcance` (`DISPOSITIVO`, `AREA`, `ORGANIZACION`) y `area`; con área u
+organización responde promedios, máximos, mínimos, alertas y lecturas del alcance
+(`agente.responder_alcance`) y, para otras preguntas, pide elegir un dispositivo.
+
+- Cada área tiene un **ESP de Nico** (`Area.puente_nico`, un dispositivo con `puente_ia`), que el
+  ADMIN elige en «Empresa y áreas»; el SUPER puede cambiar solo ese campo de sus áreas.
+- `puente.revisar_alcance(usuario, area=…, organizacion=…)` devuelve `None` si se puede usar o el
+  motivo: un área usa su `puente_nico`; la organización, cualquier área visible con su puente en
+  línea. ADMIN y ADMINPLAT no lo exigen. Motivos: «Esta área no tiene un ESP de Nico asignado.
+  Pídele a un administrador que lo elija en Empresa y áreas.» o «El ESP de Nico de <área> está
+  sin conexión.» Con motivo, `POST /agente/` responde 503 `{detail, inactivo, motivo}`.
+- `GET /agente/estado/?area=` u `?organizacion=1` agrega `disponible` y `motivo`; los clientes
+  muestran el aviso y deshabilitan el campo.
+
+Cada respuesta con lecturas trae `fuente` (lecturas, rango y dispositivo o alcance), que se
+muestra como «Basado en …» con «Ver en Histórico» (web: `/mediciones`; app: Histórico con el
+«Rango de Nico»). «¿Qué alertas tengo pendientes?» trae `alertas` y el chat permite atenderlas o
+descartarlas con observaciones (mismo permiso que la pantalla de Alertas). Las conversaciones se
+guardan en el cliente (las 50 últimas por cuenta; un hilo por alcance), con buscador, grupos por
+fecha y renombrar o borrar.
 
 Para validar cambios: `manage.py evaluar_agente --dispositivo NC-0501` corre el banco de casos
 (`apps/reportes/casos_agente.py`) sin guardar nada. El detalle está en

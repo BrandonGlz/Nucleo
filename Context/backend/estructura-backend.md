@@ -28,7 +28,7 @@ BackEnd/
 ├── apps/
 │   ├── core/                # salud de la API; avisar_servidor (correo de avisos del servidor)
 │   ├── catalogos/           # rol, estados y variable_ambiental con su rango (códigos iniciales)
-│   ├── organizaciones/      # organizacion y area
+│   ├── organizaciones/      # organizacion y area (con puente_nico: ESP de Nico del área)
 │   ├── usuarios/            # usuario (modelo de usuario de Django), telefono_push, login y gestión;
 │   │                        # seguridad.py: verificación en dos pasos y recuperación de contraseña
 │   ├── dispositivos/        # dispositivo y sensor; marcado de "Sin conexión"; firmware.py (OTA)
@@ -37,7 +37,11 @@ BackEnd/
 │   ├── alertas/             # alerta y notificacion; correo y push con Expo
 │   ├── avisos/              # aviso: campana de dispositivos, usuarios, reportes y Nico AI
 │   ├── tiempo_real/         # WebSocket ws/panel/: consumidor, eventos y rutas
-│   ├── reportes/            # reporte y programacion_reporte; cifras, IA y PDF; rutas del ESP puente
+│   ├── reportes/            # reporte, envio_reporte, formatos y programaciones; cifras, IA,
+│   │                        # PDF y CSV; Nico AI (agente, puente ESP, aprendizaje)
+│   ├── nico/                # consola de Nico AI: banco, registro, avisos, herramientas, documento
+│   ├── consola/             # consola de administración (admin.<dominio>): usuarios, sesiones,
+│   │                        # ESP32 y flasheo, firmware, política y alertas de seguridad
 │   ├── auditoria/           # registro_auditoria: middleware, señales, vista y depuración
 │   └── integraciones/       # token_api (ApiKey de solo lectura) y webhook (envío firmado)
 ├── common/                  # roles, permisos, token con caducidad, aislamiento por organización,
@@ -264,8 +268,16 @@ de alertas (por estado, nivel, tipo y variable) del periodo y los guarda en
 `reporte.cifras`. Las lecturas se agregan en TimescaleDB solo con `estabilizada = true`
 y las alertas se leen en PostgreSQL; el código junta los sensores de la organización
 y del área con sus dispositivos.
-`apps/reportes/ia.py` solicita a la IA solo la redacción del texto; si el
-servicio no está configurado o no responde, la API responde 503 y no guarda nada.
+`apps/reportes/ia.py` solicita a la IA solo la redacción del texto.
+`POST /reportes/` guarda el reporte con estado `GENERANDO` y responde 201 al momento; la cola
+(`manage.py procesar_reportes`, servicio `nucleo-reportes-cola`) calcula las cifras, redacta y
+arma el PDF, y lo deja `LISTO` (o `ENVIADO` si es programado) o `FALLO` con `error`.
+Cada reporte usa una versión de formato (`formato_reporte` / `version_formato`; 4 plantillas
+del sistema: Ejecutivo, Cumplimiento, Operativo detallado e Incidentes, más los formatos de la
+organización) y todas caben en una hoja con topes de 5 incidentes, 4 observaciones y 8
+dispositivos. `GET /reportes/{num}/csv/` da el anexo de lecturas. Cada intento de correo
+(manual, programado o desde Nico) queda en `envio_reporte` con sus destinatarios congelados y el
+resultado; el serializador muestra los 10 más recientes como `envios`.
 `cifras` incluye `intervalo_serie` (por hora si el periodo dura hasta 3 días; si no, por
 día) y `series` por variable con promedio, mínimo y máximo de cada tramo. El PDF se genera
 con ReportLab, dibuja una curva por variable con sus picos y el conteo por nivel, y se
@@ -282,8 +294,8 @@ misma organización) y `proxima_ejecucion`, que por defecto es un periodo adelan
 `manage.py generar_reportes_programados` busca las programaciones activas vencidas de
 organizaciones activas, genera el reporte del periodo anterior, lo envía por correo con
 el PDF adjunto y fija la siguiente ejecución; si la IA no responde la programación
-sigue vencida y se reintenta en la siguiente corrida. Se programa con cron o un
-temporizador del sistema.
+sigue vencida y se reintenta en la siguiente corrida. En producción lo corre
+`nucleo-reportes.timer` cada 15 min.
 
 ## Datos de demostración
 
@@ -319,7 +331,10 @@ operador lo usa solo si tiene `acceso_agente` y sobre su dispositivo.
 Con el puente de la IA encendido, supervisores, analistas y operadores solo lo usan si el ESP
 del dispositivo está activo (503 `inactivo` si no); el administrador (y el superusuario en la
 consola) lo usa sin él en modo de pruebas: `puente.exige_puente`, `puente.activar_pruebas` y
-`_ejecutar` sin esperar la firma del ESP. Detalle en `Context/agente/nico-ai.md`.
+`_ejecutar` sin esperar la firma del ESP. Con `alcance` `AREA` u `ORGANIZACION`
+(`AgenteView._responder_por_alcance` → `agente.responder_alcance`) responde cifras del área o de
+la organización y la regla del ESP usa el `puente_nico` de cada área
+(`puente.revisar_alcance`). Detalle en `Context/agente/nico-ai.md`.
 
 Cada pregunta sigue el mismo camino, en `apps/reportes/`:
 
@@ -395,7 +410,7 @@ cd BackEnd
 .venv/bin/ruff check .
 ```
 
-Las pruebas (186) usan dos bases temporales, `test_nucleo_db` y `test_nucleo_iot`, que
+Las pruebas (unas 550, ~2 min; nunca con `--parallel` y un solo proceso a la vez) usan dos bases temporales, `test_nucleo_db` y `test_nucleo_iot`, que
 Django crea y elimina; el usuario de la base debe poder crear bases (en desarrollo, el
 superusuario del contenedor). Las clases heredan de `common.testing.PruebaBase`; las del
 canal en vivo, de `PruebaTransaccional`, porque Channels cierra conexiones y necesita

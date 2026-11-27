@@ -230,6 +230,15 @@ componentes con `utils/convertir.js`.
   Las plantillas no se editan: se duplican antes de modificarlas. Si un ADMIN o SUPER
   conserva formatos viejos en `nucleo.reportes.formatos`, Reportes le ofrece subirlos a la
   organización o descartarlos; ANALISTA no ve ese aviso y su navegador no se toca.
+- Reportes muestra el historial de envíos de cada reporte (`envios`) y filtra por periodo con
+  `?desde=&hasta=`. «Empresa y áreas» deja elegir el ESP de Nico de cada área
+  (`puente_nico`; el SUPER solo ese campo en las suyas).
+- Nico AI (`features/agente/AgentePage.jsx` y `context/AgenteContext.jsx`): un selector de
+  alcance (dispositivo, área u organización para ADMIN y SUPER) que manda `alcance`/`area`;
+  con `motivo` de `/agente/estado/` muestra el aviso y deshabilita el campo. Cada respuesta
+  muestra «Basado en» (`fuente`) con enlace a `/mediciones`, acciones (copiar, regenerar,
+  calificar) y, si trae `alertas`, permite atenderlas o descartarlas. Las conversaciones se
+  guardan en `localStorage` con su `etiqueta` de alcance (historial con buscador).
 - El PDF de un reporte lo genera el servidor con la versión de formato del reporte; la web
   solo lo descarga con `descargarArchivo`, igual que la app y los correos. La vista previa
   de `DashboardReporte` sigue siendo la previsualización en pantalla.

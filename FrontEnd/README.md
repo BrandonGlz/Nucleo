@@ -17,9 +17,11 @@ Ambos hablan solo con la API REST; el navegador no se conecta al broker MQTT.
   Dispositivos y su detalle con las lecturas en vivo, Histórico (tabla a todo el ancho con el
   histórico completo del periodo, sin gráfica) y Alertas (atender o descartar con nota
   obligatoria, visible en las resueltas).
-- **Análisis:** Reportes (vista previa y generación) y Nico AI, que también genera
-  reportes cuando se le piden y los muestra en el chat con sus cifras y la descarga del PDF.
-- **Configuración:** Umbrales, Usuarios (ADMIN y SUPER) y Empresa y áreas (ADMIN).
+- **Análisis:** Reportes (asistente con vista previa, 4 plantillas y formatos propios, PDF y
+  CSV, historial de envíos y filtro por periodo) y Nico AI, por dispositivo, área u
+  organización, con la fuente de cada respuesta, alertas que se atienden desde el chat,
+  historial de conversaciones y reportes que muestra en el chat con la descarga del PDF.
+- **Configuración:** Umbrales, Usuarios (ADMIN y SUPER) y Empresa y áreas (ADMIN; el SUPER elige el ESP de Nico de sus áreas).
 - **Plataforma:** Organizaciones (solo ADMINPLAT): alta, edición, suspensión, baja y
   primer administrador. Esa cuenta entra directo ahí y no ve los demás módulos.
 - **Cuenta:** Mi perfil (foto, seguridad, verificación en dos pasos) y Notificaciones, a las

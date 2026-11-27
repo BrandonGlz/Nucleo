@@ -99,7 +99,8 @@ cae, se cae Núcleo y el vigilante avisa por correo; no hay conmutación automá
   nombre (`bynucleo.com`, `www`, `app`, `info`, `nicoai`, `admin`, `dispositivos`).
 - Caddy sirve la web compilada y pasa `/api`, `/admin` y `/ws` a Daphne (`127.0.0.1:8001`).
 - systemd: `nucleo-daphne` (API y WebSocket), `nucleo-mqtt` (lecturas del broker),
-  `nucleo-sin-conexion`, `nucleo-reportes.timer` (cada 15 min) y `nucleo-recursos.timer` (cada
+  `nucleo-sin-conexion`, `nucleo-reportes-cola` (cola de reportes: `procesar_reportes` calcula,
+  redacta y arma el PDF de los que están `GENERANDO`), `nucleo-reportes.timer` (programados, cada 15 min) y `nucleo-recursos.timer` (cada
   10 min, `vigilar_recursos.sh`). Si cualquiera falla, `nucleo-aviso@.service` manda un correo con
   sus últimas líneas de bitácora. `nucleo-respaldo.timer` y `nucleo-prueba-restauracion.timer` se
   instalan pero quedan **deshabilitados** en el servidor: los respaldos los hace el equipo de

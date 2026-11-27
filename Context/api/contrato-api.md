@@ -163,7 +163,11 @@ Organizaciones y usuarios
 │                                           sesión válida, 404 si no pertenece a una organización
 ├── POST /organizaciones/{num}/primer-administrador/
 │                                           Solo ADMINPLAT; crea el primer ADMIN; 409 si ya existe
-├── /areas/                                 Lectura: todos; escritura: ADMIN
+├── /areas/                                 Lectura: todos; alta y baja: ADMIN; PATCH: ADMIN, y el
+│                                           SUPER solo "puente_nico" de sus áreas. Trae
+│                                           puente_nico (num del ESP de Nico del área, con
+│                                           puente_ia, de la misma organización; null = sin
+│                                           asignar) y puente_nico_nombre (solo lectura)
 └── /usuarios/                              ADMIN y SUPER; la baja marca la cuenta Inactiva;
                                             el rol ADMINPLAT no se asigna desde aquí; POST exige
                                             password; acceso_agente permite el agente a un OPER
@@ -268,9 +272,14 @@ Formatos de reporte (ADMIN, SUPER y ANALISTA leen; ADMIN y SUPER escriben)
 Reportes (ADMIN, SUPER y ANALISTA)
 ├── GET /reportes/                          Lista y detalle; incluye area, areas, formato (num),
 │                                           formato_nombre, formato_version y formato_conf,
-│                                           estado (GENERANDO|LISTO|ENVIADO|FALLO), error y
-│                                           archivado. Filtros: q, area, formato, origen, estado,
-│                                           desde, hasta y archivados=1; respetan el alcance del rol
+│                                           estado (GENERANDO|LISTO|ENVIADO|FALLO), error,
+│                                           archivado y envios: los 10 intentos de correo más
+│                                           recientes [{num, fecha, origen MANUAL|PROGRAMADO|NICO,
+│                                           enviado_por_nombre, destinatarios [{num, nombre}]
+│                                           congelados al enviar, resultado OK|FALLO, error}].
+│                                           Filtros: q, area, formato, origen, estado,
+│                                           desde, hasta (ISO; por solapamiento con el periodo) y
+│                                           archivados=1; respetan el alcance del rol
 ├── POST /reportes/                         {"area"?, "areas"?, "formato"?, "periodo_inicio",
 │                                           "periodo_fin"}; un área con "area", varias con
 │                                           "areas" [num de área] y toda la organización sin
@@ -354,13 +363,35 @@ Consola de Nico AI (solo superusuario: ADMINPLAT activo, sin organización)
                                             plano; GET ?seccion= → {estado, propuestas, error}
 
 Agente IA (ADMIN, SUPER, ANALISTA y OPER con acceso_agente)
-├── GET /agente/estado/                     {puente, activos, fisicos, exige_puente, disponibles}:
-│                                           activos = ESP puente conectado; disponibles = los que
-│                                           este usuario puede usar ahora (ADMIN: todos, modo de
-│                                           pruebas; SUPER, ANALISTA y OPER: solo los activos)
+├── GET /agente/estado/                     {puente, activos, fisicos, exige_puente, disponibles,
+│                                           disponible, motivo}: activos = ESP puente conectado;
+│                                           disponibles = los que este usuario puede usar ahora
+│                                           (ADMIN: todos, modo de pruebas; SUPER, ANALISTA y OPER:
+│                                           solo los activos). Con ?area= u ?organizacion=1
+│                                           (este, solo ADMIN y SUPER; si no, 403) responde
+│                                           disponible true|false y motivo para ese alcance:
+│                                           un área usa su puente_nico; la organización, cualquier
+│                                           área visible con su puente en línea. El ADMIN no exige
+│                                           ESP. Motivos: «Esta área no tiene un ESP de Nico
+│                                           asignado…» o «El ESP de Nico de <área> está sin conexión.»
 ├── GET /agente/sugerencias/               ?dispositivo= → {activas, maximo, sugerencias:
-│                                           [{texto, tipo, etiqueta}]}; la web las filtra al escribir
-└── POST /agente/                           {"pregunta", "dispositivo"}; un agente por dispositivo;
+│                                           [{texto, tipo, etiqueta}], inicio: [{icono, titulo,
+│                                           texto}]}; inicio = las 4 tarjetas del chat vacío con
+│                                           datos reales del área (alertas sin atender, equipo sin
+│                                           conexión, variable con más alertas, reporte del mes)
+└── POST /agente/                           {"pregunta", "dispositivo", "alcance"?, "area"?};
+                                            alcance DISPOSITIVO (por omisión, exige dispositivo),
+                                            AREA (exige area visible) u ORGANIZACION (solo ADMIN
+                                            y SUPER). En AREA y ORGANIZACION responde promedios,
+                                            máximos, mínimos, alertas y lecturas del alcance; si
+                                            el puente del alcance no responde: 503 {detail,
+                                            inactivo: true, motivo}. Las respuestas con lecturas
+                                            traen "fuente" {lecturas, desde, hasta, dispositivo?,
+                                            dispositivo_nombre?, alcance?} (puede venir {} sin
+                                            lecturas) y las de alertas pendientes "alertas"
+                                            [{num, nivel, variable (nombre), dispositivo, area,
+                                            fecha, valor, unidad}], que se atienden con
+                                            /alertas/{num}/atender|descartar/. Un agente por dispositivo;
                                             {"accion"?} confirma una acción preparada;
                                             responde {"texto", "via", "registro", "pasos"}
                                             y, según el caso, "codigo" (sin_permiso,

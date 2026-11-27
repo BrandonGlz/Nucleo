@@ -130,7 +130,7 @@ Para iniciar sesión desde la API:
 
 - `cd BackEnd && .venv/bin/python manage.py check` — "revisa la configuración; muestra `System check identified no issues`."
 - `cd BackEnd && .venv/bin/python manage.py makemigrations --check --dry-run` — "confirma que los modelos y las migraciones coinciden; muestra `No changes detected`."
-- `cd BackEnd && .venv/bin/python manage.py test` — "ejecuta las pruebas con una base temporal; muestra `Ran 134 tests` y `OK`; crea `test_nucleo_db` y `test_nucleo_iot` y las borra al terminar."
+- `cd BackEnd && .venv/bin/python manage.py test` — "ejecuta las pruebas con una base temporal; muestra unas 550 pruebas (`Ran … tests`) y `OK` en unos 2 min; usa `--noinput` y nunca `--parallel`; crea `test_nucleo_db` y `test_nucleo_iot` y las borra al terminar."
 - `cd BackEnd && .venv/bin/ruff check .` — "revisa el estilo; muestra `All checks passed!`."
 
 ## Para profundizar

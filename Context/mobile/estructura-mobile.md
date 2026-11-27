@@ -39,7 +39,7 @@ Mobile/
 │   ├── modules/<modulo>/           # acceso (MarcoAcceso, AccesoScreen, SolicitarAccesoScreen),
 │   │                               # panel, historico, mediciones (detalle de variable),
 │   │                               # alertas (lista, detalle y HojaResolver), agente (Nico AI
-│   │                               # con voz), notificaciones, perfil (foto, sesiones y
+│   │                               # con voz y ConversacionesScreen), notificaciones, perfil (foto, sesiones y
 │   │                               # contraseña), reportes, estado;
 │   │                               # dispositivos fuera de la navegación
 │   ├── navigation/AppNavigator.js
@@ -147,7 +147,25 @@ perfil de la web. «¿Olvidaste tu contraseña?» pide el enlace por correo
   solo para SUPER, los operadores de su área (`/usuarios/` responde 403 a OPER y ANALISTA).
 - **Reportes** (`modules/reportes/ReportesScreen.js`, ADMIN, SUPER y ANALISTA; se abre desde Mi
   perfil y los avisos): tarjetas con periodo, origen, cifras y extracto; el PDF se descarga y se
-  abre con el menú de compartir.
+  abre con el menú de compartir. Chips de origen y de periodo (Todos, Este mes, Mes pasado,
+  Últimos 7 días → `?desde=&hasta=`) y «Envíos» abre una hoja con el historial de correos del
+  reporte (`envios`: fecha, origen, quién, destinatarios, resultado y error).
+
+## Nico AI en la app
+
+`modules/agente/AgenteScreen.js` es el chat (con dictado y voz). Igual que la web:
+
+- Un solo selector de alcance en hoja inferior (`components/SelectorAlcance.js`): dispositivos,
+  áreas y «Toda la organización» (ADMIN y SUPER); el OPER no lo ve. Si el alcance no puede usar a
+  Nico (`GET /agente/estado/?area=` u `?organizacion=1` → `motivo`), muestra el aviso y deshabilita
+  el campo.
+- Inicio con saludo, resumen del dispositivo (últimas lecturas, pendientes y conexión; solo en
+  alcance de dispositivo) y las sugerencias reales de `GET /agente/sugerencias/` (`inicio`).
+- Cada respuesta: fila «Basado en» (`fuente`), copiar (`expo-clipboard`), regenerar, 👍/👎 y «Ver en
+  Histórico», que abre Histórico con el dispositivo y el «Rango de Nico» (`route.params` desde/hasta).
+- Las alertas pendientes que trae una respuesta se atienden o descartan ahí con `HojaResolver`.
+- `ConversacionesScreen.js`: las 50 últimas conversaciones de la cuenta (AsyncStorage, un hilo por
+  alcance), buscador, grupos Hoy/Ayer/Esta semana/Antes y renombrar o borrar con pulsación larga.
 
 ## Comandos
 

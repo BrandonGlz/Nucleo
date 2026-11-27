@@ -25,7 +25,7 @@ Cada componente conserva su propio número porque se publica por separado.
 | --- | --- |
 | Proyecto | 0.9.0 |
 | App Android | 0.2.16 (código 28) |
-| Firmware del ESP32 | 1.1.4 |
+| Firmware del ESP32 | 1.1.6 |
 | Web | 0.1.0 |
 | API | 0.1.0 |
 
@@ -132,6 +132,12 @@ Cada componente conserva su propio número porque se publica por separado.
 
 ### Corregido
 
+- Firmware 1.1.5: la configuración del dispositivo (nombre, intervalo y umbrales) llega al ESP32
+  por la cola de `escuchar_mqtt` (retenida en `nucleo/devices/<código>/config`, publicada solo por
+  esa conexión y otra vez en cada reconexión) y el ESP informa `intervalo_seg` y `bateria_v`; si el
+  intervalo no coincide se le reenvía y «Sin conexión» usa el intervalo más largo.
+- Firmware 1.1.6: el zumbador pulsa con el RMT en lugar de un PWM a 1 Hz que dejaba el LEDC a
+  medias y hacía fallar el reinicio suave de mpremote.
 - El canal en vivo (panel, alertas y avisos de Nico) ya no se desconecta cada pocos segundos: redis-py 8 cortaba
   la lectura a los 5 s, justo lo que Channels espera un mensaje, y cada conexión caía con «Timeout reading».
 
