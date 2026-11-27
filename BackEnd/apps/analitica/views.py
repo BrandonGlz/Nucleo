@@ -7,8 +7,9 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.analitica import catalogo
+from apps.analitica import catalogo, hallazgos, servicio
 from apps.analitica.models import TableroAnalitica, VersionTablero
 from apps.analitica.serializers import (
     SolicitudCambioTableroSerializer,
@@ -18,6 +19,7 @@ from apps.analitica.serializers import (
     VersionTableroSerializer,
 )
 from common import roles
+from common.exportar import respuesta_csv
 from common.permissions import PermisoPorRol
 
 
@@ -225,3 +227,93 @@ class TableroAnaliticaViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             _nueva_version(tablero, version.conf, request.user)
         return Response(self.get_serializer(tablero).data)
+
+
+class _VistaAnalitica(APIView):
+    """Base de las consultas en vivo de Analítica."""
+
+    permission_classes = [PermisoPorRol]
+    roles_lectura = (roles.ADMIN, roles.SUPERVISOR, roles.ANALISTA)
+    # Los POST de consulta solo leen datos; los tres roles de lectura pueden usarlos.
+    roles_escritura = roles_lectura
+
+
+def _tarjetas_validas(valor, maximo=12):
+    if not isinstance(valor, list):
+        raise ValidationError({"tarjetas": "Las tarjetas deben ser una lista."})
+    try:
+        return catalogo.validar_tarjetas(valor, maximo)
+    except DjangoValidationError as error:
+        raise ValidationError({"tarjetas": error.messages}) from error
+
+
+def _una_tarjeta(valor):
+    if not isinstance(valor, dict):
+        raise ValidationError({"tarjeta": "La tarjeta debe ser un objeto."})
+    try:
+        return catalogo.validar_tarjeta(valor)
+    except DjangoValidationError as error:
+        raise ValidationError({"tarjeta": error.messages}) from error
+
+
+class ConsultaView(_VistaAnalitica):
+    """Datos en vivo de las tarjetas de una página."""
+
+    def post(self, request):
+        if not isinstance(request.data, dict):
+            raise ValidationError({"detalle": "La solicitud debe ser un objeto."})
+        if "tarjetas" not in request.data:
+            raise ValidationError({"tarjetas": "Faltan las tarjetas de la página."})
+        tarjetas = _tarjetas_validas(request.data["tarjetas"])
+        return Response(
+            servicio.consultar(
+                request.user,
+                tarjetas,
+                request.data.get("filtros") or {},
+                request.data.get("cruzado"),
+            )
+        )
+
+
+class ConsultaCSVView(_VistaAnalitica):
+    """Descarga el CSV de una tarjeta."""
+
+    def post(self, request):
+        if not isinstance(request.data, dict):
+            raise ValidationError({"detalle": "La solicitud debe ser un objeto."})
+        tarjeta = _una_tarjeta(request.data.get("tarjeta"))
+        try:
+            consulta, encabezado, filas = servicio.csv_tarjeta(
+                request.user,
+                tarjeta,
+                request.data.get("filtros") or {},
+                request.data.get("cruzado"),
+            )
+        except ValueError as error:
+            raise ValidationError({"tarjeta": str(error)}) from error
+        return respuesta_csv(
+            request,
+            "analitica",
+            encabezado,
+            filas,
+            archivo=servicio.nombre_csv(tarjeta, consulta),
+        )
+
+
+class HallazgosView(_VistaAnalitica):
+    """Hallazgos de Nico AI sobre las tarjetas de una página."""
+
+    def post(self, request):
+        if not isinstance(request.data, dict):
+            raise ValidationError({"detalle": "La solicitud debe ser un objeto."})
+        if "tarjetas" not in request.data:
+            raise ValidationError({"tarjetas": "Faltan las tarjetas de la página."})
+        tarjetas = _tarjetas_validas(request.data["tarjetas"])
+        return Response(
+            hallazgos.generar(
+                request.user,
+                tarjetas,
+                request.data.get("filtros") or {},
+                request.data.get("cruzado"),
+            )
+        )

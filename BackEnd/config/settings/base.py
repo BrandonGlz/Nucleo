@@ -74,6 +74,23 @@ else:
 
 AUTH_USER_MODEL = "usuarios.Usuario"
 
+# Caché de las consultas de Analítica. En producción usa el mismo Redis del canal en vivo;
+# en pruebas y con un solo proceso, memoria local (60 s por consulta, 10 min por hallazgos).
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "nucleo-analitica",
+        }
+    }
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",

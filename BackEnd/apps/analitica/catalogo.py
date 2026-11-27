@@ -768,3 +768,60 @@ def validar_conf(conf):
         for indice, pagina in enumerate(paginas_crudas, start=1)
     ]
     return {"esquema": VERSION_ESQUEMA, "filtros": filtros, "paginas": paginas}
+
+
+def validar_tarjeta(tarjeta):
+    """Valida y normaliza una tarjeta suelta, sin importar su posición en la rejilla.
+
+    La usan ``analitica/consulta/`` y ``consulta/csv/`` para aceptar lo que el editor aún
+    no guarda. La rejilla se valida al guardar el tablero, no en cada consulta.
+    """
+    etiqueta = _etiqueta_tarjeta(tarjeta)
+    if not isinstance(tarjeta, dict):
+        _error(None, etiqueta, "la tarjeta debe ser un objeto.")
+    tipo = tarjeta.get("tipo")
+    if not isinstance(tipo, str) or not tipo:
+        _error(None, etiqueta, "falta el tipo de tarjeta.")
+    if tipo not in TIPOS:
+        _error(None, etiqueta, f"el tipo «{tipo}» no existe en el catálogo.")
+    identificador = _validar_id(tarjeta.get("id"), None, etiqueta, "la tarjeta")
+
+    titulo = tarjeta.get("titulo", "")
+    if titulo is None:
+        titulo = ""
+    if not isinstance(titulo, str):
+        _error(None, etiqueta, "el título de la tarjeta debe ser texto.")
+    titulo = titulo.strip()
+    if len(titulo) > TITULO_MAX:
+        _error(None, etiqueta, f"el título no puede pasar de {TITULO_MAX} caracteres.")
+    if not titulo:
+        titulo = TIPOS[tipo]["nombre"]
+
+    opciones = _opciones(tipo, tarjeta.get("opciones"), None, titulo)
+    meta = _meta(tarjeta.get("meta"), tipo, None, titulo)
+    normalizada = {
+        "id": identificador,
+        "tipo": tipo,
+        "titulo": titulo,
+        "opciones": opciones,
+    }
+    if meta is not None:
+        normalizada["meta"] = meta
+    return normalizada
+
+
+def validar_tarjetas(tarjetas, maximo=TARJETAS_MAX):
+    """Valida una lista de tarjetas sueltas y sus ids únicos."""
+    if not isinstance(tarjetas, list):
+        raise ValidationError("Las tarjetas deben ser una lista.")
+    if len(tarjetas) > maximo:
+        raise ValidationError(f"No se pueden consultar más de {maximo} tarjetas a la vez.")
+    resultado = []
+    ids = set()
+    for tarjeta in tarjetas:
+        normalizada = validar_tarjeta(tarjeta)
+        if normalizada["id"] in ids:
+            _error(None, normalizada["titulo"], "el identificador de la tarjeta ya está usado.")
+        ids.add(normalizada["id"])
+        resultado.append(normalizada)
+    return resultado

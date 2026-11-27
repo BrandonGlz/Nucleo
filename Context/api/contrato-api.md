@@ -294,6 +294,83 @@ Analítica (ADMIN, SUPER y ANALISTA leen; ADMIN y SUPER escriben)
                                             paginas [{id, nombre, tarjetas [{id, tipo, x, y, w,
                                             h, titulo, opciones, meta?}]}] en una rejilla 12 × 6
 
+Consultas en vivo de Analítica (ADMIN, SUPER y ANALISTA)
+├── POST /analitica/consulta/               {"tarjetas": [máx. 12], "filtros": {...}, "cruzado": {...}|null}
+│                                           → {generado, periodo {inicio, fin}, previo {inicio, fin},
+│                                              intervalo (15m|1h|1d|1sem), tarjetas: {id: datos|{error}}}
+│                                           Los filtros: periodo hoy|24h|7d|30d|mes|mes_anterior|90d|
+│                                           personalizado; desde y hasta (ISO o AAAA-MM-DD; el «hasta»
+│                                           sin hora incluye el día, fin exclusivo) hasta 366 días;
+│                                           areas [num] y dispositivos [num] visibles; variable
+│                                           ""|TEMP|HUM|AIRE ("" = Todas). Un área o dispositivo
+│                                           ajeno responde 403. Caché 60 s por usuario y consulta.
+│                                           cruzado {dimension: area|dispositivo|variable|nivel|estado,
+│                                           valor, origen?}; el origen es el id de la tarjeta que no
+│                                           se filtra. Un error de una tarjeta no tumba las demás.
+├── POST /analitica/consulta/csv/           {"tarjeta": {...}, "filtros": {...}, "cruzado"?} → CSV de
+│                                           esa tarjeta, con BOM y fórmulas neutralizadas; el archivo
+│                                           se llama analitica_<título>_<AAAAMMDD>_<AAAAMMDD>.csv.
+│                                           La tarjeta de hallazgos no tiene CSV (400).
+└── POST /analitica/hallazgos/              {"tarjetas": [máx. 12], "filtros": {...}, "cruzado"?} →
+                                            {hallazgos: [3–5 textos ≤140], origen: "ia"|"local",
+                                            generado}; usa la IA local (mismo modelo y num_ctx que Nico,
+                                            sin ESP) y cae a reglas locales si falla o tarda >60 s.
+                                            Caché 10 min; no se guarda en la base.
+
+### Formato de las tarjetas calculadas
+
+Todas traen `tipo`, `titulo`, `previo`, `variacion`, `meta`, `meta_estado` y `sin_datos` cuando
+aplican. `variacion` es `{pct, abs, unidad: "pts"|unidad, sentido: sube|baja|igual, mejora}`;
+`meta` es `{valor, sentido, tolerancia, estado, texto}` y `meta_estado` es `cumple|cerca|lejos|null`.
+En las barras, `meta` es solo la línea (`valor`, `sentido`, `tolerancia`, `texto`) y `meta_estado` es
+nulo porque no hay un valor único. Los elementos clicables llevan `dimension` y `dimension_valor`
+(el id del área, dispositivo, variable, nivel o estado; no confundir con el `valor` numérico).
+
+- **kpi**: `indicador`, `variable?`, `valor`, `unidad`, `decimales`, `previo`, `variacion`, `meta`,
+  `meta_estado`, `sparkline` (`[{x, y}]` o `null`), `sin_datos`.
+- **tendencia**: `variable`, `unidad`, `decimales`, `estadistico`, `agrupar`, `estilo`,
+  `intervalo`, `series` (`[{nombre, dimension, dimension_valor, puntos: [{x, y}]}]`), `previo`
+  (puntos de la línea punteada), `umbrales` (`{advertencia_min, advertencia_max, peligro_min,
+  peligro_max}` o `null`) y `nota_umbrales`.
+- **medidor**: `indicador`, `variable`, `valor`, `unidad`, `decimales`, `min`, `max`, `previo`,
+  `variacion`, `meta`, `meta_estado`.
+- **barras**: `metrica`, `por`, `variable`, `orientacion`, `unidad`, `decimales`, `barras`
+  (`[{etiqueta, valor, dimension, dimension_valor, previo, variacion}]`), `meta` (línea de meta).
+- **barras_apiladas**: `serie`, `por`, `porcentaje`, `unidad`, `decimales`, `categorias`
+  (`[{etiqueta, dimension, dimension_valor}]`), `series` (`[{nombre, dimension, dimension_valor,
+  valores}]`). Con `porcentaje` los valores ya son porcentajes y suman 100 por categoría.
+- **ranking**: `metrica`, `por`, `variable`, `sentido`, `unidad`, `decimales`, `filas`
+  (`[{etiqueta, valor, previo, variacion, dimension, dimension_valor}]`), `maximo`.
+- **matriz**: `columnas` (`[{codigo, nombre, unidad, decimales}]`), `filas` (`[{id, etiqueta,
+  dimension, dimension_valor, celdas: [{variable, valor, dimension, dimension_valor, nivel?}]}]`),
+  `semaforo` y `escala {min, max}`. Si `valor=cumplimiento`, `nivel` es cumple (≥95), cerca (≥90)
+  o lejos.
+- **mapa_calor**: `variable`, `alertas`, `dias` (lun–dom), `horas` (0–23), `valores` (7 × 24),
+  `min`, `max`, `unidad`, `decimales`.
+- **dispersion**: `x`, `y`, `info_x`, `info_y`, `puntos` (`[{x, y, etiqueta, dimension,
+  dimension_valor, dispositivo, area, area_num}]`), `max_puntos`, `truncado`.
+- **histograma**: `variable`, `unidad`, `decimales`, `cubetas` (`[{desde, hasta, etiqueta, valor}]`),
+  `total`, `umbrales` y `nota_umbrales`.
+- **alertas_dona**: `por`, `total`, `sectores` (`[{etiqueta, valor, porcentaje, dimension,
+  dimension_valor}]`), `unidad`, `decimales`.
+- **tiempo_atencion**: `por`, `promedio`, `total`, `atendidas`, `grupos` (`[{etiqueta, valor,
+  total, atendidas, dimension, dimension_valor}]`), `unidad` (min), `decimales`, `previo`,
+  `variacion`, `meta`, `meta_estado`.
+- **disponibilidad**: `promedio`, `filas` (`[{etiqueta, valor, recibidas, esperadas, huecos:
+  [{inicio, minutos}], dimension, dimension_valor}]`), `limite`, `orden`, `unidad` (%), `decimales`,
+  `previo`, `variacion`, `meta`, `meta_estado`.
+- **texto**: `nota`.
+- **hallazgos**: `bajo_demanda: true`; los textos llegan por `/analitica/hallazgos/`.
+
+El CSV de cada tarjeta escribe: `kpi`/`medidor` → Métrica, Valor, Unidad, Periodo anterior,
+Variación, Variación %, Meta, Estado de la meta; `tendencia` → Serie, Fecha, Valor;
+`barras`/`ranking` → Categoría, Valor, Unidad, Periodo anterior, Variación %; `barras_apiladas` →
+Categoría, Serie, Valor; `matriz` → Fila, Variable, Valor; `mapa_calor` → Día, Hora, Valor;
+`dispersion` → Dispositivo, Área, Fecha, X, Y; `histograma` → Desde, Hasta, Cantidad;
+`alertas_dona` → Categoría, Valor, Porcentaje; `tiempo_atencion` → Grupo, Promedio (min), Total,
+Atendidas; `disponibilidad` → Dispositivo, Disponibilidad (%), Recibidas, Esperadas, Huecos;
+`texto` → Nota. `hallazgos` no tiene CSV.
+
 Reportes (ADMIN, SUPER y ANALISTA)
 ├── GET /reportes/                          Lista y detalle; incluye area, areas, formato (num),
 │                                           formato_nombre, formato_version y formato_conf,
