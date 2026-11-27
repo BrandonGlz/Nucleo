@@ -25,7 +25,7 @@ import * as formatosApi from '../../services/formatos'
 import * as organizacionesApi from '../../services/organizaciones'
 import * as reportesApi from '../../services/reportes'
 import { pagina } from '../../utils/convertir'
-import { fechaLarga, haceCuanto, hora, miles, periodo } from '../../utils/formato'
+import { fechaLarga, hora, periodo } from '../../utils/formato'
 
 async function cargar(filtros = {}) {
   const params = {
@@ -581,41 +581,12 @@ export function ReportesPage() {
     </div>
   )
 
-  // Banda de cifras como en las demás pantallas: cuántos reportes hay, los de este mes, las
-  // programaciones activas y cómo van los correos.
-  const [inicioMes] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-  const listos = reportes.filter((r) => ['LISTO', 'ENVIADO'].includes(r.estado ?? 'LISTO') && !r.archivado)
-  const delMes = reportes.filter((r) => new Date(r.fecha_generacion) >= inicioMes).length
   const programadas = (datos?.programaciones ?? []).filter((p) => p.activa !== false).length
-  const envios = reportes.flatMap((r) => r.envios ?? [])
-  const fallidos = envios.filter((e) => e.resultado !== 'OK').length
-  const ultimo = reportes[0]
-  const cifras = datos
-    ? {
-        principal: {
-          etiqueta: 'Reportes',
-          valor: miles(reportes.length),
-          unidad: reportes.length === 1 ? 'reporte' : 'reportes',
-          sub: `${listos.length} listos${ultimo ? ` · el último ${haceCuanto(ultimo.fecha_generacion).toLowerCase()}` : ''}`,
-        },
-        cifras: [
-          { etiqueta: 'Este mes', valor: miles(delMes), sub: 'generados' },
-          { etiqueta: 'Programados', valor: miles(programadas), sub: programadas === 1 ? 'activo' : 'activos', tono: 'verde' },
-          {
-            etiqueta: 'Correos',
-            valor: miles(envios.length - fallidos),
-            sub: fallidos ? `${fallidos} sin enviar` : 'enviados',
-            tono: fallidos ? 'peligro' : undefined,
-          },
-        ],
-      }
-    : { principal: { etiqueta: 'Reportes', valor: '—', tonoValor: 'apagado' } }
 
   return (
     <Pantalla
       eyebrow={datos ? `${organizacion} · ${reportes.length} reportes · ${programadas} programados` : organizacion}
       titulo="Reportes"
-      cifras={movil && vistaAbierta ? null : cifras}
       acciones={
         <Button
           icon="sparkles"
