@@ -7417,29 +7417,11 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
 }
 
 
-/* Archivos: PDF en rojo y CSV en verde, de contorno, mismo ancho (escritorio y celular). */
+/* Archivos: PDF y CSV como el resto de botones secundarios de Núcleo, mismo ancho (escritorio y celular). */
 .ui-reportes__barra .ui-reportes__pdf,
 .ui-reportes__barra .ui-reportes__csv {
   display: inline-flex;
   min-width: 72px;
   gap: 6px;
   padding: 0 12px;
-}
-.ui-reportes__barra .ui-reportes__pdf {
-  background: var(--danger-soft);
-  border-color: color-mix(in srgb, var(--danger) 70%, transparent);
-  color: var(--danger);
-}
-.ui-reportes__barra .ui-reportes__csv {
-  background: var(--success-soft);
-  border-color: color-mix(in srgb, var(--success) 70%, transparent);
-  color: var(--success);
-}
-.ui-reportes__barra .ui-reportes__pdf:hover { background: color-mix(in srgb, var(--danger-soft) 80%, var(--danger) 12%); }
-.ui-reportes__barra .ui-reportes__csv:hover { background: color-mix(in srgb, var(--success-soft) 80%, var(--success) 12%); }
-.ui-reportes__barra .ui-reportes__pdf:disabled,
-.ui-reportes__barra .ui-reportes__csv:disabled {
-  background: var(--surface-muted);
-  border-color: var(--border);
-  color: var(--text-muted);
 }
