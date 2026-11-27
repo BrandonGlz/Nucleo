@@ -12,6 +12,7 @@
 --sidebar:#121413;--sidebar-text:#F3F5F2;--sidebar-text-muted:#9DA39E;--sidebar-hover:#23262A;
 --focus-ring:#0F6E3F;
 --chart-line:#1E9A5E;--chart-area:#2BC47A;--chart-glow:#2BC47A00;--chart-grid:#E6E9E2;--chart-bar:#B9E5CD;--chart-bar-active:#1E9A5E;
+--chart-series-1:#1E9A5E;--chart-series-2:#2F6DB3;--chart-series-3:#B36A00;--chart-series-4:#7B4DA8;--chart-series-5:#0E7C86;--chart-series-6:#A33C5C;
 --scrim:#12141366;
 --logo-color:#2BC47A;
 /* semantic aliases */
@@ -36,6 +37,7 @@
 --sidebar:#141616;--sidebar-text:#F3F5F2;--sidebar-text-muted:#8C928E;--sidebar-hover:#1F2222;
 --focus-ring:#2BC47A;
 --chart-line:#2BC47A;--chart-area:#2BC47A;--chart-glow:#2BC47A66;--chart-grid:#272B2A;--chart-bar:#333836;--chart-bar-active:#2BC47A;
+--chart-series-1:#2BC47A;--chart-series-2:#6BA8F0;--chart-series-3:#F5B53D;--chart-series-4:#C79BF2;--chart-series-5:#45C7D1;--chart-series-6:#F18FA8;
 --scrim:#00000099;
 --logo-color:#2BC47A;
 --shadow-sm:none;

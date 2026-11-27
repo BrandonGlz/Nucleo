@@ -41,7 +41,7 @@ FrontEnd/
 │   │   ├── AvisosContext.jsx  # alertas pendientes y campana: notificaciones de alertas + avisos
 │   │   └── AgenteContext.jsx  # estado de Nico AI (puente, disponibles) y conversaciones
 │   ├── design-system/
-│   │   ├── componentes/  # 38 módulos ES (Button, Card, TrendChart…); index.js reexporta
+│   │   ├── componentes/  # módulos ES (Button, Card, TrendChart…); index.js reexporta
 │   │   ├── estilos/      # tokens de color, tipografía, espaciado y clases nc-*
 │   │   └── fuentes/      # Plus Jakarta Sans 400–800
 │   ├── features/
@@ -178,6 +178,13 @@ Las gráficas toman el alto libre de su tarjeta con `components/GraficaAjustable
 170 px pasa `tooltipFijo={false}` a `TrendChart` (el tooltip solo aparece al pasar el mouse, en un
 renglón). `TrendChart` coloca las etiquetas Máx/Mín del umbral por dentro si por fuera chocarían,
 las quita si no hay alto para las dos y no dibuja eje negativo para variables que no bajan de 0.
+
+`design-system/componentes/charts` reúne las gráficas reutilizables: `TrendChart` (series múltiples,
+comparativa punteada y bandas), `BarChart` (vertical u horizontal, meta y selección), `StackedBarChart`,
+`Heatmap`, `ScatterChart`, `Histogram`, `MatrixChart`, `Gauge`, `DonutChart`, `KpiTile` y
+`RankingList`. Todas usan tokens, `useWidth` (`ResizeObserver`), `role="img"` con resumen y, cuando
+aplican, `seleccion` + `alSeleccionar({dimension, valor})` con atenuado del resto y
+`ChartTooltip` de `charts/comun.js`.
 
 ## Consolas por dominio
 

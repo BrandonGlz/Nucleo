@@ -1,6 +1,6 @@
 import { cloneElement, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Eye, EyeOff, GripVertical, Plus, RotateCcw, Trash2 } from 'lucide-react'
-import { BarChart, Badge, Icon, Logo, Tabs, TrendChart } from '../../design-system/componentes/index.js'
+import { BarChart, Badge, DonutChart, Icon, Logo, Tabs, TrendChart } from '../../design-system/componentes/index.js'
 import { UNIDAD, VARIABLE } from '../../utils/convertir'
 import { ANCHO, esquema, FUENTES, FUENTES_CON_FILTRO, NOTA_MAX, opcionesDe, opcionesNuevas, tarjeta, TITULO_MAX } from './personalizacion'
 import { fechaLarga, hora, miles, periodo, duracionLegible } from '../../utils/formato'
@@ -170,33 +170,22 @@ function Serie({ serie, op }) {
 
 const COLOR_ALERTA = ['var(--warning)', 'var(--chart-bar-active)', 'var(--chart-bar)']
 
-// Dona con la parte de las alertas que corresponde a cada variable.
+// Dona con la parte de las alertas que corresponde a cada variable. El dibujo vive en el sistema
+// de diseño (DonutChart); aquí solo se le da la forma que ya usaban los reportes.
 function Dona({ partes, total }) {
-  const r = 52
-  const largo = 2 * Math.PI * r
-  const tramos = partes.map((p) => (p.alertas / total) * largo)
-  const inicios = tramos.map((_, i) => tramos.slice(0, i).reduce((s, x) => s + x, 0))
   return (
-    <svg className="ui-dona" viewBox="0 0 132 132" role="img" aria-label="Alertas por variable">
-      <circle cx="66" cy="66" r={r} fill="none" stroke="var(--surface-muted)" strokeWidth="18" />
-      {partes.map((p, i) => (
-        <circle
-          key={p.variable}
-          cx="66"
-          cy="66"
-          r={r}
-          fill="none"
-          stroke={COLOR_ALERTA[i % COLOR_ALERTA.length]}
-          strokeWidth="18"
-          strokeDasharray={`${tramos[i]} ${largo - tramos[i]}`}
-          strokeDashoffset={-inicios[i]}
-          transform="rotate(-90 66 66)"
-        />
-      ))}
-      <text x="66" y="74" textAnchor="middle" fontSize="24" fontWeight="800" fill="var(--text-primary)">
-        {total}
-      </text>
-    </svg>
+    <DonutChart
+      datos={partes.map((p, i) => ({
+        label: p.variable,
+        value: p.alertas,
+        color: COLOR_ALERTA[i % COLOR_ALERTA.length],
+      }))}
+      total={total}
+      centro={total}
+      interactivo={false}
+      svgClassName="ui-dona"
+      ariaLabel="Alertas por variable"
+    />
   )
 }
 
