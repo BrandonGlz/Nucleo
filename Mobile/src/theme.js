@@ -10,6 +10,8 @@ export const colors = {
     danger: '#C4291C', dangerSoft: '#FDE6E3', dangerContrast: '#FFFFFF', offline: '#62675F', offlineSoft: '#ECEDEA',
     sidebar: '#121413', sidebarText: '#F3F5F2', sidebarTextMuted: '#9DA39E', sidebarHover: '#23262A',
     focusRing: '#0F6E3F', chartLine: '#1E9A5E', chartArea: '#2BC47A', chartGrid: '#E6E9E2',
+    chartOk: '#2FA96B', chartWarn: '#E8A33A', chartDanger: '#E0605A',
+    chartSeries: ['#1E9A5E', '#2F6DB3', '#B36A00', '#7B4DA8', '#0E7C86', '#A33C5C'],
     logoColor: '#2BC47A',
     // Modo claro 60-30-10: las selecciones, las gráficas y los íconos neutros llevan el verde.
     seleccion: '#0F7A45', seleccionTexto: '#FFFFFF', cuentaSeleccion: '#FFFFFF', cuentaSeleccionTexto: '#0F7A45',
@@ -24,6 +26,8 @@ export const colors = {
     danger: '#FF6B5E', dangerSoft: '#3A1916', dangerContrast: '#1A0B09', offline: '#8C928E', offlineSoft: '#262928',
     sidebar: '#141616', sidebarText: '#F3F5F2', sidebarTextMuted: '#8C928E', sidebarHover: '#1F2222',
     focusRing: '#2BC47A', chartLine: '#2BC47A', chartArea: '#2BC47A', chartGrid: '#272B2A',
+    chartOk: '#3DD68C', chartWarn: '#F5B53D', chartDanger: '#FF6B5E',
+    chartSeries: ['#2BC47A', '#6BA8F0', '#F5B53D', '#C79BF2', '#45C7D1', '#F18FA8'],
     logoColor: '#2BC47A',
     seleccion: '#F3F5F2', seleccionTexto: '#1A1C1C', cuentaSeleccion: '#2BC47A', cuentaSeleccionTexto: '#FFFFFF',
     grafica: '#2BC47A', iconoNeutro: '#202323', iconoNeutroTexto: '#B4BAB6',

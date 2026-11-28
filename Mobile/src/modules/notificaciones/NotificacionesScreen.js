@@ -57,7 +57,8 @@ export function NotificacionesScreen({ navigation }) {
     // «Reporte 12 listo» / «Reporte programado 12 enviado»: la lista de reportes con ese resaltado.
     if (v.tipo === 'REPORTE' && puedeVerReportes(usuario)) {
       const num = Number(/\bReporte (?:programado )?(\d+)/.exec(v.titulo ?? '')?.[1]) || undefined
-      return () => navigation.navigate('Reportes', { num })
+      // El parámetro `aviso` fuerza la pestaña «Reportes» aunque la pantalla estuviera en «Tableros».
+      return () => navigation.navigate('Reportes', { num, aviso: Date.now() })
     }
     // Cambios de rol o de área (propios o, para el administrador, de otras cuentas): la app no
     // administra usuarios, así que lo coherente es Mi perfil, donde se ven el rol y el área vigentes.

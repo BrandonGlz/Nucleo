@@ -17,6 +17,7 @@ import { ContrasenaScreen } from './perfil/ContrasenaScreen'
 import { PerfilScreen } from './perfil/PerfilScreen'
 import { SesionesScreen } from './perfil/SesionesScreen'
 import { ReportesScreen } from './reportes/ReportesScreen'
+import { TableroScreen } from './reportes/tableros/TableroScreen'
 
 // Registro único de pantallas: AppNavigator las crea a partir de aquí.
 // - `pestana`: aparece en la barra inferior con ese ícono.
@@ -40,6 +41,8 @@ export const modulos = [
   { nombre: 'Notificaciones', titulo: 'Notificaciones', Pantalla: NotificacionesScreen, permiso: conOrganizacion },
   // Reportes: ADMIN, SUPER y ANALISTA (como /reportes en la web); se abre desde Mi perfil y los avisos.
   { nombre: 'Reportes', titulo: 'Reportes', Pantalla: ReportesScreen, permiso: puedeVerReportes },
+  // Vista de un tablero de Analítica: se abre desde la pestaña «Tableros» de Reportes.
+  { nombre: 'TableroAnalitica', titulo: 'Tablero', Pantalla: TableroScreen, permiso: puedeVerReportes },
   { nombre: 'Sesiones', titulo: 'Sesiones abiertas', Pantalla: SesionesScreen },
   { nombre: 'Contrasena', titulo: 'Cambiar contraseña', Pantalla: ContrasenaScreen },
 ]

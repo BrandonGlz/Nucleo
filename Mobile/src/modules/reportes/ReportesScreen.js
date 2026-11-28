@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Cabecera } from '../../components/Cabecera'
 import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
-import { Aparece, Badge, Button, Chip, IconCircle, Input, Skeleton, T } from '../../components/ui'
+import { Aparece, Badge, Button, Chip, IconCircle, Input, Skeleton, T, Tabs } from '../../components/ui'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
 import * as reportesApi from '../../services/reportes'
 import { cuando, fechaLarga, hora, miles, periodo } from '../../utils/formato'
 import { colors } from '../../theme'
+import { ListaTableros } from './tableros/ListaTableros'
 
 const ORIGEN = {
   MANUAL: { icono: 'user', texto: 'Manual' },
@@ -104,12 +105,25 @@ function TarjetaReporte({ r, resaltar, abriendo, onPdf, onEnvios }) {
 export function ReportesScreen({ navigation, route }) {
   const { c } = useTema()
   const resaltado = route?.params?.num ?? null
+  const aviso = route?.params?.aviso ?? null
+  // La pantalla tiene dos pestañas: los reportes de siempre y los tableros de Analítica.
+  // Un aviso de reporte abre directamente «Reportes», aunque se hubiera quedado en «Tableros».
+  const [pestana, setPestana] = useState('reportes')
+  const [busquedaTableros, setBusquedaTableros] = useState('')
+  useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- abrir desde un aviso de reporte cambia de pestaña
+    if (resaltado || aviso) setPestana('reportes')
+  }, [resaltado, aviso])
   const [periodo, setPeriodo] = useState('todos')
   const { estado, datos, reintentar } = useDatos(() => reportesApi.lista(rangoDe(periodo)), [periodo], { esVacio: (d) => !d.length })
   const [abriendo, setAbriendo] = useState(null)
   const [busqueda, setBusqueda] = useState('')
   const [origen, setOrigen] = useState('')
   const [envios, setEnvios] = useState(null)
+  const cambiarPestana = (id) => {
+    setPestana(id)
+    if (id !== 'reportes') setEnvios(null)
+  }
   const filtrados = (datos ?? []).filter((r) => {
     const texto = busqueda.trim().toLowerCase()
     const coincide = !texto || `${r.titulo ?? ''} ${r.area_nombre}`.toLowerCase().includes(texto)
@@ -137,62 +151,94 @@ export function ReportesScreen({ navigation, route }) {
     <>
       <Cabecera titulo="Reportes" onVolver={() => navigation.goBack()} />
       <T size={13} lh={19} color={colors.dark.textSecondary}>
-        {datos?.length
-          ? `${datos.length} ${datos.length === 1 ? 'reporte' : 'reportes'} a tu alcance. Se piden y programan en la web o con Nico AI.`
-          : 'Los reportes de tu organización o de tu área. Se piden y programan en la web o con Nico AI.'}
+        {pestana === 'reportes'
+          ? datos?.length
+            ? `${datos.length} ${datos.length === 1 ? 'reporte' : 'reportes'} a tu alcance. Se piden y programan en la web o con Nico AI.`
+            : 'Los reportes de tu organización o de tu área. Se piden y programan en la web o con Nico AI.'
+          : 'Los tableros de tu organización y las plantillas del sistema, con datos en vivo.'}
       </T>
-      <Input
-        icon="search"
-        placeholder="Buscar reporte…"
-        value={busqueda}
-        onChangeText={setBusqueda}
-        autoCapitalize="none"
+      <Tabs
+        items={[
+          { id: 'reportes', label: 'Reportes' },
+          { id: 'tableros', label: 'Tableros' },
+        ]}
+        value={pestana}
+        onChange={cambiarPestana}
+        lleno
       />
-      <View style={s.filtros}>
-        {[
-          ['', 'Todos'],
-          ['MANUAL', 'Manual'],
-          ['PROGRAMADO', 'Programado'],
-          ['AGENTE', 'Nico AI'],
-        ].map(([valor, etiqueta]) => (
-          <Chip key={valor || 'todos'} selected={origen === valor} onPress={() => setOrigen(valor)}>
-            {etiqueta}
-          </Chip>
-        ))}
-      </View>
-      <View style={s.filtros}>
-        {PERIODOS.map(([valor, etiqueta]) => (
-          <Chip key={valor} selected={periodo === valor} onPress={() => setPeriodo(valor)}>
-            {etiqueta}
-          </Chip>
-        ))}
-      </View>
+      {pestana === 'reportes' ? (
+        <>
+          <Input
+            icon="search"
+            placeholder="Buscar reporte…"
+            value={busqueda}
+            onChangeText={setBusqueda}
+            autoCapitalize="none"
+          />
+          <View style={s.filtros}>
+            {[
+              ['', 'Todos'],
+              ['MANUAL', 'Manual'],
+              ['PROGRAMADO', 'Programado'],
+              ['AGENTE', 'Nico AI'],
+            ].map(([valor, etiqueta]) => (
+              <Chip key={valor || 'todos'} selected={origen === valor} onPress={() => setOrigen(valor)}>
+                {etiqueta}
+              </Chip>
+            ))}
+          </View>
+          <View style={s.filtros}>
+            {PERIODOS.map(([valor, etiqueta]) => (
+              <Chip key={valor} selected={periodo === valor} onPress={() => setPeriodo(valor)}>
+                {etiqueta}
+              </Chip>
+            ))}
+          </View>
+        </>
+      ) : (
+        <Input
+          icon="search"
+          placeholder="Buscar tablero…"
+          value={busquedaTableros}
+          onChangeText={setBusquedaTableros}
+          autoCapitalize="none"
+        />
+      )}
     </>
   )
 
   return (
-    <Pantalla zona={zona} pestanas={false} compacta onRecargar={reintentar}>
-      {estado === 'error' ? (
-        <EstadoError onReintentar={reintentar} />
-      ) : estado === 'vacio' ? (
-        <EstadoVacio icono="file-text" titulo="Sin reportes" mensaje="Aún no hay reportes a tu alcance. Pídelos desde la web o a Nico AI." />
-      ) : !datos ? (
-        [0, 1, 2].map((i) => <Skeleton key={i} height={180} style={{ borderRadius: 22 }} />)
+    <Pantalla zona={zona} pestanas={false} compacta onRecargar={pestana === 'reportes' ? reintentar : undefined}>
+      {pestana === 'tableros' ? (
+        <ListaTableros
+          busqueda={busquedaTableros}
+          onAbrir={(tablero) => navigation.navigate('TableroAnalitica', { tablero })}
+        />
       ) : (
-        filtrados.length === 0 ? (
-          <T size={13} color={c.textMuted}>No hay reportes con ese filtro.</T>
-        ) : filtrados.map((r, i) => (
-          <Aparece key={r.num} indice={i}>
-            <TarjetaReporte r={r} resaltar={r.num === resaltado} abriendo={abriendo === r.num} onPdf={() => abrir(r.num)} onEnvios={() => setEnvios(r)} />
-          </Aparece>
-        ))
+        <>
+          {estado === 'error' ? (
+            <EstadoError onReintentar={reintentar} />
+          ) : estado === 'vacio' ? (
+            <EstadoVacio icono="file-text" titulo="Sin reportes" mensaje="Aún no hay reportes a tu alcance. Pídelos desde la web o a Nico AI." />
+          ) : !datos ? (
+            [0, 1, 2].map((i) => <Skeleton key={i} height={180} style={{ borderRadius: 22 }} />)
+          ) : (
+            filtrados.length === 0 ? (
+              <T size={13} color={c.textMuted}>No hay reportes con ese filtro.</T>
+            ) : filtrados.map((r, i) => (
+              <Aparece key={r.num} indice={i}>
+                <TarjetaReporte r={r} resaltar={r.num === resaltado} abriendo={abriendo === r.num} onPdf={() => abrir(r.num)} onEnvios={() => setEnvios(r)} />
+              </Aparece>
+            ))
+          )}
+          {resaltado && datos && !datos.some((r) => r.num === resaltado) ? (
+            <T size={12} color={c.textMuted} style={{ textAlign: 'center' }}>
+              {`El reporte ${resaltado} ya no está a tu alcance.`}
+            </T>
+          ) : null}
+          <HojaEnvios reporte={envios} onCerrar={() => setEnvios(null)} />
+        </>
       )}
-      {resaltado && datos && !datos.some((r) => r.num === resaltado) ? (
-        <T size={12} color={c.textMuted} style={{ textAlign: 'center' }}>
-          {`El reporte ${resaltado} ya no está a tu alcance.`}
-        </T>
-      ) : null}
-      <HojaEnvios reporte={envios} onCerrar={() => setEnvios(null)} />
     </Pantalla>
   )
 }

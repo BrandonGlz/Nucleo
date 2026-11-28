@@ -42,15 +42,16 @@ Mobile/
 │   │                               # con voz y ConversacionesScreen), notificaciones, perfil (foto, sesiones y
 │   │                               # contraseña), reportes, estado;
 │   │                               # dispositivos fuera de la navegación
+│   ├── modules/reportes/tableros/  # pestaña «Tableros» de Reportes (lista, vista y tarjetas)
 │   ├── navigation/AppNavigator.js
 │   ├── services/api/client.js
 │   ├── services/api/health.js
 │   ├── services/config.js          # USAR_MOCKS, token y pedir() con Authorization
 │   ├── services/sesionGuardada.js  # token, usuario e inicio en expo-secure-store
 │   ├── services/avisosEnVivo.js    # avisos de la campana en memoria, compartidos
-│   ├── services/mock/              # datos.js y handlers.js
+│   ├── services/mock/              # datos.js, handlers.js y analitica.js
 │   ├── services/<dominio>.js       # auth, dispositivos, lecturas, alertas, umbrales, usuarios,
-│   │                               # organizaciones, agente, reportes, solicitudes,
+│   │                               # organizaciones, agente, reportes, analitica, solicitudes,
 │   │                               # notificaciones (push) y tiempoReal (canal en vivo)
 │   ├── utils/                      # convertir.js, formato.js (diaRelativo), formatDate.js
 │   └── theme.js                    # colors.light/dark, marca, space, radius, font
@@ -68,9 +69,9 @@ Mobile/
 - `AppNavigator` usa `native-stack` en la raíz: sin sesión, `Acceso` y las `publicas`
   (`SolicitarAcceso`); con sesión, `Principal` (pestañas de `bottom-tabs` con el `TabBar` propio:
   Panel, Alertas, Histórico, Nico AI y Mi perfil) más las pantallas apiladas `Variable`,
-  `DetalleAlerta`, `Notificaciones`, `Reportes`, `Sesiones`, `Contrasena` y `Estado`. Alertas,
-  Histórico, Notificaciones y Nico AI solo aparecen para cuentas con organización (`permiso`);
-  Reportes, para ADMIN, SUPER y ANALISTA.
+  `DetalleAlerta`, `Notificaciones`, `Reportes`, `TableroAnalitica`, `Sesiones`, `Contrasena` y
+  `Estado`. Alertas, Histórico, Notificaciones y Nico AI solo aparecen para cuentas con
+  organización (`permiso`); Reportes y sus tableros, para ADMIN, SUPER y ANALISTA.
 - Cada entrada de `modules/index.js` lleva `nombre`, `titulo`, `Pantalla` y, si va en la
   barra inferior, `pestana` con el ícono.
 - `OperadorProvider` hace una sola consulta para todas las pestañas y la repite cada 30 s.
@@ -149,7 +150,29 @@ perfil de la web. «¿Olvidaste tu contraseña?» pide el enlace por correo
   perfil y los avisos): tarjetas con periodo, origen, cifras y extracto; el PDF se descarga y se
   abre con el menú de compartir. Chips de origen y de periodo (Todos, Este mes, Mes pasado,
   Últimos 7 días → `?desde=&hasta=`) y «Envíos» abre una hoja con el historial de correos del
-  reporte (`envios`: fecha, origen, quién, destinatarios, resultado y error).
+  reporte (`envios`: fecha, origen, quién, destinatarios, resultado y error). Arriba tiene las
+  pestañas **Reportes | Tableros**; un aviso de reporte siempre entra por «Reportes».
+- **Tableros de Analítica** (pestaña «Tableros» y pantalla `TableroAnalitica`, solo consulta):
+  - La lista muestra primero los tableros de la organización (★ en el predeterminado) y después
+    las plantillas del sistema, con nombre y descripción; el buscador filtra por ambos.
+  - La vista de un tablero (`modules/reportes/tableros/TableroScreen.js`) tiene periodo (los mismos
+    de la web, incluido personalizado de hasta 366 días), «Filtros» con áreas, dispositivos y
+    variable (contador de activos), pestañas deslizables de páginas y las tarjetas apiladas en
+    orden `y`, luego `x`. Los KPI de ancho ≤ 3 van dos por renglón.
+  - Las gráficas son SVG propio con `react-native-svg`: tendencia, medidor, barras horizontales,
+    barras apiladas, dona, histograma, mapa de calor y dispersión. Ranking, matriz, tiempo de
+    atención y disponibilidad se muestran como listas con barra fina, nunca como tablas densas.
+  - Tocar una barra, un sector, una fila, una celda o un área de la leyenda aplica un solo filtro
+    cruzado con su chip y ×; la tarjeta de origen resalta lo elegido y atenúa el resto. Cambiar de
+    página lo quita.
+  - Los datos son en vivo: WebSocket de la app con espera de 5 s, consulta cada 60 s si el periodo
+    incluye «ahora», jalar para refrescar y «Actualizado hace…». Hay estados de carga, sin datos,
+    error con «Reintentar» y sin conexión. No hay CSV, PNG, PDF ni editor.
+  - Los íconos y textos de los tipos son los mismos de la web (`ICONOS_TIPO`); las consultas usan
+    `services/analitica.js` (`tableros-analitica/`, `analitica/consulta/` y `analitica/hallazgos/`).
+    En mocks, `services/mock/analitica.js` genera las cinco plantillas/tablero de ejemplo y los
+    datos de las 15 tarjetas; con `EXPO_PUBLIC_MOCK_ESTADO=vacio` todas quedan sin datos y con
+    `sinConexion` la consulta del tablero falla como una API sin red.
 
 ## Nico AI en la app
 
@@ -192,6 +215,10 @@ correspondiente.
 - `npx expo export --platform android` y `--platform web`: bundles generados.
 - Recorrido de todas las pantallas en el navegador a 390 × 844, en claro y oscuro, y de
   los estados `cargando`, `vacio` y `sinConexion`.
+- Pestaña **Tableros** de Reportes probada con mocks en 390 × 844 y 360 × 740, claro y oscuro,
+  con ADMIN, SUPER y ANALISTA: lista con predeterminado y plantillas, las 15 tarjetas (gráficas,
+  listas y hallazgos), filtros, periodo personalizado, filtro cruzado, estados `vacio` y
+  `sinConexion`, y la pestaña Reportes (lista, PDF, envíos y aviso) sin cambios.
 - No se probó en un teléfono ni emulador real.
 
 `npm audit` reporta vulnerabilidades en dependencias transitivas de Expo CLI. No se

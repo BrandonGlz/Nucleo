@@ -21,7 +21,11 @@ export function EstadoVacio({ titulo, mensaje, icono = 'cpu' }) {
 }
 
 // Tarjeta de error con reintento, para cuando la API no responde.
-export function EstadoError({ titulo = 'No se pudieron cargar los datos', onReintentar }) {
+export function EstadoError({
+  titulo = 'No se pudieron cargar los datos',
+  mensaje = 'Revisa tu conexión a internet. Tu dispositivo sigue alertando con LED y buzzer.',
+  onReintentar,
+}) {
   const { c } = useTema()
   return (
     <Card padding="sm" style={{ borderRadius: 22, gap: 12, alignItems: 'flex-start' }}>
@@ -32,7 +36,7 @@ export function EstadoError({ titulo = 'No se pudieron cargar los datos', onRein
         </T>
       </View>
       <T size={13} lh={20} color={c.textSecondary}>
-        Revisa tu conexión a internet. Tu dispositivo sigue alertando con LED y buzzer.
+        {mensaje}
       </T>
       <Button variant="secondary" size="sm" icon="activity" onPress={onReintentar}>
         Reintentar
