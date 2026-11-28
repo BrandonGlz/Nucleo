@@ -47,6 +47,26 @@ export const METAS_SUGERIDAS = {
   alertas: { valor: 10, sentido: 'menor', tolerancia: 5 },
 }
 
+
+
+export const ICONOS_TIPO = {
+  kpi: 'activity',
+  tendencia: 'chart-spline',
+  medidor: 'gauge',
+  barras: 'chart-bar',
+  barras_apiladas: 'chart-column-stacked',
+  ranking: 'list-ordered',
+  matriz: 'grid-3x3',
+  mapa_calor: 'flame',
+  dispersion: 'chart-scatter',
+  histograma: 'chart-column',
+  alertas_dona: 'chart-pie',
+  tiempo_atencion: 'timer',
+  disponibilidad: 'signal',
+  texto: 'type',
+  hallazgos: 'sparkles',
+}
+
 export const TIPOS = {
   kpi: {
     nombre: 'KPI',

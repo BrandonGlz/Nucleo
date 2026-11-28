@@ -17,6 +17,13 @@ export function Lienzo({
   alReintentar,
   innerRef,
   pie,
+  editor = false,
+  seleccion = null,
+  alSeleccionarTarjeta,
+  alMoverTarjeta,
+  alRedimensionarTarjeta,
+  alQuitarTarjeta,
+  alValidarTarjeta,
   impresion = false,
 }) {
   const area = useRef(null)
@@ -41,6 +48,7 @@ export function Lienzo({
     observer.observe(nodo)
     return () => observer.disconnect()
   }, [impresion, hayPie])
+  const paso = { x: tam.ancho ? tam.ancho / 12 : 60, y: tam.alto ? tam.alto / 6 : 40 }
   const altoTarjeta = (fila) => {
     const alto = tam.alto || 540
     return Math.round(((alto - 40) / 6) * fila)
@@ -49,7 +57,7 @@ export function Lienzo({
     <div className="ui-analitica__area" ref={area}>
       <div
         ref={innerRef}
-        className={`ui-analitica__lienzo${impresion ? ' ui-analitica__lienzo--impreso' : ''}`}
+        className={`ui-analitica__lienzo${editor ? ' ui-analitica__lienzo--editor' : ''}${impresion ? ' ui-analitica__lienzo--impreso' : ''}`}
         style={tam.ancho ? { '--lienzo-ancho': `${tam.ancho}px`, '--lienzo-alto': `${tam.alto}px` } : undefined}
       >
         {(pagina?.tarjetas || []).map((tarjeta) => (
@@ -68,6 +76,14 @@ export function Lienzo({
             hallazgos={hallazgos?.[tarjeta.id]}
             errorHallazgos={errorHallazgos?.[tarjeta.id]}
             alReintentar={alReintentar}
+            editor={editor}
+            seleccionada={seleccion === tarjeta.id}
+            alSeleccionarTarjeta={alSeleccionarTarjeta}
+            alMoverTarjeta={alMoverTarjeta}
+            alRedimensionarTarjeta={alRedimensionarTarjeta}
+            alQuitarTarjeta={alQuitarTarjeta}
+            alValidarTarjeta={alValidarTarjeta}
+            paso={paso}
             impresion={impresion}
           />
         ))}

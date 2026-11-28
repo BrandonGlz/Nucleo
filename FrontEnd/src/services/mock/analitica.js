@@ -175,21 +175,51 @@ const TABLEROS = [
   tableroOrganizacion(),
 ]
 
+// Historial de versiones del mock, con la misma forma que el backend.
+const HISTORIAL = new Map()
+const USUARIO_DEMO = 'Andrés Villalobos'
+
+function historialDe(t) {
+  if (!HISTORIAL.has(t.num)) {
+    const total = Math.max(1, Number(t.version) || 1)
+    const entradas = [{ numero: total, fecha: t.fecha_creacion, creada_por_nombre: t.creado_por_nombre || USUARIO_DEMO, conf: copia(t.conf) }]
+    for (let numero = total - 1; numero >= 1; numero -= 1) {
+      entradas.push({ numero, fecha: t.fecha_creacion, creada_por_nombre: 'Sistema', conf: copia(t.conf) })
+    }
+    HISTORIAL.set(t.num, entradas)
+  }
+  return HISTORIAL.get(t.num)
+}
+
+function agregarVersion(t, configuracion) {
+  const historial = historialDe(t)
+  const numero = Math.max(...historial.map((v) => v.numero)) + 1
+  historial.push({ numero, fecha: iso(new Date()), creada_por_nombre: USUARIO_DEMO, conf: copia(configuracion) })
+  t.version = numero
+}
+
+function nombreLibre(base) {
+  const usados = new Set(TABLEROS.map((t) => t.nombre))
+  if (!usados.has(base)) return base
+  let numero = 2
+  while (true) {
+    const sufijo = ` (${numero})`
+    const candidato = `${base.slice(0, 80 - sufijo.length)}${sufijo}`
+    if (!usados.has(candidato)) return candidato
+    numero += 1
+  }
+}
+
 export async function tableros() {
   await esperar()
-  return pagina(copia(TABLEROS))
+  return pagina(copia(TABLEROS.filter((t) => t.activo)))
 }
 
 export async function versionesTablero(num) {
   await esperar()
   const t = TABLEROS.find((item) => item.num === Number(num))
   if (!t) throw new ApiError('Tablero no encontrado.', 404)
-  const total = Math.max(1, Number(t.version) || 1)
-  return Array.from({ length: total }, (_, i) => ({
-    numero: total - i,
-    fecha: i === 0 ? iso(new Date()) : t.fecha_creacion,
-    creada_por_nombre: i === 0 ? t.creado_por_nombre : 'Sistema',
-  }))
+  return historialDe(t).slice().reverse().map(({ numero, fecha, creada_por_nombre }) => ({ numero, fecha, creada_por_nombre }))
 }
 
 export async function crearTablero({ nombre, desde } = {}) {
@@ -198,19 +228,73 @@ export async function crearTablero({ nombre, desde } = {}) {
   const base = origen?.conf || conf('7d', [paginaConf('p1', 'Página 1', [])])
   const nuevo = {
     num: Math.max(...TABLEROS.map((t) => t.num)) + 1,
-    nombre: String(nombre || 'Tablero sin nombre').slice(0, 80),
-    descripcion: '',
+    nombre: String(nombre || (origen ? `Copia de ${origen.nombre}` : 'Tablero sin nombre')).slice(0, 80),
+    descripcion: origen?.descripcion || '',
     plantilla: '',
     predeterminado: false,
     activo: true,
     es_plantilla: false,
     version: 1,
-    creado_por_nombre: 'Andrés Villalobos',
+    creado_por_nombre: USUARIO_DEMO,
     fecha_creacion: iso(new Date()),
     conf: copia(base),
   }
+  nuevo.nombre = nombreLibre(nuevo.nombre)
   TABLEROS.push(nuevo)
+  HISTORIAL.set(nuevo.num, [{ numero: 1, fecha: nuevo.fecha_creacion, creada_por_nombre: USUARIO_DEMO, conf: copia(base) }])
   return copia(nuevo)
+}
+
+export async function actualizarTablero(num, cambios = {}) {
+  await esperar()
+  const t = TABLEROS.find((item) => item.num === Number(num))
+  if (!t) throw new ApiError('Tablero no encontrado.', 404)
+  if (t.es_plantilla) throw new ApiError('Las plantillas no se editan; duplícalas para cambiarlas.', 403)
+  if (cambios.nombre != null) {
+    const nombre = String(cambios.nombre).trim().slice(0, 80)
+    if (!nombre) throw new ApiError('El tablero necesita un nombre.', 400)
+    if (TABLEROS.some((item) => item.num !== t.num && item.activo && item.nombre === nombre)) throw new ApiError('Ya existe un tablero activo con ese nombre.', 400)
+    t.nombre = nombre
+  }
+  if (cambios.descripcion != null) t.descripcion = String(cambios.descripcion || '').slice(0, 200)
+  if (cambios.conf != null) {
+    agregarVersion(t, cambios.conf)
+    t.conf = copia(cambios.conf)
+  }
+  return copia(t)
+}
+
+export async function eliminarTablero(num) {
+  await esperar()
+  const t = TABLEROS.find((item) => item.num === Number(num))
+  if (!t) throw new ApiError('Tablero no encontrado.', 404)
+  if (t.es_plantilla) throw new ApiError('Las plantillas no se archivan.', 403)
+  t.activo = false
+  t.predeterminado = false
+  return null
+}
+
+export async function predeterminarTablero(num) {
+  await esperar()
+  const t = TABLEROS.find((item) => item.num === Number(num))
+  if (!t) throw new ApiError('Tablero no encontrado.', 404)
+  if (t.es_plantilla) throw new ApiError('Las plantillas no pueden ser predeterminadas.', 403)
+  TABLEROS.filter((item) => item.organizacion && item.organizacion === t.organizacion).forEach((item) => { item.predeterminado = false })
+  TABLEROS.forEach((item) => { if (!item.es_plantilla) item.predeterminado = false })
+  t.predeterminado = true
+  return copia(t)
+}
+
+export async function restaurarTablero(num, numero) {
+  await esperar()
+  const t = TABLEROS.find((item) => item.num === Number(num))
+  if (!t) throw new ApiError('Tablero no encontrado.', 404)
+  if (t.es_plantilla) throw new ApiError('Las plantillas no se restauran.', 403)
+  const version = historialDe(t).find((v) => v.numero === Number(numero))
+  if (!version) throw new ApiError('La versión del tablero no existe.', 404)
+  agregarVersion(t, version.conf)
+  t.conf = copia(version.conf)
+  return copia(t)
 }
 
 function rangoPeriodo(filtros = {}) {

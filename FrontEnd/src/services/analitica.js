@@ -1,4 +1,4 @@
-import { ANALITICA_CONSULTA, ANALITICA_CONSULTA_CSV, ANALITICA_HALLAZGOS, TABLEROS_ANALITICA, TABLERO_VERSIONES } from '../api'
+import { ANALITICA_CONSULTA, ANALITICA_CONSULTA_CSV, ANALITICA_HALLAZGOS, TABLEROS_ANALITICA, TABLERO_ANALITICA, TABLERO_PREDETERMINAR, TABLERO_RESTAURAR, TABLERO_VERSIONES } from '../api'
 import { API_BASE_URL, OPCIONES_SESION } from './api/client'
 import { USAR_MOCKS, pedir } from './config'
 import * as mock from './mock/analitica'
@@ -18,6 +18,26 @@ export async function versionesTablero(num) {
 export async function crearTablero({ nombre, desde } = {}) {
   if (USAR_MOCKS) return mock.crearTablero({ nombre, desde })
   return pedir(TABLEROS_ANALITICA, { metodo: 'POST', cuerpo: { nombre, desde } })
+}
+
+export async function actualizarTablero(num, cambios) {
+  if (USAR_MOCKS) return mock.actualizarTablero(num, cambios)
+  return pedir(TABLERO_ANALITICA(num), { metodo: 'PATCH', cuerpo: cambios })
+}
+
+export async function eliminarTablero(num) {
+  if (USAR_MOCKS) return mock.eliminarTablero(num)
+  return pedir(TABLERO_ANALITICA(num), { metodo: 'DELETE' })
+}
+
+export async function predeterminarTablero(num) {
+  if (USAR_MOCKS) return mock.predeterminarTablero(num)
+  return pedir(TABLERO_PREDETERMINAR(num), { metodo: 'POST' })
+}
+
+export async function restaurarTablero(num, numero) {
+  if (USAR_MOCKS) return mock.restaurarTablero(num, numero)
+  return pedir(TABLERO_RESTAURAR(num), { metodo: 'POST', cuerpo: { numero } })
 }
 
 // Calcula las tarjetas de una página en vivo. Recibe las tarjetas (no el tablero) para que el

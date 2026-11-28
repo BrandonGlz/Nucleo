@@ -204,6 +204,9 @@ export function BarraFiltros({
   alVerVersiones,
   generado,
   actualizando,
+  puedeEditar = false,
+  editando = false,
+  alEditar,
 }) {
   const [rangoAbierto, setRangoAbierto] = useState(false)
   const [hojaAbierta, setHojaAbierta] = useState(false)
@@ -319,19 +322,26 @@ export function BarraFiltros({
             />
           </div>
         </div>
-        <div className="ui-analitica__barra-grupo ui-analitica__barra-acciones">
-          <span className="ui-analitica__actualizado">{actualizando ? 'Actualizando…' : generado ? `Actualizado ${haceCuanto(generado).toLowerCase()}` : 'Cargando…'}</span>
-          <IconButton icon="history" label="Actualizar" variant="secondary" size="sm" onClick={alRefrescar} />
-          <MenuAcciones
-            texto="Exportar"
-            icon="download"
-            label="Exportar Analítica"
-            items={[
-              { label: 'Imagen de esta página (PNG)', icon: 'download', onClick: () => alExportar('png') },
-              { label: 'PDF de todas las páginas', icon: 'file-text', onClick: () => alExportar('pdf') },
-            ]}
-          />
-        </div>
+        {!editando && (
+          <div className="ui-analitica__barra-grupo ui-analitica__barra-acciones">
+            {puedeEditar && (
+              <Button className="ui-analitica__editar" variant="secondary" size="sm" icon="pencil" aria-label={tablero?.es_plantilla ? 'Duplicar para editar' : 'Editar'} title={tablero?.es_plantilla ? 'Duplicar para editar' : 'Editar'} onClick={alEditar}>
+                {tablero?.es_plantilla ? 'Duplicar para editar' : 'Editar'}
+              </Button>
+            )}
+            <span className="ui-analitica__actualizado">{actualizando ? 'Actualizando…' : generado ? `Actualizado ${haceCuanto(generado).toLowerCase()}` : 'Cargando…'}</span>
+            <IconButton icon="history" label="Actualizar" variant="secondary" size="sm" onClick={alRefrescar} />
+            <MenuAcciones
+              texto="Exportar"
+              icon="download"
+              label="Exportar Analítica"
+              items={[
+                { label: 'Imagen de esta página (PNG)', icon: 'download', onClick: () => alExportar('png') },
+                { label: 'PDF de todas las páginas', icon: 'file-text', onClick: () => alExportar('pdf') },
+              ]}
+            />
+          </div>
+        )}
       </div>
       <RangoPersonalizado
         key={`${rangoAbierto}-${filtros.desde}-${filtros.hasta}`}
