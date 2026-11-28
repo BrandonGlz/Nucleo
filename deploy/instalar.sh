@@ -129,7 +129,9 @@ sudo systemctl enable "${servicios[@]}" "${timers[@]}" caddy
 sudo systemctl restart "${servicios[@]}"
 sudo systemctl restart "${timers[@]}"
 (( ${#remotos[@]} )) && sudo systemctl disable --now "${remotos[@]}" 2>/dev/null || true
-sudo systemctl reload-or-restart caddy
+# Caddy 2.6 de Debian a veces truena al recargar («panic: context: internal error»): si el reload
+# falla, se reinicia para no dejar caídos los sitios.
+sudo systemctl reload-or-restart caddy || sudo systemctl restart caddy
 # Página de descarga del APK (app.bynucleo.com): se regenera por si cambió la plantilla deploy/descarga.html
 if compgen -G "$raiz/deploy/descargas/nucleo-*.apk" >/dev/null; then
   bash "$raiz/deploy/compilar_apk.sh" --indice || true
