@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Icon, IconButton, Input, Tabs, Toggle } from '../../design-system/componentes/index.js'
 import { Desplegable } from '../../components/Desplegable'
+import { useSalida } from '../../hooks/useSalida'
 import { FAMILIAS, ICONOS_TIPO, LIMITES, TIPOS, metaSugerida } from './catalogo'
 import { Lienzo } from './Lienzo'
 import { PaginasEditor } from './PaginasEditor'
@@ -222,6 +223,7 @@ export function EditorTablero({
   const [pestana, setPestana] = useState('agregar')
   const [aviso, setAviso] = useState('')
   const [panelAbierto, setPanelAbierto] = useState(() => window.innerWidth > 1280)
+  const salidaPanel = useSalida(panelAbierto)
   const seleccionada = (pagina?.tarjetas || []).find((t) => t.id === seleccion) || null
   const tabActiva = !seleccionada && pestana === 'tarjeta' ? 'agregar' : pestana
 
@@ -272,34 +274,36 @@ export function EditorTablero({
           panelAbierto={panelAbierto}
         />
       </div>
-      <aside className="ui-editor__panel" aria-label="Propiedades del tablero">
-        <div className="ui-editor__panel-cabeza">
-          <Tabs
-          items={[
-            { id: 'agregar', label: 'Agregar' },
-            { id: 'tarjeta', label: 'Tarjeta', disabled: !seleccionada },
-          ]}
-          value={tabActiva}
-          onChange={setPestana}
-            aria-label="Editor de tarjetas"
-          />
-          <IconButton className="ui-editor__panel-cerrar" icon="x" label="Cerrar propiedades" variant="ghost" size="sm" onClick={() => setPanelAbierto(false)} />
-        </div>
-        {pestana === 'agregar' || !seleccionada ? (
-          <PanelAgregar alAgregar={agregar} aviso={aviso} />
-        ) : (
-          <FormularioTarjeta
-            tarjeta={seleccionada}
-            alCambiar={alCambiarTarjeta}
-            alQuitar={alQuitarTarjeta}
-            alRedimensionar={alRedimensionarTarjeta}
-            alValidar={alValidarTarjeta}
-          />
-        )}
-        <div className="ui-editor__configurar">
-          <Button variant="secondary" size="sm" icon="settings" onClick={alConfigurar}>Configurar tablero</Button>
-        </div>
-      </aside>
+      {salidaPanel.montado && (
+        <aside className={`ui-editor__panel${salidaPanel.saliendo ? ' is-saliendo' : ''}`} aria-label="Propiedades del tablero">
+          <div className="ui-editor__panel-cabeza">
+            <Tabs
+              items={[
+                { id: 'agregar', label: 'Agregar' },
+                { id: 'tarjeta', label: 'Tarjeta', disabled: !seleccionada },
+              ]}
+              value={tabActiva}
+              onChange={setPestana}
+              aria-label="Editor de tarjetas"
+            />
+            <IconButton className="ui-editor__panel-cerrar" icon="x" label="Cerrar propiedades" variant="ghost" size="sm" onClick={() => setPanelAbierto(false)} />
+          </div>
+          {pestana === 'agregar' || !seleccionada ? (
+            <PanelAgregar alAgregar={agregar} aviso={aviso} />
+          ) : (
+            <FormularioTarjeta
+              tarjeta={seleccionada}
+              alCambiar={alCambiarTarjeta}
+              alQuitar={alQuitarTarjeta}
+              alRedimensionar={alRedimensionarTarjeta}
+              alValidar={alValidarTarjeta}
+            />
+          )}
+          <div className="ui-editor__configurar">
+            <Button variant="secondary" size="sm" icon="settings" onClick={alConfigurar}>Configurar tablero</Button>
+          </div>
+        </aside>
+      )}
     </div>
   )
 }

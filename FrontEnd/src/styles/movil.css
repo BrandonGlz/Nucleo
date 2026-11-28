@@ -535,7 +535,8 @@
     min-height: 0;
     overflow-y: auto;
   }
-  .ui-ia:not(.is-sin-panel) .ui-ia-panel {
+  .ui-ia:not(.is-sin-panel) .ui-ia-panel,
+  .ui-ia-panel.is-saliendo {
     display: flex;
     position: absolute;
     z-index: 3;
@@ -545,6 +546,10 @@
     width: min(300px, 86%);
     box-shadow: var(--shadow-lg);
     animation: ui-entra-panel-ia var(--duration-slow) var(--ease-emphasized);
+  }
+  .ui-ia-panel.is-saliendo {
+    animation: ui-sale-panel-ia var(--duration-base) var(--ease-standard) forwards;
+    pointer-events: none;
   }
   .ui-ia-conv__borrar {
     opacity: 1;
@@ -598,12 +603,19 @@
     opacity: 0;
   }
 }
+@keyframes ui-sale-panel-ia {
+  to {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .app > .nc-sidebar,
   .ui-menu-movil__fondo {
     transition: none !important;
   }
-  .ui-ia:not(.is-sin-panel) .ui-ia-panel {
+  .ui-ia:not(.is-sin-panel) .ui-ia-panel,
+  .ui-ia-panel.is-saliendo {
     animation: none;
   }
 }

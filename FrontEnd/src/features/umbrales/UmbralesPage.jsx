@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Alert, Button, Card, Input, Skeleton, ThresholdSlider } from '../../design-system/componentes/index.js'
 import { Select } from '../../components/Desplegable'
+import { EsqueletoGrafica } from '../../components/Esqueleto'
 import { GraficaAjustable } from '../../components/GraficaAjustable'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
@@ -33,6 +34,47 @@ async function cargar(disp, rol) {
     }
   }
   return { umbrales: pagina(umb), lecturas, serie, usuarios }
+}
+
+// Silueta de la pantalla cargada: tres tarjetas de variables y la vista previa.
+// La barra del dispositivo ya está en la página; solo faltan estas piezas.
+function EsqueletoUmbrales() {
+  return (
+    <>
+      <div className="ui-rejilla-umbrales" aria-busy="true" aria-label="Cargando umbrales">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="ui-umbral">
+            <div className="nc-threshold ui-esqueleto-threshold">
+              <div className="ui-esqueleto-lineas">
+                <Skeleton width="44%" height={14} />
+                <Skeleton width="70%" height={22} />
+              </div>
+              <Skeleton height={26} />
+              <div className="ui-esqueleto-alertas-badges">
+                <Skeleton width="24%" height={10} />
+                <Skeleton width="24%" height={10} />
+              </div>
+            </div>
+            <div className="ui-umbral__adv">
+              <Skeleton height={63} />
+              <Skeleton height={63} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <Card className="nc-grow ui-umbrales-vista">
+        <div className="nc-card__head" style={{ marginBottom: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 className="nc-card__title">Vista previa contra las últimas lecturas</h3>
+            <p className="nc-card__sub">
+              <Skeleton width="46%" height={12} />
+            </p>
+          </div>
+        </div>
+        <EsqueletoGrafica alto={120} />
+      </Card>
+    </>
+  )
 }
 
 const ordenValido = (u) => {
@@ -108,7 +150,14 @@ export function UmbralesPage() {
           { etiqueta: 'Último cambio', valor: ultimo ? hora(ultimo.fecha_actualizacion) : '—', sub: autor ? `Por ${nombreCorto(autor)}` : haceCuanto(ultimo?.fecha_actualizacion) },
         ],
       }
-    : { principal: { etiqueta: 'Umbrales', valor: '—', tonoValor: 'apagado' } }
+    : {
+        principal: { etiqueta: 'Umbrales', valor: '—', tonoValor: 'apagado', sub: '—' },
+        cifras: [
+          { etiqueta: 'Temperatura', valor: '—', unidad: '°C', sub: '—' },
+          { etiqueta: 'Aire', valor: '—', unidad: 'ppm', sub: '—' },
+          { etiqueta: 'Último cambio', valor: '—', sub: '—' },
+        ],
+      }
 
   return (
     <Pantalla eyebrow={`${organizacion} · rango permitido por dispositivo`} titulo="Umbrales" cifras={cifras}>
@@ -119,8 +168,13 @@ export function UmbralesPage() {
               label="Dispositivo"
               icon="cpu"
               value={disp}
+              disabled={!dispositivos.length}
               onChange={(e) => setParams({ dispositivo: e.target.value })}
-              options={dispositivos.map((d) => ({ value: String(d.num), label: `${d.nombre} · ${d.codigo_mqtt}` }))}
+              options={
+                dispositivos.length
+                  ? dispositivos.map((d) => ({ value: String(d.num), label: `${d.nombre} · ${d.codigo_mqtt}` }))
+                  : [{ value: '', label: 'Cargando dispositivo…' }]
+              }
             />
           </div>
           <div className="ui-umbrales-barra__info">
@@ -158,7 +212,7 @@ export function UmbralesPage() {
         </Alert>
       )}
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
-      {estado === 'cargando' && <Skeleton variant="card" />}
+      {estado === 'cargando' && <EsqueletoUmbrales />}
       {estado === 'listo' && (
         <>
           <div className="ui-rejilla-umbrales">

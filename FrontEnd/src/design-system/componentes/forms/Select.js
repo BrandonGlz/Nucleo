@@ -4,7 +4,7 @@ import { cx, omit } from '../core/nc-lib.js'
 import { Field } from './field.js'
 const h = React.createElement;
 function Select(p) {
-  var rest = omit(p, ['label', 'hint', 'error', 'options', 'className', 'state', 'icon']);
+  var rest = omit(p, ['label', 'hint', 'error', 'options', 'className', 'state', 'icon', 'size']);
   return h(Field, {
     label: p.label,
     hint: p.hint,
@@ -12,7 +12,7 @@ function Select(p) {
     disabled: p.disabled,
     className: p.className
   }, h('span', {
-    className: cx('nc-input', 'nc-select', p.state && 'is-' + p.state, p.disabled && 'is-disabled')
+    className: cx('nc-input', 'nc-select', p.size === 'sm' && 'nc-input--sm', p.state && 'is-' + p.state, p.disabled && 'is-disabled')
   }, p.icon ? h(Icon, {
     name: p.icon,
     size: 18

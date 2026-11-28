@@ -53,6 +53,26 @@ function TarjetaTablero({ tablero, indice, onAbrir }) {
   )
 }
 
+// Misma tarjeta que el tablero real: ícono, nombre, descripción y pie de páginas y versión.
+function EsqueletoTablero() {
+  return (
+    <Card padding="sm" style={{ borderRadius: 22, gap: 8 }} accessibilityLabel="Cargando tablero">
+      <View style={s.fila}>
+        <Skeleton width={32} height={32} round />
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <Skeleton width="68%" height={14} />
+          <Skeleton width="48%" height={11} />
+        </View>
+        <Skeleton width={18} height={18} round />
+      </View>
+      <View style={[s.pie, { justifyContent: 'space-between' }]}>
+        <Skeleton width={52} height={10} />
+        <Skeleton width={74} height={10} />
+      </View>
+    </Card>
+  )
+}
+
 // Pestaña «Tableros» de Reportes: los de la organización primero y luego las plantillas.
 export function ListaTableros({ busqueda = '', onAbrir }) {
   const { c } = useTema()
@@ -67,7 +87,7 @@ export function ListaTableros({ busqueda = '', onAbrir }) {
 
   if (estado === 'error') return <EstadoError mensaje="Revisa tu conexión a internet e inténtalo de nuevo." onReintentar={reintentar} />
   if (!datos) {
-    return [0, 1, 2].map((i) => <Skeleton key={i} height={92} style={{ borderRadius: 22 }} />)
+    return [0, 1, 2, 3].map((i) => <EsqueletoTablero key={i} />)
   }
   if (!datos.length) {
     return <EstadoVacio icono="layout-dashboard" titulo="Sin tableros" mensaje="No hay tableros disponibles para tu organización." />

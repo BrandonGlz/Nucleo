@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Button, Card, PeriodFilter, StatusBadge } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { Select } from '../../components/Desplegable'
+import { EsqueletoTabla } from '../../components/Esqueleto'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { useDatos } from '../../hooks/useDatos'
@@ -223,16 +224,27 @@ export function MedicionesPage() {
           tonoValor: 'apagado',
           sub: vista ? `Sin lecturas de ${actual?.nombre ?? 'este dispositivo'} en este periodo` : 'Cargando lecturas…',
         },
+        cifras: [
+          { etiqueta: 'Mínimo', valor: '—' },
+          { etiqueta: 'Promedio', valor: '—' },
+          { etiqueta: 'Lecturas', valor: '—', sub: '—' },
+        ],
       }
 
   const filtros = (
     <div className="ui-panel-filtros">
-      {dispositivos.length > 1 && (
+      {(dispositivos.length > 1 || cat.estado === 'cargando') && (
         <Select
+          size="sm"
           icon="cpu"
           value={disp}
+          disabled={!dispositivos.length}
           onChange={cambiarDispositivo}
-          options={dispositivos.map((d) => ({ value: String(d.num), label: etiquetaDispositivo(d) }))}
+          options={
+            dispositivos.length
+              ? dispositivos.map((d) => ({ value: String(d.num), label: etiquetaDispositivo(d) }))
+              : [{ value: '', label: 'Cargando dispositivo seleccionado…' }]
+          }
         />
       )}
       <PeriodFilter value={ETIQUETA_PERIODO[periodo]} onChange={cambiarPeriodo} />
@@ -254,18 +266,27 @@ export function MedicionesPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <h3 className="nc-card__title">Lecturas</h3>
               <p className="nc-card__sub">
-                {actual?.nombre} · {nombrePeriodo} · hora de medición y de recepción en la plataforma
+                {actual?.nombre ?? 'Cargando dispositivo'} · {nombrePeriodo} · hora de medición y de recepción en la plataforma
                 {lect.datos?.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(lect.datos.ultima)}</span>}
               </p>
             </div>
             <div className="ui-lecturas-filtros">
               <Buscador valor={busqueda} cambiar={setBusqueda} placeholder="Buscar hora o fecha…" ancho={220} />
-              <Select value={estadoTabla} onChange={(e) => setEstadoTabla(e.target.value)} options={ESTADOS} />
+              <Select size="sm" value={estadoTabla} onChange={(e) => setEstadoTabla(e.target.value)} options={ESTADOS} />
               <Button variant="secondary" icon="download" size="sm" disabled={!disp || exportando} onClick={exportar}>
                 {exportando ? 'Exportando…' : 'Exportar CSV'}
               </Button>
             </div>
           </div>
+          {!vista ? (
+            <EsqueletoTabla
+              etiquetas={['Medición', 'Temperatura', 'Humedad', 'Aire', 'Estado']}
+              filas={7}
+              anchos={['64%', '54%', '52%', '44%', 70]}
+              primera="doble"
+              pastillas={[4]}
+            />
+          ) : (
           <div className="nc-table-wrap nc-scroll">
             <table className="nc-table">
               <thead>
@@ -309,6 +330,7 @@ export function MedicionesPage() {
               </tbody>
             </table>
           </div>
+          )}
           {vista && vista.filas.length > 0 && (
             <div className="ui-lecturas-pie">
               <span className="ui-muted">

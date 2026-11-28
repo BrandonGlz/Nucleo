@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTema } from '../context/TemaContext'
+import { radius } from '../theme'
 import { enLinea } from '../utils/convertir'
 import { haceCuanto } from '../utils/formato'
 import { Icon, IconCircle, T } from './ui'
@@ -105,5 +106,5 @@ const s = StyleSheet.create({
   hoja: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '80%', paddingTop: 10, borderTopLeftRadius: 28, borderTopRightRadius: 28, gap: 8 },
   asa: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 6 },
   opcion: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 18, borderWidth: 1.5 },
-  campo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 18, backgroundColor: 'rgba(243,245,242,0.08)' },
+  campo: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingVertical: 10, paddingHorizontal: 16, borderRadius: radius.full, backgroundColor: 'rgba(243,245,242,0.08)' },
 })

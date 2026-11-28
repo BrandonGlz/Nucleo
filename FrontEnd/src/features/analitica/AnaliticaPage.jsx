@@ -133,6 +133,82 @@ function Impresion({ paginas, tablero, organizacion, filtros, periodo, hallazgos
   )
 }
 
+// Silueta del tablero predeterminado: 4 KPI, tendencia y medidor, y la fila de tres tarjetas.
+function EsqueletoAnalitica({ listaAbierta }) {
+  const tarjeta = (estilo, alto = 80, filas = 2) => (
+    <div
+      className={`ui-analitica__tarjeta ui-analitica__tarjeta--esqueleto${filas === 1 ? ' ui-analitica__tarjeta--kpi-corta' : ''}`}
+      style={{ ...estilo, '--tarjeta-alto': String(filas) }}
+      aria-hidden
+    >
+      <div className="ui-analitica__tarjeta-cabeza">
+        <Skeleton width="46%" height={12} />
+      </div>
+      <div className="ui-analitica__tarjeta-cuerpo ui-analitica__cargando">
+        <Skeleton width="36%" height={Math.min(28, alto * 0.2)} />
+        <Skeleton width="58%" height={10} />
+      </div>
+    </div>
+  )
+  return (
+    <div className={`ui-analitica${listaAbierta ? ' is-lista-abierta' : ''}`} aria-busy="true" aria-label="Cargando Analítica">
+      {listaAbierta && (
+        <aside className="ui-analitica__lista">
+          <Card className="ui-analitica__lista-card">
+            <div className="ui-analitica__lista-filtros">
+              <Skeleton height={44} />
+            </div>
+            <div className="ui-analitica__lista-items">
+              <Skeleton width="38%" height={10} />
+              {Array.from({ length: 5 }, (_, i) => (
+                <div key={i} className="ui-item ui-analitica__item ui-esqueleto-fila">
+                  <span className="ui-esqueleto-lineas">
+                    <Skeleton width={`${58 + ((i * 7) % 26)}%`} height={12} />
+                    <Skeleton width="78%" height={10} />
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </aside>
+      )}
+      <section className="ui-analitica__vista">
+        <Card className="ui-analitica__panel">
+          <div className="ui-analitica__barra ui-esqueleto-barra">
+            <Skeleton width={36} height={36} />
+            <Skeleton width={142} height={36} />
+            <Skeleton width={104} height={36} />
+            <Skeleton width={98} height={36} />
+            <span className="ui-esqueleto-acciones">
+              <Skeleton width={72} height={36} />
+              <Skeleton width={36} height={36} />
+            </span>
+          </div>
+          <div className="ui-analitica__area">
+            <div className="ui-analitica__lienzo ui-analitica__lienzo--esqueleto">
+              {tarjeta({ gridColumn: '1 / span 3', gridRow: '1 / span 1' }, 44, 1)}
+              {tarjeta({ gridColumn: '4 / span 3', gridRow: '1 / span 1' }, 44, 1)}
+              {tarjeta({ gridColumn: '7 / span 3', gridRow: '1 / span 1' }, 44, 1)}
+              {tarjeta({ gridColumn: '10 / span 3', gridRow: '1 / span 1' }, 44, 1)}
+              {tarjeta({ gridColumn: '1 / span 8', gridRow: '2 / span 3' }, 180, 3)}
+              {tarjeta({ gridColumn: '9 / span 4', gridRow: '2 / span 2' }, 120, 2)}
+              {tarjeta({ gridColumn: '1 / span 6', gridRow: '5 / span 2' }, 120, 2)}
+              {tarjeta({ gridColumn: '7 / span 3', gridRow: '5 / span 2' }, 120, 2)}
+              {tarjeta({ gridColumn: '10 / span 3', gridRow: '5 / span 2' }, 120, 2)}
+            </div>
+            <div className="ui-analitica__pie">
+              <div className="ui-esqueleto-tabs">
+                <Skeleton width="48%" height={36} />
+                <Skeleton width="48%" height={36} />
+              </div>
+            </div>
+          </div>
+        </Card>
+      </section>
+    </div>
+  )
+}
+
 export function AnaliticaPage() {
   const { organizacion, rol } = useSesion()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -819,7 +895,11 @@ export function AnaliticaPage() {
     return <Pantalla eyebrow={`${organizacion || ''} · Analítica`} titulo="Analítica"><EstadoError reintentar={tablerosConsulta.reintentar} /></Pantalla>
   }
   if (!tableros.length && tablerosConsulta.estado === 'cargando') {
-    return <Pantalla eyebrow={`${organizacion || ''} · Analítica`} titulo="Analítica"><div className="ui-analitica__cargando-pagina"><Skeleton height={36} /><Skeleton height={220} /></div></Pantalla>
+    return (
+      <Pantalla eyebrow={`${organizacion || ''} · Analítica`} titulo="Analítica">
+        <EsqueletoAnalitica listaAbierta={listaAbierta} />
+      </Pantalla>
+    )
   }
   if (!tableros.length) {
     return <Pantalla eyebrow={`${organizacion || ''} · Analítica`} titulo="Analítica"><EmptyState icon="layout-dashboard" title="Sin tableros" message="No hay tableros disponibles para tu organización." /></Pantalla>

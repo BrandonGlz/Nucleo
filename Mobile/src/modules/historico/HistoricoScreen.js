@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native'
 import { EstadoError, EstadoVacio } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { SelectorDispositivo } from '../../components/SelectorDispositivo'
-import { Card, Chip, Icon, Skeleton, T, Tabs, TrendChart } from '../../components/ui'
+import { Card, Chip, Icon, Skeleton, SkeletonGrafica, T, Tabs, TrendChart } from '../../components/ui'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
 import { umbralDe, useOperador } from '../../hooks/useOperador'
@@ -178,7 +178,7 @@ export function HistoricoScreen({ navigation, route }) {
                 height={200}
               />
             ) : (
-              <Skeleton height={200} />
+              <SkeletonGrafica height={200} />
             )}
           </Card>
           <View style={s.tres}>

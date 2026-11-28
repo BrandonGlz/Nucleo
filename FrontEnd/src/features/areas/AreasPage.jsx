@@ -3,6 +3,7 @@ import {
   Avatar, Badge, Button, Card, IconCircle, Input, Skeleton, StatusBadge, Tabs,
 } from '../../design-system/componentes/index.js'
 import { Desplegable } from '../../components/Desplegable'
+import { EsqueletoTabla } from '../../components/Esqueleto'
 import { EstadoError } from '../../components/EstadoError'
 import { MenuAcciones } from '../../components/MenuAcciones'
 import { Modal } from '../../components/Modal'
@@ -217,6 +218,7 @@ function TablaAreas({ datos, editar, eliminar, editable, puedePuente, guardandoP
                 </td>
                 <td>
                   <Desplegable
+                    size="sm"
                     icon="cpu"
                     value={a.puente_nico ?? ''}
                     disabled={!puedePuente(a) || guardandoPuente === a.num}
@@ -287,6 +289,7 @@ function Asignacion({ datos, mover, guardando, editable }) {
                 <td>{op ? nombreCompleto(op) : '—'}</td>
                 <td>
                   <Desplegable
+                    size="sm"
                     icon="map-pin"
                     value={d.area}
                     disabled={!editable || guardando === d.num}
@@ -457,6 +460,64 @@ function MarcaReportes({ org, editable, guardada, avisar }) {
   )
 }
 
+// Silueta de la pantalla cargada: tarjeta de empresa a la izquierda y tabla de áreas a la derecha.
+function EsqueletoAreas() {
+  return (
+    <div className="ui-fila ui-areas" style={{ gridTemplateColumns: 'clamp(280px, 30%, 340px) minmax(0,1fr)' }} aria-busy="true" aria-label="Cargando organización">
+      <Card className="nc-grow">
+        <div className="nc-card__head" style={{ marginBottom: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 className="nc-card__title">Empresa</h3>
+            <p className="nc-card__sub">Datos de contacto</p>
+          </div>
+        </div>
+        <div className="ui-empresa">
+          <div className="ui-item is-selected ui-empresa__identidad">
+            <Skeleton variant="circle" width={40} />
+            <span className="ui-esqueleto-lineas">
+              <Skeleton width="58%" height={14} />
+              <Skeleton width="76%" height={11} />
+            </span>
+          </div>
+          <div className="ui-empresa__datos">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="ui-dato">
+                <Skeleton width="42%" height={9} />
+                <Skeleton width="82%" height={13} />
+              </div>
+            ))}
+          </div>
+          <div className="ui-empresa__marca">
+            <Skeleton width={58} height={10} />
+            <Skeleton width={48} height={14} />
+            <Skeleton width={56} height={10} />
+          </div>
+        </div>
+        <div style={{ paddingTop: 16 }}>
+          <Skeleton height={44} />
+        </div>
+      </Card>
+      <Card className="nc-grow">
+        <div className="nc-card__head" style={{ marginBottom: 8, alignItems: 'center' }}>
+          <div className="ui-esqueleto-tabs">
+            <Skeleton width="50%" height={36} />
+            <Skeleton width="50%" height={36} />
+          </div>
+        </div>
+        <div style={{ padding: '0 0 8px' }}>
+          <Skeleton width="62%" height={12} />
+        </div>
+        <EsqueletoTabla
+          etiquetas={['Área', 'Dispositivos', 'Supervisor', 'Alertas por correo', 'ESP de Nico', '']}
+          filas={5}
+          anchos={['70%', '82%', '70%', '76%', '64%', '30%']}
+          primera="doble"
+        />
+      </Card>
+    </div>
+  )
+}
+
 // El administrador gestiona los datos de su empresa, sus áreas y a qué área pertenece cada
 // dispositivo. El supervisor las consulta (la API solo deja editarlas al administrador).
 export function AreasPage() {
@@ -514,7 +575,14 @@ export function AreasPage() {
           { etiqueta: 'Usuarios', valor: datos.usuarios.length },
         ],
       }
-    : { principal: { etiqueta: 'Áreas', valor: '—', tonoValor: 'apagado' } }
+    : {
+        principal: { etiqueta: 'Áreas', valor: '—', tonoValor: 'apagado', sub: '—' },
+        cifras: [
+          { etiqueta: 'Dispositivos', valor: '—' },
+          { etiqueta: 'Supervisores', valor: '—' },
+          { etiqueta: 'Usuarios', valor: '—' },
+        ],
+      }
 
   return (
     <Pantalla
@@ -530,7 +598,7 @@ export function AreasPage() {
       cifras={cifras}
     >
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
-      {estado === 'cargando' && <Skeleton variant="card" />}
+      {estado === 'cargando' && <EsqueletoAreas />}
       {estado === 'listo' && (
         <div className="ui-fila ui-areas" style={{ gridTemplateColumns: 'clamp(280px, 30%, 340px) minmax(0,1fr)' }}>
           <Card className="nc-grow">

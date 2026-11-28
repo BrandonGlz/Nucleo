@@ -43,6 +43,36 @@ function rangoDe(id) {
 
 // Un reporte en una tarjeta (sin tablas): periodo, estado, origen, cifras clave, un extracto del
 // texto de la IA y el PDF. `resaltar` marca el que abrió el aviso de la campana.
+// Misma tarjeta que el reporte real: encabezado, distintivos, texto y acciones.
+function EsqueletoReporte() {
+  const { c } = useTema()
+  return (
+    <View style={[s.tarjeta, { backgroundColor: c.surface }]} accessibilityLabel="Cargando reporte">
+      <View style={s.fila}>
+        <Skeleton width={32} height={32} round />
+        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+          <Skeleton width="76%" height={14} />
+          <Skeleton width="52%" height={11} />
+        </View>
+      </View>
+      <View style={s.chips}>
+        <Skeleton width={86} height={24} style={{ borderRadius: 999 }} />
+        <Skeleton width={74} height={24} style={{ borderRadius: 999 }} />
+      </View>
+      <Skeleton width="88%" height={12} />
+      <View style={{ gap: 5 }}>
+        <Skeleton width="100%" height={12} />
+        <Skeleton width="94%" height={12} />
+        <Skeleton width="68%" height={12} />
+      </View>
+      <View style={s.acciones}>
+        <Skeleton width={104} height={36} style={{ borderRadius: 999 }} />
+        <Skeleton width={82} height={36} style={{ borderRadius: 999 }} />
+      </View>
+    </View>
+  )
+}
+
 function TarjetaReporte({ r, resaltar, abriendo, onPdf, onEnvios }) {
   const { c } = useTema()
   const origen = ORIGEN[r.origen] ?? ORIGEN.MANUAL
@@ -221,7 +251,7 @@ export function ReportesScreen({ navigation, route }) {
           ) : estado === 'vacio' ? (
             <EstadoVacio icono="file-text" titulo="Sin reportes" mensaje="Aún no hay reportes a tu alcance. Pídelos desde la web o a Nico AI." />
           ) : !datos ? (
-            [0, 1, 2].map((i) => <Skeleton key={i} height={180} style={{ borderRadius: 22 }} />)
+            [0, 1, 2].map((i) => <EsqueletoReporte key={i} />)
           ) : (
             filtrados.length === 0 ? (
               <T size={13} color={c.textMuted}>No hay reportes con ese filtro.</T>

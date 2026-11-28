@@ -286,7 +286,7 @@ function HojaOpciones({ visible, titulo, opciones, valor, icono, onElegir, onCer
 }
 
 const s = StyleSheet.create({
-  selector: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 52, paddingLeft: 16, paddingRight: 12, borderRadius: radius.sm, borderWidth: 1.5 },
+  selector: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 52, paddingLeft: 16, paddingRight: 12, borderRadius: radius.full, borderWidth: 1.5 },
   fila6: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   trampa: { position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 },
   fondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },

@@ -3,7 +3,7 @@ import { Cabecera } from '../../components/Cabecera'
 import { EstadoError } from '../../components/EstadoError'
 import { Medidor } from '../../components/Medidor'
 import { Pantalla } from '../../components/Pantalla'
-import { Card, Icon, Skeleton, T, TrendChart } from '../../components/ui'
+import { Card, Icon, Skeleton, SkeletonGrafica, T, TrendChart } from '../../components/ui'
 import { useTema } from '../../context/TemaContext'
 import { useDatos } from '../../hooks/useDatos'
 import { lecturaDe, umbralDe, useOperador } from '../../hooks/useOperador'
@@ -132,7 +132,7 @@ export function MedicionesScreen({ navigation, route }) {
                 height={190}
               />
             ) : (
-              <Skeleton height={190} />
+              <SkeletonGrafica height={190} />
             )}
           </Card>
           <View style={[s.fila6, { justifyContent: 'center' }]}>

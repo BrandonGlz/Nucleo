@@ -13,13 +13,14 @@ import { Modal } from '../../components/Modal'
 import { useSesion } from '../../context/SesionContext'
 import { useEsMovil } from '../../hooks/useMenuMovil'
 import { useDatos } from '../../hooks/useDatos'
+import { useSalida } from '../../hooks/useSalida'
 import { AsistenteReporte } from './AsistenteReporte'
 import { DashboardReporte, ListaTarjetas } from './DashboardReporte'
-import { EsperaReporte } from './EsperaReporte'
+import { EsperaReporte, HojaEsqueleto } from './EsperaReporte'
 import { MigracionFormatos } from './MigracionFormatos'
 import { Programaciones } from './Programaciones'
 import { etiquetaFormato, useEdicion } from './personalizacion'
-import { ProveedorZoom } from './VisorHoja'
+import { ProveedorZoom, VisorHoja } from './VisorHoja'
 import { Pantalla } from '../../components/Pantalla'
 import * as formatosApi from '../../services/formatos'
 import * as organizacionesApi from '../../services/organizaciones'
@@ -79,6 +80,56 @@ function rangoDeFiltro(filtros) {
     return { ...(desde && { desde: desde.toISOString() }), ...(hasta && { hasta: hasta.toISOString() }) }
   }
   return {}
+}
+
+// Misma silueta que la pantalla cargada: lista a la izquierda y barra + hoja a la derecha.
+function EsqueletoReportes() {
+  return (
+    <div className="ui-reportes ui-reportes--esqueleto" aria-busy="true" aria-label="Cargando reportes">
+      <aside className="ui-reportes__lista">
+        <Card className="nc-grow">
+          <div className="ui-reportes__tabs ui-esqueleto-tabs">
+            <Skeleton width="48%" height={36} />
+            <Skeleton width="48%" height={36} />
+          </div>
+          <div className="ui-reportes__buscador">
+            <Skeleton height={44} />
+            <Skeleton width={92} height={36} />
+          </div>
+          <div className="ui-reportes__items">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="ui-item ui-esqueleto-fila">
+                <span className="ui-esqueleto-lineas">
+                  <Skeleton width="72%" height={14} />
+                  <Skeleton width="46%" height={11} />
+                </span>
+                <Skeleton variant="circle" width={18} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </aside>
+      <section className="ui-reportes__vista">
+        <div className="ui-reportes__barra ui-esqueleto-barra">
+          <Skeleton width={132} height={26} />
+          <Skeleton width={190} height={36} />
+          <Skeleton width={72} height={24} />
+          <span className="ui-esqueleto-acciones">
+            <Skeleton width={64} height={36} />
+            <Skeleton width={64} height={36} />
+            <Skeleton width={36} height={36} />
+          </span>
+        </div>
+        <div className="ui-reportes__hoja">
+          <ProveedorZoom zoomInicial={1}>
+            <VisorHoja>
+              <HojaEsqueleto />
+            </VisorHoja>
+          </ProveedorZoom>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 function Filtros({ filtros, setFiltros, areas, formatos, cerrar, saliendo }) {
@@ -162,7 +213,7 @@ export function ReportesPage() {
   const movil = useEsMovil()
   const [filtros, setFiltros] = useState(FILTROS_VACIOS)
   const [panelFiltros, setPanelFiltros] = useState(false)
-  const [panelSaliendo, setPanelSaliendo] = useState(false)
+  const salidaFiltros = useSalida(panelFiltros)
   const claveFiltros = JSON.stringify(filtros)
   const { estado, datos, reintentar, recargar, actualizar } = useDatos(
     () => cargar(filtros),
@@ -192,7 +243,7 @@ export function ReportesPage() {
     estadoPrevio.current = actual?.estado
     if (previo === 'GENERANDO' && ['LISTO', 'ENVIADO'].includes(actual?.estado)) {
       setEntrando(true)
-      const timer = setTimeout(() => setEntrando(false), 500)
+      const timer = setTimeout(() => setEntrando(false), 320)
       return () => clearTimeout(timer)
     }
     return undefined
@@ -217,13 +268,7 @@ export function ReportesPage() {
     return () => clearInterval(timer)
   }, [generando, recargar])
 
-  const cerrarFiltros = () => {
-    setPanelSaliendo(true)
-    window.setTimeout(() => {
-      setPanelFiltros(false)
-      setPanelSaliendo(false)
-    }, 180)
-  }
+  const cerrarFiltros = () => setPanelFiltros(false)
 
   useEffect(() => {
     if (!panelFiltros) return undefined
@@ -491,6 +536,7 @@ export function ReportesPage() {
           <div className="ui-reportes__barra-grupo ui-reportes__barra-formato">
             {!ocultarEtiquetaFormato && <span className="ui-reportes__etiqueta">Formato</span>}
             <Desplegable
+              size="sm"
               value={ed.formato.id}
               onChange={async (v) => ed.asignar(actual.num, v)}
               options={ed.formatos.map((f) => ({ value: f.id, label: f.nombre }))}
@@ -609,7 +655,7 @@ export function ReportesPage() {
         />
       )}
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
-      {estado === 'cargando' && <Skeleton variant="card" />}
+      {estado === 'cargando' && <EsqueletoReportes />}
       {estado === 'listo' && (
         <div className={`ui-reportes${vistaAbierta ? ' is-vista' : ''}`}>
           <aside className="ui-reportes__lista">
@@ -648,14 +694,14 @@ export function ReportesPage() {
                         Filtros{activos.length ? ` · ${activos.length}` : ''}
                       </Button>
                     </div>
-                    {panelFiltros && (
+                    {salidaFiltros.montado && (
                       <Filtros
                         filtros={filtros}
                         setFiltros={setFiltros}
                         areas={datos.areas}
                         formatos={ed.formatos}
                         cerrar={cerrarFiltros}
-                        saliendo={panelSaliendo}
+                        saliendo={salidaFiltros.saliendo}
                       />
                     )}
                     {activos.length > 0 && (

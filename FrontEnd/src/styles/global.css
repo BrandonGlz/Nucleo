@@ -1408,6 +1408,9 @@ button.ui-menuitem:hover {
   gap: 12px;
 }
 .ui-panel-filtros > .ui-desplegable {
+  flex: 0 1 280px;
+  width: 280px;
+  max-width: 100%;
   min-width: min(240px, 100%);
 }
 
@@ -2713,6 +2716,7 @@ article.ui-hoja,
 }
 .ui-desplegable__boton {
   width: 100%;
+  border-radius: var(--radius-full);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -2741,7 +2745,7 @@ article.ui-hoja,
   overflow-y: auto;
   list-style: none;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--surface-elevated);
   box-shadow: var(--shadow-lg);
 }
@@ -2751,7 +2755,7 @@ article.ui-hoja,
   gap: 8px;
   min-height: 38px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   font-size: 14px;
   color: var(--text-primary);
   cursor: pointer;
@@ -2775,7 +2779,7 @@ article.ui-hoja,
 .ui-desplegable__accion {
   margin-top: 4px;
   border-top: 1px solid var(--border);
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
   font-weight: 700;
 }
 /* Modal «Generar reporte» y su editor de formatos */
@@ -3839,10 +3843,10 @@ button.ui-menuitem:not(:disabled):hover svg {
   min-width: 0;
 }
 .ui-ia-agente .nc-input {
-  height: 38px;
+  height: 36px;
   border-width: 1px;
   border-color: var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   font-weight: 600;
 }
 .ui-ia-agente .ui-desplegable__valor {
@@ -4070,6 +4074,16 @@ button.ui-menuitem:not(:disabled):hover svg {
   transform: translateY(-3px);
   border-color: var(--border-strong);
   box-shadow: var(--shadow-md);
+}
+.ui-disp-card--esqueleto {
+  cursor: default;
+  animation: none;
+}
+.ui-disp-card--esqueleto:hover,
+.ui-disp-card--esqueleto:active {
+  transform: none;
+  border-color: var(--border);
+  box-shadow: none;
 }
 .ui-disp-card:active {
   transform: scale(0.98);
@@ -4480,7 +4494,7 @@ button.ui-menuitem:not(:disabled):hover svg {
   color: var(--text-secondary);
 }
 .ui-ia-visor__zoom select {
-  height: 32px;
+  height: 36px;
   padding: 0 26px 0 10px;
   border: 0;
   border-radius: var(--radius-full);
@@ -4517,6 +4531,11 @@ button.ui-menuitem:not(:disabled):hover svg {
 .ui-ia-visor__hojas > .ui-aviso,
 .ui-ia-visor__cargando {
   margin: 24px;
+}
+.ui-ia-visor__cargando--hoja {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
 }
 
 /* Salidas: los menús, listas y ventanas se van con el mismo movimiento con el que entran, en reversa */
@@ -4703,7 +4722,9 @@ button.ui-menuitem:not(:disabled):hover svg {
   .ui-desplegable__lista.is-saliendo,
   .ui-menu-acciones__lista.is-saliendo,
   .ui-modal.is-saliendo,
-  .ui-modal.is-saliendo .ui-modal__caja {
+  .ui-modal.is-saliendo .ui-modal__caja,
+  .ui-reportes__panel-filtros,
+  .ui-reportes__panel-filtros.is-saliendo {
     animation: none;
   }
   .nc-tabs__indicador.is-deslizando,
@@ -4913,15 +4934,15 @@ button.ui-menuitem:not(:disabled):hover svg {
   }
 }
 .ui-ia-visor {
-  animation: ui-visor-entra 460ms cubic-bezier(0.2, 0, 0, 1) backwards;
+  animation: ui-visor-entra var(--duration-slow) var(--ease-standard) backwards;
   will-change: transform;
 }
 .ui-ia-visor.is-saliendo {
-  animation: ui-visor-sale 280ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation: ui-visor-sale var(--duration-base) var(--ease-standard) forwards;
   pointer-events: none;
 }
 .ui-ia-visor.is-ampliado {
-  animation: ui-visor-amplia var(--duration-slow) cubic-bezier(0.2, 0, 0, 1);
+  animation: ui-visor-amplia var(--duration-slow) var(--ease-standard);
 }
 .ui-ia-visor__barra > * {
   animation: ui-ia-cambia var(--duration-slow) var(--ease-standard) backwards;
@@ -4940,7 +4961,7 @@ button.ui-menuitem:not(:disabled):hover svg {
 }
 .ui-ia-visor__hojas .ui-hoja:not(.ui-hoja--medidor),
 .ui-ia-visor__cargando {
-  animation: ui-visor-hoja 520ms cubic-bezier(0.2, 0, 0, 1) 180ms backwards;
+  animation: ui-visor-hoja var(--duration-slow) var(--ease-standard) 180ms backwards;
 }
 .ui-ia-visor__hojas .ui-hoja:nth-child(2) {
   animation-delay: 280ms;
@@ -5521,7 +5542,12 @@ button.ui-menuitem:not(:disabled):hover svg {
   box-shadow: var(--shadow-lg, var(--shadow-md));
   max-height: 320px;
   overflow: auto;
-  animation: ui-ia-sugiere-entra 0.14s var(--ease-standard, ease-out);
+  transform-origin: bottom center;
+  animation: ui-ia-sugiere-entra var(--duration-base) var(--ease-standard);
+}
+.ui-ia-sugiere.is-saliendo {
+  animation: ui-sale-menu var(--duration-base) var(--ease-standard) forwards;
+  pointer-events: none;
 }
 .ui-ia-sugiere button {
   display: flex;
@@ -5573,7 +5599,8 @@ button.ui-menuitem:not(:disabled):hover svg {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ui-ia-sugiere {
+  .ui-ia-sugiere,
+  .ui-ia-sugiere.is-saliendo {
     animation: none;
   }
 }
@@ -6075,7 +6102,7 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   .app__nav-group { margin-bottom: 4px; }
   .nc-sidebar__foot { padding-top: 6px; gap: 6px; }
 }
-.ui-reportes__panel-filtros.is-saliendo { animation: ui-sale-menu 180ms var(--ease-standard) forwards; }
+.ui-reportes__panel-filtros.is-saliendo { animation: ui-baja var(--duration-base) var(--ease-standard) forwards; pointer-events: none; }
 .ui-reportes__panel-filtros { animation: ui-sube var(--duration-base) var(--ease-standard) backwards; }
 .ui-hoja .nc-table { width: 100%; table-layout: auto; }
 .ui-hoja .nc-table th { white-space: normal; }
@@ -6413,7 +6440,7 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   min-height: 0;
 }
 .ui-reportes__hoja.is-entrando {
-  animation: ui-hoja-entra 420ms var(--ease-standard);
+  animation: ui-hoja-entra var(--duration-slow) var(--ease-standard);
 }
 @keyframes ui-hoja-entra {
   from { opacity: 0; }
@@ -7424,4 +7451,178 @@ button.ui-link.ui-marca__quitar { color: var(--text-muted); }
   min-width: 72px;
   gap: 6px;
   padding: 0 12px;
+}
+
+/* 1.2 · Esqueletos con la silueta real de cada pantalla.
+   Las piezas usan las mismas clases de composición que el contenido cargado para no mover nada al llegar los datos. */
+.ui-esqueleto-lineas {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ui-esqueleto-tabla td {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+.ui-esqueleto-tabla .nc-table__device {
+  gap: 10px;
+}
+.ui-esqueleto-grafica {
+  position: relative;
+  display: block;
+  min-height: 40px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+.ui-esqueleto-grafica::before {
+  content: '';
+  position: absolute;
+  inset: 8px 0 18px;
+  border-bottom: 1px solid var(--border);
+  background-image: repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px 33.33%);
+  opacity: 0.65;
+}
+.ui-esqueleto-grafica__area {
+  position: absolute;
+  right: 1%;
+  bottom: 18px;
+  left: 1%;
+  height: 62%;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: linear-gradient(90deg, var(--surface-muted) 0%, var(--border) 50%, var(--surface-muted) 100%);
+  background-size: 200% 100%;
+  animation: nc-shimmer 1.4s linear infinite;
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-esqueleto-grafica__area { animation: none; }
+}
+.ui-esqueleto-grafica__area::after {
+  content: '';
+  position: absolute;
+  inset: 40% 0 auto;
+  height: 2px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong, var(--border));
+  transform: rotate(-2deg);
+}
+.ui-esqueleto-grafica__punto {
+  position: absolute;
+  right: 3%;
+  bottom: calc(18px + 58%);
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong, var(--border));
+}
+.ui-grafica > .ui-esqueleto-grafica {
+  position: absolute;
+  inset: 0;
+  height: auto !important;
+}
+
+/* Reportes: la lista y la hoja mantienen el tamaño de la pantalla cargada. */
+.ui-esqueleto-tabs {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+}
+.ui-esqueleto-barra {
+  gap: 10px;
+}
+.ui-esqueleto-barra .ui-esqueleto-acciones {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+.ui-esqueleto-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px !important;
+}
+.ui-reportes--esqueleto .ui-reportes__items {
+  gap: 4px;
+}
+.ui-reportes--esqueleto .ui-reportes__hoja {
+  min-height: 0;
+}
+.ui-reportes--esqueleto .ui-visor-hoja {
+  flex: 1;
+  min-height: 0;
+}
+
+.ui-esqueleto-alertas-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ui-esqueleto-alertas-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ui-esqueleto-alertas-detalle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ui-esqueleto-alertas-valor {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ui-esqueleto-alertas-linea {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.ui-esqueleto-alertas-botones {
+  display: flex;
+  gap: 8px;
+}
+.ui-esqueleto-alertas-botones > *:first-child { flex: 1; }
+.ui-esqueleto-alertas-botones > *:last-child { flex: 2; }
+
+/* La altura fluida de los campos no debe ganarle al tamaño sm de los selectores. */
+.nc-input.nc-input--sm {
+  height: 36px;
+}
+
+/* En tarjetas angostas los dos campos de advertencia se apilan y son más bajos: el esqueleto los sigue. */
+@container umbral (max-width: 290px) {
+  .ui-umbral__adv > .nc-skel {
+    height: 40px !important;
+  }
+}
+
+/* El esqueleto del umbral sigue el alto del control real en escritorio y en el celular. */
+.ui-esqueleto-threshold {
+  min-height: 178px;
+}
+@media (max-width: 900px) {
+  .ui-esqueleto-threshold {
+    min-height: 182px;
+  }
+  .ui-umbral__adv > .nc-skel {
+    height: 67px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-reportes__panel-filtros,
+  .ui-reportes__panel-filtros.is-saliendo {
+    animation: none;
+  }
 }

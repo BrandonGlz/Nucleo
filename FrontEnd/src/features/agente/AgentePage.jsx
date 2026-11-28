@@ -14,13 +14,14 @@ import {
 } from 'lucide-react'
 import { Button, Icon, Skeleton, TrendChart } from '../../design-system/componentes/index.js'
 import { Desplegable } from '../../components/Desplegable'
-import { useCierre } from '../../hooks/useSalida'
+import { useCierre, useSalida } from '../../hooks/useSalida'
 import { CONSULTA_MOVIL, useEsMovil } from '../../hooks/useMenuMovil'
 import { Pantalla } from '../../components/Pantalla'
 import { useAgente } from '../../context/AgenteContext'
 import { useSesion } from '../../context/SesionContext'
 import { DashboardReporte } from '../reportes/DashboardReporte'
-import { ControlZoom, ProveedorZoom } from '../reportes/VisorHoja'
+import { HojaEsqueleto } from '../reportes/EsperaReporte'
+import { ControlZoom, ProveedorZoom, VisorHoja } from '../reportes/VisorHoja'
 import { asignarFormato, useEdicion } from '../reportes/personalizacion'
 import * as reportesApi from '../../services/reportes'
 import * as agenteApi from '../../services/agente'
@@ -195,7 +196,7 @@ function AdjuntoReporte({ resumen, visualizar, abierto }) {
 // pantalla completa y cierre (también con Escape).
 function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
   // Al cerrar, el visor primero se desliza hacia la derecha y luego se quita.
-  const [saliendo, cerrar] = useCierre(quitar, 280)
+  const [saliendo, cerrar] = useCierre(quitar)
   const [r, setR] = useState(null)
   const [error, setError] = useState(false)
   const caja = useRef(null)
@@ -258,13 +259,39 @@ function VisorReporte({ resumen, cerrar: quitar, ampliado, ampliar }) {
         ) : r ? (
           <DashboardReporte r={r} areas={areas} ed={ed} />
         ) : (
-          <div className="ui-ia-visor__cargando">
-            <Skeleton variant="card" />
+          <div className="ui-ia-visor__cargando ui-ia-visor__cargando--hoja">
+            <VisorHoja>
+              <HojaEsqueleto />
+            </VisorHoja>
           </div>
         )}
       </div>
     </aside>
     </ProveedorZoom>
+  )
+}
+
+// Misma rejilla de tres bloques que el resumen cargado, con sus etiquetas reales.
+function EsqueletoResumen() {
+  return (
+    <div className="ui-ia-resumen" aria-busy="true" aria-label="Cargando resumen del equipo">
+      <div className="ui-ia-resumen__bloque">
+        <span className="ui-eyebrow">Últimas lecturas</span>
+        <span className="ui-ia-resumen__variable">
+          <Skeleton width={72} height={15} />
+          <Skeleton width={62} height={15} />
+          <Skeleton width={68} height={15} />
+        </span>
+      </div>
+      <div className="ui-ia-resumen__bloque">
+        <span className="ui-eyebrow">Pendientes · este dispositivo</span>
+        <Skeleton width={28} height={18} />
+      </div>
+      <div className="ui-ia-resumen__bloque">
+        <span className="ui-eyebrow">Conexión</span>
+        <Skeleton width={74} height={18} />
+      </div>
+    </div>
   )
 }
 
@@ -593,9 +620,9 @@ function Respuesta({ m, autor, ultima, animar, regenerar, calificar, visualizar,
 
 // Lista que aparece arriba de la caja mientras se escribe: flechas para moverse, Enter para
 // preguntar la elegida, Tab para solo completarla y Esc para cerrarla.
-function SugerenciasEscritura({ lista, escrito, elegida, elegir, resaltarEn }) {
+function SugerenciasEscritura({ lista, escrito, elegida, elegir, resaltarEn, saliendo }) {
   return (
-    <ul className="ui-ia-sugiere" role="listbox" id="nico-sugerencias" aria-label="Sugerencias">
+    <ul className={`ui-ia-sugiere${saliendo ? ' is-saliendo' : ''}`} role="listbox" id="nico-sugerencias" aria-label="Sugerencias">
       {lista.map((s, i) => (
         <li key={s.texto} role="option" id={`nico-sugerencia-${i}`} aria-selected={i === elegida}>
           <button
@@ -630,6 +657,14 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
       ? filtrar(sugerencias.lista, valor, sugerencias.maximo)
       : []
   const abierta = lista.length > 0
+  // La lista mantiene su contenido mientras se desvanece al cerrarse.
+  const salida = useSalida(abierta)
+  const [ultimaLista, setUltimaLista] = useState({ lista: [], escrito: '' })
+  const mismaLista =
+    ultimaLista.lista.length === lista.length && ultimaLista.lista.every((s, i) => s.texto === lista[i]?.texto)
+  if (abierta && (!mismaLista || ultimaLista.escrito !== valor)) {
+    setUltimaLista({ lista, escrito: valor })
+  }
   // Al cambiar lo escrito, ninguna queda elegida.
   const [escritoAntes, setEscritoAntes] = useState(valor)
   if (escritoAntes !== valor) {
@@ -656,7 +691,16 @@ function Compositor({ valor, cambiar, enviar, detener, pensando, deshabilitado, 
         enviar()
       }}
     >
-      {abierta && <SugerenciasEscritura lista={lista} escrito={valor} elegida={elegida} elegir={elegir} resaltarEn={setElegida} />}
+      {salida.montado && (
+        <SugerenciasEscritura
+          lista={abierta ? lista : ultimaLista.lista}
+          escrito={abierta ? valor : ultimaLista.escrito}
+          elegida={elegida}
+          elegir={elegir}
+          resaltarEn={setElegida}
+          saliendo={salida.saliendo}
+        />
+      )}
       <textarea
         ref={area}
         rows={1}
@@ -746,6 +790,8 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
   }, [numAgente])
   const [visor, setVisor] = useState(null)
   const [ampliado, setAmpliado] = useState(false)
+  const panelVisible = panel && !visor
+  const salidaPanel = useSalida(panelVisible)
   const cerrarVisor = useCallback(() => {
     setVisor(null)
     setAmpliado(false)
@@ -766,7 +812,8 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
     dispAntes.current = disposicion
     if (!cambio || x == null || antes == null || Math.abs(antes - x) < 2 || sinMovimiento()) return
     el.animate([{ transform: `translateX(${antes - x}px)` }, { transform: 'none' }], {
-      duration: 460,
+      // Misma duración y curva que --duration-slow y --ease-standard.
+      duration: 320,
       easing: 'cubic-bezier(0.2, 0, 0, 1)',
     })
   })
@@ -800,13 +847,21 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
           (a) => a.dispositivo === dispositivoAgente.num && a.estado === 'PENDIENTE',
         ).length
         const estado = { LINEA: 'En línea', SINCONEX: 'Sin conexión', CALENT: 'Calentando' }[dispositivoAgente.estado_dispositivo] ?? 'Sin conexión'
-        setResumen({ lecturas, pendientes, estado })
+        setResumen({ num: dispositivoAgente.num, lecturas, pendientes, estado })
       })
-      .catch(() => vivo && setResumen(null))
+      .catch(() => {
+        if (!vivo) return
+        setResumen({ num: dispositivoAgente.num, lecturas: null, pendientes: 0, estado: 'Sin conexión' })
+      })
     return () => {
       vivo = false
     }
   }, [enHilo, dispositivoAgente])
+  // Mientras llegan los dispositivos o el resumen no corresponde al elegido, se muestra su esqueleto.
+  const resumenCargando =
+    !enHilo &&
+    (ag.cargandoDispositivos ||
+      (Boolean(dispositivoAgente) && resumen?.num !== dispositivoAgente.num))
 
   useEffect(() => {
     const el = hilo.current
@@ -992,9 +1047,9 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
 
   return (
     <Pantalla eyebrow={eyebrow} titulo="Nico AI" acciones={acciones}>
-      <div className={`ui-ia${panel && !visor ? '' : ' is-sin-panel'}${visor ? ' con-visor' : ''}`}>
-        {panel && !visor && (
-          <aside className="ui-ia-panel" aria-label="Conversaciones">
+      <div className={`ui-ia${panelVisible ? '' : ' is-sin-panel'}${visor ? ' con-visor' : ''}`}>
+        {(panelVisible || (movil && salidaPanel.montado)) && !visor && (
+          <aside className={`ui-ia-panel${salidaPanel.saliendo ? ' is-saliendo' : ''}`} aria-label="Conversaciones">
             <button
               type="button"
               className="ui-ia-nueva"
@@ -1110,6 +1165,7 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
               </span>
               {/* Un solo selector de alcance: dispositivos, áreas visibles y, para ADMIN y SUPER, toda la organización. */}
               <Desplegable
+                size="sm"
                 icon={ag.alcance === 'DISPOSITIVO' ? 'cpu' : 'map-pin'}
                 value={ag.alcance === 'DISPOSITIVO' ? `d:${ag.agente ?? ''}` : ag.alcance === 'AREA' ? `a:${ag.areaAlcance ?? ''}` : 'org'}
                 onChange={(valor) => {
@@ -1150,7 +1206,8 @@ export function AgentePage({ eyebrow = 'Pregunta sobre los sensores de tu organi
                 {ag.alcance === 'AREA' ? nombreArea : ag.alcance === 'ORGANIZACION' ? 'toda la organización' : nombreAgente}
               </p>
               {/* El resumen es del dispositivo elegido; con alcance de área u organización no aplica. */}
-              {ag.alcance === 'DISPOSITIVO' && (
+              {ag.alcance === 'DISPOSITIVO' && resumenCargando && <EsqueletoResumen />}
+              {ag.alcance === 'DISPOSITIVO' && !resumenCargando && (
               <div className="ui-ia-resumen" aria-label="Resumen del equipo">
                 <div className="ui-ia-resumen__bloque">
                   <span className="ui-eyebrow">Últimas lecturas</span>

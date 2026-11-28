@@ -313,6 +313,44 @@ function EstadoEquipo({ d }) {
   )
 }
 
+// Misma silueta que el panel cargado: franja de estado, dos mosaicos y la tarjeta de temperatura.
+function EsqueletoPanel() {
+  const { c } = useTema()
+  return (
+    <>
+      <View style={[s.tarjeta, s.equipo, { backgroundColor: c.surface }]}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={[s.celda, i > 0 && { borderLeftWidth: 1, borderLeftColor: c.border, paddingLeft: 12 }]}>
+            <Skeleton width={46} height={10} />
+            <Skeleton width={62} height={16} />
+          </View>
+        ))}
+      </View>
+      <View style={s.dos}>
+        {[0, 1].map((i) => (
+          <View key={i} style={[s.mosaico, { backgroundColor: c.surface }]}>
+            <Skeleton width={52} height={11} />
+            <Skeleton width={96} height={36} />
+            <Skeleton width="86%" height={34} />
+          </View>
+        ))}
+      </View>
+      <View style={[s.tarjeta, { backgroundColor: c.surface, gap: 10 }]}>
+        <View style={s.entre}>
+          <Skeleton width="54%" height={16} />
+          <Skeleton width={104} height={32} style={{ borderRadius: 999 }} />
+        </View>
+        <Skeleton height={52} style={{ borderRadius: 8 }} />
+        <View style={s.entre}>
+          <Skeleton width={44} height={10} />
+          <Skeleton width={86} height={10} />
+          <Skeleton width={44} height={10} />
+        </View>
+      </View>
+    </>
+  )
+}
+
 // Panel: el dispositivo en vivo arriba; abajo la franja de estado (conexión, lectura, batería),
 // humedad, aire y la temperatura de 24 h o 7 días. La campana abre el centro de avisos.
 export function PanelScreen({ navigation }) {
@@ -347,14 +385,7 @@ export function PanelScreen({ navigation }) {
           }
         />
       ) : cargando ? (
-        <>
-          <Skeleton height={64} style={{ borderRadius: 28 }} />
-          <View style={s.dos}>
-            <Skeleton height={140} style={{ flex: 1, borderRadius: 28 }} />
-            <Skeleton height={140} style={{ flex: 1, borderRadius: 28 }} />
-          </View>
-          <Skeleton height={64} style={{ borderRadius: 28 }} />
-        </>
+        <EsqueletoPanel />
       ) : (
         <>
           <EstadoEquipo d={d} />

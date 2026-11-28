@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Card, EmptyState, PeriodFilter, Skeleton } from '../../design-system/componentes/index.js'
+import { Card, EmptyState, PeriodFilter } from '../../design-system/componentes/index.js'
 import { Select } from '../../components/Desplegable'
+import { EsqueletoGrafica } from '../../components/Esqueleto'
 import { GraficaAjustable } from '../../components/GraficaAjustable'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
@@ -19,8 +20,15 @@ const VARIABLES = ['TEMP', 'HUM', 'AIRE']
 const PERIODO = { Hoy: 'hoy', '7 días': '7', '30 días': '30' }
 
 const CIFRAS_CARGANDO = {
-  principal: { etiqueta: 'Temperatura', valor: '--.-', tonoValor: 'apagado', sub: 'Cargando lecturas…' },
-  cifras: ['Humedad', 'En línea', 'Aire', 'Pendientes'].map((etiqueta) => ({ etiqueta, valor: '—', tono: 'tenue' })),
+  principal: { etiqueta: 'Temperatura · cargando dispositivo', valor: '--.-', tonoValor: 'apagado', sub: 'Cargando lecturas…' },
+  // La barra de rango ocupa el mismo renglón que en la franja cargada.
+  barra: { desde: 30, ancho: 40, marca: 50 },
+  cifras: [
+    { etiqueta: 'Humedad', valor: '—', unidad: '%HR', sub: '—', tono: 'tenue' },
+    { etiqueta: 'En línea', valor: '—', unidad: '/ —', sub: '—', tono: 'tenue' },
+    { etiqueta: 'Aire', valor: '—', unidad: 'ppm', sub: '—', tono: 'tenue' },
+    { etiqueta: 'Pendientes', valor: '—', sub: '—', tono: 'tenue' },
+  ],
 }
 
 // Cifras de la franja negra. Las lecturas (temperatura, humedad y aire) son las últimas del
@@ -105,7 +113,7 @@ function GraficaVariable({ variable, datos, dispositivo, periodo, className = ''
           <h3 className="nc-card__title">{info.etiqueta}</h3>
           <p className="nc-card__sub">
             <span className="ui-panel-grafica__umbral">
-              {dispositivo?.nombre} · umbral {rangoUmbral(u, unidad)}
+              {dispositivo?.nombre ?? 'Cargando dispositivo'} · umbral {rangoUmbral(u, unidad)}
             </span>
             {datos?.ultima && <span className="ui-aviso-ultima"> · {avisoUltima(datos.ultima)}</span>}
           </p>
@@ -120,7 +128,9 @@ function GraficaVariable({ variable, datos, dispositivo, periodo, className = ''
           vacio={`Sin lecturas de ${dispositivo?.nombre ?? 'este dispositivo'} en este periodo`}
         />
       ) : (
-        <Skeleton height={120} />
+        <div className="ui-grafica">
+          <EsqueletoGrafica alto="100%" />
+        </div>
       )}
     </Card>
   )
@@ -146,12 +156,18 @@ export function PanelPage() {
   }
   const filtros = (
     <div className="ui-panel-filtros">
-      {dispositivos.length > 1 && (
+      {(dispositivos.length > 1 || cat.estado === 'cargando') && (
         <Select
+          size="sm"
           icon="cpu"
           value={disp}
+          disabled={!dispositivos.length}
           onChange={(e) => setElegido(e.target.value)}
-          options={dispositivos.map((d) => ({ value: String(d.num), label: `${d.nombre} · ${d.codigo_mqtt}` }))}
+          options={
+            dispositivos.length
+              ? dispositivos.map((d) => ({ value: String(d.num), label: `${d.nombre} · ${d.codigo_mqtt}` }))
+              : [{ value: '', label: 'Cargando dispositivo seleccionado…' }]
+          }
         />
       )}
       <PeriodFilter value={periodo} onChange={setPeriodo} />

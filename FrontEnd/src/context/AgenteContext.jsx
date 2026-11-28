@@ -94,6 +94,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
   const { usuario } = useSesion()
   const conOrganizacion = Boolean(usuario?.organizacion)
   const conExternos = Boolean(externos)
+  const [cargandoDispositivos, setCargandoDispositivos] = useState(conOrganizacion && !conExternos)
   const [areas, setAreas] = useState([])
   const [alcance, setAlcanceEstado] = useState('DISPOSITIVO')
   const [areaAlcance, setAreaAlcanceEstado] = useState(() => usuario?.area ?? null)
@@ -125,6 +126,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       .lista()
       .then((r) => vivo && setDispositivos(pagina(r)))
       .catch(() => {})
+      .finally(() => vivo && setCargandoDispositivos(false))
     return () => {
       vivo = false
     }
@@ -355,6 +357,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       pensando: estado === 'pensando',
       animada,
       dispositivos,
+      cargandoDispositivos,
       areas,
       alcance,
       setAlcance,
@@ -379,7 +382,7 @@ export function AgenteProvider({ children, dispositivos: externos, agenteInicial
       agregarRespuesta,
       setAgente,
     }
-  }, [conversaciones, actual, estado, animada, dispositivos, areas, alcance, setAlcance, areaAlcance, setAreaAlcance, motivo, agenteValido, dispositivoAgente, preguntar, responderLocal, precargar, agenteActivo, agenteDisponible, modoPruebas, detener, nueva, abrir, borrar, renombrar, editar, agregarRespuesta, setAgente])
+  }, [conversaciones, actual, estado, animada, dispositivos, cargandoDispositivos, areas, alcance, setAlcance, areaAlcance, setAreaAlcance, motivo, agenteValido, dispositivoAgente, preguntar, responderLocal, precargar, agenteActivo, agenteDisponible, modoPruebas, detener, nueva, abrir, borrar, renombrar, editar, agregarRespuesta, setAgente])
 
   return <AgenteContext.Provider value={valor}>{children}</AgenteContext.Provider>
 }

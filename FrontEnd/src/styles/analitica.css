@@ -88,7 +88,6 @@
 .ui-analitica__aviso { flex: none; color: var(--danger); font-size: 12px; padding: 0 4px; }
 .ui-analitica__error { display: flex; align-items: center; gap: 6px; color: var(--danger); font-size: 12px; }
 .ui-analitica__reintentar { border: 0; background: transparent; color: var(--accent-secondary); font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
-.ui-analitica__cargando-pagina { display: flex; flex-direction: column; gap: 12px; padding: 6px; }
 .ui-analitica__multiple { position: relative; flex: none; }
 .ui-analitica__filtro { white-space: nowrap; }
 .ui-analitica__filtro.is-abierto, .ui-analitica__filtro.is-activo { border-color: var(--accent-secondary); color: var(--accent-secondary); }
@@ -96,6 +95,12 @@
   position: absolute; z-index: 12; top: calc(100% + 5px); left: 0; min-width: 190px; max-height: 260px;
   overflow: auto; padding: 5px; border: 1px solid var(--border); border-radius: var(--radius-md);
   background: var(--surface-elevated); box-shadow: var(--shadow-lg);
+  transform-origin: top left;
+  animation: ui-aparece-menu var(--duration-base) var(--ease-standard);
+}
+.ui-analitica__popover.is-saliendo {
+  animation: ui-sale-menu var(--duration-base) var(--ease-standard) forwards;
+  pointer-events: none;
 }
 .ui-analitica__opcion {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
@@ -316,7 +321,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-analitica__lista, .ui-analitica__scrim, .ui-analitica__hoja-panel, .ui-analitica__hoja-fondo { animation: none !important; }
+  .ui-analitica__lista, .ui-analitica__scrim, .ui-analitica__hoja-panel, .ui-analitica__hoja-fondo,
+  .ui-analitica__popover, .ui-analitica__popover.is-saliendo,
+  .ui-editor__panel, .ui-editor__panel.is-saliendo { animation: none !important; }
 }
 
 /* El contenedor de impresión solo existe mientras se genera el PDF. */
@@ -375,7 +382,15 @@
     padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-lg);
     background: var(--surface); box-shadow: var(--shadow-lg);
   }
-  .ui-editor:not(.is-panel-abierto) .ui-editor__panel { display: none; }
+  .ui-editor:not(.is-panel-abierto) .ui-editor__panel:not(.is-saliendo) { display: none; }
+  .ui-editor__panel {
+    transform-origin: top right;
+    animation: ui-aparece-menu var(--duration-base) var(--ease-standard);
+  }
+  .ui-editor__panel.is-saliendo {
+    animation: ui-sale-menu var(--duration-base) var(--ease-standard) forwards;
+    pointer-events: none;
+  }
   .ui-editor__panel-toggle, .ui-editor__panel-cerrar { display: inline-flex; }
 }
 @media (max-width: 900px) {
@@ -464,3 +479,17 @@
 }
 
 .ui-editor__panel-cabeza .nc-tabs { width: auto; flex: 1; min-width: 0; }
+
+/* 1.2 · Esqueleto inicial: mismo lienzo 16:9 y mismas posiciones que el tablero predeterminado. */
+.ui-analitica__lienzo--esqueleto {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+}
+.ui-analitica__tarjeta--esqueleto {
+  cursor: default;
+}
+.ui-analitica__pie .ui-esqueleto-tabs {
+  width: min(220px, 100%);
+  box-sizing: border-box;
+}

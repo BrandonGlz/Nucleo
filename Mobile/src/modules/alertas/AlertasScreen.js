@@ -112,6 +112,22 @@ export function TarjetaAlerta({ a, onPress }) {
   )
 }
 
+// Misma tarjeta que la alerta real: ícono, título, detalle y punto de pendiente.
+function EsqueletoAlerta() {
+  const { c } = useTema()
+  return (
+    <View style={[s.tarjeta, { backgroundColor: c.surface }]} accessibilityLabel="Cargando alerta">
+      <Skeleton width={32} height={32} round />
+      <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+        <Skeleton width="72%" height={13} />
+        <Skeleton width="92%" height={11} />
+        <Skeleton width="54%" height={10} />
+      </View>
+      <Skeleton width={8} height={8} round style={{ marginTop: 6 }} />
+    </View>
+  )
+}
+
 // Alertas: el operador ve las de su dispositivo; las demás cuentas, todas las de su alcance (como en
 // la web). El administrador y el supervisor las atienden o descartan deslizando la tarjeta.
 export function AlertasScreen({ navigation }) {
@@ -215,7 +231,7 @@ export function AlertasScreen({ navigation }) {
             ))}
           </View>
           {estado === 'cargando' ? (
-            [0, 1, 2].map((i) => <Skeleton key={i} height={84} style={{ borderRadius: 20 }} />)
+            [0, 1, 2, 3].map((i) => <EsqueletoAlerta key={i} />)
           ) : vacio ? (
             <View style={[s.fila12, s.aviso, { backgroundColor: c.surface }]}>
               <IconCircle name="bell" size="sm" />

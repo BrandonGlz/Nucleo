@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import {
-  Avatar, Badge, Button, Card, ChipFilter, Icon, IconButton, Input, Skeleton,
+  Avatar, Badge, Button, Card, ChipFilter, Icon, IconButton, Input,
 } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { Select } from '../../components/Desplegable'
+import { EsqueletoTabla } from '../../components/Esqueleto'
 import { EstadoError } from '../../components/EstadoError'
 import { MenuAcciones } from '../../components/MenuAcciones'
 import { Pantalla } from '../../components/Pantalla'
@@ -185,11 +186,19 @@ export function UsuariosPage() {
           { etiqueta: 'Operadores', valor: cuenta('OPER') },
         ],
       }
-    : { principal: { etiqueta: 'Usuarios', valor: '—', tonoValor: 'apagado' } }
+    : {
+        principal: { etiqueta: 'Usuarios', valor: '—', tonoValor: 'apagado', sub: '—' },
+        cifras: [
+          { etiqueta: 'Administradores', valor: '—' },
+          { etiqueta: 'Supervisores', valor: '—' },
+          { etiqueta: 'Analistas', valor: '—' },
+          { etiqueta: 'Operadores', valor: '—' },
+        ],
+      }
 
   return (
     <Pantalla
-      eyebrow={datos ? `${org} · ${usuarios.length} personas` : ''}
+      eyebrow={datos ? `${org} · ${usuarios.length} personas` : 'Cargando usuarios…'}
       titulo="Usuarios"
       acciones={
         <Button icon="plus" disabled={!datos} onClick={() => setModal({})}>
@@ -216,7 +225,17 @@ export function UsuariosPage() {
         <Buscador valor={busqueda} cambiar={setBusqueda} placeholder="Buscar por nombre o correo…" />
       </div>
       {estado === 'error' && <EstadoError reintentar={reintentar} />}
-      {estado === 'cargando' && <Skeleton variant="card" />}
+      {estado === 'cargando' && (
+        <Card className="nc-grow">
+          <EsqueletoTabla
+            etiquetas={['Nombre', 'Rol', 'Área', 'Dispositivo asignado', 'Estado', 'Último acceso', '']}
+            filas={7}
+            anchos={['72%', 72, '64%', '60%', 70, '58%', '24%']}
+            primera="avatar"
+            pastillas={[1, 4]}
+          />
+        </Card>
+      )}
       {estado === 'listo' && (
         <Card className="nc-grow">
           <div className="nc-table-wrap nc-scroll">

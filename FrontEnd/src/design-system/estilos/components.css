@@ -90,7 +90,11 @@ button { font: inherit; color: inherit; }
 .nc-select select { appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 4px; text-overflow: ellipsis; }
 .nc-select select:has(option[value=""]:checked) { color: var(--text-muted); }
 .nc-select select option { background: var(--surface-elevated); color: var(--text-primary); }
-.nc-select { cursor: pointer; }
+/* Los selectores usan la forma de píldora del botón, no el radio de los campos de texto. */
+.nc-select { cursor: pointer; border-radius: var(--radius-full); }
+.nc-input--sm { height: 36px; gap: 8px; padding: 0 var(--space-3); border-radius: var(--radius-full); }
+.nc-input--sm input, .nc-input--sm select, .nc-input--sm .ui-desplegable__valor { font-size: 13px; }
+.nc-input--sm > .nc-icon:first-child { width: 16px; height: 16px; }
 .nc-input > .nc-select__chev, .nc-select__chev { flex: none; margin-left: auto; color: var(--text-secondary); pointer-events: none; }
 .nc-input.is-disabled > .nc-select__chev, .nc-input:disabled > .nc-select__chev, .nc-input:has(> select:disabled) > .nc-select__chev { color: var(--text-muted); opacity: 0.6; }
 input[type=number] { -moz-appearance: textfield; }

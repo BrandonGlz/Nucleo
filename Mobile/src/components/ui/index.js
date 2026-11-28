@@ -5,7 +5,7 @@ export { Icon } from './Icon'
 export { Logo, LogoMark } from './Logo'
 export {
   ActivityFeed, Aparece, Avatar, Badge, Battery, Button, Card, Chip, IconButton, IconCircle, Input,
-  LEVEL, MOV, Skeleton, STATUS, StatusBadge, Tabs, Toggle, tono,
+  LEVEL, MOV, Skeleton, SkeletonGrafica, STATUS, StatusBadge, Tabs, Toggle, tono,
 } from './Basicos'
 export { Sparkline, TrendChart } from './Graficas'
 export { TabBar } from './TabBar'

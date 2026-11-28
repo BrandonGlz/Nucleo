@@ -30,62 +30,72 @@ function Pasos({ paso }) {
   )
 }
 
+// Silueta de una hoja de reporte: mismo membrete, cifras y rejilla que la hoja real.
+// La usan la espera de generación y la carga inicial de Reportes y de Nico AI.
+export function HojaEsqueleto({ hoja: configuracion = {} }) {
+  const hoja = { tamano: 'carta', orientacion: 'vertical', ...configuracion }
+  const medida = medidaHoja(hoja)
+  return (
+    <article
+      className="ui-hoja ui-hoja--espera"
+      style={{ width: medida.ancho, minHeight: medida.alto }}
+      aria-label="Cargando reporte"
+      aria-busy="true"
+    >
+      <div className="ui-esqueleto__membrete">
+        <span className="ui-esqueleto__bloque" style={{ width: 126, height: 10 }} />
+        <span className="ui-esqueleto__bloque" style={{ width: 176, height: 10 }} />
+        <span className="ui-esqueleto__bloque" style={{ width: 68, height: 10, marginLeft: 'auto' }} />
+      </div>
+      <div className="ui-esqueleto__titulo">
+        <span className="ui-esqueleto__bloque" style={{ width: '54%', height: 24 }} />
+        <span className="ui-esqueleto__bloque" style={{ width: '32%', height: 12 }} />
+      </div>
+      <div className="ui-esqueleto__ficha">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className="ui-esqueleto__bloque" style={{ height: 10 }} />
+        ))}
+      </div>
+      <div className="ui-esqueleto__cifras">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="ui-esqueleto__cifra">
+            <span className="ui-esqueleto__bloque" style={{ width: '52%', height: 8 }} />
+            <span className="ui-esqueleto__bloque" style={{ width: '72%', height: 18 }} />
+          </div>
+        ))}
+      </div>
+      <div className="ui-esqueleto__rejilla">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="ui-esqueleto__tarjeta">
+            <span className="ui-esqueleto__bloque" style={{ width: '42%', height: 8 }} />
+            <span className="ui-esqueleto__bloque" style={{ width: '76%', height: 16 }} />
+            <span className="ui-esqueleto__bloque" style={{ width: '100%', height: 8 }} />
+          </div>
+        ))}
+      </div>
+      <div className="ui-esqueleto__texto">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className="ui-esqueleto__bloque"
+            style={{ width: i === 3 ? '62%' : '100%', height: 10 }}
+          />
+        ))}
+      </div>
+    </article>
+  )
+}
+
 // Hoja esqueleto de un reporte que se está generando, con el paso real del procesador.
 export function EsperaReporte({ reporte, onRepetir }) {
   const conf = reporte.formato_conf ?? {}
   const hoja = { tamano: 'carta', orientacion: 'vertical', ...(conf.hoja ?? {}) }
-  const medida = medidaHoja(hoja)
   const paso = Math.min(4, Math.max(1, Number(reporte.paso) || 1))
   const fallo = reporte.estado === 'FALLO'
   return (
     <div className={`ui-espera${fallo ? ' is-fallo' : ''}`}>
       <VisorHoja className="ui-espera__visor">
-        <article
-          className="ui-hoja ui-hoja--espera"
-          style={{ width: medida.ancho, minHeight: medida.alto }}
-          aria-label="Generando reporte"
-        >
-          <div className="ui-esqueleto__membrete">
-            <span className="ui-esqueleto__bloque" style={{ width: 126, height: 10 }} />
-            <span className="ui-esqueleto__bloque" style={{ width: 176, height: 10 }} />
-            <span className="ui-esqueleto__bloque" style={{ width: 68, height: 10, marginLeft: 'auto' }} />
-          </div>
-          <div className="ui-esqueleto__titulo">
-            <span className="ui-esqueleto__bloque" style={{ width: '54%', height: 24 }} />
-            <span className="ui-esqueleto__bloque" style={{ width: '32%', height: 12 }} />
-          </div>
-          <div className="ui-esqueleto__ficha">
-            {[0, 1, 2, 3].map((i) => (
-              <span key={i} className="ui-esqueleto__bloque" style={{ height: 10 }} />
-            ))}
-          </div>
-          <div className="ui-esqueleto__cifras">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="ui-esqueleto__cifra">
-                <span className="ui-esqueleto__bloque" style={{ width: '52%', height: 8 }} />
-                <span className="ui-esqueleto__bloque" style={{ width: '72%', height: 18 }} />
-              </div>
-            ))}
-          </div>
-          <div className="ui-esqueleto__rejilla">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="ui-esqueleto__tarjeta">
-                <span className="ui-esqueleto__bloque" style={{ width: '42%', height: 8 }} />
-                <span className="ui-esqueleto__bloque" style={{ width: '76%', height: 16 }} />
-                <span className="ui-esqueleto__bloque" style={{ width: '100%', height: 8 }} />
-              </div>
-            ))}
-          </div>
-          <div className="ui-esqueleto__texto">
-            {[0, 1, 2, 3].map((i) => (
-              <span
-                key={i}
-                className="ui-esqueleto__bloque"
-                style={{ width: i === 3 ? '62%' : '100%', height: 10 }}
-              />
-            ))}
-          </div>
-        </article>
+        <HojaEsqueleto hoja={hoja} />
       </VisorHoja>
       <div className="ui-espera__pie">
         {fallo ? (

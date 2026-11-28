@@ -225,6 +225,78 @@ function Detalle({ a, usuarios, editable, alResolver }) {
   )
 }
 
+// Silueta de la pantalla cargada: lista de alertas y detalle a la derecha.
+function EsqueletoAlertas() {
+  return (
+    <div className="ui-fila" style={{ gridTemplateColumns: 'minmax(0,1fr) clamp(300px, 34%, 400px)' }} aria-busy="true" aria-label="Cargando alertas">
+      <Card className="nc-grow">
+        <div className="ui-esqueleto-alertas-barra">
+          <Skeleton width="56%" height={36} />
+          <Skeleton width={112} height={36} />
+        </div>
+        <div className="ui-alerta ui-alerta--cabecera">
+          <span />
+          <span>Alerta</span>
+          <span>Valor</span>
+          <span>Detección</span>
+        </div>
+        <div>
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="ui-alerta">
+              <Skeleton variant="circle" width={44} />
+              <span className="ui-esqueleto-lineas">
+                <Skeleton width="66%" height={14} />
+                <Skeleton width="38%" height={11} />
+                <span className="ui-esqueleto-alertas-badges">
+                  <Skeleton width={82} height={22} />
+                  <Skeleton width={92} height={22} />
+                </span>
+              </span>
+              <span className="ui-esqueleto-lineas">
+                <Skeleton width="72%" height={16} />
+                <Skeleton width="52%" height={10} />
+              </span>
+              <span className="ui-esqueleto-lineas">
+                <Skeleton width="88%" height={11} />
+                <Skeleton width="70%" height={10} />
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card className="nc-grow">
+        <div className="ui-panel">
+          <div className="ui-esqueleto-alertas-detalle">
+            <Skeleton variant="circle" width={44} />
+            <span className="ui-esqueleto-lineas">
+              <Skeleton width="72%" height={18} />
+              <Skeleton width="42%" height={12} />
+            </span>
+          </div>
+          <div className="ui-esqueleto-alertas-valor">
+            <Skeleton width="44%" height={48} />
+            <Skeleton width={82} height={12} />
+          </div>
+          <div className="ui-esqueleto-alertas-badges">
+            <Skeleton width={84} height={24} />
+            <Skeleton width={96} height={24} />
+          </div>
+          <div className="ui-separado ui-esqueleto-alertas-linea">
+            <Skeleton width="34%" height={10} />
+            <Skeleton width="100%" height={14} />
+            <Skeleton width="78%" height={14} />
+            <Skeleton width="52%" height={14} />
+          </div>
+          <div className="ui-esqueleto-alertas-botones">
+            <Skeleton width="34%" height={44} />
+            <Skeleton width="58%" height={44} />
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
 export function AlertasPage() {
   const { rol, organizacion } = useSesion()
   const avisos = useAvisos()
@@ -275,7 +347,14 @@ export function AlertasPage() {
           { etiqueta: 'Total', valor: alertas.length, sub: `${alertas.filter((a) => esHoy(a.fecha_hora)).length} de hoy` },
         ],
       }
-    : { principal: { etiqueta: 'Alertas pendientes', valor: '—', tonoValor: 'apagado' } }
+    : {
+        principal: { etiqueta: 'Alertas pendientes', valor: '—', tonoValor: 'apagado', sub: '—' },
+        cifras: [
+          { etiqueta: 'Atendidas', valor: '—' },
+          { etiqueta: 'Descartadas', valor: '—' },
+          { etiqueta: 'Total', valor: '—', sub: '—' },
+        ],
+      }
 
   return (
     <Pantalla
@@ -285,6 +364,8 @@ export function AlertasPage() {
     >
       {estado === 'error' ? (
         <EstadoError reintentar={reintentar} />
+      ) : estado === 'cargando' ? (
+        <EsqueletoAlertas />
       ) : (
         <div className="ui-fila" style={{ gridTemplateColumns: 'minmax(0,1fr) clamp(300px, 34%, 400px)' }}>
           <Card className="nc-grow">
@@ -308,7 +389,6 @@ export function AlertasPage() {
               <span>Detección</span>
             </div>
             <div className="nc-scroll">
-              {estado === 'cargando' && <Skeleton variant="card" />}
               {filas.map((a) => {
                 const n = NIVEL_ALERTA[a.nivel]
                 const est = ESTADO_ALERTA[a.estado]

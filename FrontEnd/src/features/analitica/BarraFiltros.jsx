@@ -43,6 +43,7 @@ function Opciones({ todos, options, value, onChange }) {
 
 function FiltroMultiple({ label, icon, options, value, onChange, todos = 'Todas' }) {
   const [abierto, setAbierto] = useState(false)
+  const salida = useSalida(abierto)
   const caja = useRef(null)
   useEffect(() => {
     if (!abierto) return undefined
@@ -71,8 +72,13 @@ function FiltroMultiple({ label, icon, options, value, onChange, todos = 'Todas'
         <span className="ui-analitica__filtro-texto">{label}{value.length ? ` · ${value.length}` : ''}</span>
         <Icon className="ui-analitica__filtro-chevron" name="chevron-down" size={14} />
       </button>
-      {abierto && (
-        <div className="ui-analitica__popover" role="listbox" aria-label={label} aria-multiselectable="true">
+      {salida.montado && (
+        <div
+          className={`ui-analitica__popover${salida.saliendo ? ' is-saliendo' : ''}`}
+          role="listbox"
+          aria-label={label}
+          aria-multiselectable="true"
+        >
           <Opciones todos={todos} options={options} value={value} onChange={onChange} />
         </div>
       )}
@@ -246,6 +252,7 @@ export function BarraFiltros({
           {!listaAbierta && tablero ? (
             <div className="ui-analitica__tablero-bar">
               <Desplegable
+                size="sm"
                 icon="layout-dashboard"
                 value={tablero.num}
                 onChange={(num) => alCambiarTablero(tableros.find((t) => t.num === Number(num)))}
@@ -256,6 +263,7 @@ export function BarraFiltros({
           ) : null}
           <div className="ui-analitica__periodo">
             <Desplegable
+              size="sm"
               icon="calendar"
               value={filtros.periodo || '30d'}
               onChange={(valor) => {
@@ -283,6 +291,7 @@ export function BarraFiltros({
           />
           <div className="ui-analitica__variable">
             <Desplegable
+              size="sm"
               icon="activity"
               value={filtros.variable || ''}
               onChange={(valor) => alCambiarFiltros({ variable: valor })}

@@ -9,7 +9,7 @@ import { useSalida } from '../hooks/useSalida'
 // Los valores pueden llegar como número o texto (p. ej. el número de un área).
 const igual = (a, b) => String(a) === String(b)
 
-export function Desplegable({ label, icon, value, onChange, options, accion, placeholder, disabled, error, hint }) {
+export function Desplegable({ label, icon, value, onChange, options, accion, placeholder, disabled, error, hint, size }) {
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(0)
   const caja = useRef(null)
@@ -73,7 +73,7 @@ export function Desplegable({ label, icon, value, onChange, options, accion, pla
       <div className="ui-desplegable__caja">
         <button
           type="button"
-          className={`nc-input ui-desplegable__boton${abierto ? ' is-focus' : ''}${disabled ? ' is-disabled' : ''}${error ? ' is-error' : ''}`}
+          className={`nc-input ui-desplegable__boton${size === 'sm' ? ' nc-input--sm' : ''}${abierto ? ' is-focus' : ''}${disabled ? ' is-disabled' : ''}${error ? ' is-error' : ''}`}
           disabled={disabled}
           aria-invalid={error ? true : undefined}
           aria-haspopup="listbox"

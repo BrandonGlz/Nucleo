@@ -12,24 +12,62 @@ const h = React.createElement;
 function DeviceTable(p) {
   var rows = p.devices || [];
   if (p.loading) return h('div', {
-    className: 'nc-table-wrap'
-  }, [0, 1, 2, 3].map(function (i) {
-    return h('div', {
-      key: i,
-      className: 'nc-table-skel'
+    className: 'nc-table-wrap ui-esqueleto-tabla',
+    'aria-busy': true,
+    'aria-label': 'Cargando dispositivos'
+  }, h('table', {
+    className: 'nc-table ui-tabla-tarjetas'
+  }, h('thead', null, h('tr', null, ['Dispositivo', 'Ubicación', 'Batería', 'Señal', 'Última lectura', 'Estado'].map(function (c) {
+    return h('th', {
+      key: c,
+      scope: 'col'
+    }, c);
+  }))), h('tbody', null, [0, 1, 2, 3, 4].map(function (i) {
+    return h('tr', {
+      key: i
+    }, h('td', {
+      'data-etiqueta': 'Dispositivo'
+    }, h('div', {
+      className: 'nc-table__device'
     }, h(Skeleton, {
       variant: 'circle',
       width: 32
+    }), h('span', {
+      className: 'ui-esqueleto-lineas'
+    }, h(Skeleton, {
+      width: '64%',
+      height: 12
     }), h(Skeleton, {
-      width: '28%'
-    }), h(Skeleton, {
-      width: '18%'
-    }), h(Skeleton, {
-      width: '12%'
-    }), h(Skeleton, {
-      width: '14%'
-    }));
-  }));
+      width: '42%',
+      height: 9
+    })))), h('td', {
+      'data-etiqueta': 'Ubicación'
+    }, h(Skeleton, {
+      width: '68%',
+      height: 12
+    })), h('td', {
+      'data-etiqueta': 'Batería'
+    }, h(Skeleton, {
+      width: 46,
+      height: 12
+    })), h('td', {
+      'data-etiqueta': 'Señal'
+    }, h(Skeleton, {
+      width: 52,
+      height: 12
+    })), h('td', {
+      'data-etiqueta': 'Última lectura'
+    }, h(Skeleton, {
+      width: '58%',
+      height: 12
+    })), h('td', {
+      'data-etiqueta': 'Estado'
+    }, h(Skeleton, {
+      variant: 'circle',
+      width: 72,
+      height: 22
+    })));
+  }))));
   if (!rows.length) return h(EmptyState, {
     icon: 'cpu',
     title: 'Aún no hay dispositivos',
@@ -41,7 +79,7 @@ function DeviceTable(p) {
   return h('div', {
     className: cx('nc-table-wrap', p.className)
   }, h('table', {
-    className: 'nc-table'
+    className: 'nc-table ui-tabla-tarjetas'
   }, h('thead', null, h('tr', null, ['Dispositivo', 'Ubicación', 'Batería', 'Señal', 'Última lectura', 'Estado'].map(function (c) {
     return h('th', {
       key: c,

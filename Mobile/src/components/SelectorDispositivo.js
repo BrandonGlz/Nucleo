@@ -3,6 +3,7 @@ import { Animated, Dimensions, Easing, Modal, Pressable, ScrollView, StyleSheet,
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAnimaciones } from '../context/PreferenciasContext'
 import { useTema } from '../context/TemaContext'
+import { radius } from '../theme'
 import { enLinea } from '../utils/convertir'
 import { haceCuanto } from '../utils/formato'
 import { Icon, IconCircle, T } from './ui'
@@ -122,5 +123,5 @@ const s = StyleSheet.create({
   opcion: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 18, borderWidth: 1.5 },
   fila6: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   punto: { width: 7, height: 7, borderRadius: 4 },
-  campo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 18, backgroundColor: 'rgba(243,245,242,0.08)' },
+  campo: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingVertical: 10, paddingHorizontal: 16, borderRadius: radius.full, backgroundColor: 'rgba(243,245,242,0.08)' },
 })

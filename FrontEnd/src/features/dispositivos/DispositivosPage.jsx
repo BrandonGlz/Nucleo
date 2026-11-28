@@ -6,6 +6,7 @@ import {
 } from '../../design-system/componentes/index.js'
 import { Buscador } from '../../components/Buscador'
 import { Select } from '../../components/Desplegable'
+import { EsqueletoTabla } from '../../components/Esqueleto'
 import { EstadoError } from '../../components/EstadoError'
 import { Pantalla } from '../../components/Pantalla'
 import { useMonitoreo } from '../../hooks/useMonitoreo'
@@ -37,6 +38,35 @@ const FILTROS = [
 ]
 // El contrato no trae la intensidad de la señal: se estima con la última conexión.
 const senal = (d) => (!enLinea(d) ? 0 : (d.nivel_bateria ?? 100) > 60 ? 4 : 3)
+
+// Misma silueta que la tarjeta real: cabecera, tres lecturas y pie de batería y señal.
+function TarjetaDispositivoEsqueleto() {
+  return (
+    <div className="ui-disp-card ui-disp-card--esqueleto" aria-busy="true">
+      <div className="ui-disp-card__cabeza">
+        <Skeleton variant="circle" width={40} />
+        <span className="ui-esqueleto-lineas">
+          <Skeleton width="62%" height={14} />
+          <Skeleton width="48%" height={11} />
+        </span>
+        <Skeleton width={76} height={24} />
+      </div>
+      <div className="ui-disp-card__lecturas">
+        {[0, 1, 2].map((i) => (
+          <div key={i}>
+            <Skeleton width="58%" height={10} />
+            <Skeleton width="72%" height={17} />
+          </div>
+        ))}
+      </div>
+      <div className="ui-disp-card__pie">
+        <Skeleton width={54} height={12} />
+        <Skeleton width={34} height={12} />
+        <Skeleton width="42%" height={11} />
+      </div>
+    </div>
+  )
+}
 
 // Tarjeta de un dispositivo: estado, sus tres lecturas y batería, señal y última conexión.
 function TarjetaDispositivo({ d, area, umbrales, abrir }) {
@@ -165,13 +195,22 @@ export function DispositivosPage() {
                 { etiqueta: 'Sin conexión', valor: cuenta('offline'), sub: 'Revisar energía o red', tono: 'tenue' },
               ],
             }
-          : { principal: { etiqueta: 'Dispositivos', valor: '—', tonoValor: 'apagado', sub: 'Cargando…' } }
+          : {
+              principal: { etiqueta: 'Dispositivos', valor: '—', tonoValor: 'apagado', sub: '—' },
+              cifras: [
+                { etiqueta: 'En línea', valor: '—', sub: '—' },
+                { etiqueta: 'Advertencia', valor: '—', sub: '—' },
+                { etiqueta: 'Crítico', valor: '—', sub: '—' },
+                { etiqueta: 'Sin conexión', valor: '—', sub: '—' },
+              ],
+            }
       }
     >
       <div className="ui-filtros" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ width: 280 }}>
           <Select
             label="Área"
+            size="sm"
             icon="map-pin"
             value={area}
             onChange={(e) => setArea(e.target.value)}
@@ -207,11 +246,17 @@ export function DispositivosPage() {
         </div>
         {estado === 'cargando' ? (
           vista === 'lista' ? (
-            <DeviceTable loading />
+            <EsqueletoTabla
+              etiquetas={['Dispositivo', 'Área', 'Estado', 'Batería', 'Señal', 'Última lectura', 'Muestreo', '']}
+              filas={6}
+              anchos={['68%', '62%', 76, 48, 52, '58%', '52%', '20%']}
+              primera="icono"
+              pastillas={[2]}
+            />
           ) : (
             <div className="ui-disp-grid">
               {Array.from({ length: 6 }, (_, i) => (
-                <Skeleton key={i} variant="card" />
+                <TarjetaDispositivoEsqueleto key={i} />
               ))}
             </div>
           )

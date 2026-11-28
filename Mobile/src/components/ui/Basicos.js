@@ -393,6 +393,28 @@ export function Skeleton({ width = '100%', height = 16, round, style }) {
   )
 }
 
+// Gráfica de carga: mismas líneas de guía y área baja que las gráficas de línea del sistema.
+export function SkeletonGrafica({ height = 190, style }) {
+  const { c } = useTema()
+  return (
+    <View
+      style={[{ height, borderRadius: radius.md, overflow: 'hidden', backgroundColor: c.surfaceMuted, padding: 12, justifyContent: 'flex-end' }, style]}
+      accessibilityLabel="Cargando gráfica"
+    >
+      {[1, 2, 3].map((i) => (
+        <View
+          key={i}
+          style={{ position: 'absolute', left: 10, right: 10, top: Math.round((height / 4) * i), height: 1, backgroundColor: c.border, opacity: 0.8 }}
+        />
+      ))}
+      <Skeleton
+        height={Math.round(height * 0.4)}
+        style={{ borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md }}
+      />
+    </View>
+  )
+}
+
 export function ActivityFeed({ items = [] }) {
   const { c } = useTema()
   return (
