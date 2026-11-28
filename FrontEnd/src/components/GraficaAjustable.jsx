@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { BarChart, TrendChart } from '../design-system/componentes/index.js'
 
-// Debajo de este alto el tooltip del último punto taparía la línea: se muestra solo al pasar el
-// mouse y en un renglón (el valor actual ya está en la franja de cifras).
+// Debajo de este alto el tooltip del último punto taparía la línea: se muestra compacto y solo
+// al pasar el mouse. El Panel, con resumenAlPasar, conserva el recuadro completo (sin fijarlo).
 const ALTO_COMPACTO = 170
 
 // TrendChart que toma la altura del espacio libre de su tarjeta (nc-grow), para que la
 // gráfica nunca se salga de ella al cambiar el tamaño de la ventana.
-export function GraficaAjustable({ minimo = 40, ...props }) {
+// `resumenAlPasar`: el Panel lo activa para que el punto final no fije el recuadro; las demás
+// pantallas conservan el criterio por alto (tooltip fijo en gráficas altas).
+export function GraficaAjustable({ minimo = 40, resumenAlPasar = false, tooltipFijo, ...props }) {
   const ref = useRef(null)
   const [alto, setAlto] = useState(0)
   useEffect(() => {
@@ -21,9 +23,10 @@ export function GraficaAjustable({ minimo = 40, ...props }) {
     <div ref={ref} className="ui-grafica">
       {alto >= minimo && (
         <TrendChart
-          tooltipFijo={alto >= ALTO_COMPACTO}
+          tooltipFijo={resumenAlPasar ? false : (tooltipFijo ?? alto >= ALTO_COMPACTO)}
+          resumenAlPasar={resumenAlPasar}
           {...props}
-          className={alto < ALTO_COMPACTO ? 'nc-trend--compacta' : undefined}
+          className={!resumenAlPasar && alto < ALTO_COMPACTO ? 'nc-trend--compacta' : undefined}
           height={alto}
         />
       )}

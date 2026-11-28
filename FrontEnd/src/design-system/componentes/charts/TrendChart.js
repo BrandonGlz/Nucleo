@@ -4,6 +4,7 @@ import { ChartTooltip, atenuado, colorSerie, escalaBonita, esSeleccion, evitarEt
 import { StatusBadge } from '../display/StatusBadge.js'
 const h = React.createElement;
 const {
+  useEffect,
   useLayoutEffect,
   useState
 } = React;
@@ -20,6 +21,19 @@ function TrendChartSimple(p) {
   var interactivo = p.interactivo !== false;
   var inicial = p.activeIndex != null ? p.activeIndex : data.length - 1;
   var hover = useState(null);
+  // Tras levantar el dedo el recuadro se retira solo; otro toque o desmontar cancela el temporizador.
+  var soltado = useState(0);
+  var vecesSoltado = soltado[0];
+  var ponerHover = hover[1];
+  useEffect(function () {
+    if (!vecesSoltado) return undefined;
+    var t = setTimeout(function () {
+      ponerHover(null);
+    }, 2500);
+    return function () {
+      clearTimeout(t);
+    };
+  }, [vecesSoltado, ponerHover]);
   // Nodo del tooltip (ref de callback) y su tamaño real, que cambia con el texto y la variante compacta
   var tipEl = useState(null);
   var tamTip = useState(null);
@@ -32,7 +46,11 @@ function TrendChartSimple(p) {
   });
   // `tooltipFijo={false}` (gráficas bajas): el tooltip del punto inicial no se queda fijo, solo
   // aparece al pasar el mouse, para no tapar la línea cuando hay poco alto.
-  var fijo = p.tooltipFijo !== false;
+  // `resumenAlPasar` (Panel): además de no fijarlo, el cursor y el recuadro solo viven mientras
+  // se interactúa; en pasivo quedan la línea, el área y el punto final.
+  var resumenAlPasar = p.resumenAlPasar === true;
+  var activo = hover[0] != null;
+  var fijo = !resumenAlPasar && p.tooltipFijo !== false;
   // Sin puntos no hay línea que dibujar: se muestra un aviso en lugar de la gráfica
   if (!data.length) {
     return h('div', {
@@ -88,11 +106,20 @@ function TrendChartSimple(p) {
   });
   // Al salir el mouse vuelve al punto inicial en vez de quedarse en el último que se tocó
   var hi = Math.max(0, Math.min(data.length - 1, hover[0] != null ? hover[0] : inicial));
-  var cur = interactivo ? data[hi] : null;
+  var cur = interactivo ? (resumenAlPasar && !activo ? null : data[hi]) : null;
   var labelEvery = Math.max(1, Math.ceil(data.length / Math.max(2, Math.floor(iw / 64))));
   function onMove(e) {
     var r = e.currentTarget.getBoundingClientRect();
     var x = e.clientX - r.left;
+    var i = Math.round((x - padL) / iw * (data.length - 1));
+    hover[1](Math.max(0, Math.min(data.length - 1, i)));
+  }
+  // En pantallas táctiles no hay hover: el mismo recuadro aparece mientras se toca la gráfica.
+  function onTouch(e) {
+    var t = e.touches && e.touches[0];
+    if (!t) return;
+    var r = e.currentTarget.getBoundingClientRect();
+    var x = t.clientX - r.left;
     var i = Math.round((x - padL) / iw * (data.length - 1));
     hover[1](Math.max(0, Math.min(data.length - 1, i)));
   }
@@ -140,6 +167,21 @@ function TrendChartSimple(p) {
     },
     onMouseMove: interactivo ? onMove : undefined,
     onMouseLeave: interactivo ? function () {
+      hover[1](null);
+    } : undefined,
+    onTouchStart: resumenAlPasar ? function (e) {
+      soltado[1](0);
+      onTouch(e);
+    } : undefined,
+    onTouchMove: resumenAlPasar ? onTouch : undefined,
+    onTouchEnd: resumenAlPasar ? function () {
+      // El toque deja leer el recuadro; se retira solo un momento después.
+      soltado[1](function (n) {
+        return n + 1;
+      });
+    } : undefined,
+    onTouchCancel: resumenAlPasar ? function () {
+      soltado[1](0);
       hover[1](null);
     } : undefined,
     role: 'img',
@@ -258,7 +300,12 @@ function TrendChartSimple(p) {
     cy: Y(cur.value),
     r: 4.5,
     className: 'nc-trend__dot'
-  })) : null), verTip ? h('div', {
+  })) : null, resumenAlPasar && !activo ? h('circle', {
+    cx: X(data.length - 1),
+    cy: Y(data[data.length - 1].value),
+    r: 4.5,
+    className: 'nc-trend__dot nc-trend__dot--final'
+  }) : null), verTip ? h('div', {
     ref: tipEl[1],
     className: 'nc-tooltip',
     style: {

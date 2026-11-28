@@ -125,6 +125,7 @@ function GraficaVariable({ variable, datos, dispositivo, periodo, className = ''
           unit={unidad}
           threshold={u ? { min: Number(u.peligro_min), max: Number(u.peligro_max) } : undefined}
           minimo={60}
+          resumenAlPasar
           vacio={`Sin lecturas de ${dispositivo?.nombre ?? 'este dispositivo'} en este periodo`}
         />
       ) : (
